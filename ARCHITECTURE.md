@@ -253,18 +253,92 @@ Stages 12 and 13 are the product. Everything else is plumbing.
 
 ## Tools
 
+Tools are the primary extension point. The contract below is **public API**: third-party
+plugins implement it, so its shape is the one thing here that is expensive to change later.
+
 ```php
+namespace Swag\AssistantStarterKit\Core\Tool;
+
+enum ToolAuthority: string
+{
+    case Read = 'read';          // no side effects
+    case Write = 'write';        // mutates shopper state — policy-gated generically
+    case Terminal = 'terminal';  // ends the turn
+}
+
+/** @api Public extension point. */
 interface ToolInterface
 {
+    /** snake_case, unique across all plugins. */
     public function name(): string;
-    /** JSON Schema for the arguments. Validated server-side; reject, never coerce. */
-    public function schema(): array;
+
+    /** Shown to the model. This text is the tool's real documentation. */
+    public function description(): string;
+
+    /** JSON Schema for the arguments. Validated server-side: reject, never coerce. */
+    public function parameters(): array;
+
+    /** Lets the policy layer gate new tools without changing policy code. */
+    public function authority(): ToolAuthority;
+
     public function isAvailable(ToolContext $context): bool;
+
     public function execute(array $args, ToolContext $context): ToolResult;
+}
+
+/** @api */
+final readonly class ToolResult
+{
+    public function __construct(
+        /**
+         * Facts the SERVER will render. Registered into the turn's retrieved set,
+         * so ID validation and fact rendering cover them automatically.
+         * @var ProductCard[]
+         */
+        public array $cards = [],
+        /** Structured data the model may reason about but must never quote as fact. */
+        public array $data = [],
+        /** Short status line for the model, e.g. "added 1 item to the cart". */
+        public ?string $message = null,
+        public bool $endsTurn = false,
+    ) {}
+}
+
+/** @api */
+final readonly class ToolContext
+{
+    public function __construct(
+        public string $conversationId,
+        public CatalogScope $scope,
+        public AssistantConfig $config,
+        public bool $cartEnabled,
+    ) {}
 }
 ```
 
-Registered via DI tag `swag_assistant.tool` — that is the extension point for developers.
+Registration is a DI tag — that is all a third-party plugin needs:
+
+```xml
+<service id="Acme\BikeFit\Tool\CheckFitmentTool">
+    <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+    <tag name="swag_assistant.tool" priority="100"/>
+</service>
+```
+
+### Tools stay thin
+
+**Grounding logic must never live inside a tool.** Tools receive the gateway and the
+grounding services and compose them; they do not reimplement them. A new tool then
+inherits variant-level correctness, blocklist filtering and server-side fact rendering for
+free — and cannot accidentally opt out of them.
+
+Injectable for tool authors: `CommerceGatewayInterface`, `FacetProbe`, `VariantResolver`,
+`BlocklistFilter`, `FactRenderer`.
+
+Note the trust boundary: **tools are trusted code the merchant installed; the model is
+not.** Server-side argument validation protects against the model, not against the tool.
+
+### Shipped tools
 
 | Tool | Authority |
 |---|---|
@@ -278,6 +352,34 @@ tool is never shown to the model. Never rely on a model declining an available t
 
 **Not implemented — no code path exists:** `apply_discount`, `set_price`, `create_order`,
 `pay`, `read_customer_pii`, `modify_product`. This is why prompt injection has no payoff.
+
+## Extension points
+
+Ordered by what v0 actually delivers. The interfaces marked *later* are named here so the
+v0 code is shaped to accept them, not built now.
+
+| Extend | How | v0 |
+|---|---|---|
+| Add a tool | implement `ToolInterface`, DI tag `swag_assistant.tool` | **yes** |
+| Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — the seam already exists |
+| Swap the LLM provider | decorate/replace `LlmClientInterface` | **yes** |
+| Change the agent voice | `config.xml` field, no code | **yes** |
+| Storefront widget markup | Twig template override, standard Shopware | **yes** |
+| System prompt | decorate `PromptProviderInterface` | interface only |
+| Ranking rules | `RankingRuleInterface`, tag `swag_assistant.ranking_rule`, priority-ordered | later |
+| Retrieval strategy (Tier 1/2) | decorate `RetrievalStrategyInterface` | later |
+| Knowledge sources | `KnowledgeSourceInterface`, tag | later |
+| Trace sink (analytics) | listen to the trace event | later |
+| Contribute eval journeys | `Resources/assistant/journeys/*.yaml`, discovered across plugins | later |
+
+### API stability
+
+`@api`-annotated classes are the intended public surface: `ToolInterface`, `ToolResult`,
+`ToolContext`, `ToolAuthority`, `CommerceGatewayInterface` and the DTOs it exchanges.
+Everything else is internal and will move without notice.
+
+This is a research preview — **no stability guarantees yet.** The annotations record intent,
+so that when guarantees are given, the surface is already the small one.
 
 ## LLM client
 

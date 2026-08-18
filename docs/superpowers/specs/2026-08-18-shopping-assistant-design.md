@@ -30,6 +30,7 @@ text and should be updated.
 | D4 | **Variant-level resolution is mandatory** | Parent aggregate stock is the failure that cancels orders. Highest-cost defect in this product class |
 | D5 | **Blocklist as a filter, pre- and post-retrieval** | A prompt-level blocklist cannot pass a compliance review; blocked items must never enter model context |
 | D6 | **Capability control by tool-list construction** | A disabled tool is never shown to the model. Never rely on a model declining |
+| D6b | **Tool contract is public API and is shaped correctly now** | `ToolInterface`/`ToolResult` are the one thing expensive to change once third parties depend on them. `ToolResult.cards` keeps fact rendering and ID validation intact for foreign tools; `authority()` lets policy gate new tools without policy changes; grounding services are injected rather than reimplemented. Other extension points stay deferred |
 | D7 | **OpenAI-compatible LLM interface** | Merchant flexibility (Azure, local, OpenRouter); Claude still reachable via its compat endpoint. Prior art: `PageAgentShopwareBridge` |
 | D8 | **Retrieval Tier 0 only** (facet-grounded structured queries) | Query expansion (Tier 1) and a semantic index (Tier 2) are deferred. No vector store: it is a sync problem, and it would only ever be a candidate generator, never a source of truth |
 | D9 | **Evals read the trace, not the prose** | Deterministic, no LLM judge, near-zero cost. Consequence: the trace is a prerequisite, not a nice-to-have |
