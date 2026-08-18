@@ -15,7 +15,8 @@
 │    → SalesChannelContext injected automatically:             │
 │      real shopper session, customer group, rules, prices     │
 │              │                                               │
-│  Core pipeline (PHP) ──────────► OpenAI-compatible endpoint  │
+│  Symfony AI Agent (tool loop, streaming, context)            │
+│    + our grounding processors ──► OpenAI-compatible endpoint  │
 │              │                                               │
 │    CommerceGatewayInterface                                  │
 │      └── DalCommerceGateway  → DAL / SalesChannel services   │
@@ -81,17 +82,19 @@ src/
 │   │   ├── BlocklistFilter.php
 │   │   └── GuardCheck.php             kill switch, request cap
 │   ├── Agent/
-│   │   ├── AgentLoop.php              max 5 tool calls per turn
-│   │   └── ToolRegistry.php
-│   ├── Tool/
-│   │   ├── ToolInterface.php
+│   │   ├── AssistantAgentFactory.php  builds a per-request Agent
+│   │   ├── AssistantRunner.php        guard, then $agent->call()
+│   │   ├── GroundingOutputProcessor.php
+│   │   └── SlidingWindowInputProcessor.php
+│   ├── Tool/                      #[AsTool] classes, ids-only returns
 │   │   ├── SearchProductsTool.php
 │   │   ├── GetProductTool.php
 │   │   ├── AddToCartTool.php
-│   │   └── EscalateTool.php
+│   │   ├── EscalateTool.php
+│   │   └── Guard.php              bounds #[AsTool] cannot express
 │   ├── Llm/
-│   │   ├── LlmClientInterface.php
-│   │   └── OpenAiCompatibleClient.php
+│   │   ├── PlatformFactory.php    Generic bridge + guarded HttpClient
+│   │   └── Egress/                SSRF validation
 │   └── Trace/
 │       ├── TraceRecorder.php
 │       └── TraceEvent.php
@@ -267,111 +270,119 @@ One turn, stage by stage. Each stage emits a trace event.
 
 Stages 12 and 13 are the product. Everything else is plumbing.
 
+## Agent runtime: Symfony AI
+
+The agent mechanics come from **`symfony/ai-agent` 0.13** — tool registry, tool-calling loop,
+message handling, streaming, context compression. We do not write a loop. What we own is the
+grounding, and it plugs into three verified seams:
+
+| Our concern | Framework seam |
+|---|---|
+| Context window management | `InputProcessorInterface`, `Input::setMessageBag()` |
+| Validate ids, render facts, audit prose | `OutputProcessorInterface`, `Output::getResult()` |
+| Bounded tool calls | `Agent` constructor argument `maxToolCalls` |
+| Capability control | which tools are constructed into the `Toolbox` |
+| Guard before any spend | `AssistantRunner`, before `$agent->call()` |
+
+The platform is the **`Generic` bridge** (`symfony/ai-generic-platform`): OpenAI-compatible
+chat completions against a configurable `baseUrl`, with an injectable `HttpClientInterface` —
+which is where our SSRF guard sits.
+
+**Both packages are pinned exactly** (`0.13.*`, `0.12.*`). They are 0.x with twelve
+breaking-change releases behind them; a caret range would let a `composer update` in someone
+else's shop break this plugin. See `docs/adr/0001-symfony-ai-as-agent-runtime.md`.
+
 ## Tools
 
-Tools are the primary extension point. The contract below is **public API**: third-party
-plugins implement it, so its shape is the one thing here that is expensive to change later.
+Tools are the primary extension point, and the contract is Symfony AI's:
 
 ```php
-namespace Swag\AssistantStarterKit\Core\Tool;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
-enum ToolAuthority: string
-{
-    case Read = 'read';          // no side effects
-    case Write = 'write';        // mutates shopper state — policy-gated generically
-    case Terminal = 'terminal';  // ends the turn
-}
-
-/** @api Public extension point. */
-interface ToolInterface
-{
-    /** snake_case, unique across all plugins. */
-    public function name(): string;
-
-    /** Shown to the model. This text is the tool's real documentation. */
-    public function description(): string;
-
-    /**
-     * JSON Schema for the arguments. Validated server-side: reject, never coerce.
-     * Every string needs maxLength and every array maxItems — unbounded input from
-     * a model is a cost and DoS vector. SwagWebMcp enforces this via bounded Zod
-     * helpers; mirror it here.
-     */
-    public function parameters(): array;
-
-    /** Lets the policy layer gate new tools without changing policy code. */
-    public function authority(): ToolAuthority;
-
-    public function isAvailable(ToolContext $context): bool;
-
-    public function execute(array $args, ToolContext $context): ToolResult;
-}
-
-/** @api */
-final readonly class ToolResult
+#[AsTool(
+    name: 'check_fitment',
+    description: 'Check whether a part fits a given frame. Returns product ids only.',
+)]
+final class CheckFitmentTool
 {
     public function __construct(
-        /**
-         * Facts the SERVER will render. Registered into the turn's retrieved set,
-         * so ID validation and fact rendering cover them automatically.
-         * @var ProductCard[]
-         */
-        public array $cards = [],
-        /** Structured data the model may reason about but must never quote as fact. */
-        public array $data = [],
-        /** Short status line for the model, e.g. "added 1 item to the cart". */
-        public ?string $message = null,
-        public bool $endsTurn = false,
+        private readonly CommerceGatewayInterface $gateway,
+        private readonly FactRenderer $renderer,
     ) {}
-}
 
-/** @api */
-final readonly class ToolContext
-{
-    public function __construct(
-        public string $conversationId,
-        public AssistantConfig $config,   // carries the CatalogScope — one source of truth
-        public bool $cartAvailable = false,
-    ) {}
+    /** @param string $frame The frame model, e.g. "Canyon Grail 2021". */
+    public function __invoke(string $frame): array
+    {
+        // … resolve, then:
+        $this->renderer->registerRetrieved($cards);
+
+        return ['productIds' => array_map(fn ($c) => $c->id, $cards), 'total' => count($cards)];
+    }
 }
 ```
 
-Registration is a DI tag — that is all a third-party plugin needs:
+Two rules make this safe:
 
-```xml
-<service id="Acme\BikeFit\Tool\CheckFitmentTool">
-    <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
-    <tag name="swag_assistant.tool" priority="100"/>
-</service>
-```
+**1. Tools return ids, never cards.** Whatever a tool returns is serialised into the tool
+message. A `ProductCard` in there would let the model quote a price it never had to earn. So
+tools register their cards with `FactRenderer` — the request-scoped authority — and return
+`productIds`. The controller reads the rendered cards from the renderer afterwards.
+
+**2. Bounds move into the method body.** `#[AsTool]` derives the JSON Schema from the
+`__invoke()` signature by reflection, so `maxLength` and `maxItems` cannot be declared. `Guard`
+enforces them as guard clauses and throws `ToolArgumentException`. This is a real regression
+against a hand-written schema — it is not optional.
 
 ### Tools stay thin
 
-**Grounding logic must never live inside a tool.** Tools receive the gateway and the
-grounding services and compose them; they do not reimplement them. A new tool then
-inherits variant-level correctness, blocklist filtering and server-side fact rendering for
-free — and cannot accidentally opt out of them.
+**Grounding logic must never live inside a tool.** Tools receive the gateway and the grounding
+services and compose them. A new tool then inherits variant-level correctness, blocklist
+filtering and server-side fact rendering for free — and cannot accidentally opt out.
 
-Injectable for tool authors: `CommerceGatewayInterface`, `FacetProbe`, `VariantResolver`,
-`BlocklistFilter`, `FactRenderer`.
+Injectable for tool authors: `CommerceGatewayInterface`, `FacetProbe`, `QueryBuilder`,
+`VariantResolver`, `BlocklistFilter`, `FactRenderer`, `TraceRecorder`.
 
-Note the trust boundary: **tools are trusted code the merchant installed; the model is
-not.** Server-side argument validation protects against the model, not against the tool.
+Note the trust boundary: **tools are trusted code the merchant installed; the model is not.**
+`Guard` protects against the model, not against the tool.
 
 ### Shipped tools
 
-| Tool | Authority |
-|---|---|
-| `search_products` | read |
-| `get_product` | read |
-| `add_to_cart` | write, policy-gated |
-| `escalate` | terminal |
+| Tool | Authority | Constructed when |
+|---|---|---|
+| `search_products` | read | always |
+| `get_product` | read | always |
+| `add_to_cart` | write | `enableAddToCart && cartAvailable` |
+| `escalate` | terminal | always |
 
-**Capability control is tool-list construction, never a prompt instruction.** A disabled
-tool is never shown to the model. Never rely on a model declining an available tool.
+**Capability control is toolbox construction, never a prompt instruction.** An unavailable tool
+is never instantiated, so the model never sees it.
 
 **Not implemented — no code path exists:** `apply_discount`, `set_price`, `create_order`,
 `pay`, `read_customer_pii`, `modify_product`. This is why prompt injection has no payoff.
+
+## Extension points
+
+| Extend | How | v0 |
+|---|---|---|
+| Add a tool | `#[AsTool]` class, register as a service | **yes** |
+| Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — the seam already exists |
+| Swap the LLM provider | another Symfony AI platform bridge | **yes** — 35+ bridges shipped |
+| Change the agent voice | `config.xml` field, no code | **yes** |
+| Storefront widget markup | Twig template override | **yes** |
+| Context compression strategy | another `InputProcessorInterface` | **yes** |
+| Conversation persistence | `Symfony\AI\Chat\MessageStoreInterface` (2 methods) | Plan 2 |
+| Ranking rules | `RankingRuleInterface`, tagged, priority-ordered | later |
+| Semantic retrieval | `symfony/ai-store` | later, only if measured |
+| Expose tools over MCP | `symfony/mcp-bundle` | later |
+
+### API stability
+
+Our own `@api` surface is small on purpose: `CommerceGatewayInterface` and the DTOs it
+exchanges, plus `FactRenderer`. Everything else is internal.
+
+**The tool contract is not ours** — it is `#[AsTool]`, from a 0.x package. That is a conscious
+trade recorded in ADR 0001: better DX for Symfony developers, at the price of inheriting
+someone else's breaking changes. Acceptable for a research preview, revisit before any release.
 
 ## Reuse from existing lab plugins
 
@@ -516,37 +527,6 @@ From the harness profile — cheap, and they close a real failure mode where the
 `maxItemQuantity` (default 5) · `maxCartValue` (default 1000, sales-channel currency)
 
 Both are enforced in `AddToCartTool` and produce a `cart_limit` decision.
-
-## LLM client
-
-```php
-interface LlmClientInterface
-{
-    public function chat(ChatRequest $request): ChatResponse;
-}
-```
-
-`OpenAiCompatibleClient` speaks OpenAI chat-completions: `tools` in, `tool_calls` out.
-Config is `base_url` + `model` + `api_key`, so OpenAI, Azure OpenAI, OpenRouter, vLLM,
-Ollama and Anthropic's OpenAI-compatible endpoint all work unchanged.
-
-Two model slots: `understand` (temperature 0) and `generate` (temperature 0.3). They may
-be the same model.
-
-**`base_url` is merchant-configurable, which makes it an SSRF vector** — cloud metadata
-endpoints (`169.254.169.254`), internal services, `localhost`. Every outbound call must
-validate the target host first: resolve DNS, reject private and reserved ranges, reject
-`localhost` and `.local`.
-
-Do not write this from scratch. `page-agent-shopware` already ships it as four small
-final classes (`PageAgentProviderHostValidator`, `PageAgentProviderDnsResolver`,
-`PageAgentProviderBaseUrlValidator`, `PageAgentProviderRequestHeaders`) — adopt them.
-Known limitation of that implementation: it resolves IPv4 only (`gethostbynamel`), so an
-IPv6-only host or DNS rebinding slips through. Acceptable for a prototype; note it.
-
-**Tool-calling quality varies sharply across compatible providers.** The eval suite
-therefore doubles as model qualification: the same journeys tell an operator whether their
-chosen model is good enough.
 
 ## Trace data model
 
