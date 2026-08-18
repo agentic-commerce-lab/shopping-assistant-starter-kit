@@ -1,0 +1,33 @@
+{
+  "scripts": {
+    "format": "mago fmt",
+    "format:check": "mago fmt --check",
+    "lint": "mago lint",
+    "lint:fix": "mago lint --fix",
+    "typecheck": "mago analyze",
+    "quality:filesize": "php scripts/check_file_length.php src",
+    "quality:dupes": "jscpd",
+    "quality:boundaries": "mago guard",
+    "quality:depcheck": "composer-dependency-analyser",
+    "quality:security": "composer audit",
+    "quality": [
+      "@format:check",
+      "@lint",
+      "@typecheck",
+      "@quality:filesize",
+      "@quality:dupes",
+      "@quality:depcheck",
+      "@quality:security"
+    ],
+    "quality:deps": "composer outdated --direct",
+    "quality:maintainability": "phpcca analyse src",
+    "quality:hotspots": "phpcca churn src"
+  },
+  "require-dev": {
+    "carthage-software/mago": "^1.30",
+    "phauthentic/cognitive-code-analysis": "^1.11",
+    "shipmonk/composer-dependency-analyser": "^1.0",
+    "captainhook/captainhook": "^5.25",
+    "captainhook/hook-installer": "^1.0"
+  }
+}

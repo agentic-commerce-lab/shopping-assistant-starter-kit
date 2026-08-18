@@ -1,0 +1,16 @@
+{
+  "ruff.enable": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "python.languageServer": "None",
+  "basedpyright.analysis.typeCheckingMode": "strict",
+  "search.exclude": {
+    "**/.venv": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/__pycache__": true,
+    "**/.ruff_cache": true,
+    "**/.basedpyright": true
+  }
+}

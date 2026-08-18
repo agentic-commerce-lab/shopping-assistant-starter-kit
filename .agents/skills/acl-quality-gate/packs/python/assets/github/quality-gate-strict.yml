@@ -1,0 +1,68 @@
+name: Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@v3
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Verify mise tasks
+        run: |
+          required="format:check lint typecheck quality:boundaries quality:filesize quality:deadcode quality:security"
+          missing=""
+          for task in $required; do
+            if ! mise tasks ls 2>/dev/null | grep -qE "(^|[[:space:]])${task}([[:space:]]|$)"; then
+              missing="$missing $task"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing mise tasks required by this workflow:$missing"
+            echo "Merge assets/configs/mise.toml task definitions (or provide intentional replacements) before enabling this workflow."
+            exit 1
+          fi
+
+      - name: Format
+        run: mise run format:check
+
+      - name: Lint
+        run: mise run lint
+
+      - name: Typecheck
+        run: mise run typecheck
+
+      - name: Module boundaries and cycles
+        run: mise run quality:boundaries
+
+      - name: File length
+        run: mise run quality:filesize
+
+      - name: Dead code
+        run: mise run quality:deadcode
+
+      - name: Security
+        run: mise run quality:security

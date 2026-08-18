@@ -1,0 +1,93 @@
+name: Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# One gate per separately deployable project root. Set matrix entries to the real roots,
+# each with its own mise.toml, pyproject.toml, and uv.lock. Entries fail independently.
+
+jobs:
+  quality:
+    name: Quality (${{ matrix.project.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - name: service-a
+            path: service-a
+          - name: service-b
+            path: service-b
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@v3
+
+      - name: Install project toolchain
+        run: mise install
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Verify mise tasks
+        working-directory: ${{ matrix.project.path }}
+        run: |
+          required="format:check lint typecheck quality:boundaries quality:filesize quality:deadcode quality:security"
+          missing=""
+          for task in $required; do
+            if ! mise tasks ls 2>/dev/null | grep -qE "(^|[[:space:]])${task}([[:space:]]|$)"; then
+              missing="$missing $task"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing mise tasks required by this workflow:$missing"
+            echo "Merge assets/configs/mise.toml task definitions (or provide intentional replacements) before enabling this workflow."
+            exit 1
+          fi
+
+      - name: Format
+        run: mise run format:check
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Lint
+        run: mise run lint
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Typecheck
+        run: mise run typecheck
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Module boundaries and cycles
+        run: mise run quality:boundaries
+        working-directory: ${{ matrix.project.path }}
+
+      - name: File length
+        run: mise run quality:filesize
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Dead code
+        run: mise run quality:deadcode
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Security
+        run: mise run quality:security
+        working-directory: ${{ matrix.project.path }}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ACL Quality Gate"
+  short_description: "Strict, ratcheting code quality gates"
+  default_prompt: "Use $acl-quality-gate to add a strict, ratcheting quality gate (formatting, linting, type/strictness checking, maintainability scoring, dead-code and dependency-graph health, dependency freshness, hooks, and CI) to this project, using the pack for its language."

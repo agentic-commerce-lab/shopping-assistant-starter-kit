@@ -1,0 +1,83 @@
+name: Dependency Freshness Weekly (matrix)
+
+on:
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: dependency-freshness-weekly-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    name: Weekly dependency report (multi-module)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup mise (Go toolchain + dev tools)
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Build dependency report
+        env:
+          # Replace with the real gated module roots (each has its own go.mod).
+          MODULES: ". ./service-b"
+        run: |
+          {
+            echo "## Dependency freshness"
+            echo
+            echo "Weekly Go module freshness report for \`${GITHUB_REPOSITORY}\`."
+            echo
+            echo "- Workflow run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo
+            for module in $MODULES; do
+              echo "### \`${module}\`"
+              echo
+              echo '```text'
+              ( cd "$module" && mise run quality:deps ) 2>&1 || true
+              echo '```'
+              echo
+            done
+            echo "Review wanted updates; prefer security, patch, and minor updates before major migrations."
+            echo "Vulnerabilities are gated separately by \`govulncheck\` in the quality workflow."
+          } > dependency-freshness.md
+
+      - name: Create or update dependency freshness issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: Dependency freshness report
+        run: |
+          existing_issue="$(
+            gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$ISSUE_TITLE in:title" \
+              --json number,title --jq ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -n1
+          )"
+
+          label_args=()
+          if gh label create dependency-freshness --color 1f883d --description "Dependency freshness reports" --repo "$GITHUB_REPOSITORY" 2>/dev/null \
+            || gh label list --repo "$GITHUB_REPOSITORY" --search dependency-freshness --json name --jq '.[].name' | grep -qx dependency-freshness; then
+            label_args=(--label dependency-freshness)
+          fi
+
+          if [ -n "$existing_issue" ]; then
+            gh issue edit "$existing_issue" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body-file dependency-freshness.md
+          else
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$ISSUE_TITLE" \
+              --body-file dependency-freshness.md \
+              "${label_args[@]}"
+          fi

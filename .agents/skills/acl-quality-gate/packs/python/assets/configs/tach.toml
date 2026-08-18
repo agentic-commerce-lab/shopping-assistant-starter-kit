@@ -1,0 +1,42 @@
+# ACL quality gate — tach config (circular dependencies + module boundaries).
+# Copy to the gated project root as `tach.toml`, then populate modules interactively:
+#   tach mod     # mark source roots (press s) and module boundaries
+#   tach sync    # auto-fill each module's allowed dependencies
+# `tach check` then fails on circular imports and on imports that violate the declared
+# boundaries. With no [[modules]] defined, run `tach mod`/`tach sync` first — cycle and
+# boundary checks operate on the configured module set.
+#
+# Set source_roots to the project's import root(s). Keep `forbid_circular_dependencies`
+# on; it is the highest-value graph check this pack provides (Python has no Fallow).
+
+source_roots = ["src"]
+forbid_circular_dependencies = true
+ignore_type_checking_imports = true
+respect_gitignore = true
+
+exclude = [
+  "**/*__pycache__",
+  "build/",
+  "dist/",
+  "docs/",
+  "tests/",
+  ".venv/",
+  ".agents/",
+  ".codex/",
+  ".claude/",
+  ".cursor/",
+]
+
+# Example module layout produced by `tach mod` + `tach sync` (delete once generated):
+#
+# [[modules]]
+# path = "myapp.api"
+# depends_on = ["myapp.services"]
+#
+# [[modules]]
+# path = "myapp.services"
+# depends_on = ["myapp.repository"]
+#
+# [[modules]]
+# path = "myapp.repository"
+# depends_on = []

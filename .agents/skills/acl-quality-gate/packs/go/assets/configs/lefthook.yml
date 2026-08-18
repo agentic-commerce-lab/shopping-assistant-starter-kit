@@ -1,0 +1,30 @@
+# lefthook git hooks for the ACL quality gate (Go pack).
+# Install once with `mise run lefthook-install` (or `lefthook install`).
+# Pre-commit is fast; the whole-module type check runs on pre-push.
+#
+# Why lint is not scoped to {staged_files}: golangci-lint analyzes whole packages
+# (it needs every file + types in a package), so passing individual staged files
+# that span multiple directories fails with "named files must all be in one
+# directory". Instead, lint runs the module and relies on golangci-lint's build
+# cache to re-analyze only changed packages — which meets the speed intent of a
+# staged-scope hook. Formatting IS per-file (gofumpt/goimports/golines), so the
+# format job uses {staged_files} and re-stages what it rewrites.
+
+pre-commit:
+  parallel: false
+  jobs:
+    - name: format
+      glob: "*.go"
+      # Format only the staged Go files, then re-stage what changed.
+      run: golangci-lint fmt {staged_files}
+      stage_fixed: true
+    - name: lint
+      glob: "*.go"
+      # Cached whole-module lint; blocks the commit on any finding.
+      run: golangci-lint run
+
+pre-push:
+  jobs:
+    - name: typecheck
+      # Type checking cannot be scoped to staged files; keep it off the commit hot path.
+      run: go vet ./... && go build ./...

@@ -1,0 +1,107 @@
+name: Dependency Freshness Weekly
+
+on:
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: dependency-freshness-weekly-${{ github.workflow }}
+  cancel-in-progress: true
+
+# One weekly issue with a section per project root. Set the `projects` list to the real
+# roots, each with its own mise.toml, pyproject.toml, and uv.lock.
+
+jobs:
+  report:
+    name: Weekly dependency report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup mise
+        uses: jdx/mise-action@v3
+
+      - name: Build dependency report
+        run: |
+          projects=(
+            "service-a:service-a"
+            "service-b:service-b"
+          )
+
+          {
+            echo "## Dependency freshness"
+            echo
+            echo "Weekly uv dependency freshness report for \`${GITHUB_REPOSITORY}\`."
+            echo
+            echo "- Workflow run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo
+          } > dependency-freshness.md
+
+          for project in "${projects[@]}"; do
+            name="${project%%:*}"
+            path="${project#*:}"
+
+            echo "Checking ${name} at ${path}"
+
+            (
+              cd "$path"
+              mise install
+              uv sync --frozen
+              if ! mise tasks ls 2>/dev/null | grep -qE "(^|[[:space:]])quality:deps([[:space:]]|$)"; then
+                echo "Missing mise task 'quality:deps' in ${path}; merge assets/configs/mise.toml." >&2
+                exit 1
+              fi
+              mise run quality:deps > "${GITHUB_WORKSPACE}/dependency-outdated-${name}.txt" 2>&1 || true
+            )
+
+            {
+              echo "### ${name}"
+              echo
+              echo '```text'
+              cat "dependency-outdated-${name}.txt"
+              echo '```'
+              echo
+            } >> dependency-freshness.md
+          done
+
+          echo "Review wanted updates; prefer security, patch, and minor updates before major migrations." >> dependency-freshness.md
+
+      - name: Create or update dependency freshness issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: Dependency freshness report
+        run: |
+          gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "$ISSUE_TITLE in:title" \
+            --json number,title > open-issues.json
+
+          existing_issue="$(jq -r --arg t "$ISSUE_TITLE" '[.[] | select(.title == $t) | .number][0] // empty' open-issues.json)"
+
+          label_args=()
+          if gh label create dependency-freshness --color 1f883d --description "Dependency freshness reports" --repo "$GITHUB_REPOSITORY" 2>/dev/null \
+            || gh label list --repo "$GITHUB_REPOSITORY" --search dependency-freshness --json name --jq '.[].name' | grep -qx dependency-freshness; then
+            label_args=(--label dependency-freshness)
+          fi
+
+          if [ -n "$existing_issue" ]; then
+            gh issue edit "$existing_issue" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body-file dependency-freshness.md
+          else
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$ISSUE_TITLE" \
+              --body-file dependency-freshness.md \
+              "${label_args[@]}"
+          fi

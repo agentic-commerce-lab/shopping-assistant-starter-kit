@@ -1,0 +1,107 @@
+## ACL quality gate — tool configuration to MERGE into the project's pyproject.toml.
+## These are the strict defaults; relax only for a framework or generated path, and scope
+## the override to that path. Adjust `src` / line-length / python version to the project.
+## Add the project's tools as dev dependencies, e.g.:
+##   uv add --dev ruff basedpyright tach vulture bandit pre-commit
+## (mise + uv themselves are pinned in mise.toml, not here.)
+
+# ----------------------------------------------------------------------------------------
+# Ruff — formatter + linter. Fills the format slot and the lint slot, and carries the
+# per-function maintainability rules (complexity, args, statements, branches, nesting).
+# ----------------------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+# Match the project's target; Ruff also infers this from [project] requires-python.
+target-version = "py314"
+src = ["src"]
+extend-exclude = [
+  ".venv",
+  "build",
+  "dist",
+  "**/__pycache__",
+  "**/*_pb2.py",
+  "**/*_pb2.pyi",
+  ".agents",
+  ".codex",
+  ".claude",
+  ".cursor",
+]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "W",   # pycodestyle + pyflakes
+  "I",             # isort (import ordering)
+  "UP",            # pyupgrade
+  "B",             # flake8-bugbear (incl. B904 raise-from, B006 mutable default, B012 finally)
+  "C90",           # mccabe cyclomatic complexity
+  "SIM",           # flake8-simplify
+  "PL",            # pylint (refactor / complexity / error / warning, incl. PLR2004 magic values)
+  "RUF",           # ruff-specific (incl. RUF006 dangling asyncio task)
+  "TRY",           # tryceratops (exception-handling hygiene)
+  "T20",           # flake8-print (no ad-hoc stdout in application code)
+  "ASYNC",         # flake8-async (unsafe async patterns)
+  "TID",           # flake8-tidy-imports
+  "TC",            # flake8-type-checking (type-only import blocks)
+  "ANN401",        # ban explicit typing.Any in annotations
+]
+ignore = [
+  "TRY003",        # long messages outside the exception class — too noisy as a hard gate
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10            # cyclomatic complexity (threshold parity)
+
+[tool.ruff.lint.pylint]
+max-args = 5                   # parameter count (threshold parity)
+max-statements = 50            # function length proxy (statements, not physical lines)
+# Nesting depth (PLR1702) is a Ruff *preview* rule — this key only takes effect when
+# `preview = true` is enabled. Kept for when it stabilizes; treated as a gap until then.
+max-nested-blocks = 4
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"   # import through package public entry points, not ../..
+
+[tool.ruff.lint.per-file-ignores]
+# Ad-hoc stdout is allowed in scripts, CLIs, migrations, and config (conventions → Logging).
+"**/scripts/**" = ["T20"]
+"**/migrations/**" = ["T20"]
+"**/{cli,__main__}.py" = ["T20"]
+
+# ----------------------------------------------------------------------------------------
+# basedpyright — type / strictness check + baseline ratchet (`basedpyright --writebaseline`).
+# A committed .basedpyright/baseline.json is consumed automatically, so basedpyright is
+# baseline-aware locally as well as in CI.
+# ----------------------------------------------------------------------------------------
+[tool.basedpyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.14"
+exclude = [
+  ".venv",
+  "build",
+  "dist",
+  "**/__pycache__",
+  ".agents",
+  ".codex",
+  ".claude",
+  ".cursor",
+]
+
+# ----------------------------------------------------------------------------------------
+# Vulture — dead code. Baseline shape: a committed whitelist.py (generate with
+# `vulture src --make-whitelist > whitelist.py`).
+# ----------------------------------------------------------------------------------------
+# min_confidence = 60 is the effective floor that catches unused functions/classes/methods/
+# variables (all reported at 60%). At 80 Vulture only flags unused imports/unreachable code
+# and the dead-code gate is effectively inert. The whitelist.py baseline + ignore_decorators
+# absorb framework entry points and public-API false positives.
+[tool.vulture]
+min_confidence = 60
+exclude = [".venv/", "build/", "dist/"]
+ignore_decorators = ["@app.route", "@router.*", "@pytest.fixture"]
+
+# ----------------------------------------------------------------------------------------
+# Bandit — security lint. Run via `bandit -c pyproject.toml -r src`. Baseline shape:
+# `bandit -b .bandit-baseline.json`. Prefer scoped `# nosec` with a reason over global skips.
+# ----------------------------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build", "dist"]

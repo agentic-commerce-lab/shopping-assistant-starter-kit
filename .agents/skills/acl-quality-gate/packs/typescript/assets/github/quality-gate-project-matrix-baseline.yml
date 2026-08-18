@@ -1,0 +1,82 @@
+name: Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality (${{ matrix.project.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - name: frontend
+            path: frontend
+          - name: backend
+            path: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Verify package scripts
+        working-directory: ${{ matrix.project.path }}
+        run: |
+          bun -e 'const required = ["format:check", "lint", "typecheck", "quality:contracts", "quality:fta", "quality:audit"]; const pkg = await Bun.file("package.json").json(); const missing = required.filter((script) => typeof pkg.scripts?.[script] !== "string"); if (missing.length > 0) { console.error(`Missing package.json scripts required by this workflow: ${missing.join(", ")}`); console.error("Merge assets/package/package-scripts.fragment.json or provide intentional framework-specific replacements before enabling this workflow."); process.exit(1); }'
+
+      - name: Format
+        run: bun run format:check
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Lint
+        run: bun run lint
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Typecheck
+        run: bun run typecheck
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Shared contract structure
+        run: bun run quality:contracts
+        working-directory: ${{ matrix.project.path }}
+
+      - name: FTA maintainability
+        run: bun run quality:fta
+        working-directory: ${{ matrix.project.path }}
+
+      - name: Fallow regression gate
+        working-directory: ${{ matrix.project.path }}
+        run: |
+          if [ -f fallow-baselines/dead-code.json ] || [ -f fallow-baselines/health.json ] || [ -f fallow-baselines/dupes.json ]; then
+            args=(--gate all)
+            [ -f fallow-baselines/dead-code.json ] && args+=(--dead-code-baseline fallow-baselines/dead-code.json)
+            [ -f fallow-baselines/health.json ] && args+=(--health-baseline fallow-baselines/health.json)
+            [ -f fallow-baselines/dupes.json ] && args+=(--dupes-baseline fallow-baselines/dupes.json)
+            bunx fallow audit "${args[@]}"
+          else
+            bun run quality:audit
+          fi

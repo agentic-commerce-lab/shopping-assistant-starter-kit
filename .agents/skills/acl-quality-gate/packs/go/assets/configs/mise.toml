@@ -1,0 +1,72 @@
+# mise: pins the Go toolchain + dev tools and exposes the ACL quality-gate
+# canonical command names as tasks. Set `go` to match go.mod's toolchain.
+# Install with `mise install`; run a task with `mise run <name>`.
+
+[tools]
+go = "{{GO_VERSION}}"                                   # match go.mod `toolchain` (e.g. "1.24")
+golangci-lint = "2"                                     # v2.x
+lefthook = "latest"
+"go:golang.org/x/tools/cmd/deadcode" = "latest"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+"go:github.com/psampaz/go-mod-outdated" = "latest"
+
+[tasks.format]
+description = "Rewrite formatting in place"
+run = "golangci-lint fmt"
+
+[tasks."format:check"]
+description = "Verify formatting without writing (CI/pre-commit)"
+run = "golangci-lint fmt --diff"
+
+[tasks.lint]
+description = "Run the linter"
+run = "golangci-lint run"
+
+[tasks."lint:fix"]
+description = "Run the linter with autofix"
+run = "golangci-lint run --fix"
+
+[tasks.typecheck]
+description = "Whole-module type/strictness check"
+run = [
+  "go vet ./...",
+  "go build ./...",
+]
+
+[tasks."quality:tidy"]
+description = "Fail if go.mod/go.sum are not tidy"
+run = "go mod tidy -diff"
+
+[tasks."quality:deadcode"]
+description = "Fail on unreachable functions (deadcode has no failing exit code)"
+run = '''
+out="$(deadcode -test ./...)"
+if [ -n "$out" ]; then
+  echo "$out"
+  echo "deadcode: unreachable functions found"
+  exit 1
+fi
+'''
+
+[tasks."quality:vuln"]
+description = "Fail on known vulnerabilities"
+run = "govulncheck ./..."
+
+[tasks.quality]
+description = "Run all blocking gates in order"
+depends = [
+  "format:check",
+  "lint",
+  "typecheck",
+  "quality:tidy",
+  "quality:deadcode",
+  "quality:vuln",
+]
+
+[tasks."quality:deps"]
+description = "Non-blocking dependency freshness report"
+run = "go list -u -m -json all | go-mod-outdated -update -direct"
+
+[tasks.lefthook-install]
+description = "Register git hooks"
+run = "lefthook install"

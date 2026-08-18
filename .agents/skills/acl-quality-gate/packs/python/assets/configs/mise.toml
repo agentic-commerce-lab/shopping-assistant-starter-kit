@@ -1,0 +1,76 @@
+## ACL quality gate — mise config.
+## mise owns the Python toolchain version, the virtualenv (delegated to uv), and the
+## canonical task vocabulary. Copy to the gated project root as `mise.toml`. CI installs
+## tools from this file via `jdx/mise-action@v3` (the analog of pinning a runtime version).
+## Set the Python version to the project's target — default to the LATEST STABLE Python at
+## adoption time (check `mise ls-remote python` or python.org); do not assume the value below
+## stays current over the life of the skill. Keep uv pinned to a managed version.
+
+min_version = "2024.9.5"
+
+[tools]
+python = "3.14"
+uv = "latest"
+
+[settings]
+## Let uv own the venv; mise creates it if missing and activates it for tasks and shells.
+python.uv_venv_auto = "create|source"
+
+[env]
+_.python.venv = { path = ".venv" }
+
+## --- Canonical command vocabulary (pack-authoring §2) --------------------------------
+## CI and hooks call only these logical names. `src` is the source root — adjust to match
+## the project layout (e.g. the package directory) wherever it appears below.
+
+[tasks.format]
+description = "Rewrite formatting in place"
+run = "ruff format ."
+
+[tasks."format:check"]
+description = "Verify formatting, non-mutating (CI / pre-commit)"
+run = "ruff format --check ."
+
+[tasks.lint]
+description = "Run the linter (also carries per-function maintainability rules)"
+run = "ruff check ."
+
+[tasks."lint:fix"]
+description = "Linter with autofix"
+run = "ruff check --fix ."
+
+[tasks.typecheck]
+description = "Whole-program type / strictness check"
+run = "basedpyright"
+
+[tasks."quality:boundaries"]
+description = "Circular dependencies + module boundaries"
+run = "tach check"
+
+[tasks."quality:deadcode"]
+description = "Dead-code detection (baseline-blind; baseline CI adds whitelist.py)"
+run = "vulture src"
+
+[tasks."quality:security"]
+description = "Security lint (baseline-blind; baseline CI adds -b .bandit-baseline.json)"
+run = "bandit -c pyproject.toml -r src"
+
+[tasks."quality:filesize"]
+description = "File-length gate (~400 LOC/file; fills the slot Ruff has no rule for)"
+run = "python scripts/check_file_length.py src"
+
+[tasks."quality:deps"]
+description = "Non-blocking dependency-freshness report"
+run = "uv pip list --outdated"
+
+[tasks.quality]
+description = "Run all blocking quality gates in order"
+run = [
+  "mise run format:check",
+  "mise run lint",
+  "mise run typecheck",
+  "mise run quality:boundaries",
+  "mise run quality:filesize",
+  "mise run quality:deadcode",
+  "mise run quality:security",
+]

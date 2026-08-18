@@ -1,0 +1,66 @@
+name: Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise (Go toolchain + dev tools)
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Verify mise tasks
+        run: |
+          required="format:check lint typecheck quality:tidy quality:deadcode quality:vuln"
+          missing=""
+          for task in $required; do
+            mise tasks info "$task" >/dev/null 2>&1 || missing="$missing $task"
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing mise tasks required by this workflow:$missing"
+            echo "Merge assets/configs/mise.toml or wire the canonical names to the project runner."
+            exit 1
+          fi
+
+      - name: Verify golangci-lint config
+        run: golangci-lint config verify
+
+      - name: Format
+        run: mise run format:check
+
+      - name: Lint
+        run: mise run lint
+
+      - name: Typecheck
+        run: mise run typecheck
+
+      - name: Tidy modules
+        run: mise run quality:tidy
+
+      - name: Dead code
+        run: mise run quality:deadcode
+
+      - name: Vulnerabilities
+        run: mise run quality:vuln

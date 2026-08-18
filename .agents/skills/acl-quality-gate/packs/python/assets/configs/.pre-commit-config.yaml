@@ -1,0 +1,36 @@
+# ACL quality gate — Git hooks via the pre-commit framework.
+# Install both stages after copying:
+#   uv run pre-commit install
+#   uv run pre-commit install --hook-type pre-push
+# Pin the latest hook revisions with `uv run pre-commit autoupdate`.
+#
+# pre-commit stage: fast format + lint on STAGED files only (the framework passes filenames
+#   and stashes unrelated working-tree changes, so partial stages are safe).
+# pre-push stage:   whole-program type check, which cannot be scoped to staged files.
+# tach / Vulture / Bandit / dependency freshness run in CI by default (keep hooks fast).
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-toml
+      - id: check-yaml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.17
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: basedpyright
+        name: basedpyright (whole-program type check)
+        entry: uv run basedpyright
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
