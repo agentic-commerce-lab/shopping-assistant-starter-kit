@@ -111,8 +111,19 @@ Read `.agents/skills/acl-quality-gate/references/methodology.md`, then `packs/ph
     "php": "^8.2",
     "symfony/ai-agent": "0.12.*",
     "symfony/ai-generic-platform": "0.12.*",
-    "symfony/http-client": "^7.3",
+    "symfony/http-client": "~7.4.0",
     "symfony/http-client-contracts": "^3.0"
+  },
+  "conflict": {
+    "symfony/clock": ">=8.0",
+    "symfony/console": ">=8.0",
+    "symfony/event-dispatcher": ">=8.0",
+    "symfony/property-access": ">=8.0",
+    "symfony/property-info": ">=8.0",
+    "symfony/serializer": ">=8.0",
+    "symfony/string": ">=8.0",
+    "symfony/type-info": ">=8.0",
+    "symfony/uid": ">=8.0"
   },
   "require-dev": {
     "phpunit/phpunit": "^11.0",
@@ -156,6 +167,20 @@ Read `.agents/skills/acl-quality-gate/references/methodology.md`, then `packs/ph
 ```
 
 `type` is `library`, not `shopware-platform-plugin` — the plugin manifest arrives in Plan 2. No `shopware/*`.
+
+**The `conflict` block is not optional, and it is not tidiness.** `symfony/ai-agent` declares
+`symfony/*: ^7.3|^8.0`, so without it Composer resolves this standalone tree to Symfony 8.1.x —
+while the deployment target, `shopware/core` v6.7, pins `~7.4.0`. That matters because
+`#[AsTool]` (Task 10) derives every tool's JSON Schema from the `__invoke()` signature by
+reflection through `property-info` and `type-info`: developing against 8.1.x while production
+runs 7.4.x risks tool schemas that differ between environments, and no test in this plan would
+think to assert that. `conflict` is used rather than `require` because we do not depend on
+these packages directly — declaring them would make `composer-dependency-analyser` flag each as
+`UNUSED_DEPENDENCY`.
+
+Dev-only packages (`config`, `dependency-injection`, `filesystem`, `messenger`, `process`,
+`var-exporter`, `yaml`) may stay at 8.x — they arrive through phpcca and captainhook and are
+never shipped.
 
 The script list must stay **complete against the pack's `composer-scripts.fragment.json`**. The copied CI workflows and `AGENTS.md` invoke `quality:maintainability` and `quality:deps` by name, and `dependency-freshness-weekly.yml` `exit(1)`s if `quality:deps` is missing — an abridged script list produces a workflow that is broken on merge. `quality:boundaries` is the one fragment script left unwired on purpose, matching the intentionally empty `[guard]` section in `mago.toml`.
 
