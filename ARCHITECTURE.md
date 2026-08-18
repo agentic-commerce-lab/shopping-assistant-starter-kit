@@ -390,7 +390,8 @@ Checked against the actual source, not the READMEs.
 | `sales-agent-harness` | `demo-sales-agent.prompt.md` — the grounding discipline written as prompt text: only sell what a tool returned, never substitute from training data, never invent price/availability, say so when a search returns nothing | **adopt as the default agent voice** — battle-tested wording, zero cost |
 | `sales-agent-harness` | Agent-profile config: `maxItemQuantity`, `maxCartValue`, `confidentialFields`, explicit `disabledCapabilities` | **adopt the cart guardrails** (see below). `confidentialFields` is already covered structurally here |
 | `sales-agent-harness` | Policy decisions as `(verdict, reason_code, message)` with machine-readable codes (`blocked_product`, `capability_disabled`, `mvp_forbidden_action`) | **adopt the shape** — makes traces queryable instead of prose |
-| `storefront-sales-chatbot` | Shopware storefront widget skeleton: `Resources/views/storefront/base.html.twig`, `Resources/app/storefront/src/plugins/chatbot-plugin.js`, `scss/base.scss` | **use as the starting point** for our widget — the storefront-plugin registration pattern is identical for plugins and apps. Saves hours on Monday |
+| `storefront-sales-chatbot` | Storefront widget structure (`Resources/views/storefront/base.html.twig`, `Resources/app/storefront/src/plugins/chatbot-plugin.js`, `scss/base.scss`) | **orientation only, do not copy.** It is the standard Shopware pattern, but this code is 6.6-era (last commit 2025-07-31) and 6.7 moved storefront blocks. Read it to see the shape, write ours against 6.7 |
+| `storefront-sales-chatbot` | Everything else | **negative example — see below.** Valuable precisely because it is the chatbot shell this project is meant not to be |
 | `llm-monitoring` | Shared Langfuse at `langfuse.agentic-commerce-lab.ai` | **optional dev-only trace sink**, off by default — see below |
 | `ambient-c` | A different shopper-facing bet: prompt-driven storefront composition, explicitly *not* a chat interface. Has grounded retrieval over Qdrant and OpenRouter composition | **no reuse now.** Possible source for Tier 2 semantic retrieval later; portfolio overlap worth raising with Juan |
 | `swag-mcp-app` | MCP server over Shopware | **do not adopt** — passes `contextToken` as a tool argument, which is correct for its use case and wrong for ours (model-visible session identity) |
@@ -403,6 +404,31 @@ Two lessons worth stating, because they were learned the hard way elsewhere:
 - **Tool naming will collide** if an MCP surface is ever exposed. SwagWebMcp prefixes
   (`shopware_webmcp_select_variant`). v0 keeps short internal names; prefix at the point a
   surface is published, not before.
+
+### The previous attempt, and what it teaches
+
+`storefront-sales-chatbot` is a prior attempt at almost this product: a Shopware **App**
+(not a plugin) with a NuxtJS app server, a Vue admin iframe, a storefront chat widget,
+PostgreSQL and locust load tests. Clean hexagonal architecture, LangGraph runtime.
+
+It never left localhost. Last commit 2025-07-31; the manifest still carries template
+placeholders (`A description`, `Your Company Ltd.`, `<secret>secret</secret>`,
+`registrationUrl: http://localhost:3000`). Read as a prototype that proved the wiring and
+stopped, not as a product that hit a wall.
+
+Four specific lessons, each mapping to a decision here:
+
+| What it did | Consequence | Our decision |
+|---|---|---|
+| Declared `create/read/update/delete customer` permissions for a chatbot | Orders of magnitude more privilege than the task needs; the kind of declaration a rollout review stops | Least privilege. The plugin never reads customer PII; `ProductCard` is an allowlist DTO |
+| No grounding discipline in the prompts — nothing forbids inventing price or availability | The model is free to fabricate commerce data | D3: the model emits IDs, the server renders facts. Plus the harness prompt as the default voice |
+| Merchant configuration was one free-text field (`shop.instructions`) interpolated into the prompt | Every merchant-specific behaviour becomes unverifiable prompt text that silently regresses | Blocklist and scope are filters; policy decisions are reason-coded |
+| Operational band-aids in the prompt: *"Never call the present product tool two times in a row"*, *"Don't use Markdown"*, *"use the format Final Answer: {…}"* | Reasoning was parsed out of free text with a string marker — fragile, and a sign of fighting the model instead of constraining it | Structured output for intent extraction; tool-calling with server-side schema validation |
+
+It also shows a genuinely different UI concept worth remembering: its "actions"
+(`PresentSearchResultAction`, `ShowProductDetail`, `Checkout`) drove the **storefront UI**
+rather than returning chat content — closer to Page Agent than to a chat panel. Out of
+scope here, but a real option for later.
 
 ## Extension points
 
