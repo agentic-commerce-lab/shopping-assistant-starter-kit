@@ -11,8 +11,10 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
-use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureFilter;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureFacetBuilder;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureIndex;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQueryFilter;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureScopeFilter;
 
 /**
  * In-memory {@see CommerceGatewayInterface} backed by a static JSON fixture.
@@ -57,16 +59,16 @@ final class FixtureCommerceGateway implements CommerceGatewayInterface
 
     public function facets(CatalogScope $scope): FacetSet
     {
-        $units = FixtureFilter::inScope($this->index->units(), $scope);
+        $units = FixtureScopeFilter::apply($this->index->units(), $scope);
 
-        return FixtureFilter::buildFacets($units);
+        return FixtureFacetBuilder::build($units);
     }
 
     public function search(ProductQuery $query, CatalogScope $scope): array
     {
-        $units = FixtureFilter::inScope($this->index->units(), $scope);
+        $units = FixtureScopeFilter::apply($this->index->units(), $scope);
 
-        return FixtureFilter::applyQuery($units, $query);
+        return FixtureQueryFilter::apply($units, $query);
     }
 
     public function product(string $productId): ?ProductCard

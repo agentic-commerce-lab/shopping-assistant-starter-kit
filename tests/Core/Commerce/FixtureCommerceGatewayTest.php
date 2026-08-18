@@ -20,22 +20,20 @@ final class FixtureCommerceGatewayTest extends TestCase
         return FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
     }
 
-    /**
-     * @mago-expect analysis:possibly-null-property-access
-     * @mago-expect analysis:possibly-null-argument
-     *
-     * The brief's own `has()` check on the previous lines already guarantees these
-     * facets exist; `get()` stays nullable in its own right (a facet that was never
-     * asserted present could be absent), so the property access below is safe here.
-     */
     public function testFacetsExposePriceRangeAndPropertyTerms(): void
     {
         $facets = $this->gateway()->facets(new CatalogScope());
 
         self::assertTrue($facets->has('price'));
         self::assertTrue($facets->has('properties.Colour'));
-        self::assertContains('Blue', $facets->get('properties.Colour')->values);
-        self::assertSame(0.0, $facets->get('price')->min);
+
+        $colourFacet = $facets->get('properties.Colour');
+        self::assertNotNull($colourFacet);
+        self::assertContains('Blue', $colourFacet->values);
+
+        $priceFacet = $facets->get('price');
+        self::assertNotNull($priceFacet);
+        self::assertSame(0.0, $priceFacet->min);
     }
 
     public function testSearchAppliesPriceRangeFilter(): void
@@ -60,6 +58,24 @@ final class FixtureCommerceGatewayTest extends TestCase
 
         $ids = array_map(static fn($c) => $c->id, $results);
         self::assertNotContains('fx-014', $ids);
+    }
+
+    /**
+     * blockedProductIds must also block by parentId: a variant-bearing product has
+     * no unit keyed by its own product id (only its variants are sellable units),
+     * so blocking "fx-026" only has any effect at all if it is matched against each
+     * variant's parentId too.
+     */
+    public function testSearchExcludesAllVariantsOfAParentBlockedByProductId(): void
+    {
+        $scope = new CatalogScope(blockedProductIds: ['fx-026']);
+
+        $results = $this->gateway()->search(new ProductQuery(term: 'Jersey', limit: 100), $scope);
+
+        $ids = array_map(static fn($c) => $c->id, $results);
+        self::assertNotContains('fx-026-blue-m', $ids);
+        self::assertNotContains('fx-026-blue-l', $ids);
+        self::assertNotContains('fx-026-black-m', $ids);
     }
 
     public function testResolveVariantReturnsVariantLevelStockNotParentAggregate(): void
