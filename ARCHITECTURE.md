@@ -146,6 +146,11 @@ All `final readonly`. No Shopware types.
 ```php
 namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
 
+// ProductCard is an ALLOWLIST, not a filtered entity. Shopware products carry fields
+// the shopper must never see — `purchasePrices` above all, plus custom fields holding
+// margin or supplier cost. Because nothing crosses the gateway except the DTO below,
+// those fields cannot leak by accident. Never widen this DTO with a passthrough array.
+
 enum StockSource: string { case Variant = 'variant'; case Parent = 'parent'; }
 enum FacetType: string   { case Terms = 'terms';     case Range = 'range';   }
 enum FilterOperator: string { case Equals = 'equals'; case Range = 'range'; case Contains = 'contains'; }
@@ -382,6 +387,12 @@ Checked against the actual source, not the READMEs.
 | `webmcp-plugin` | Tool set and schemas (`select_variant`, `filter_products`, `get_product`, `add_to_cart`, `get_product_categories`) | **reference, do not port** — their tools are TypeScript in the browser over the Store API; ours are PHP over the DAL. Align names and argument shapes for ecosystem consistency |
 | `webmcp-plugin` | Per-tool config gating, and `untrustedContentHint` on tool output | **adopt** — independently confirms D6 and the `ToolResult.data` rule |
 | `SwagUcp` | UCP checkout sessions, discovery, agent authorisation, signature verification | **do not adopt** — inbound third-party-agent quadrant, not shopper-facing. Relevant only if we later complete checkout (`UcpCheckoutSession`) or expose an MCP surface (`SignatureVerificationService`) |
+| `sales-agent-harness` | `demo-sales-agent.prompt.md` — the grounding discipline written as prompt text: only sell what a tool returned, never substitute from training data, never invent price/availability, say so when a search returns nothing | **adopt as the default agent voice** — battle-tested wording, zero cost |
+| `sales-agent-harness` | Agent-profile config: `maxItemQuantity`, `maxCartValue`, `confidentialFields`, explicit `disabledCapabilities` | **adopt the cart guardrails** (see below). `confidentialFields` is already covered structurally here |
+| `sales-agent-harness` | Policy decisions as `(verdict, reason_code, message)` with machine-readable codes (`blocked_product`, `capability_disabled`, `mvp_forbidden_action`) | **adopt the shape** — makes traces queryable instead of prose |
+| `storefront-sales-chatbot` | Shopware storefront widget skeleton: `Resources/views/storefront/base.html.twig`, `Resources/app/storefront/src/plugins/chatbot-plugin.js`, `scss/base.scss` | **use as the starting point** for our widget — the storefront-plugin registration pattern is identical for plugins and apps. Saves hours on Monday |
+| `llm-monitoring` | Shared Langfuse at `langfuse.agentic-commerce-lab.ai` | **optional dev-only trace sink**, off by default — see below |
+| `ambient-c` | A different shopper-facing bet: prompt-driven storefront composition, explicitly *not* a chat interface. Has grounded retrieval over Qdrant and OpenRouter composition | **no reuse now.** Possible source for Tier 2 semantic retrieval later; portfolio overlap worth raising with Juan |
 | `swag-mcp-app` | MCP server over Shopware | **do not adopt** — passes `contextToken` as a tool argument, which is correct for its use case and wrong for ours (model-visible session identity) |
 
 Two lessons worth stating, because they were learned the hard way elsewhere:
@@ -420,6 +431,35 @@ Everything else is internal and will move without notice.
 
 This is a research preview — **no stability guarantees yet.** The annotations record intent,
 so that when guarantees are given, the surface is already the small one.
+
+## Policy decisions
+
+Every policy outcome is structured, never prose. Shape adopted from `sales-agent-harness`:
+
+```php
+final readonly class PolicyDecision
+{
+    public function __construct(
+        public PolicyVerdict $verdict,   // Allow | Block
+        public string $reasonCode,       // 'blocked_product' | 'blocked_category'
+                                         // 'capability_disabled' | 'not_implemented'
+                                         // 'kill_switch' | 'daily_cap' | 'cart_limit'
+        public string $message,          // for the trace and, when safe, the shopper
+    ) {}
+}
+```
+
+Reason codes are machine-readable so traces can be filtered and counted. A trace full of
+`blocked_category` tells the merchant something; a trace full of free text does not.
+
+### Cart guardrails
+
+From the harness profile — cheap, and they close a real failure mode where the model adds
+999 items or builds a five-figure cart:
+
+`maxItemQuantity` (default 5) · `maxCartValue` (default 1000, sales-channel currency)
+
+Both are enforced in `AddToCartTool` and produce a `cart_limit` decision.
 
 ## LLM client
 
@@ -482,6 +522,17 @@ they are the four ways this class of product lies:
 
 `filters_dropped` · `invented_product_ids` · `model_claims_discarded` · `stock_source`
 
+### Optional dev trace sink
+
+The lab runs a shared Langfuse at `https://langfuse.agentic-commerce-lab.ai`
+(`llm-monitoring`). Wiring prompts, completions, latency and cost to it during development
+gives us LLM observability without building a UI for it — worth ~30 minutes in a short build.
+
+**Off by default, dev only.** It sends conversation content to an external service, so it
+must never be enabled on a shop with real shoppers without a data-protection review. The
+merchant-facing trace stays in Shopware; this is a developer convenience, and it is the
+first consumer of the deferred trace-sink extension point.
+
 A `ScheduledTask` prunes events past a retention window. **Not optional** — traces live in
 the merchant's database.
 
@@ -491,7 +542,8 @@ the merchant's database.
 
 `llmBaseUrl` · `llmModel` · `llmApiKey` (env var preferred; `config.xml` is the fallback —
 Shopware system config has no real secret storage) · `agentVoice` · `excludedCategories` ·
-`blockedProducts` · `blockedCategories` · `enableAddToCart` · `killSwitch` · `dailyRequestCap`
+`blockedProducts` · `blockedCategories` · `enableAddToCart` · `maxItemQuantity` ·
+`maxCartValue` · `killSwitch` · `dailyRequestCap`
 
 ## Eval slice (v0)
 

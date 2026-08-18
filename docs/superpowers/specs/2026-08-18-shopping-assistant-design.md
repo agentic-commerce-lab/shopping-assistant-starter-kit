@@ -36,6 +36,8 @@ text and should be updated.
 | D9 | **Evals read the trace, not the prose** | Deterministic, no LLM judge, near-zero cost. Consequence: the trace is a prerequisite, not a nice-to-have |
 | D10 | **Evals run against fixtures only in v0** | No Shopware integration-test harness this week. Keeps the suite runnable in seconds and before the environment exists |
 | D13 | **Adopt the SSRF hardening from `page-agent-shopware`; treat `webmcp-plugin` as a design reference, not a code source** | Merchant-configurable `base_url` is an SSRF vector and that code already solves it. WebMCP's tools live in the browser over the Store API, so they cannot be ported into a PHP/DAL pipeline — but its tool shapes, per-tool gating and variant/cart split are directly informative. `SwagUcp` and `swag-mcp-app` address the inbound-agent quadrant and stay out |
+| D14 | **Adopt the harness system prompt, its policy-decision shape and its cart guardrails; take the widget skeleton from `storefront-sales-chatbot`** | All three are proven artefacts inside the lab and cost nothing to lift. The harness prompt is our grounding discipline already written down; reason-coded policy decisions make traces queryable; `maxItemQuantity`/`maxCartValue` close a failure mode I had missed |
+| D15 | **Langfuse (`llm-monitoring`) as an optional dev-only trace sink, off by default** | LLM observability during the build for ~30 minutes of work. Not merchant-facing: that trace must stay inside Shopware, and Langfuse sends conversation content to an external service |
 | D11 | English only | Removes locale-mismatch grounding from v0 |
 | D12 | Repo internal, opened with the demo | Agent-written code plus a public repo is an avoidable secret-leak risk while there is nothing to show |
 
@@ -120,6 +122,8 @@ the single most important step of the week.
 | Q2 | Is the admin trace view Must or Should for that audience? | Monday's priority |
 | Q3 | Which shop and catalog for the demo? | Monday |
 | Q4 | Should the Linear `IDEA-9` description be rewritten to the new framing? | nothing technical |
+| Q5 | `ambient-c` is a second shopper-facing bet (prompt-driven storefront, explicitly not chat). Complementary or competing? Worth raising with Juan before the demo | nothing technical |
+| Q6 | `storefront-sales-chatbot` is a prior attempt at almost exactly this product. Why did it not become the answer? The README cannot tell us, and the reason may still apply | nothing technical, but it could change the pitch |
 
 ## 9. Follow-ups after the demo
 
