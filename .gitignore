@@ -1,7 +1,11 @@
 vendor/
 node_modules/
+composer.lock
 .env
 .env.local
 .DS_Store
 .phpunit.result.cache
+.phpunit.cache/
+.phpcca.cache/
+report/
 var/
