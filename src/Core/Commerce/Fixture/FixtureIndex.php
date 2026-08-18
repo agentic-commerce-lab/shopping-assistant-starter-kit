@@ -1,0 +1,138 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Swag\AssistantStarterKit\Core\Commerce\Fixture;
+
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
+
+/**
+ * Builds and holds the flat index of sellable units for {@see \Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway}.
+ *
+ * A sellable unit is either a variant (its own price, stock and options, with
+ * {@see StockSource::Variant}) or, for a product carrying no variants, the product
+ * itself ({@see StockSource::Parent}). A variant inherits `name`, `description`,
+ * `categoryPath` and `properties` from its parent and overrides `price`, `stock`,
+ * `options` and `url`.
+ *
+ * @phpstan-type FixtureVariant array{
+ *     id: string,
+ *     options: array<string, string>,
+ *     price: float|int,
+ *     stock: int,
+ * }
+ * @phpstan-type FixtureProduct array{
+ *     id: string,
+ *     name: string,
+ *     description: string|null,
+ *     price: float|int,
+ *     stock: int,
+ *     url: string,
+ *     categoryPath: list<string>,
+ *     properties: array<string, list<string>>,
+ *     variants: list<FixtureVariant>,
+ * }
+ */
+final class FixtureIndex
+{
+    /** @param array<string, ProductCard> $units keyed by unit id */
+    private function __construct(
+        private readonly array $units,
+    ) {}
+
+    /** @param array{products: list<FixtureProduct>} $decoded */
+    public static function fromDecoded(array $decoded): self
+    {
+        $units = [];
+        foreach ($decoded['products'] as $product) {
+            foreach (self::buildUnitsForProduct($product) as $unit) {
+                $units[$unit->id] = $unit;
+            }
+        }
+
+        return new self($units);
+    }
+
+    /**
+     * @param FixtureProduct $product
+     *
+     * @return list<ProductCard>
+     */
+    private static function buildUnitsForProduct(array $product): array
+    {
+        if ($product['variants'] === []) {
+            return [self::buildParentUnit($product)];
+        }
+
+        return array_map(static fn(array $variant): ProductCard => self::buildVariantUnit(
+            $product,
+            $variant,
+        ), $product['variants']);
+    }
+
+    /** @param FixtureProduct $product */
+    private static function buildParentUnit(array $product): ProductCard
+    {
+        return new ProductCard(
+            id: $product['id'],
+            parentId: null,
+            name: $product['name'],
+            description: $product['description'],
+            price: (float) $product['price'],
+            currency: 'EUR',
+            stock: $product['stock'],
+            stockSource: StockSource::Parent,
+            deliveryTime: null,
+            url: $product['url'],
+            imageUrl: null,
+            options: [],
+            categoryPath: $product['categoryPath'],
+            properties: $product['properties'],
+        );
+    }
+
+    /**
+     * @param FixtureProduct $product
+     * @param FixtureVariant $variant
+     */
+    private static function buildVariantUnit(array $product, array $variant): ProductCard
+    {
+        return new ProductCard(
+            id: $variant['id'],
+            parentId: $product['id'],
+            name: $product['name'],
+            description: $product['description'],
+            price: (float) $variant['price'],
+            currency: 'EUR',
+            stock: $variant['stock'],
+            stockSource: StockSource::Variant,
+            deliveryTime: null,
+            url: \sprintf('/detail/%s', $variant['id']),
+            imageUrl: null,
+            options: $variant['options'],
+            categoryPath: $product['categoryPath'],
+            properties: $product['properties'],
+        );
+    }
+
+    /** @return array<string, ProductCard> */
+    public function units(): array
+    {
+        return $this->units;
+    }
+
+    public function unit(string $id): ?ProductCard
+    {
+        return $this->units[$id] ?? null;
+    }
+
+    /** @return list<ProductCard> */
+    public function unitsByParent(string $parentId): array
+    {
+        return array_values(array_filter(
+            $this->units,
+            static fn(ProductCard $unit): bool => $unit->parentId === $parentId,
+        ));
+    }
+}
