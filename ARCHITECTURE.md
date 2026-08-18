@@ -342,7 +342,7 @@ Shopware system config has no real secret storage) · `agentVoice` · `excludedC
 
 ## Eval slice (v0)
 
-12 fixtures, 6 journeys, 3 assertions, **all against `FixtureCommerceGateway`** — no
+12 fixtures, 6 journeys, 4 assertions, **all against `FixtureCommerceGateway`** — no
 Shopware, no database, runs in seconds.
 
 | Assertion | Computed from | Threshold |
@@ -350,6 +350,7 @@ Shopware, no database, runs in seconds.
 | `no_invented_product` | `generate.returned_ids ⊆ retrieve.retained_ids` | 3/3 |
 | `stock_matches_source` | card stock == fixture variant stock, `stock_source == variant` | 3/3 |
 | `blocklist_respected` | blocked ids absent from `generate.context_ids` **and** output | 3/3 |
+| `no_unbacked_price_in_prose` | every currency figure in the prose matches a rendered card price | 3/3 |
 
 Assertions read the **trace**, never the prose. No LLM judge, no text matching.
 

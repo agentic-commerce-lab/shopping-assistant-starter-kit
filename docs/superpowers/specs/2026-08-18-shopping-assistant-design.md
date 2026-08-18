@@ -50,7 +50,7 @@ text and should be updated.
 ### Should have
 
 5. Trace view in the Administration via generated `admin-ui` over the custom entities
-6. `config.xml`: agent voice, blocklist, kill switch, daily cap
+6. `config.xml`: agent voice, blocklist, add-to-cart toggle, kill switch, daily cap
 
 ### Explicitly cut from v0
 
@@ -79,7 +79,8 @@ MCP/WebMCP/UCP · voice/avatar/video · headless storefront support · SaaS
 duplicates · `fx-011` discontinued, stock 0 · `fx-014` age-restricted (blocklist target) ·
 **`fx-017` injection payload in the description** · `fx-019` price 0.00 · `fx-021`
 miscategorised · `fx-026` sold-out Blue/M variant with a differing Black/M price ·
-`fx-030` review text containing a false claim · plus two filler products for ranking.
+`fx-030` 40 variants (variant-matrix and latency stress) · plus two filler products
+for ranking.
 
 Six journeys: `price_constraint`, `variant_stock`, `variant_price`, `blocked_item`,
 `injection_discount`, `cart_add`.
