@@ -2511,12 +2511,12 @@ git add -A && git commit -m "feat: add cart tool with guardrails and escalation 
 
 **Files:**
 - Create: `src/Core/Prompt/SystemPrompt.php`
-- Create: `src/Core/Agent/{AgentLoop,AssistantTurn}.php`
+- Create: `src/Core/Agent/{AgentLoop,AssistantTurn,SlidingWindow}.php`
 - Test: `tests/Support/FakeLlmClient.php`, `tests/Core/Agent/AgentLoopTest.php`, `tests/Core/Prompt/SystemPromptTest.php`
 
 **Interfaces:**
 - Consumes: `LlmClientInterface`, `ToolRegistry`, `FactRenderer`, `GuardCheck`, `TraceRecorder`, `AssistantConfig`, `ToolContext`
-- Produces: `SystemPrompt::build(AssistantConfig): string`; `AgentLoop::run(string $message, ToolContext $context, list<ChatMessage> $history = []): AssistantTurn`; `AssistantTurn` with `string $prose`, `list<ProductCard> $cards`, `string $outcome`, `list<string> $unbackedPrices`, `int $toolCallCount`
+- Produces: `SystemPrompt::build(AssistantConfig): string`; `AgentLoop::run(string $message, ToolContext $context, list<ChatMessage> $history = []): AssistantTurn`; `SlidingWindow::apply(list<ChatMessage> $history, int $maxMessages = 10): list<ChatMessage>`; `AssistantTurn` with `string $prose`, `list<ProductCard> $cards`, `string $outcome`, `list<string> $unbackedPrices`, `int $toolCallCount`
 
 > **Design note — there is no separate intent-extraction step.** An earlier draft had an
 > `IntentExtractor` making its own LLM call before retrieval. With tool calling that is
@@ -2615,6 +2615,7 @@ use Swag\AssistantStarterKit\Core\Agent\AgentLoop;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
+use Swag\AssistantStarterKit\Core\Llm\ChatMessage;
 use Swag\AssistantStarterKit\Core\Llm\ChatResponse;
 use Swag\AssistantStarterKit\Core\Llm\ToolCall;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
@@ -2739,6 +2740,22 @@ final class AgentLoopTest extends TestCase
         self::assertSame(12.90, $turn->cards[0]->price, 'the card still shows the real price');
     }
 
+    public function testKeepsOnlyTheRecentHistoryWhenTheConversationIsLong(): void
+    {
+        $history = [];
+        for ($i = 0; $i < 40; ++$i) {
+            $history[] = new ChatMessage($i % 2 === 0 ? 'user' : 'assistant', 'turn ' . $i);
+        }
+
+        $loop = $this->loop([new ChatResponse(content: 'Have a look at fx-017.')]);
+        $loop->run('and now?', $this->context(), $history);
+
+        // system prompt + at most 10 history messages + the new user message
+        self::assertLessThanOrEqual(12, \count($this->llm->requests[0]->messages));
+        $last = end($this->llm->requests[0]->messages);
+        self::assertSame('and now?', $last->content);
+    }
+
     public function testDoesNotOfferTheCartToolWhenNoShopperCartExists(): void
     {
         $loop = $this->loop([new ChatResponse(content: 'Have a look at fx-017.')]);
@@ -2811,7 +2828,9 @@ subordinated, so a merchant cannot instruct the assistant out of its grounding.
 
 1. `GuardCheck::check($context->config, $this->requestsToday)`. Blocked → record stage `guard.check` with `['reasonCode' => …, 'verdict' => 'block']` and return `new AssistantTurn($decision->message, [], 'error')` **without touching the LLM**. (`$requestsToday` is a constructor argument defaulting to `0`; Plan 2 supplies a real counter.)
 2. Record `guard.check` with `['reasonCode' => 'allowed', 'verdict' => 'allow']`.
-3. Messages: `ChatMessage('system', SystemPrompt::build($context->config))`, then `$history`, then `ChatMessage('user', $message)`.
+3. Messages: `ChatMessage('system', SystemPrompt::build($context->config))`, then `SlidingWindow::apply($history)`, then `ChatMessage('user', $message)`.
+
+   `SlidingWindow::apply()` keeps the most recent `$maxMessages` entries and drops older ones, dropping `tool`-role messages first — their product ids are already reflected in the rendered cards. It returns the history unchanged below the threshold. This is what stops a long conversation blowing the context window and the cost cap.
 4. Loop while `$toolCallCount < $context->config->maxToolCallsPerTurn`:
    - `$response = $llm->chat(new ChatRequest($messages, $registry->specs($context), temperature: 0.3))`.
    - `$response->toolCalls === []` → `$content = $response->content ?? ''`; break.
@@ -3225,5 +3244,10 @@ git commit -m "feat: add eval harness with six journeys and six trace-based asse
 | Latency assertions | Meaningless against an in-memory fixture gateway with no I/O. They belong with `DalCommerceGateway` |
 
 ## What Plan 2 adds
+
+**Conversation memory across page loads** — persist messages in `swag_assistant_conversation`,
+add `GET /assistant/history?token=…`, and re-hydrate the widget on mount. Without this the
+`cart_add` journey passes in the eval suite and fails in the real storefront, because a page
+load sits between the two turns.
 
 `DalCommerceGateway` over Shopware's DAL and sales-channel services · the plugin base class and `composer.json` type change · `config.xml` · storefront controller and chat widget · trace custom entities, migration and retention task · the generated `admin-ui` trace view · a real `SalesChannelContext`-backed `ToolContext`.

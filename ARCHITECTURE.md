@@ -456,6 +456,38 @@ Everything else is internal and will move without notice.
 This is a research preview — **no stability guarantees yet.** The annotations record intent,
 so that when guarantees are given, the surface is already the small one.
 
+## Conversation memory
+
+A shopper must not start over. Three levels, and only the first two are in scope:
+
+| Level | Requirement | How |
+|---|---|---|
+| Within a turn | message history | in-memory `ChatMessage[]` |
+| **Across page loads** | the shopper clicks a product, the page reloads, the chat continues | conversation persisted in `swag_assistant_conversation`, keyed by a conversation token the widget keeps in `sessionStorage`; the widget re-hydrates on mount |
+| Across visits / devices | a returning customer resumes | out of scope — needs customer binding plus a consent and retention decision |
+
+**Across page loads is not optional.** The whole demo hinges on it: *"show me the trail
+jersey in blue, size L"* → click through → *"add that to my cart"*. Without re-hydration
+the assistant does not know what "that" is.
+
+Two consequences:
+
+- `POST /assistant/chat` accepts a conversation token and returns one. `GET /assistant/history?token=…`
+  returns the messages so the widget can re-hydrate on mount.
+- The conversation entity that exists for traces is also the memory store. One table, two
+  readers — do not build a second one.
+
+### Context window management
+
+A long conversation must not blow the context window or the cost cap. v0 uses a **sliding
+window**: keep the system prompt plus the last N messages (N = 10), drop the rest. Tool
+messages are dropped first, since their product ids are already reflected in the rendered
+cards.
+
+LLM summarisation of the dropped prefix is the better answer and is deferred — it costs an
+extra model call per turn once the threshold is crossed. Symfony AI documents both as
+`InputProcessorInterface` recipes; if we adopt it later, that is where they land.
+
 ## Policy decisions
 
 Every policy outcome is structured, never prose. Shape adopted from `sales-agent-harness`:
