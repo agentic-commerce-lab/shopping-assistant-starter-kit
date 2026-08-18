@@ -147,12 +147,17 @@ Read `.agents/skills/acl-quality-gate/references/methodology.md`, then `packs/ph
     "quality": [
       "@format:check", "@lint", "@typecheck",
       "@quality:filesize", "@quality:dupes", "@quality:depcheck", "@quality:security"
-    ]
+    ],
+    "quality:deps": "composer outdated --direct",
+    "quality:maintainability": "phpcca analyse src",
+    "quality:hotspots": "phpcca churn src"
   }
 }
 ```
 
 `type` is `library`, not `shopware-platform-plugin` — the plugin manifest arrives in Plan 2. No `shopware/*`.
+
+The script list must stay **complete against the pack's `composer-scripts.fragment.json`**. The copied CI workflows and `AGENTS.md` invoke `quality:maintainability` and `quality:deps` by name, and `dependency-freshness-weekly.yml` `exit(1)`s if `quality:deps` is missing — an abridged script list produces a workflow that is broken on merge. `quality:boundaries` is the one fragment script left unwired on purpose, matching the intentionally empty `[guard]` section in `mago.toml`.
 
 **The two Symfony AI constraints are exact on purpose** (`0.12.*`, not `^0.12`). Compatibility with the target platform is verified: `shopware/core v6.7.13.0` pins `symfony/*: ~7.4.0` and `php: ~8.2 … ~8.5`; `symfony/ai-agent` requires `symfony/*: ^7.3|^8.0` and `php: >=8.2`. `~7.4.0` satisfies `^7.3`, so there is no conflict — but re-run `composer why-not symfony/ai-agent` against the actual instance before trusting it.
 
