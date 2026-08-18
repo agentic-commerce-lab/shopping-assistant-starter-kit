@@ -125,9 +125,13 @@ interface CommerceGatewayInterface
      * Resolve a parent product plus chosen options to the concrete variant,
      * with that variant's own price and stock.
      *
-     * @param array<string, string> $options e.g. ['colour' => 'Blue', 'size' => 'M']
+     * Selections carry the option VALUE and an optional group, because the model
+     * usually knows "blue"/"M" and not always which group they belong to.
+     * Shape adopted from SwagWebMcp's select_variant tool.
+     *
+     * @param VariantSelection[] $selections
      */
-    public function resolveVariant(string $parentId, array $options): ?ProductCard;
+    public function resolveVariant(string $parentId, array $selections): ?ProductCard;
 
     public function addToCart(string $variantId, int $quantity): CartSummary;
 
@@ -215,6 +219,14 @@ final readonly class CatalogScope
     ) {}
 }
 
+final readonly class VariantSelection
+{
+    public function __construct(
+        public string $option,        // 'Blue', 'M'
+        public ?string $group = null, // 'Colour', 'Size' — often unknown to the model
+    ) {}
+}
+
 final readonly class CartSummary
 {
     public function __construct(
@@ -275,7 +287,12 @@ interface ToolInterface
     /** Shown to the model. This text is the tool's real documentation. */
     public function description(): string;
 
-    /** JSON Schema for the arguments. Validated server-side: reject, never coerce. */
+    /**
+     * JSON Schema for the arguments. Validated server-side: reject, never coerce.
+     * Every string needs maxLength and every array maxItems — unbounded input from
+     * a model is a cost and DoS vector. SwagWebMcp enforces this via bounded Zod
+     * helpers; mirror it here.
+     */
     public function parameters(): array;
 
     /** Lets the policy layer gate new tools without changing policy code. */
@@ -353,6 +370,29 @@ tool is never shown to the model. Never rely on a model declining an available t
 **Not implemented — no code path exists:** `apply_discount`, `set_price`, `create_order`,
 `pay`, `read_customer_pii`, `modify_product`. This is why prompt injection has no payoff.
 
+## Reuse from existing lab plugins
+
+Checked against the actual source, not the READMEs.
+
+| Source | What | Verdict |
+|---|---|---|
+| `page-agent-shopware` | SSRF hardening for an OpenAI-compatible proxy: host validator, DNS resolver, base-URL validator, request-header sanitiser, proxy controller | **adopt directly** — solves a real hole in this design, ~1 h |
+| `webmcp-plugin` | Storefront route attributes: `_routeScope => ['storefront']`, `auth_required => false`, `XmlHttpRequest => true` | **copy** — a verified 6.7 pattern for `/assistant/chat` |
+| `webmcp-plugin` | `SalesChannelContextPayloadBuilder` — read-only context payload (channel, language, currency, customer group, country, tax mode, login state) | **adopt as the pattern** for `ToolContext` and the shopper profile |
+| `webmcp-plugin` | Tool set and schemas (`select_variant`, `filter_products`, `get_product`, `add_to_cart`, `get_product_categories`) | **reference, do not port** — their tools are TypeScript in the browser over the Store API; ours are PHP over the DAL. Align names and argument shapes for ecosystem consistency |
+| `webmcp-plugin` | Per-tool config gating, and `untrustedContentHint` on tool output | **adopt** — independently confirms D6 and the `ToolResult.data` rule |
+| `SwagUcp` | UCP checkout sessions, discovery, agent authorisation, signature verification | **do not adopt** — inbound third-party-agent quadrant, not shopper-facing. Relevant only if we later complete checkout (`UcpCheckoutSession`) or expose an MCP surface (`SignatureVerificationService`) |
+| `swag-mcp-app` | MCP server over Shopware | **do not adopt** — passes `contextToken` as a tool argument, which is correct for its use case and wrong for ours (model-visible session identity) |
+
+Two lessons worth stating, because they were learned the hard way elsewhere:
+
+- **SwagWebMcp splits `select_variant` from `add_to_cart`**, and its own tool description
+  says *"add_to_cart cannot resolve options."* They hit the parent-versus-variant problem
+  and solved it by separating the tools. Independent confirmation of D4.
+- **Tool naming will collide** if an MCP surface is ever exposed. SwagWebMcp prefixes
+  (`shopware_webmcp_select_variant`). v0 keeps short internal names; prefix at the point a
+  surface is published, not before.
+
 ## Extension points
 
 Ordered by what v0 actually delivers. The interfaces marked *later* are named here so the
@@ -396,6 +436,17 @@ Ollama and Anthropic's OpenAI-compatible endpoint all work unchanged.
 
 Two model slots: `understand` (temperature 0) and `generate` (temperature 0.3). They may
 be the same model.
+
+**`base_url` is merchant-configurable, which makes it an SSRF vector** — cloud metadata
+endpoints (`169.254.169.254`), internal services, `localhost`. Every outbound call must
+validate the target host first: resolve DNS, reject private and reserved ranges, reject
+`localhost` and `.local`.
+
+Do not write this from scratch. `page-agent-shopware` already ships it as four small
+final classes (`PageAgentProviderHostValidator`, `PageAgentProviderDnsResolver`,
+`PageAgentProviderBaseUrlValidator`, `PageAgentProviderRequestHeaders`) — adopt them.
+Known limitation of that implementation: it resolves IPv4 only (`gethostbynamel`), so an
+IPv6-only host or DNS rebinding slips through. Acceptable for a prototype; note it.
 
 **Tool-calling quality varies sharply across compatible providers.** The eval suite
 therefore doubles as model qualification: the same journeys tell an operator whether their

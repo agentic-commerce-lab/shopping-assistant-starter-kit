@@ -35,6 +35,7 @@ text and should be updated.
 | D8 | **Retrieval Tier 0 only** (facet-grounded structured queries) | Query expansion (Tier 1) and a semantic index (Tier 2) are deferred. No vector store: it is a sync problem, and it would only ever be a candidate generator, never a source of truth |
 | D9 | **Evals read the trace, not the prose** | Deterministic, no LLM judge, near-zero cost. Consequence: the trace is a prerequisite, not a nice-to-have |
 | D10 | **Evals run against fixtures only in v0** | No Shopware integration-test harness this week. Keeps the suite runnable in seconds and before the environment exists |
+| D13 | **Adopt the SSRF hardening from `page-agent-shopware`; treat `webmcp-plugin` as a design reference, not a code source** | Merchant-configurable `base_url` is an SSRF vector and that code already solves it. WebMCP's tools live in the browser over the Store API, so they cannot be ported into a PHP/DAL pipeline — but its tool shapes, per-tool gating and variant/cart split are directly informative. `SwagUcp` and `swag-mcp-app` address the inbound-agent quadrant and stay out |
 | D11 | English only | Removes locale-mismatch grounding from v0 |
 | D12 | Repo internal, opened with the demo | Agent-written code plus a public repo is an avoidable secret-leak risk while there is nothing to show |
 
@@ -108,6 +109,7 @@ the single most important step of the week.
 | Wrong FQCNs for 6.7 services cost hours | medium | Verify against the installed instance before writing the gateway |
 | Dev environment not ready Wednesday | medium | Fixture-based work is unblocked regardless |
 | Catalog too thin for a convincing demo | medium | Choose the demo shop's catalog on Monday, once quality is measurable |
+| SSRF through a misconfigured `llmBaseUrl` | medium | Adopt the `page-agent-shopware` validators on day one; IPv4-only resolution is a documented limitation |
 | Weak model behind the OpenAI-compatible endpoint reads as a bad product | low | Use a strong model for the demo; document a minimum capability |
 
 ## 8. Open questions
