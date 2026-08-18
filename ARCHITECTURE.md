@@ -71,7 +71,6 @@ src/
 │   │   ├── DalCommerceGateway.php
 │   │   ├── FixtureCommerceGateway.php
 │   │   └── Dto/                       ProductCard, ProductQuery, FacetSet, …
-│   ├── Understanding/IntentExtractor.php
 │   ├── Retrieval/
 │   │   ├── FacetProbe.php
 │   │   └── QueryBuilder.php
@@ -252,7 +251,7 @@ One turn, stage by stage. Each stage emits a trace event.
 |---|---|---|---|
 | 1 | Guard | `Policy\GuardCheck` | kill switch, daily cap. Rejects before any cost |
 | 2 | Session load | `AssistantController` | history + inferred shopper profile |
-| 3 | Understand | `Understanding\IntentExtractor` | LLM #1, temperature 0, structured output |
+| 3 | Understand | *(no separate step)* | With tool calling the model's tool arguments **are** the extracted intent. `SearchProductsTool` records the `understand` stage from its own validated arguments. The guarantee that matters — the model never supplies a field name — is enforced in `QueryBuilder`, not here. Saves one LLM round trip per turn |
 | 4 | Facet probe | `Retrieval\FacetProbe` | cached per (salesChannel, scope); TTL 1h |
 | 5 | Build query | `Retrieval\QueryBuilder` | **drops unknown filter fields and records them** |
 | 6 | Retrieve | gateway `search()` | real context, real prices |
@@ -260,7 +259,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 8 | Blocklist | `Policy\BlocklistFilter` | post-retrieval pass; pre-pass happens via `CatalogScope` |
 | 9 | Rank | `Retrieval\QueryBuilder` (sort) | v0: in-stock bias only |
 | 10 | Compact | `Grounding\FactRenderer` | ~200-token cards for the prompt |
-| 11 | Generate | `Agent\AgentLoop` + LLM #2 | prose + product IDs + optional tool call |
+| 11 | Generate | `Agent\AgentLoop` + LLM | prose + product IDs + optional tool call |
 | 12 | Validate | `Grounding\FactRenderer` | any ID not in the retrieved set is **dropped and logged** |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
 | 14 | Tools | `Agent\ToolRegistry` | policy-gated, max 5 calls/turn |
@@ -331,9 +330,8 @@ final readonly class ToolContext
 {
     public function __construct(
         public string $conversationId,
-        public CatalogScope $scope,
-        public AssistantConfig $config,
-        public bool $cartEnabled,
+        public AssistantConfig $config,   // carries the CatalogScope — one source of truth
+        public bool $cartAvailable = false,
     ) {}
 }
 ```
@@ -573,7 +571,7 @@ Shopware system config has no real secret storage) · `agentVoice` · `excludedC
 
 ## Eval slice (v0)
 
-12 fixtures, 6 journeys, 4 assertions, **all against `FixtureCommerceGateway`** — no
+12 fixtures, 6 journeys, 6 assertions, **all against `FixtureCommerceGateway`** — no
 Shopware, no database, runs in seconds.
 
 | Assertion | Computed from | Threshold |
@@ -582,6 +580,8 @@ Shopware, no database, runs in seconds.
 | `stock_matches_source` | card stock == fixture variant stock, `stock_source == variant` | 3/3 |
 | `blocklist_respected` | blocked ids absent from `generate.context_ids` **and** output | 3/3 |
 | `no_unbacked_price_in_prose` | every currency figure in the prose matches a rendered card price | 3/3 |
+| `price_matches_source` | card price equals the source record, or respects a stated ceiling | 3/3 |
+| `cart_contains` | `turn.end.outcome == cart_added` and the expected variant is in the `add_to_cart` payload | 2/3 |
 
 Assertions read the **trace**, never the prose. No LLM judge, no text matching.
 
