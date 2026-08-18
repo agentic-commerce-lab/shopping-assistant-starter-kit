@@ -43,6 +43,9 @@
     "quality": [
       "@format:check", "@lint", "@typecheck",
       "@quality:filesize", "@quality:dupes", "@quality:depcheck", "@quality:security"
-    ]
+    ],
+    "quality:deps": "composer outdated --direct",
+    "quality:maintainability": "phpcca analyse src",
+    "quality:hotspots": "phpcca churn src"
   }
 }
