@@ -17,19 +17,28 @@ That argument turned out to be wrong on the facts.
 
 ## Decision
 
-Use **`symfony/ai-agent` `0.13.*`** as the agent runtime and
+Use **`symfony/ai-agent` `0.12.*`** as the agent runtime and
 **`symfony/ai-generic-platform` `0.12.*`** as the OpenAI-compatible platform bridge. Keep our
 own grounding, commerce gateway, policy and eval layers.
 
 ## Why
 
-**The seams exist.** Verified against the source at `symfony/ai@b7fb4cb` (2026-08-17), not the
-published docs — which still describe a `Toolbox\AgentProcessor` that 0.13 removed:
+**The seams exist.** Verified against the **installed `vendor/` tree at 0.12.0**:
+
+> **Correction, 2026-08-18.** This ADR was first written against `symfony/ai@b7fb4cb`, the
+> project's GitHub trunk. That commit is 0.13-in-development and **0.13 is not released** —
+> Packagist's latest is `v0.12.0`. Two claims in the first draft were therefore wrong: that
+> `Toolbox\AgentProcessor` had been removed (it exists in 0.12 and is how tool calling is
+> wired), and that `Agent` takes `toolbox`/`toolExecutor`/`maxToolCalls` constructor arguments
+> (0.12 takes only platform, model, input processors, output processors, name). The 0.x risk
+> this ADR describes materialised on the first task of implementation. Rule in force: no
+> Symfony AI API enters the plan unless it was read from the installed `vendor/` tree.
 
 - `OutputProcessorInterface::processOutput(Output)` — where id validation, fact rendering and
   prose auditing live
 - `InputProcessorInterface::processInput(Input)` with `Input::setMessageBag()` — context compression
-- `Agent::__construct(..., ?ToolboxInterface, ?ToolExecutorInterface, ?int $maxToolCalls, ...)`
+- `Agent::__construct(PlatformInterface, string $model, iterable $inputProcessors, iterable $outputProcessors, string $name)`
+- `Toolbox\AgentProcessor(ToolboxInterface, ToolResultConverter, ?EventDispatcherInterface, bool $excludeToolMessages, bool $includeSources, ?int $maxToolCalls)` — both an input and an output processor
 - `Generic\Factory::createPlatform(string $baseUrl, ?string $apiKey, ?HttpClientInterface, ...)`
   — a configurable base URL *and* an injectable HTTP client, so the SSRF guard survives
 
@@ -53,7 +62,7 @@ For a **lab prototype** this is acceptable: we pin exactly and do not follow upg
 **plugin shipped to other people's shops** it would not be — a merchant's `composer update`
 would break us. Two consequences:
 
-1. Constraints are exact (`0.13.*`, `0.12.*`), never caret. Widening requires reading
+1. Constraints are exact (`0.12.*`, `0.12.*`), never caret. Widening requires reading
    `UPGRADE.md` for the target version.
 2. Our public tool contract becomes `#[AsTool]`, i.e. third-party extensions depend on a 0.x
    attribute class. Better DX for Symfony developers, inherited breakage as the price.

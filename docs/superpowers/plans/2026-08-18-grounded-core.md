@@ -6,18 +6,71 @@
 
 **Architecture:** Everything commerce-related sits above `CommerceGatewayInterface`; in this plan the only implementation is `FixtureCommerceGateway`, reading a JSON catalog. The agent mechanics — tool registry, tool-calling loop, message handling, streaming, context compression — come from **Symfony AI** (`symfony/ai-agent` 0.13). Our grounding discipline plugs in through two of its extension points: tools register their cards with `FactRenderer` and return **ids only**, and a `GroundingOutputProcessor` validates and renders before anything reaches the shopper. Because `shopware/core` is not installed, the rule "no Shopware types above the gateway" is enforced mechanically. Plan 2 adds `DalCommerceGateway`, the storefront widget, trace persistence and the Administration view.
 
-**Tech Stack:** PHP 8.2 · PHPUnit 11 · Mago (via acl-quality-gate php pack) · `symfony/ai-agent` `0.13.*` · `symfony/ai-generic-platform` `0.12.*` (the OpenAI-compatible bridge: configurable `baseUrl`, injectable `HttpClientInterface`) · `symfony/http-client`.
+**Tech Stack:** PHP 8.2 · PHPUnit 11 · Mago (via acl-quality-gate php pack) · `symfony/ai-agent` `0.12.*` · `symfony/ai-generic-platform` `0.12.*` (the OpenAI-compatible bridge: configurable `baseUrl`, injectable `HttpClientInterface`) · `symfony/http-client`.
 
-**Verified against the source at `symfony/ai@b7fb4cb` (2026-08-17), not the docs** — the published 0.12 docs still describe `Toolbox\AgentProcessor`, which 0.13 removed. Confirmed present at HEAD: `InputProcessorInterface::processInput(Input)`, `OutputProcessorInterface::processOutput(Output)`, `Agent::__construct(..., ?ToolboxInterface $toolbox, ?ToolExecutorInterface $toolExecutor, ?int $maxToolCalls, ...)`, `#[AsTool(name, description, method, metadata)]` at `Symfony\AI\Agent\Toolbox\Attribute\AsTool`, and `Generic\Factory::createPlatform(string $baseUrl, ?string $apiKey, ?HttpClientInterface $httpClient, ..., string $completionsPath = '/v1/chat/completions')`.
+**API of record: the installed `vendor/` tree at 0.12.0 — not the docs and not GitHub trunk.**
+An earlier draft of this plan targeted `0.13`, verified against `symfony/ai@b7fb4cb`. That
+commit is 0.13-**in-development**; Packagist's latest release is `v0.12.0`, and the
+`UPGRADE FROM 0.12 to 0.13` notes describe unreleased changes. Task 1 pinned `0.12.*` and read
+the real signatures out of `vendor/`. They are:
 
-**Spec:** `docs/superpowers/specs/2026-08-18-shopping-assistant-design.md`
-**Architecture reference:** `ARCHITECTURE.md`
+```php
+// Symfony\AI\Agent\Agent — note: NO toolbox / toolExecutor / maxToolCalls arguments
+public function __construct(
+    private readonly PlatformInterface $platform,
+    private readonly string $model,
+    private readonly iterable $inputProcessors = [],
+    private readonly iterable $outputProcessors = [],
+    private readonly string $name = 'agent',
+) {}
+
+// Symfony\AI\Agent\Toolbox\AgentProcessor — EXISTS in 0.12; drives the tool loop,
+// and is both an input and an output processor
+final class AgentProcessor implements InputProcessorInterface, OutputProcessorInterface, AgentAwareInterface
+{
+    public function __construct(
+        private readonly ToolboxInterface $toolbox,
+        private readonly ToolResultConverter $resultConverter = new ToolResultConverter(),
+        private readonly ?EventDispatcherInterface $eventDispatcher = null,
+        private readonly bool $excludeToolMessages = false,
+        private readonly bool $includeSources = false,
+        private readonly ?int $maxToolCalls = 50,
+    ) {}
+}
+
+interface InputProcessorInterface  { public function processInput(Input $input): void; }
+interface OutputProcessorInterface { public function processOutput(Output $output): void; }
+
+// Symfony\AI\Agent\Output
+public function __construct(string $model, ResultInterface $result, MessageBag $messageBag, array $options = []);
+public function getResult(): ResultInterface;   public function setResult(ResultInterface $result): void;
+public function getMessageBag(): MessageBag;
+
+// Symfony\AI\Platform\Bridge\Generic\Factory  (package has NO src/ subdir; PSR-4 root maps to .)
+public static function createPlatform(
+    string $baseUrl, ?string $apiKey = null, ?HttpClientInterface $httpClient = null,
+    ModelCatalogInterface $modelCatalog = new FallbackModelCatalog(), ?Contract $contract = null,
+    ?EventDispatcherInterface $eventDispatcher = null,
+    bool $supportsCompletions = true, bool $supportsEmbeddings = true,
+    string $completionsPath = '/v1/chat/completions', string $embeddingsPath = '/v1/embeddings',
+    string $name = 'generic', ?ModelRouterInterface $modelRouter = null,
+): Platform;
+
+// Symfony\AI\Platform\Result\TextResult — getContent(), NOT asText()
+final class TextResult extends BaseResult {
+    public function __construct(private readonly string $content, private readonly ?string $signature = null);
+    public function getContent(): string;
+}
+```
+
+**If any signature above disagrees with the installed tree, the installed tree wins.** Read it,
+adjust, and keep the asserted behaviour identical.
 
 ## Global Constraints
 
 - PHP `^8.2`. Every file starts with `declare(strict_types=1);`.
 - **No `shopware/*` package may be added in this plan.** If a task seems to need one, stop and report.
-- **Pin Symfony AI exactly: `symfony/ai-agent: 0.13.*`, `symfony/ai-generic-platform: 0.12.*`.** These are 0.x packages with twelve breaking-change releases behind them (`UPGRADE.md` is ~50 KB). A caret range would let a `composer update` in someone else's shop break this plugin. Never widen these constraints without reading `UPGRADE.md` for the target version.
+- **Pin Symfony AI exactly: `symfony/ai-agent: 0.12.*`, `symfony/ai-generic-platform: 0.12.*`.** These are 0.x packages with twelve breaking-change releases behind them (`UPGRADE.md` is ~50 KB). A caret range would let a `composer update` in someone else's shop break this plugin. Never widen these constraints without reading `UPGRADE.md` for the target version.
 - **The SSRF validation must wrap the `HttpClientInterface` handed to the platform factory.** `baseUrl` is merchant-configurable; if the platform gets a plain HTTP client, the hole `page-agent-shopware` closed is open again.
 - **Tools must not return `ProductCard`s to the framework.** They register cards with `FactRenderer` and return ids only. Cards reaching the message bag would let the model quote figures it never had to earn.
 - Namespace `Swag\AssistantStarterKit\`, PSR-4 mapped to `src/`.
@@ -56,7 +109,7 @@ Read `.agents/skills/acl-quality-gate/references/methodology.md`, then `packs/ph
   "license": "MIT",
   "require": {
     "php": "^8.2",
-    "symfony/ai-agent": "0.13.*",
+    "symfony/ai-agent": "0.12.*",
     "symfony/ai-generic-platform": "0.12.*",
     "symfony/http-client": "^7.3",
     "symfony/http-client-contracts": "^3.0"
@@ -101,7 +154,7 @@ Read `.agents/skills/acl-quality-gate/references/methodology.md`, then `packs/ph
 
 `type` is `library`, not `shopware-platform-plugin` — the plugin manifest arrives in Plan 2. No `shopware/*`.
 
-**The two Symfony AI constraints are exact on purpose** (`0.13.*`, not `^0.13`). Compatibility with the target platform is verified: `shopware/core v6.7.13.0` pins `symfony/*: ~7.4.0` and `php: ~8.2 … ~8.5`; `symfony/ai-agent` requires `symfony/*: ^7.3|^8.0` and `php: >=8.2`. `~7.4.0` satisfies `^7.3`, so there is no conflict — but re-run `composer why-not symfony/ai-agent` against the actual instance before trusting it.
+**The two Symfony AI constraints are exact on purpose** (`0.12.*`, not `^0.12`). Compatibility with the target platform is verified: `shopware/core v6.7.13.0` pins `symfony/*: ~7.4.0` and `php: ~8.2 … ~8.5`; `symfony/ai-agent` requires `symfony/*: ^7.3|^8.0` and `php: >=8.2`. `~7.4.0` satisfies `^7.3`, so there is no conflict — but re-run `composer why-not symfony/ai-agent` against the actual instance before trusting it.
 
 - [ ] **Step 3: Copy the quality gate assets**
 
@@ -2419,7 +2472,8 @@ This is where our grounding meets the framework. Three seams, all verified prese
 |---|---|
 | Context window management | `InputProcessorInterface`, `Input::setMessageBag()` |
 | Validate ids, render facts, audit prose | `OutputProcessorInterface`, `Output::getResult()` |
-| Bounded tool calls | `Agent` constructor argument `maxToolCalls` |
+| The tool-calling loop itself | `Toolbox\AgentProcessor`, registered as **both** an input and an output processor |
+| Bounded tool calls | `AgentProcessor`'s `maxToolCalls` argument |
 | Capability control | which tools go into the `Toolbox` |
 | Guard before any spend | `AssistantRunner`, before `$agent->call()` |
 
@@ -2624,7 +2678,7 @@ reflected in the rendered cards. Write back with `$input->setMessageBag()`.
 
 `GroundingOutputProcessor implements OutputProcessorInterface`:
 
-1. `$text = $output->getResult()->asText();` — guard against a non-text result and return early.
+1. `$result = $output->getResult();` — if it is not a `Symfony\AI\Platform\Result\TextResult`, record `render` with `['skipped' => 'non-text result']` and return. Otherwise `$text = $result->getContent();`. **`TextResult` exposes `getContent()`, not `asText()`** — `asText()` lives on the platform's invoke result, not on `ResultInterface`.
 2. Extract candidate ids: every id in `FactRenderer`'s retrieved set that appears in `$text`, plus any token matching `/\bfx-[a-z0-9-]+\b/i` or a 32-char hex id, so ids the model invented are caught rather than silently ignored.
 3. `FactRenderer::validate($candidates)` → records `validate` with `inventedProductIds`.
 4. `FactRenderer::render($result->accepted)` → records `render`.
@@ -2643,15 +2697,27 @@ custom `ResultInterface` just to smuggle cards through the framework's return ty
 3. The tool list: `SearchProductsTool`, `GetProductTool`, `EscalateTool` always; `AddToCartTool` **only when** `$config->enableAddToCart && $cartAvailable`. An unavailable tool is never constructed, so the model never sees it.
 4. `$toolbox = new Toolbox($tools);`
 5. ```php
+   $toolProcessor = new AgentProcessor(
+       $toolbox,
+       maxToolCalls: $config->maxToolCallsPerTurn,
+   );
+
    $agent = new Agent(
        PlatformFactory::create($llm, $http),
        $llm->model,
-       inputProcessors: [new SlidingWindowInputProcessor()],
-       outputProcessors: [new GroundingOutputProcessor($renderer, $trace)],
-       toolbox: $toolbox,
-       maxToolCalls: $config->maxToolCallsPerTurn,
+       inputProcessors: [new SlidingWindowInputProcessor(), $toolProcessor],
+       outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace)],
    );
    ```
+
+   **Order is load-bearing.** `AgentProcessor` drives the tool loop, so
+   `GroundingOutputProcessor` must come *after* it in `outputProcessors` — otherwise it
+   validates a result the tools have not populated yet. Write a test that fails if the order
+   is swapped rather than relying on a comment.
+
+   `AgentProcessor` also accepts a `ToolResultConverter`, which is where tool return values
+   become messages. We do not customise it: our tools already return ids only (Task 10), which
+   achieves the same guarantee with less coupling to a 0.x internal.
 6. Return a small `final readonly` bundle carrying `$agent`, `$renderer`, `$trace` — the runner needs all three.
 
 - [ ] **Step 7: Implement `AssistantRunner` and `AssistantTurn`**

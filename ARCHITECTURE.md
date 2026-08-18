@@ -272,7 +272,7 @@ Stages 12 and 13 are the product. Everything else is plumbing.
 
 ## Agent runtime: Symfony AI
 
-The agent mechanics come from **`symfony/ai-agent` 0.13** — tool registry, tool-calling loop,
+The agent mechanics come from **`symfony/ai-agent` 0.12** — tool registry, tool-calling loop,
 message handling, streaming, context compression. We do not write a loop. What we own is the
 grounding, and it plugs into three verified seams:
 
@@ -280,7 +280,8 @@ grounding, and it plugs into three verified seams:
 |---|---|
 | Context window management | `InputProcessorInterface`, `Input::setMessageBag()` |
 | Validate ids, render facts, audit prose | `OutputProcessorInterface`, `Output::getResult()` |
-| Bounded tool calls | `Agent` constructor argument `maxToolCalls` |
+| The tool-calling loop | `Toolbox\AgentProcessor`, registered as both input and output processor |
+| Bounded tool calls | `AgentProcessor`'s `maxToolCalls` argument |
 | Capability control | which tools are constructed into the `Toolbox` |
 | Guard before any spend | `AssistantRunner`, before `$agent->call()` |
 
@@ -288,7 +289,7 @@ The platform is the **`Generic` bridge** (`symfony/ai-generic-platform`): OpenAI
 chat completions against a configurable `baseUrl`, with an injectable `HttpClientInterface` —
 which is where our SSRF guard sits.
 
-**Both packages are pinned exactly** (`0.13.*`, `0.12.*`). They are 0.x with twelve
+**Both packages are pinned exactly** (`0.12.*`, `0.12.*`). They are 0.x with twelve
 breaking-change releases behind them; a caret range would let a `composer update` in someone
 else's shop break this plugin. See `docs/adr/0001-symfony-ai-as-agent-runtime.md`.
 
