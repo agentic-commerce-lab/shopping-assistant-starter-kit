@@ -39,8 +39,12 @@ strict-array-index-existence = true
 # check-throws is noisy; keep it on but tame it.
 check-throws = true
 unchecked-exceptions = ["RuntimeException", "LogicException"]
+# The check-throws setting reports issues under the "unhandled-thrown-type" code, not
+# "check-throws" (that's the setting name, not an issue code) — `mago analyze --list-codes`
+# confirms this. The ignore below was a no-op under the old name until this task's tests
+# actually threw exceptions and the analyzer flagged them for real.
 ignore = [
-  { code = "check-throws", in = "tests/" },
+  { code = "unhandled-thrown-type", in = "tests/" },
 ]
 
 [guard]
