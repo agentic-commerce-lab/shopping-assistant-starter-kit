@@ -952,7 +952,7 @@ git commit -m "feat: add commerce gateway interface and fixture implementation"
 ### Task 4: Platform wiring with SSRF-validated egress
 
 **Files:**
-- Create: `src/Core/Llm/Egress/{DnsResolver,HostValidator,BaseUrlValidator,ValidatingHttpClient}.php`
+- Create: `src/Core/Llm/Egress/{DnsResolver,HostValidator,ValidatingHttpClient}.php`
 - Create: `src/Core/Llm/{LlmException,PlatformFactory,LlmSettings}.php`
 - Test: `tests/Core/Llm/Egress/{HostValidatorTest,ValidatingHttpClientTest}.php`, `tests/Core/Llm/PlatformFactoryTest.php`
 
@@ -1050,8 +1050,16 @@ final class ValidatingHttpClientTest extends TestCase
 }
 ```
 
-Validating on **every request**, not only on the configured base URL, is deliberate: a
-redirect or a rebound DNS entry would otherwise walk straight past a one-off check.
+Validating on **every request**, not only on the configured base URL, is deliberate: a redirect
+or a base URL changed after startup would otherwise walk past a one-off check.
+
+**It does not stop DNS rebinding, and this plan must not claim it does.** The validator resolves
+the host to check it, then hands the *hostname* to the inner client, which resolves again at
+connect time. Whoever controls authoritative DNS for the configured host can answer public on the
+first lookup and `169.254.169.254` on the second, within one request. Closing that needs IP
+pinning — resolve once, connect to the pinned address via the client's `resolve` option, keep the
+original `Host` header — which is deliberately out of scope here and recorded as a blocker for any
+pilot.
 
 - [ ] **Step 2: Run to verify they fail**
 
