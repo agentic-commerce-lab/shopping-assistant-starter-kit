@@ -16,9 +16,13 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * it must never have been rendered, and {@see FactRenderer} already refused to render it.
  * This assertion only confirms the refusal happened and nothing invented slipped through.
  *
- * A turn that never validated anything (no `validate` event at all, e.g. because the
- * model never called a retrieval tool) trivially passes: nothing was invented because
- * nothing was checked, which is a different failure mode than this assertion's job.
+ * Requires the `validate` stage unconditionally (Ruling R40). Unlike a stage that only
+ * fires when the model chooses to call a particular tool, `validate` is recorded by
+ * {@see \Swag\AssistantStarterKit\Core\Agent\GroundingOutputProcessor::processOutput()}
+ * on every turn that produces a text result — the normal completion path for every
+ * journey this assertion is used in (all six). Its total absence therefore means the
+ * pipeline did not run as expected this turn, not "nothing to validate", and is reported
+ * as its own distinct failure via {@see RequiredTraceStage} rather than a silent pass.
  */
 final class NoInventedProduct implements Assertion
 {
@@ -31,8 +35,12 @@ final class NoInventedProduct implements Assertion
     {
         $payload = $trace->payload('validate');
 
+        if (null === $payload) {
+            return RequiredTraceStage::missing($this->name(), 'validate');
+        }
+
         /** @var list<string> $invented */
-        $invented = \is_array($payload) ? $payload['inventedProductIds'] ?? [] : [];
+        $invented = $payload['inventedProductIds'] ?? [];
 
         if ($invented === []) {
             return new AssertionResult($this->name(), true, 'no invented product ids in the trace');

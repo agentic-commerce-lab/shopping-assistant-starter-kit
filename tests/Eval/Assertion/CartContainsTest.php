@@ -66,6 +66,22 @@ final class CartContainsTest extends TestCase
         self::assertTrue($result->passed);
     }
 
+    public function testFailsWhenTheTurnEndStageNeverFired(): void
+    {
+        // Ruling R40: absence of `turn.end` must fail loudly as "the turn never
+        // completed", not read as "outcome is null" and fall through to the ordinary
+        // wrong-outcome message — the two are different failures.
+        $trace = new TraceRecorder();
+
+        $result = (new CartContains())->evaluate($this->turnWithCard('fx-017'), $trace, [
+            'variantId' => 'fx-026-blue-l',
+        ]);
+
+        self::assertFalse($result->passed);
+        self::assertStringContainsString('required stage', $result->detail);
+        self::assertStringContainsString('turn.end', $result->detail);
+    }
+
     public function testIsQualityNotSafety(): void
     {
         self::assertFalse((new CartContains())->isSafety());

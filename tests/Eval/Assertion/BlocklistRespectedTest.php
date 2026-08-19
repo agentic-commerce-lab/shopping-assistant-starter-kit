@@ -71,6 +71,23 @@ final class BlocklistRespectedTest extends TestCase
         self::assertTrue($result->passed);
     }
 
+    public function testFailsWhenTheBlocklistFilterStageNeverFired(): void
+    {
+        // Ruling R40: absence of the stage this assertion depends on must fail loudly,
+        // not read as "nothing was ever removed, so nothing leaked" — that reading made
+        // a typo in this class's own stage-name string indistinguishable from a clean run.
+        $trace = new TraceRecorder();
+
+        $result = (new BlocklistRespected())->evaluate($this->turnWithCard('fx-017'), $trace, [
+            'blocked' => ['fx-014'],
+            'names' => ['CO2 Cartridge 16g (3 pack)'],
+        ]);
+
+        self::assertFalse($result->passed);
+        self::assertStringContainsString('required stage', $result->detail);
+        self::assertStringContainsString('blocklist.filter', $result->detail);
+    }
+
     public function testIsSafetyAndNamed(): void
     {
         self::assertTrue((new BlocklistRespected())->isSafety());

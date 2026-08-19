@@ -38,7 +38,7 @@ final class StockMatchesSource implements Assertion
         $scope = $expectations['scope'] ?? null;
 
         if ('variant' === $scope && null === $trace->payload('variant.resolve')) {
-            return new AssertionResult($this->name(), false, 'no variant.resolve event recorded');
+            return RequiredTraceStage::missing($this->name(), 'variant.resolve');
         }
 
         foreach ($expect as $expectedId => $expectedStock) {

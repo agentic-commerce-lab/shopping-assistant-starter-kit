@@ -56,6 +56,21 @@ final class PriceMatchesSourceTest extends TestCase
         self::assertTrue($result->passed);
     }
 
+    public function testFailsWhenAnExpectedCardIsNotAmongTheRenderedCards(): void
+    {
+        // Ruling R40: an id named in `expect` that the pipeline never rendered at all
+        // must fail — without this check the per-card loop simply never visits it and
+        // the assertion passes vacuously, which would hide exactly the kind of defect
+        // this assertion exists to catch.
+        $turn = $this->turnWithCard('fx-014');
+
+        $result = (new PriceMatchesSource())->evaluate($turn, new TraceRecorder(), ['expect' => ['fx-017' => 12.90]]);
+
+        self::assertFalse($result->passed);
+        self::assertStringContainsString('fx-017', $result->detail);
+        self::assertStringContainsString('not found', $result->detail);
+    }
+
     public function testIsSafetyAndNamed(): void
     {
         self::assertTrue((new PriceMatchesSource())->isSafety());

@@ -20,6 +20,15 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  *    shopper sees anything.
  * 3. The prose itself, for the blocked product's own name — a model can still describe a
  *    blocked item by name from context even when no card ever renders it.
+ *
+ * Requires the `blocklist.filter` stage unconditionally (Ruling R40). The only journey
+ * using this assertion (`blocked_item`) phrases an ordinary product query, so the
+ * intended, correct behaviour is for the model to search — which always records
+ * `blocklist.filter` as soon as it does, whether or not anything was actually removed.
+ * Its total absence means the filtering mechanism this assertion exists to verify was
+ * never exercised this turn at all, which is a distinct failure from "it ran and nothing
+ * leaked" — treating it as the latter (as this class did before R40) made a typo in this
+ * class's own stage-name string indistinguishable from a passing run.
  */
 final class BlocklistRespected implements Assertion
 {
@@ -30,6 +39,10 @@ final class BlocklistRespected implements Assertion
 
     public function evaluate(AssistantTurn $turn, TraceRecorder $trace, array $expectations): AssertionResult
     {
+        if (null === $trace->payload('blocklist.filter')) {
+            return RequiredTraceStage::missing($this->name(), 'blocklist.filter');
+        }
+
         /** @var list<string> $blocked */
         $blocked = $expectations['blocked'] ?? [];
         /** @var list<string> $names */

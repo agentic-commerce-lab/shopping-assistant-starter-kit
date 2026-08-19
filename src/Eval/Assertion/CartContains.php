@@ -19,6 +19,16 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * The two trace reads live in {@see TurnEndOutcome} and {@see AddToCartTrace}, split
  * out to keep this class's own cyclomatic-complexity total under this project's
  * threshold (mago sums it per class, across every method).
+ *
+ * Requires the `turn.end` stage unconditionally (Ruling R40): {@see \Swag\AssistantStarterKit\Core\Agent\AssistantRunner::run()}
+ * records it once at the end of every non-guard-blocked turn, so its absence means the
+ * turn never completed normally — a distinct failure from "it completed with the wrong
+ * outcome", reported separately via {@see RequiredTraceStage}. `tool.call`'s absence is
+ * deliberately NOT treated the same way: unlike `turn.end`, it only fires if the model
+ * chooses to call `add_to_cart`, and the only journey using this assertion (`cart_add`)
+ * exists specifically to test whether that choice happens — its absence is the exact
+ * failure this assertion exists to catch, already reported below as its own distinct
+ * "no allowed add_to_cart tool.call recorded" message rather than a vacuous pass.
  */
 final class CartContains implements Assertion
 {
@@ -30,6 +40,11 @@ final class CartContains implements Assertion
     public function evaluate(AssistantTurn $turn, TraceRecorder $trace, array $expectations): AssertionResult
     {
         $expectedVariantId = \is_string($expectations['variantId'] ?? null) ? $expectations['variantId'] : '';
+
+        if (null === $trace->payload('turn.end')) {
+            return RequiredTraceStage::missing($this->name(), 'turn.end');
+        }
+
         $outcome = TurnEndOutcome::of($trace);
 
         if ('cart_added' !== $outcome) {
