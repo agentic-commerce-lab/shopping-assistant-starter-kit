@@ -9,17 +9,23 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
  * FactRenderer is the reason the assistant is structurally incapable of
- * inventing a price, a stock figure, a URL or an image: the model only ever
- * emits product ids, and every shopper-facing figure is substituted back in
- * from the turn's own retrieval — never from anything the model said.
+ * inventing a price, a stock figure, a URL or an image: every shopper-facing
+ * figure is substituted back in from the turn's own retrieval — never from
+ * anything the model said. The card set to render is not read out of the
+ * model's prose; it defaults to whatever the last tool call actually
+ * returned, and prose is only ever used to check for invention or to narrow
+ * that default (see {@see \Swag\AssistantStarterKit\Core\Agent\GroundingOutputProcessor}
+ * for the selection policy).
  *
  * {@see self::registerRetrieved()} builds an id-keyed map of every card this
- * turn actually retrieved — the "authoritative set". {@see self::validate()}
- * checks the model's returned ids against that set, separating ids the
- * retrieval backs from ids the model invented (hallucinated, or planted by a
- * prompt injection with no other way to reach the shopper). {@see
- * self::render()} then reads the accepted cards straight out of the map,
- * ignoring anything the model claimed about them.
+ * turn actually retrieved — the "authoritative set" — and tracks the most
+ * recent call's own ids separately via {@see self::lastRetrievedBatch()}.
+ * {@see self::validate()} checks a list of candidate ids (however sourced)
+ * against the authoritative set, separating ids the retrieval backs from ids
+ * that are invented (hallucinated, or planted by a prompt injection with no
+ * other way to reach the shopper). {@see self::render()} then reads the
+ * accepted cards straight out of the map, ignoring anything the model claimed
+ * about them.
  *
  * {@see self::unbackedPricesInProse()} closes the remaining gap: nothing stops
  * the model's free-text reply from *describing* a price that was never
@@ -32,6 +38,9 @@ final class FactRenderer
 {
     /** @var array<string, ProductCard> */
     private array $retrieved = [];
+
+    /** @var list<string> */
+    private array $lastBatchIds = [];
 
     /** @var list<ProductCard> */
     private array $renderedCards = [];
@@ -54,6 +63,12 @@ final class FactRenderer
             // a resolved variant supersedes its parent.
             $this->retrieved[$card->id] = $card;
         }
+
+        // Replaced, never merged — including with an empty $cards array, which resets
+        // this to []. If the last tool call returned nothing, the honest default card
+        // set is nothing, matching the tool's own "No matching products in this shop."
+        // note. See self::lastRetrievedBatch().
+        $this->lastBatchIds = array_map(static fn(ProductCard $card): string => $card->id, $cards);
     }
 
     /**
@@ -62,6 +77,14 @@ final class FactRenderer
     public function retrievedIds(): array
     {
         return array_keys($this->retrieved);
+    }
+
+    /**
+     * @return list<string> the ids the most recent registerRetrieved() call carried
+     */
+    public function lastRetrievedBatch(): array
+    {
+        return $this->lastBatchIds;
     }
 
     /**
