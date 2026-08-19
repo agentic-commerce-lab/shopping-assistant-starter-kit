@@ -8,7 +8,6 @@ use Swag\AssistantStarterKit\Core\Tool\ToolArgumentException;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Exception\MaxIterationsExceededException;
 use Symfony\AI\Agent\Toolbox\Exception\ToolExecutionException;
-use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
@@ -84,27 +83,41 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerExcep
  *
  * Unlike the other two shapes, `\TypeError` is not unique to this call site —
  * a genuine bug three calls deep inside a tool's own body (a wrong-typed
- * argument to some collaborator, a bad return type) is *also* a `\TypeError`,
- * and must still propagate rather than becoming a note the model shrugs off.
- * PHP's own argument-type-mismatch message carries a `"...called in %s on
- * line %d"` suffix naming the exact file and line of the *call expression*
- * that failed — not the tool's own file, where `getFile()`/`getLine()` point
- * instead (confirmed empirically: both an argument-spreading `\TypeError` and
- * one thrown from inside a tool body report `getFile()`/`getLine()` inside
- * the tool's own file; only the message text tells them apart). Matching that
- * suffix against the *installed* `Toolbox` class's own file, resolved via
- * reflection rather than a hardcoded vendor path, distinguishes "the engine
- * rejected this at our own dispatch call" from "the tool's own logic failed
- * three frames down" — confirmed empirically against all three shapes: an
- * argument-spread mismatch, a `\TypeError` thrown from a call inside a tool's
- * body, and a bad return type (which carries no `"called in"` suffix at all).
- * This is a message-format heuristic, not a type check, and PHP does not
- * document that suffix as a stable public contract — though it has been
- * unchanged across the whole 8.x line. If a future PHP version ever reworded
- * it, the regex simply stops matching and the exception falls through to
- * `throw $e;` below: failing to recognise a genuine argument-spread error
- * costs a turn, exactly as before this change, rather than ever risking the
- * reverse — swallowing a real bug behind a shrug-worthy note.
+ * argument to some collaborator) is *also* a `\TypeError`, and must still
+ * propagate rather than becoming a note the model shrugs off.
+ * `getFile()`/`getLine()` cannot draw that line: confirmed empirically, BOTH
+ * an argument-dispatch mismatch and one thrown from inside a tool's own body
+ * report `getFile()`/`getLine()` pointing into the *tool's own file* — the
+ * parameter's type declaration or the inner `throw` site respectively, never
+ * `Toolbox`'s file either way. `getTrace()[0]` — the immediate calling frame
+ * — does draw it: for an argument-dispatch mismatch, `getTrace()[0]['file']`
+ * is the installed `Toolbox` class's own file (the `$tool->{$method}(...)`
+ * call site itself), confirmed by reflecting `Toolbox::class`'s file rather
+ * than hardcoding a vendor path; for a `\TypeError` raised inside a tool's
+ * own body, `getTrace()[0]['file']` is wherever that inner call actually
+ * lives, never `Toolbox`'s file. This is a structural comparison against a
+ * resolved file path, not a message parse, so it carries no dependency on how
+ * PHP happens to word its exception messages.
+ *
+ * A bad return type (a tool declaring `: array` but returning something else)
+ * lands on the SAME side as an argument-dispatch mismatch under this check —
+ * confirmed empirically — because PHP raises both violations from the same
+ * engine-level call boundary: `getTrace()[0]` for a bad return type is also
+ * `Toolbox`'s own file, the frame that invoked the tool method whose contract
+ * it violated on the way out. That is the correct answer, not a gap: a wrong
+ * return type is deterministic given the tool's code, never dependent on
+ * runtime model input, so `composer run quality`'s own `mago analyze` step
+ * (full type-checking, "≈ PHPStan max" per its config) already rejects it
+ * statically, long before any live request — unlike an argument shape, which
+ * only exists at runtime because the model supplies it. A bad return type
+ * reaching this branch at all would mean the quality gate itself had already
+ * failed.
+ *
+ * If `getTrace()` is empty or its first frame carries no `file` key, this
+ * fails safe by treating the `\TypeError` as unrecognised: it falls through
+ * to `throw $e;` below exactly as before this check existed, costing a turn
+ * rather than ever risking the reverse — swallowing a real bug behind a
+ * shrug-worthy note.
  *
  * Also records a uniform `tool.call` trace event at entry to every tool call —
  * `stage: 'dispatch'` — so the trace can answer "which tools ran" regardless of
@@ -144,73 +157,15 @@ final class BoundedToolbox implements ToolboxInterface
         try {
             return $this->inner->execute($toolCall);
         } catch (ToolExecutionException $e) {
-            $previous = $e->getPrevious();
-
-            if ($previous instanceof ToolArgumentException) {
-                return new ToolResult($toolCall, ['note' => $previous->getMessage()]);
-            }
-
-            if ($previous instanceof SerializerExceptionInterface) {
-                return $this->rejectMalformedArguments($toolCall, $previous);
-            }
-
-            if ($previous instanceof \TypeError && $this->isArgumentDispatchTypeError($previous)) {
-                return $this->rejectMalformedArguments($toolCall, $previous);
-            }
-
-            throw $e;
+            // Null means "not bad model input" — a genuine server fault, which must
+            // keep propagating rather than becoming a note the model shrugs off.
+            return MalformedToolArgumentRejection::forToolExecutionException($this->trace, $toolCall, $e) ?? throw $e;
         } catch (SerializerExceptionInterface $e) {
             // Not reachable through the real vendor Toolbox today — it always wraps
             // this into a ToolExecutionException first, handled above — but kept as
             // its own disjoint catch in case a future denormalizer call site (or a
             // test double standing in for the inner toolbox) throws it unwrapped.
-            return $this->rejectMalformedArguments($toolCall, $e);
+            return MalformedToolArgumentRejection::forUnwrappedSerializerException($this->trace, $toolCall, $e);
         }
-    }
-
-    /**
-     * True only for a `\TypeError` whose message names the installed vendor
-     * `Toolbox` class's own file as the call site — i.e. `Toolbox::execute()`'s
-     * `$tool->{$method}(...$arguments)` dispatch, not some other call three
-     * frames deep inside the tool's own body. See the class docblock for why
-     * this message-based check exists and how it fails safe.
-     */
-    private function isArgumentDispatchTypeError(\TypeError $e): bool
-    {
-        try {
-            $vendorDispatchFile = (new \ReflectionClass(Toolbox::class))->getFileName();
-        } catch (\ReflectionException) {
-            // `Toolbox` is a hard, always-installed dependency referenced by its own
-            // class constant above, so reflection failing to find it cannot happen in
-            // practice — but the same fail-safe posture as an unresolvable file below
-            // applies here too: treat "cannot confirm the call site" as "not confirmed",
-            // never as "assume it matches".
-            return false;
-        }
-
-        if (false === $vendorDispatchFile) {
-            return false;
-        }
-
-        return 1 === preg_match(
-            '/ called in ' . preg_quote($vendorDispatchFile, '/') . ' on line \d+$/',
-            $e->getMessage(),
-        );
-    }
-
-    private function rejectMalformedArguments(
-        ToolCall $toolCall,
-        SerializerExceptionInterface|\TypeError $e,
-    ): ToolResult {
-        $this->trace->record('tool.arguments.rejected', [
-            'name' => $toolCall->getName(),
-            'reason' => $e->getMessage(),
-        ]);
-
-        return new ToolResult($toolCall, ['note' => \sprintf(
-            'One or more arguments were not in the expected shape: %s. '
-            . 'Check the parameter types in the tool definition and call it again.',
-            $e->getMessage(),
-        )]);
     }
 }

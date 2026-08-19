@@ -1,0 +1,119 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Swag\AssistantStarterKit\Core\Agent;
+
+use Swag\AssistantStarterKit\Core\Tool\ToolArgumentException;
+use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Symfony\AI\Agent\Toolbox\Exception\ToolExecutionException;
+use Symfony\AI\Agent\Toolbox\Toolbox;
+use Symfony\AI\Agent\Toolbox\ToolResult;
+use Symfony\AI\Platform\Result\ToolCall;
+use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerExceptionInterface;
+
+/**
+ * Split out of {@see BoundedToolbox} once the `\TypeError` handling this class exists
+ * for pushed `BoundedToolbox`'s own cyclomatic-complexity total over this project's
+ * threshold (mago sums it per class, across every method) — same reasoning as
+ * {@see \Swag\AssistantStarterKit\Eval\Assertion\VariantStockCheck} being split out of
+ * `StockMatchesSource`, including the static-method shape: this class holds no state of
+ * its own, so `TraceRecorder` is a parameter on each call rather than an injected
+ * collaborator.
+ *
+ * Decides which of `ToolExecutionException::getPrevious()`'s shapes represent bad model
+ * input safe to convert into a retryable `['note' => …]` {@see ToolResult}, versus a
+ * genuine server fault that must still propagate. See {@see BoundedToolbox}'s own
+ * docblock for the full reasoning behind each of the three recognised shapes
+ * ({@see ToolArgumentException}, a {@see SerializerExceptionInterface}, and an
+ * argument-dispatch `\TypeError`) and why nothing else is treated this way.
+ */
+final class MalformedToolArgumentRejection
+{
+    /**
+     * @return ToolResult|null null when `$e` represents a genuine server fault and must
+     *                          propagate instead of being unwrapped
+     */
+    public static function forToolExecutionException(
+        TraceRecorder $trace,
+        ToolCall $toolCall,
+        ToolExecutionException $e,
+    ): ?ToolResult {
+        $previous = $e->getPrevious();
+
+        if ($previous instanceof ToolArgumentException) {
+            return new ToolResult($toolCall, ['note' => $previous->getMessage()]);
+        }
+
+        if ($previous instanceof SerializerExceptionInterface) {
+            return self::reject($trace, $toolCall, $previous);
+        }
+
+        if ($previous instanceof \TypeError && self::isArgumentDispatchTypeError($previous)) {
+            return self::reject($trace, $toolCall, $previous);
+        }
+
+        return null;
+    }
+
+    /**
+     * Not reachable through the real vendor {@see Toolbox} today — it always wraps this
+     * into a `ToolExecutionException` first, handled by {@see self::forToolExecutionException()}
+     * — but kept for a toolbox that might throw it directly (or a test double standing in
+     * for one).
+     */
+    public static function forUnwrappedSerializerException(
+        TraceRecorder $trace,
+        ToolCall $toolCall,
+        SerializerExceptionInterface $e,
+    ): ToolResult {
+        return self::reject($trace, $toolCall, $e);
+    }
+
+    /**
+     * True only for a `\TypeError` whose *immediate calling frame* — `getTrace()[0]`, not
+     * `getFile()`/`getLine()` — sits inside the installed vendor `Toolbox` class's own
+     * file: i.e. `Toolbox::execute()`'s `$tool->{$method}(...$arguments)` dispatch, not
+     * some other call frames deep inside the tool's own body. See {@see BoundedToolbox}'s
+     * class docblock for why `getFile()`/`getLine()` cannot make this distinction and
+     * `getTrace()[0]` can, and how this fails safe.
+     */
+    private static function isArgumentDispatchTypeError(\TypeError $e): bool
+    {
+        try {
+            $vendorDispatchFile = (new \ReflectionClass(Toolbox::class))->getFileName();
+        } catch (\ReflectionException) {
+            // `Toolbox` is a hard, always-installed dependency referenced by its own
+            // class constant above, so reflection failing to find it cannot happen in
+            // practice — but the same fail-safe posture as a missing trace frame below
+            // applies here too: treat "cannot confirm the call site" as "not confirmed",
+            // never as "assume it matches".
+            return false;
+        }
+
+        if (false === $vendorDispatchFile) {
+            return false;
+        }
+
+        $callingFrame = $e->getTrace()[0] ?? null;
+
+        return \is_array($callingFrame) && ($callingFrame['file'] ?? null) === $vendorDispatchFile;
+    }
+
+    private static function reject(
+        TraceRecorder $trace,
+        ToolCall $toolCall,
+        SerializerExceptionInterface|\TypeError $e,
+    ): ToolResult {
+        $trace->record('tool.arguments.rejected', [
+            'name' => $toolCall->getName(),
+            'reason' => $e->getMessage(),
+        ]);
+
+        return new ToolResult($toolCall, ['note' => \sprintf(
+            'One or more arguments were not in the expected shape: %s. '
+            . 'Check the parameter types in the tool definition and call it again.',
+            $e->getMessage(),
+        )]);
+    }
+}

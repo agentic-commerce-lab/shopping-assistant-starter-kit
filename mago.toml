@@ -45,6 +45,27 @@ unchecked-exceptions = ["RuntimeException", "LogicException"]
 # actually threw exceptions and the analyzer flagged them for real.
 ignore = [
   { code = "unhandled-thrown-type", in = "tests/" },
+  # BoundedToolbox's job is to catch a `\TypeError` that PHP raises when a
+  # model-supplied argument does not match a tool's declared parameter type, and to
+  # tell that apart from a `\TypeError` raised inside a tool's own body. Testing that
+  # boundary requires provoking a REAL engine-raised `\TypeError` — its `getTrace()[0]`
+  # frame is what the check reads, and only PHP can populate it.
+  #
+  # There is no way to write that fixture without the analyzer objecting, and every
+  # alternative is worse:
+  #   - a wrong-typed literal        → error[invalid-argument] / [invalid-return-statement]
+  #   - the value routed as `mixed`  → error[mixed-argument]   / [mixed-return-statement]
+  #   - a docblock claiming the wrong type → hides the violation behind a lie, which is
+  #     genuinely deceptive rather than declared
+  #   - dropping the tests           → removes the only coverage of the boundary
+  #
+  # So the two `mixed-*` codes are silenced for that one file, deliberately chosen over
+  # the `invalid-*` pair: `mixed-*` means "cannot prove", whereas `invalid-*` means
+  # "proven wrong". Leaving `invalid-*` active means a genuinely wrong-typed literal
+  # elsewhere in this file still fails the gate. Scoped to the single file, never to
+  # `tests/`, so no other test can inherit it. See ledger ruling R51.
+  { code = "mixed-argument", in = "tests/Core/Agent/BoundedToolboxArgumentRejectionTest.php" },
+  { code = "mixed-return-statement", in = "tests/Core/Agent/BoundedToolboxArgumentRejectionTest.php" },
 ]
 
 [guard]

@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\BoundedToolbox;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Agent\Toolbox\Exception\ToolExecutionException;
 use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
@@ -155,71 +156,131 @@ final class BoundedToolboxArgumentRejectionTest extends TestCase
      * where the resolved arguments are spread into the tool call, as a native
      * `\TypeError`. That `\TypeError` does not implement `ToolExecutionExceptionInterface`
      * either, so the real vendor `Toolbox::execute()` wraps it into a
-     * `ToolExecutionException` the exact same way as the Serializer case — confirmed
-     * empirically the same way. This message is exactly what PHP itself produces for
-     * this failure (reproduced verbatim against the installed vendor package with a
-     * throwaway `?array`-typed tool argument), including the `"called in %s on line %d"`
-     * suffix naming {@see Toolbox}'s own file, which is what {@see BoundedToolbox::isArgumentDispatchTypeError()}
-     * keys on.
+     * `ToolExecutionException` the exact same way as the Serializer case.
+     *
+     * Runs through the REAL vendor {@see Toolbox}, not a fabricated double: `getTrace()`
+     * is captured at the point a `\Throwable` is constructed, so a double manually
+     * building a `\TypeError` cannot produce a trace whose first frame genuinely sits
+     * inside `Toolbox`'s own file — only a real dispatch through the real class can, and
+     * that authenticity is the entire point of this test.
      */
     public function testUnwrapsATypeErrorFromArgumentDispatchWrappedInToolExecutionExceptionIntoARetryableNote(): void
     {
         $trace = new TraceRecorder();
-        $toolCall = new ToolCall('call-1', 'search_products', ['options' => 'Blue']);
-        $vendorToolboxFile = (new \ReflectionClass(Toolbox::class))->getFileName();
-        self::assertIsString($vendorToolboxFile);
-        $toolbox = $this->toolboxWrapping(
-            $toolCall,
-            new \TypeError(\sprintf(
-                'SearchProductsTool::__invoke(): Argument #5 ($options) must be of type ?array, string given, '
-                . 'called in %s on line 110',
-                $vendorToolboxFile,
-            )),
-            $trace,
-        );
+        $tool = new
+            #[AsTool(name: 'dispatch_mismatch', description: 'test fixture')]
+            class {
+                public function __invoke(?array $options = null): array
+                {
+                    return ['ok' => true];
+                }
+            };
+        $toolbox = new BoundedToolbox(new Toolbox([$tool]), 5, $trace);
 
-        $result = $toolbox->execute($toolCall);
+        $result = $toolbox->execute(new ToolCall('call-1', 'dispatch_mismatch', ['options' => 'Blue']));
 
         $payload = $result->getResult();
         self::assertIsArray($payload);
         self::assertArrayHasKey('note', $payload);
         $note = $payload['note'];
         self::assertIsString($note);
-        self::assertStringContainsString('Argument #5 ($options) must be of type ?array', $note);
+        self::assertStringContainsString('must be of type ?array', $note);
 
         $rejectedEvents = array_values(array_filter(
             $trace->events(),
             static fn($event): bool => 'tool.arguments.rejected' === $event->stage,
         ));
         self::assertCount(1, $rejectedEvents);
-        self::assertSame('search_products', $rejectedEvents[0]->payload['name'] ?? null);
+        self::assertSame('dispatch_mismatch', $rejectedEvents[0]->payload['name'] ?? null);
     }
 
     /**
      * The boundary {@see BoundedToolbox::isArgumentDispatchTypeError()} exists to draw:
-     * a `\TypeError` raised three frames deep inside a tool's OWN body (a wrong-typed
-     * argument to some collaborator the tool calls, unrelated to Symfony AI's own
-     * argument dispatch) must still propagate as a genuine server fault, not become a
-     * note the model shrugs off. Its message deliberately names some other file in the
-     * `"called in %s on line %d"` clause — never {@see Toolbox}'s own file — which is
-     * exactly what a real one looks like (reproduced empirically with a throwaway tool
-     * that calls a strictly-typed helper with a bad argument inside its own `__invoke()`).
+     * a `\TypeError` raised from inside a tool's OWN body (a wrong-typed argument to some
+     * collaborator the tool calls, unrelated to Symfony AI's own argument dispatch) must
+     * still propagate as a genuine server fault, not become a note the model shrugs off.
+     * Real dispatch again, for the same reason as the previous test: the tool's `__invoke()`
+     * calls a strictly-typed private helper with a bad argument, so `getTrace()[0]['file']`
+     * genuinely lands inside the tool's own (anonymous class) file, never `Toolbox`'s.
      */
     public function testRethrowsAToolExecutionExceptionWrappingATypeErrorNotFromArgumentDispatch(): void
     {
-        $toolCall = new ToolCall('call-1', 'search_products', ['options' => 'Blue']);
-        $toolbox = $this->toolboxWrapping(
-            $toolCall,
-            new \TypeError(
-                'SomeCollaborator::helper(): Argument #1 ($n) must be of type int, string given, '
-                . 'called in /app/src/Core/Tool/SearchProductsTool.php on line 42',
-            ),
-            new TraceRecorder(),
-        );
+        $tool = new
+            #[AsTool(name: 'body_failure', description: 'test fixture')]
+            class {
+                public function __invoke(string $x): array
+                {
+                    // The bad value arrives typed as `mixed`, which is what a
+                    // model-supplied value genuinely is at this point in production.
+                    // A `'not-an-int'` literal here would be a violation the analyzer
+                    // can prove statically — and `mago analyze` does, as an error —
+                    // so it would have to be either suppressed or written this way.
+                    // This way is also the more faithful of the two.
+                    $this->needsInt(json_decode('"not-an-int"', true));
+
+                    return [];
+                }
+
+                private function needsInt(int $n): int
+                {
+                    return $n;
+                }
+            };
+        $toolbox = new BoundedToolbox(new Toolbox([$tool]), 5, new TraceRecorder());
 
         $this->expectException(ToolExecutionException::class);
 
-        $toolbox->execute($toolCall);
+        $toolbox->execute(new ToolCall('call-1', 'body_failure', ['x' => 'hi']));
+    }
+
+    /**
+     * The empirical edge case the coordinator asked to be recorded, not just fixed: a bad
+     * return type (declared `: array`, actually returns a string) lands on the SAME side
+     * as an argument-dispatch mismatch, because PHP raises both from the same call
+     * boundary — `getTrace()[0]['file']` for a bad return type is also `Toolbox`'s own
+     * file, the frame that invoked the method whose contract it violated on the way out.
+     * That is the correct answer here, not a gap: unlike an argument shape (which only
+     * exists at runtime because the model supplies it), a bad return type is deterministic
+     * given the tool's own code, so `composer run quality`'s `mago analyze` step already
+     * rejects it statically — this branch could only ever be reached if the quality gate
+     * itself had already failed, which makes swallowing it behind a note an acceptable,
+     * low-stakes side effect of a check whose real job is the argument-shape/body-bug
+     * distinction proven by the two tests above.
+     */
+    public function testUnwrapsATypeErrorFromABadReturnTypeTheSameWayAsArgumentDispatch(): void
+    {
+        $trace = new TraceRecorder();
+        $tool = new
+            #[AsTool(name: 'bad_return', description: 'test fixture')]
+            class {
+                public function __invoke(string $x): array
+                {
+                    // Returned as `mixed` for the same reason as the test above: a
+                    // `'not-an-array'` literal is an error `mago analyze` proves
+                    // statically. That the gate catches the literal is precisely the
+                    // argument this test's docblock makes about production code — so
+                    // reaching this branch at all requires hiding the violation from
+                    // the analyzer, which is what this does.
+                    return json_decode('"not-an-array"', true);
+                }
+            };
+        $toolbox = new BoundedToolbox(new Toolbox([$tool]), 5, $trace);
+
+        $result = $toolbox->execute(new ToolCall('call-1', 'bad_return', ['x' => 'hi']));
+
+        $payload = $result->getResult();
+        self::assertIsArray($payload);
+        self::assertArrayHasKey('note', $payload);
+        $note = $payload['note'];
+        self::assertIsString($note);
+        self::assertStringContainsString('Return value must be of type array', $note);
+
+        $rejectedEvents = array_values(array_filter(
+            $trace->events(),
+            static fn($event): bool => 'tool.arguments.rejected' === $event->stage,
+        ));
+        self::assertCount(1, $rejectedEvents);
+        self::assertSame('bad_return', $rejectedEvents[0]->payload['name'] ?? null);
     }
 
     /**
