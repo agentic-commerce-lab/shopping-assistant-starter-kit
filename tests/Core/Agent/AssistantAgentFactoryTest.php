@@ -56,9 +56,17 @@ final class AssistantAgentFactoryTest extends TestCase
             'quantity' => 1,
         ]));
 
+        // 'tool.call' now fires twice per call: once from BoundedToolbox at dispatch
+        // (a 'stage' => 'dispatch' marker, no policy verdict) and once from
+        // AddToCartTool itself with the policy verdict this test actually cares
+        // about — filter to the latter by the key only AddToCartTool's own event
+        // carries.
         $toolCallEvents = array_values(array_filter(
             $bundle->trace->events(),
-            static fn(TraceEvent $event): bool => 'tool.call' === $event->stage,
+            static fn(TraceEvent $event): bool => (
+                'tool.call' === $event->stage
+                && \array_key_exists('policyReasonCode', $event->payload)
+            ),
         ));
 
         self::assertCount(2, $toolCallEvents);

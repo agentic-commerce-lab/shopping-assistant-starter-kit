@@ -86,10 +86,14 @@ final class AssistantAgentFactory
         // An unavailable tool is never constructed, so the model never sees it in the
         // toolbox's schema — that is what keeps capability control out of the prompt.
         if ($config->enableAddToCart && $cartAvailable) {
-            $tools[] = new AddToCartTool($gateway, $trace, $config);
+            $tools[] = new AddToCartTool($gateway, $blocklist, $trace, $config);
         }
 
-        $toolbox = new Toolbox($tools);
+        // AgentProcessor's own maxToolCalls argument is provably inert — see
+        // BoundedToolbox's docblock — so it is not what enforces the bound. It is
+        // still passed through for whatever single-round protection it happens to
+        // offer; BoundedToolbox is the real, request-wide counter.
+        $toolbox = new BoundedToolbox(new Toolbox($tools), $config->maxToolCallsPerTurn, $trace);
 
         $toolProcessor = new AgentProcessor($toolbox, maxToolCalls: $config->maxToolCallsPerTurn);
 
