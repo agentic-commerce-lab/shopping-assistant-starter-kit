@@ -33,7 +33,7 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'exactly (for example "Colour", not "colour") — a group name that does not '
     . 'match a group this catalogue actually has is dropped rather than guessed at. '
     . 'Returns product ids only — the shop renders names, prices, stock and links. '
-    . 'Never state a figure yourself; refer to products by id.',
+    . 'Never state a figure yourself.',
 )]
 final class SearchProductsTool
 {
