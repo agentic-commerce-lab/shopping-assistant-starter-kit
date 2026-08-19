@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
+use Swag\AssistantStarterKit\Core\Retrieval\Filter\VariantSelectionFilterResolver;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
@@ -48,7 +50,9 @@ final class GetProductTool
      * @param ?array<int, array{option: string, group?: string}> $options Option
      *     selections to resolve a specific variant, e.g. [{"option": "Blue"},
      *     {"option": "M", "group": "Size"}]. Use this catalogue's own spelling for
-     *     "group" exactly — it is matched case-sensitively.
+     *     "group" exactly — it is matched case-sensitively. The "option" value is
+     *     NOT matched case-sensitively: it is canonicalised against this catalogue's
+     *     own facet values before resolution, so "blue" and "Blue" behave the same.
      *
      * @return array{productIds: list<string>, total: int, note?: string}
      */
@@ -56,6 +60,25 @@ final class GetProductTool
     {
         $productId = Guard::boundedString($productId, 64, 'product_id') ?? '';
         $selections = VariantSelectionGuard::fromRaw($options, 'options');
+
+        // Canonicalise the option VALUE against the catalog's own spelling before
+        // either resolution path below, both of which match case-sensitively
+        // (FixtureVariantMatcher::matches()) — see Finding R46. Mirrors
+        // QueryBuilder::build()'s use of the same resolver for SearchProductsTool
+        // (Finding I1); this tool has no QueryBuildResult to carry a
+        // canonicalSelections list, so it calls the resolver directly here, against
+        // facets fetched straight from the gateway rather than through FacetProbe —
+        // a single-product lookup does not warrant FacetProbe's per-scope cache.
+        if ($selections !== []) {
+            $facets = $this->gateway->facets($this->config->scope);
+            $selections = array_map(
+                static fn(VariantSelection $selection): VariantSelection => VariantSelectionFilterResolver::resolve(
+                    $selection,
+                    $facets,
+                )->canonical,
+                $selections,
+            );
+        }
 
         $card = $this->gateway->product($productId, $this->config->scope);
 
