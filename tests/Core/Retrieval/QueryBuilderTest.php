@@ -59,4 +59,18 @@ final class QueryBuilderTest extends TestCase
         self::assertSame('Blue', $filter->value);
         self::assertSame([], $result->droppedFields);
     }
+
+    public function testUsesTheCatalogsCanonicalSpellingWhenTheModelsCasingDiffers(): void
+    {
+        $result = (new QueryBuilder())->build(new ShopperIntent(term: 'jersey', selections: [new VariantSelection(
+            'BLUE',
+        )]), $this->facets());
+
+        self::assertCount(1, $result->query->filters);
+        $filter = $result->query->filters[0] ?? null;
+        self::assertNotNull($filter);
+        self::assertSame('properties.Colour', $filter->field);
+        self::assertSame('Blue', $filter->value);
+        self::assertSame([], $result->droppedFields);
+    }
 }

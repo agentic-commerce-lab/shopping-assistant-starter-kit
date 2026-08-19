@@ -12,11 +12,18 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
 /**
  * Resolves one {@see VariantSelection} into a filter.
  *
- * A selection with an explicit `group` targets `properties.{group}` directly.
+ * A selection with an explicit `group` targets `properties.{group}` directly; the
+ * group name is assumed exact (the model typically echoes it back from a facet
+ * listing it was already shown), mirroring the exact-field construction used for
+ * `price` and `brand` elsewhere in this package — see {@see TermsFacetFinder} for
+ * why the group-less path cannot make the same assumption.
+ *
  * A group-less selection (the model knows "blue" but not that it belongs to
  * "Colour") is matched against the first {@see \Swag\AssistantStarterKit\Core\Commerce\Dto\Facet}
  * of type Terms whose values hold that option, case-insensitively — resolution
- * is delegated to {@see TermsFacetFinder}.
+ * is delegated to {@see TermsFacetFinder}, which also reports the catalog's own
+ * spelling of the option, so the emitted filter's value comes from the catalog
+ * rather than the model's raw casing.
  */
 final class VariantSelectionFilterResolver
 {
@@ -41,11 +48,11 @@ final class VariantSelectionFilterResolver
 
     private static function resolveGroupless(VariantSelection $selection, FacetSet $facets): FilterResolution
     {
-        $facet = TermsFacetFinder::findContaining($facets, $selection->option);
-        if ($facet === null) {
+        $match = TermsFacetFinder::findContaining($facets, $selection->option);
+        if ($match === null) {
             return FilterResolution::dropped(\sprintf('properties.%s', $selection->option));
         }
 
-        return FilterResolution::applied(new FilterClause($facet->field, FilterOperator::Equals, $selection->option));
+        return FilterResolution::applied(new FilterClause($match->field, FilterOperator::Equals, $match->value));
     }
 }
