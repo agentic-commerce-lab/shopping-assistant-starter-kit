@@ -36,4 +36,30 @@ final class SystemPromptTest extends TestCase
     {
         self::assertStringNotContainsString('style only', SystemPrompt::build(new AssistantConfig()));
     }
+
+    public function testAnEmptyVocabularyAppendsNothing(): void
+    {
+        $config = new AssistantConfig();
+
+        self::assertSame(SystemPrompt::build($config), SystemPrompt::build($config, ''));
+    }
+
+    public function testNonEmptyVocabularyAppearsAfterTheRulesAndBeforeTheAgentVoice(): void
+    {
+        $prompt = SystemPrompt::build(
+            new AssistantConfig(agentVoice: 'Be terse. Metric units.'),
+            'Words this shop uses. Size: M, L.',
+        );
+
+        $rulesEnd = strpos($prompt, 'Answer in English.');
+        $vocabularyStart = strpos($prompt, 'Words this shop uses. Size: M, L.');
+        $voiceStart = strpos($prompt, 'Be terse. Metric units.');
+
+        self::assertIsInt($rulesEnd);
+        self::assertIsInt($vocabularyStart);
+        self::assertIsInt($voiceStart);
+
+        self::assertGreaterThan($rulesEnd, $vocabularyStart);
+        self::assertGreaterThan($vocabularyStart, $voiceStart);
+    }
 }
