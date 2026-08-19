@@ -103,3 +103,33 @@ would break us. Two consequences:
   regression against the hand-written design and must not be skipped.
 - Tools must return ids, never `ProductCard`s — anything returned is serialised into the model
   context.
+
+## Addendum, 2026-08-19 — what the first live runs cost us at 0.12
+
+The "cost we are accepting" section above was written from the changelog. Two live runs against
+a real model turned it into measured evidence. Both findings are the same shape: **a 0.12
+default that looks like a safety feature and is not one, discovered only by running it.**
+
+| What 0.12 appears to give us | What it actually does | What we had to build |
+|---|---|---|
+| `AgentProcessor(maxToolCalls: n)` — a bound on tool calls per turn | The round counter is a local inside the method that recurses once per tool round, so every recursion resets it to zero. The cap is unreachable at any depth. A live run made 21 HTTP calls at a configured cap of 3 | `Agent\BoundedToolbox`, counting in a property that survives recursion |
+| `Toolbox::execute()` — tool dispatch with error handling | Its `catch (\Throwable)` wraps *everything* into `ToolExecutionException`, argument-coercion failures and genuine tool faults alike, then rethrows. A model sending `options: "Blue"` for a list-of-objects parameter therefore destroys the turn — a 500 for a shopper | The same decorator, inspecting `$previous` to separate bad model input (→ retryable `['note' => …]`) from a real fault (→ rethrow) |
+
+Neither was visible from the changelog, from the README, or from any test that used a scripted
+transcript. Both required a real model and a real endpoint.
+
+A process note worth keeping, because it cost time twice: **both findings were initially
+misdiagnosed from a partial read of the vendor source.** The first plan claimed an API that
+existed only on unreleased trunk; the fix brief for the second claimed `Toolbox::execute()` let
+the serializer exception propagate raw, because the read stopped three lines above the
+`catch (\Throwable)` that wraps it. The rule from this ADR's original draft — *no Symfony AI
+API enters a plan unless it was read from the installed `vendor/`* — holds, with an amendment:
+**read the whole method, not the part that confirms the hypothesis.**
+
+None of this changes the decision. Writing the tool-calling loop ourselves would have cost more
+than these two decorators, and the seams the ADR bet on (`InputProcessorInterface`,
+`OutputProcessorInterface`, `ToolboxInterface`) were exactly the seams that let us fix both
+defects without forking. But it sharpens the revisit trigger: the framework's defaults are not
+yet load-bearing at 0.x, so **every safety-relevant framework default this project relies on
+must be verified by an integration test that would fail if the default silently stopped
+working** — not by reading that the option exists.
