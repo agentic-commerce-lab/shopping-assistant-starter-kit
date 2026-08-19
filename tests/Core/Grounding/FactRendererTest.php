@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Core\Grounding;
 
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -76,6 +78,68 @@ final class FactRendererTest extends TestCase
         $renderer->render(['fx-017']);
 
         self::assertSame([], $renderer->unbackedPricesInProse('The cage costs €12.90.'));
+    }
+
+    public function testRegisteringTheSameIdTwiceOverwritesTheEarlierCard(): void
+    {
+        $renderer = new FactRenderer(new TraceRecorder());
+
+        $parent = new ProductCard(
+            id: 'fx-X',
+            parentId: null,
+            name: 'Parent Aggregate',
+            description: null,
+            price: 10.0,
+            currency: 'EUR',
+            stock: 99,
+            stockSource: StockSource::Parent,
+            deliveryTime: null,
+            url: '/x-parent',
+            imageUrl: null,
+        );
+        $resolvedVariant = new ProductCard(
+            id: 'fx-X',
+            parentId: 'fx-X-parent',
+            name: 'Resolved Variant',
+            description: null,
+            price: 12.0,
+            currency: 'EUR',
+            stock: 3,
+            stockSource: StockSource::Variant,
+            deliveryTime: null,
+            url: '/x-variant',
+            imageUrl: null,
+        );
+
+        // Two separate registerRetrieved() calls, as happens when a search result is
+        // registered first and a later variant resolution supersedes it.
+        $renderer->registerRetrieved([$parent]);
+        $renderer->registerRetrieved([$resolvedVariant]);
+
+        $cards = $renderer->render(['fx-X']);
+
+        self::assertCount(1, $cards);
+        $card = $cards[0] ?? null;
+        self::assertNotNull($card);
+        self::assertSame($resolvedVariant, $card);
+        self::assertSame(3, $card->stock);
+        self::assertSame(StockSource::Variant, $card->stockSource);
+    }
+
+    public function testAcceptsWholeEuroFigureInProseThatExactlyMatchesARenderedPrice(): void
+    {
+        $renderer = new FactRenderer(new TraceRecorder());
+
+        // fx-004-black is priced at a whole 24.00 euros with no cents; the brief's regex
+        // extracts a figure like "€24" as "24", which must not be flagged as unbacked just
+        // because "24" never string-equals a card price formatted to two decimals ("24.00").
+        $variant = $this->gateway()->product('fx-004-black');
+        self::assertNotNull($variant);
+        self::assertSame(24.0, $variant->price);
+        $renderer->registerRetrieved([$variant]);
+        $renderer->render(['fx-004-black']);
+
+        self::assertSame([], $renderer->unbackedPricesInProse('The price is €24 today.'));
     }
 
     public function testRenderedCardsExposesTheLastRenderResult(): void

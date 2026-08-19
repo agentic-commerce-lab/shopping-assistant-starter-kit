@@ -128,24 +128,43 @@ final class FactRenderer
      */
     public function unbackedPricesInProse(string $prose): array
     {
-        $renderedPrices = [];
+        // Compare numerically, in integer cents rather than as formatted strings or raw
+        // floats: the brief's regex accepts a whole-euro figure like "24" with no decimals,
+        // which would never string-match a card price formatted to two decimals ("24.00"),
+        // producing a false positive on a model reply that got the price exactly right.
+        // Cents avoid both that mismatch and float rounding error; PHP would also silently
+        // truncate a float used directly as an array key, so cents are cast to int instead.
+        $renderedPriceCents = [];
         foreach ($this->renderedCards as $card) {
-            $renderedPrices[\sprintf('%.2f', $card->price)] = true;
+            $renderedPriceCents[self::toCents($card->price)] = true;
         }
 
         $figures = $this->currencyFigureExtractor->extract($prose);
 
-        $unbacked = array_values(array_filter(
-            $figures,
-            static fn(string $figure): bool => !\array_key_exists($figure, $renderedPrices),
-        ));
+        $unbacked = array_values(array_filter($figures, static function (string $figure) use (
+            $renderedPriceCents,
+        ): bool {
+            if (!\is_numeric($figure)) {
+                // The extractor's regex only ever emits digits and a dot, so this
+                // never triggers in practice; it exists purely to give the analyzer
+                // a numeric-string narrowing before the cast below.
+                return true;
+            }
+
+            return !\array_key_exists(self::toCents((float) $figure), $renderedPriceCents);
+        }));
 
         $this->unbackedPrices = $unbacked;
 
         if ($unbacked !== []) {
-            $this->trace->record('render', ['modelClaimsDiscarded' => $unbacked]);
+            $this->trace->record('claims.audit', ['modelClaimsDiscarded' => $unbacked]);
         }
 
         return $unbacked;
+    }
+
+    private static function toCents(float $amount): int
+    {
+        return (int) round($amount * 100);
     }
 }
