@@ -13,14 +13,32 @@ use Symfony\AI\Platform\Result\TextResult;
 /**
  * The seam where {@see FactRenderer} meets the framework's result type.
  *
- * Candidate ids come from two sources, deliberately overlapping: every id this
- * turn has already retrieved (via {@see FactRenderer::retrievedIds()}) that
- * the model's prose happens to mention, plus every token in the prose that
- * merely *looks* like a product id (`fx-...`, or a 32-char hex id). The second
- * source is what catches an id the model invented outright — one that was
- * never retrieved, so the first source would never surface it — and hands it
- * to {@see FactRenderer::validate()} to be recorded as invented rather than
- * silently ignored.
+ * The card set to render is NOT selected by scraping the model's prose for
+ * ids — a natural reply like "The Alloy Bottle Cage costs €12.90" names no id
+ * at all, and instructing the model to speak in ids instead of plain language
+ * is bad UX that models do not reliably follow anyway. Prose scraping stays,
+ * but only for two narrower jobs: (a) invention detection — a candidate id
+ * that does not appear in the turn's retrieval is recorded via {@see
+ * FactRenderer::validate()} as invented rather than silently ignored, whether
+ * hallucinated or planted by a prompt injection; and (b) an optional
+ * narrowing — if the model *does* happen to name a valid retrieved id (from
+ * this batch or an earlier one this turn), that id alone is rendered instead
+ * of the default.
+ *
+ * The card set's default source is {@see FactRenderer::lastRetrievedBatch()}:
+ * whatever the most recent tool call actually returned. This is used whenever
+ * prose scraping accepts no id — either because the prose named none, or
+ * because everything it named was invented — so an invented id is never
+ * rendered and an honest "no results" tool response renders nothing rather
+ * than falling back to some earlier batch.
+ *
+ * Candidate ids for the invention/narrowing check come from two sources,
+ * deliberately overlapping: every id this turn has already retrieved (via
+ * {@see FactRenderer::retrievedIds()}) that the model's prose happens to
+ * mention, plus every token in the prose that merely *looks* like a product
+ * id (`fx-...`, or a 32-char hex id). The second source is what catches an id
+ * the model invented outright — one that was never retrieved, so the first
+ * source would never surface it.
  *
  * Never calls {@see Output::setResult()}: the rendered cards live on the
  * request-scoped {@see FactRenderer}, which {@see AssistantRunner} reads
@@ -56,7 +74,15 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         $text = $result->getContent();
 
         $validation = $this->renderer->validate($this->extractCandidateIds($text));
-        $this->renderer->render($validation->accepted);
+        $fromProse = $validation->accepted !== [];
+        $toRender = $fromProse ? $validation->accepted : $this->renderer->lastRetrievedBatch();
+
+        $this->trace->record('grounding.select', [
+            'source' => $fromProse ? 'prose' : 'last_tool_batch',
+            'selectedIds' => $toRender,
+        ]);
+
+        $this->renderer->render($toRender);
         $this->renderer->unbackedPricesInProse($text);
     }
 
