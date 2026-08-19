@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory\Bundle;
-use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
+use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
@@ -39,26 +39,27 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * is simply never constructed, and therefore never appears in the
  * {@see Toolbox} the model sees, when `enableAddToCart` is off or no shopper
  * cart exists.
+ *
+ * Ruling R34: the gateway is a required parameter, not a path this factory
+ * resolves itself. A production `src/` default that pointed at a fixture
+ * under `tests/` (this class's first shape) is at best dead and at worst
+ * surprising once this factory ships into a real Shopware installation. The
+ * caller already knows its own catalog source: Plan 1's tests build a
+ * {@see \Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway} from
+ * a fixture file and pass it in; Plan 2's caller builds a DAL-backed gateway
+ * and passes that instead. This factory does not need to know how a gateway
+ * comes to exist, only that exactly one instance backs the whole request
+ * (Ruling R32).
  */
 final class AssistantAgentFactory
 {
-    /**
-     * Plan 1 ships no Shopware DAL yet, so this points at the same fixture
-     * catalog every other task's tests already use. Plan 2's DAL-backed
-     * gateway removes this default entirely — see the class docblock and the
-     * task report for why a production `src/` default currently points at a
-     * fixture under `tests/`.
-     */
-    private const DEFAULT_CATALOG_PATH = __DIR__ . '/../../../tests/Fixtures/catalog.json';
-
     public static function create(
+        CommerceGatewayInterface $gateway,
         AssistantConfig $config,
         bool $cartAvailable,
         LlmSettings $llm,
         ?HttpClientInterface $http = null,
-        string $catalogPath = self::DEFAULT_CATALOG_PATH,
     ): Bundle {
-        $gateway = FixtureCommerceGateway::fromFile($catalogPath);
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
 
@@ -92,10 +93,12 @@ final class AssistantAgentFactory
 
         $toolProcessor = new AgentProcessor($toolbox, maxToolCalls: $config->maxToolCallsPerTurn);
 
-        // Order is load-bearing per the task brief: AgentProcessor drives the tool loop, so
-        // GroundingOutputProcessor must come after it here. See GroundingOutputProcessorOrderTest
-        // and the task report for what was actually verified about the installed 0.12
-        // AgentProcessor's behaviour when this order is swapped.
+        // AgentProcessor drives the tool loop, so GroundingOutputProcessor is kept after it
+        // here — this is the order that would be load-bearing if AgentProcessor stopped
+        // recursively re-invoking Agent::call() per tool round. Per Ruling R33, the installed
+        // 0.12 AgentProcessor already resolves every tool call before any processor ever sees
+        // a real TextResult, in either order — see OutputProcessorOrderTest, which is kept as
+        // the regression check for that finding, not as proof this order is currently required.
         $agent = new Agent(
             PlatformFactory::create($llm, $http),
             $llm->model,

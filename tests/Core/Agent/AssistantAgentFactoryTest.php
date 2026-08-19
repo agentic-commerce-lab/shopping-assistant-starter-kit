@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
+use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Trace\TraceEvent;
@@ -26,6 +27,7 @@ final class AssistantAgentFactoryTest extends TestCase
     private function bundle(AssistantConfig $config, bool $cartAvailable = true): AssistantAgentFactory\Bundle
     {
         return AssistantAgentFactory::create(
+            FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json'),
             $config,
             $cartAvailable,
             new LlmSettings('https://example.invalid', 'test-key', 'gpt-x'),
