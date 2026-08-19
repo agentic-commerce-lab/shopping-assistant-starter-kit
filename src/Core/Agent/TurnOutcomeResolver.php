@@ -18,9 +18,27 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * responsibility; mago's cyclomatic-complexity check flagged the combined
  * class. Tool-call counting is a separate, unrelated concern, split further
  * into {@see TurnRetrievalAndToolCallCounter} for the same reason.
+ *
+ * This is also where the full outcome vocabulary lives, even the values
+ * {@see self::outcome()} itself never returns. `error` (the pre-flight guard
+ * blocked before any spend) is decided in {@see AssistantRunner} before this
+ * class is ever consulted, and {@see self::TOOL_LIMIT_EXCEEDED} likewise: it
+ * is set by `AssistantRunner` directly when {@see \Swag\AssistantStarterKit\Core\Agent\BoundedToolbox}'s
+ * tool-call cap cuts a turn short before the model ever produced a final
+ * reply, because at that point there is no trace shape for `self::outcome()`
+ * to read a *normal* end from — the turn didn't have one.
  */
 final class TurnOutcomeResolver
 {
+    /**
+     * A turn cut short by the tool-call cap: real cards may still have been
+     * retrieved and are returned on the {@see \Swag\AssistantStarterKit\Core\Agent\AssistantTurn},
+     * but the model never produced a final reply. Distinct from `error` (the
+     * guard blocked before the platform was ever touched) so a trace can tell
+     * "never tried" apart from "tried and ran out of budget".
+     */
+    public const TOOL_LIMIT_EXCEEDED = 'tool_limit_exceeded';
+
     /**
      * @param list<ProductCard> $cards
      */
