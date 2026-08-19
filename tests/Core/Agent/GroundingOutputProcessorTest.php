@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\GroundingOutputProcessor;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
@@ -30,7 +31,7 @@ final class GroundingOutputProcessorTest extends TestCase
         $renderer = new FactRenderer($trace);
 
         foreach ($registerIds as $id) {
-            $product = $gateway->product($id);
+            $product = $gateway->product($id, new CatalogScope());
             self::assertNotNull($product);
             $renderer->registerRetrieved([$product]);
         }

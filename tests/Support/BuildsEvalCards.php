@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Support;
 
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
@@ -28,7 +29,7 @@ trait BuildsEvalCards
     private function turnWithCard(string $productId, string $prose = 'Here is what I found.'): AssistantTurn
     {
         $gateway = FixtureCommerceGateway::fromFile(self::catalogFixturePath());
-        $card = $gateway->product($productId);
+        $card = $gateway->product($productId, new CatalogScope());
 
         if (null === $card) {
             throw new \RuntimeException(\sprintf('Fixture catalog has no product "%s".', $productId));
@@ -46,7 +47,7 @@ trait BuildsEvalCards
     private function turnWithParentStock(): AssistantTurn
     {
         $gateway = FixtureCommerceGateway::fromFile(self::catalogFixturePath());
-        $variant = $gateway->product('fx-026-blue-m');
+        $variant = $gateway->product('fx-026-blue-m', new CatalogScope());
 
         if (null === $variant) {
             throw new \RuntimeException('Fixture catalog has no product "fx-026-blue-m".');

@@ -57,7 +57,7 @@ final class GetProductTool
         $productId = Guard::boundedString($productId, 64, 'product_id') ?? '';
         $selections = VariantSelectionGuard::fromRaw($options, 'options');
 
-        $card = $this->gateway->product($productId);
+        $card = $this->gateway->product($productId, $this->config->scope);
 
         // A product that carries variants is never itself an indexed sellable unit —
         // only its variants are — so its own id only resolves once selections narrow
@@ -65,7 +65,7 @@ final class GetProductTool
         // given id as the parent id, still going through VariantResolver below for the
         // authoritative match, its de-duplication and its trace event.
         if ($card === null && $selections !== []) {
-            $card = $this->gateway->resolveVariant($productId, $selections);
+            $card = $this->gateway->resolveVariant($productId, $selections, $this->config->scope);
         }
 
         if ($card === null) {
@@ -80,7 +80,7 @@ final class GetProductTool
 
         $this->trace->record('retrieve', ['hits' => 1, 'retainedIds' => [$card->id]]);
 
-        $cards = $this->variantResolver->resolve([$card], $selections);
+        $cards = $this->variantResolver->resolve([$card], $selections, $this->config->scope);
 
         $filtered = $this->blocklist->apply($cards, $this->config->scope);
         $this->trace->record('blocklist.filter', [

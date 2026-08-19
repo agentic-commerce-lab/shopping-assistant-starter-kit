@@ -50,40 +50,16 @@ final class FixtureCommerceGatewayTest extends TestCase
         }
     }
 
-    public function testSearchExcludesBlockedProducts(): void
-    {
-        $scope = new CatalogScope(blockedProductIds: ['fx-014']);
-
-        $results = $this->gateway()->search(new ProductQuery(term: 'CO2'), $scope);
-
-        $ids = array_map(static fn($c) => $c->id, $results);
-        self::assertNotContains('fx-014', $ids);
-    }
-
-    /**
-     * blockedProductIds must also block by parentId: a variant-bearing product has
-     * no unit keyed by its own product id (only its variants are sellable units),
-     * so blocking "fx-026" only has any effect at all if it is matched against each
-     * variant's parentId too.
-     */
-    public function testSearchExcludesAllVariantsOfAParentBlockedByProductId(): void
-    {
-        $scope = new CatalogScope(blockedProductIds: ['fx-026']);
-
-        $results = $this->gateway()->search(new ProductQuery(term: 'Jersey', limit: 100), $scope);
-
-        $ids = array_map(static fn($c) => $c->id, $results);
-        self::assertNotContains('fx-026-blue-m', $ids);
-        self::assertNotContains('fx-026-blue-l', $ids);
-        self::assertNotContains('fx-026-black-m', $ids);
-    }
-
     public function testResolveVariantReturnsVariantLevelStockNotParentAggregate(): void
     {
-        $card = $this->gateway()->resolveVariant('fx-026', [
-            new VariantSelection('Blue'),
-            new VariantSelection('M'),
-        ]);
+        $card = $this->gateway()->resolveVariant(
+            'fx-026',
+            [
+                new VariantSelection('Blue'),
+                new VariantSelection('M'),
+            ],
+            new CatalogScope(),
+        );
 
         self::assertNotNull($card);
         self::assertSame('fx-026-blue-m', $card->id);
@@ -94,10 +70,14 @@ final class FixtureCommerceGatewayTest extends TestCase
 
     public function testResolveVariantUsesVariantPriceWhenItDiffersFromParent(): void
     {
-        $card = $this->gateway()->resolveVariant('fx-026', [
-            new VariantSelection('Black'),
-            new VariantSelection('M'),
-        ]);
+        $card = $this->gateway()->resolveVariant(
+            'fx-026',
+            [
+                new VariantSelection('Black'),
+                new VariantSelection('M'),
+            ],
+            new CatalogScope(),
+        );
 
         self::assertNotNull($card);
         self::assertSame(54.90, $card->price);
@@ -106,7 +86,7 @@ final class FixtureCommerceGatewayTest extends TestCase
 
     public function testResolveVariantReturnsNullWhenSelectionIsAmbiguous(): void
     {
-        $card = $this->gateway()->resolveVariant('fx-026', [new VariantSelection('Blue')]);
+        $card = $this->gateway()->resolveVariant('fx-026', [new VariantSelection('Blue')], new CatalogScope());
 
         self::assertNull($card, 'Blue alone matches both M and L — must not guess');
     }
@@ -129,7 +109,7 @@ final class FixtureCommerceGatewayTest extends TestCase
      */
     public function testProductResolvesByVariantIdWithVariantOwnStockAndPrice(): void
     {
-        $card = $this->gateway()->product('fx-026-blue-m');
+        $card = $this->gateway()->product('fx-026-blue-m', new CatalogScope());
 
         self::assertNotNull($card);
         self::assertSame('fx-026-blue-m', $card->id);

@@ -43,10 +43,14 @@ final class VariantResolverTest extends TestCase
         $cards = $this->trailJerseySearchResults($gateway);
         self::assertCount(3, $cards, 'sanity check: the search must hand over all three sellable units of the family');
 
-        $resolved = (new VariantResolver($gateway, $trace))->resolve($cards, [
-            new VariantSelection('Blue'),
-            new VariantSelection('M'),
-        ]);
+        $resolved = (new VariantResolver($gateway, $trace))->resolve(
+            $cards,
+            [
+                new VariantSelection('Blue'),
+                new VariantSelection('M'),
+            ],
+            new CatalogScope(),
+        );
 
         // De-duplication assertion (Ruling R23): all three input cards share
         // parentId 'fx-026', so resolving the same selections against each of
@@ -70,7 +74,11 @@ final class VariantResolverTest extends TestCase
 
         $cards = $this->trailJerseySearchResults($gateway);
 
-        $resolved = (new VariantResolver($gateway, $trace))->resolve($cards, [new VariantSelection('Blue')]);
+        $resolved = (new VariantResolver($gateway, $trace))->resolve(
+            $cards,
+            [new VariantSelection('Blue')],
+            new CatalogScope(),
+        );
 
         self::assertCount(
             3,
@@ -95,10 +103,14 @@ final class VariantResolverTest extends TestCase
 
         $cards = $this->trailJerseySearchResults($gateway);
 
-        (new VariantResolver($gateway, $trace))->resolve($cards, [
-            new VariantSelection('Black'),
-            new VariantSelection('M'),
-        ]);
+        (new VariantResolver($gateway, $trace))->resolve(
+            $cards,
+            [
+                new VariantSelection('Black'),
+                new VariantSelection('M'),
+            ],
+            new CatalogScope(),
+        );
 
         $payload = $trace->payload('variant.resolve');
         self::assertNotNull($payload);
@@ -118,10 +130,14 @@ final class VariantResolverTest extends TestCase
         $gateway = $this->gateway();
         $trace = new TraceRecorder();
 
-        $simple = $gateway->product('fx-017');
+        $simple = $gateway->product('fx-017', new CatalogScope());
         self::assertNotNull($simple);
 
-        $resolved = (new VariantResolver($gateway, $trace))->resolve([$simple], [new VariantSelection('Blue')]);
+        $resolved = (new VariantResolver($gateway, $trace))->resolve(
+            [$simple],
+            [new VariantSelection('Blue')],
+            new CatalogScope(),
+        );
 
         $card = $resolved[0];
         self::assertNotNull($card);

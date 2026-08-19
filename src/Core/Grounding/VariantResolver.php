@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -46,7 +47,7 @@ final class VariantResolver
      *
      * @return list<ProductCard>
      */
-    public function resolve(array $cards, array $selections): array
+    public function resolve(array $cards, array $selections, CatalogScope $scope): array
     {
         if ($selections === []) {
             return $cards;
@@ -58,7 +59,7 @@ final class VariantResolver
 
         foreach ($cards as $card) {
             $parentId = $card->parentId ?? $card->id;
-            $variant = $this->gateway->resolveVariant($parentId, $selections);
+            $variant = $this->gateway->resolveVariant($parentId, $selections, $scope);
 
             $attempts[] = [
                 'parentId' => $parentId,

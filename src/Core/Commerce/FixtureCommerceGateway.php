@@ -10,11 +10,11 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureFacetBuilder;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureIndex;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQueryFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureScopeFilter;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureVariantMatcher;
 
 /**
  * In-memory {@see CommerceGatewayInterface} backed by a static JSON fixture.
@@ -71,40 +71,36 @@ final class FixtureCommerceGateway implements CommerceGatewayInterface
         return FixtureQueryFilter::apply($units, $query);
     }
 
-    public function product(string $productId): ?ProductCard
+    public function product(string $productId, CatalogScope $scope): ?ProductCard
     {
-        return $this->index->unit($productId);
+        $unit = $this->index->unit($productId);
+        if ($unit === null) {
+            return null;
+        }
+
+        // Reuses FixtureScopeFilter::apply() (already exercised by search()/facets())
+        // rather than combining the null-check and the scope check into one inline
+        // boolean expression here — that combined expression is what pushed this
+        // class's aggregate cyclomatic complexity over its threshold.
+        $inScope = FixtureScopeFilter::apply([$unit], $scope);
+
+        return $inScope[0] ?? null;
     }
 
-    public function resolveVariant(string $parentId, array $selections): ?ProductCard
+    public function resolveVariant(string $parentId, array $selections, CatalogScope $scope): ?ProductCard
     {
-        $matches = array_values(array_filter(
-            $this->index->unitsByParent($parentId),
-            static fn(ProductCard $unit): bool => self::matchesAllSelections($unit, $selections),
-        ));
+        // Scope filtering and selection matching as two sequential, single-condition
+        // filters rather than one combined boolean expression — same reasoning as
+        // product() above. Selection matching itself lives in FixtureVariantMatcher,
+        // not here — see that class's docblock.
+        $inScope = FixtureScopeFilter::apply($this->index->unitsByParent($parentId), $scope);
+
+        $matches = array_values(array_filter($inScope, static fn(ProductCard $unit): bool => FixtureVariantMatcher::matchesAll(
+            $unit,
+            $selections,
+        )));
 
         return \count($matches) === 1 ? $matches[0] : null;
-    }
-
-    /** @param list<VariantSelection> $selections */
-    private static function matchesAllSelections(ProductCard $unit, array $selections): bool
-    {
-        foreach ($selections as $selection) {
-            if (!self::matchesSelection($unit, $selection)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static function matchesSelection(ProductCard $unit, VariantSelection $selection): bool
-    {
-        if ($selection->group !== null) {
-            return ($unit->options[$selection->group] ?? null) === $selection->option;
-        }
-
-        return \in_array($selection->option, $unit->options, strict: true);
     }
 
     public function addToCart(string $variantId, int $quantity): CartSummary

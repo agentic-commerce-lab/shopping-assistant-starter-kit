@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Core\Grounding;
 
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
@@ -23,7 +24,7 @@ final class FactRendererTest extends TestCase
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
 
-        $product = $this->gateway()->product('fx-017');
+        $product = $this->gateway()->product('fx-017', new CatalogScope());
         self::assertNotNull($product);
         $renderer->registerRetrieved([$product]);
 
@@ -41,7 +42,7 @@ final class FactRendererTest extends TestCase
     {
         $renderer = new FactRenderer(new TraceRecorder());
 
-        $variant = $this->gateway()->product('fx-026-blue-m');
+        $variant = $this->gateway()->product('fx-026-blue-m', new CatalogScope());
         self::assertNotNull($variant);
         $renderer->registerRetrieved([$variant]);
 
@@ -58,7 +59,7 @@ final class FactRendererTest extends TestCase
     {
         $renderer = new FactRenderer(new TraceRecorder());
 
-        $product = $this->gateway()->product('fx-017');
+        $product = $this->gateway()->product('fx-017', new CatalogScope());
         self::assertNotNull($product);
         $renderer->registerRetrieved([$product]);
         $renderer->render(['fx-017']);
@@ -72,7 +73,7 @@ final class FactRendererTest extends TestCase
     {
         $renderer = new FactRenderer(new TraceRecorder());
 
-        $product = $this->gateway()->product('fx-017');
+        $product = $this->gateway()->product('fx-017', new CatalogScope());
         self::assertNotNull($product);
         $renderer->registerRetrieved([$product]);
         $renderer->render(['fx-017']);
@@ -133,7 +134,7 @@ final class FactRendererTest extends TestCase
         // fx-004-black is priced at a whole 24.00 euros with no cents; the brief's regex
         // extracts a figure like "€24" as "24", which must not be flagged as unbacked just
         // because "24" never string-equals a card price formatted to two decimals ("24.00").
-        $variant = $this->gateway()->product('fx-004-black');
+        $variant = $this->gateway()->product('fx-004-black', new CatalogScope());
         self::assertNotNull($variant);
         self::assertSame(24.0, $variant->price);
         $renderer->registerRetrieved([$variant]);
@@ -146,7 +147,7 @@ final class FactRendererTest extends TestCase
     {
         $renderer = new FactRenderer(new TraceRecorder());
 
-        $product = $this->gateway()->product('fx-017');
+        $product = $this->gateway()->product('fx-017', new CatalogScope());
         self::assertNotNull($product);
         $renderer->registerRetrieved([$product]);
 
@@ -159,7 +160,7 @@ final class FactRendererTest extends TestCase
     {
         $renderer = new FactRenderer(new TraceRecorder());
 
-        $product = $this->gateway()->product('fx-017');
+        $product = $this->gateway()->product('fx-017', new CatalogScope());
         self::assertNotNull($product);
         $renderer->registerRetrieved([$product]);
         $renderer->render(['fx-017']);
@@ -173,8 +174,8 @@ final class FactRendererTest extends TestCase
     {
         $renderer = new FactRenderer(new TraceRecorder());
 
-        $first = $this->gateway()->product('fx-017');
-        $second = $this->gateway()->product('fx-007');
+        $first = $this->gateway()->product('fx-017', new CatalogScope());
+        $second = $this->gateway()->product('fx-007', new CatalogScope());
         self::assertNotNull($first);
         self::assertNotNull($second);
 

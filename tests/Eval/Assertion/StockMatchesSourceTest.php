@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Eval\Assertion;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Swag\AssistantStarterKit\Eval\Assertion\StockMatchesSource;
@@ -49,7 +50,7 @@ final class StockMatchesSourceTest extends TestCase
     public function testPassesWhenTheCardIsTheResolvedVariant(): void
     {
         $gateway = FixtureCommerceGateway::fromFile(self::catalogFixturePath());
-        $variant = $gateway->product('fx-026-blue-m');
+        $variant = $gateway->product('fx-026-blue-m', new CatalogScope());
         self::assertNotNull($variant);
 
         $trace = new TraceRecorder();

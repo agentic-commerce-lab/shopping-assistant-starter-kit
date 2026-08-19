@@ -16,13 +16,19 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * because a variant-bearing product has no unit keyed by the product id
  * itself — only its variants are sellable units. Without matching `parentId`
  * too, blocking a variant-bearing product by its own id would do nothing.
+ *
+ * `isInScope()` is public so {@see \Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway}
+ * can reuse the exact same per-unit check for `product()` and `resolveVariant()`, not
+ * just `search()` — a direct id lookup deserves the same scope guarantee a search gets.
  */
 final class FixtureScopeFilter
 {
     private function __construct() {}
 
     /**
-     * @param array<string, ProductCard> $units
+     * @param array<array-key, ProductCard> $units keyed by unit id (the two `search()`/
+     *     `facets()` call sites) or a plain list (the `product()`/`resolveVariant()`
+     *     call sites) — `array_filter()` below does not care which
      *
      * @return list<ProductCard>
      */
@@ -31,7 +37,7 @@ final class FixtureScopeFilter
         return array_values(array_filter($units, static fn(ProductCard $unit): bool => self::isInScope($unit, $scope)));
     }
 
-    private static function isInScope(ProductCard $unit, CatalogScope $scope): bool
+    public static function isInScope(ProductCard $unit, CatalogScope $scope): bool
     {
         if (
             \in_array($unit->id, $scope->blockedProductIds, strict: true)
