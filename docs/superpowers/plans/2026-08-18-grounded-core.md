@@ -1980,7 +1980,11 @@ Expected: FAIL.
 - `registerRetrieved()` merges cards into an id-keyed map, the turn's authoritative set. Later registrations for the same id overwrite earlier ones (a resolved variant supersedes its parent).
 - `validate()` splits the model's ids into `accepted` (present in the map) and `invented` (absent), and records stage `validate` with `['inventedProductIds' => …, 'droppedCount' => count(invented)]`.
 - `render()` returns the cards from the map, in the order of `$acceptedIds`, and remembers them as the rendered set. Records stage `render` with `['renderedIds' => …, 'fieldsSubstituted' => ['price', 'stock', 'url', 'imageUrl']]`.
-- `unbackedPricesInProse()` extracts monetary figures with `/(?:€|EUR)\s*([0-9]+(?:[.,][0-9]{2})?)|([0-9]+[.,][0-9]{2})\s*(?:€|EUR)/u`, normalises comma to dot, and returns those that do not equal any rendered card price formatted to two decimals. Records stage `render` addition `['modelClaimsDiscarded' => …]` when non-empty.
+- `unbackedPricesInProse()` extracts monetary figures with `/(?:€|EUR)\s*([0-9]+(?:[.,][0-9]{2})?)|([0-9]+[.,][0-9]{2})\s*(?:€|EUR)/u`, normalises comma to dot, and returns those that do not match any **rendered** card price — the rendered set specifically, never the whole registered map, or a model could quote the price of a product it never showed.
+
+  **Compare numerically, not as formatted strings.** The regex accepts a figure with no decimals, so `€5` extracts as `"5"`, which never equals a price rendered `%.2f` as `"5.00"`. The fixture catalog holds whole-euro prices (`fx-004` 24.00, `fx-014` 11.00, `fx-021` 22.00), so a string comparison flags a model that correctly writes "€24" — a false positive in the eval suite, which is worse than a false negative because it teaches everyone to ignore the suite. Return the figures as found (normalised to dot) so an assertion can quote them verbatim; only the comparison is numeric.
+
+  Record the result under its **own stage, `claims.audit`** — not as a second `render` event. `TraceRecorder::payload()` reverse-scans and returns the last event for a stage, so two `render` events mean `payload('render')` silently loses `renderedIds`. `FacetProbe` legitimately records one stage twice because a cache hit and a miss are the same *kind* of fact and the last one is the answer; here they are two different facts and losing one is a defect.
 
 Return the figure strings as found (normalised to dot), so the eval assertion can report them verbatim.
 
@@ -2739,7 +2743,7 @@ reflected in the rendered cards. Write back with `$input->setMessageBag()`.
 2. Extract candidate ids: every id in `FactRenderer`'s retrieved set that appears in `$text`, plus any token matching `/\bfx-[a-z0-9-]+\b/i` or a 32-char hex id, so ids the model invented are caught rather than silently ignored.
 3. `FactRenderer::validate($candidates)` → records `validate` with `inventedProductIds`.
 4. `FactRenderer::render($result->accepted)` → records `render`.
-5. `FactRenderer::unbackedPricesInProse($text)` → stores the result and records `modelClaimsDiscarded` when non-empty.
+5. `FactRenderer::unbackedPricesInProse($text)` → stores the result and records stage `claims.audit` with `['modelClaimsDiscarded' => …]` when non-empty. Read it back with `payload('claims.audit')`, **not** `payload('render')`.
 
 The processor does **not** call `$output->setResult()`. The rendered cards live on the
 request-scoped `FactRenderer`, which the runner reads afterwards — that avoids inventing a
