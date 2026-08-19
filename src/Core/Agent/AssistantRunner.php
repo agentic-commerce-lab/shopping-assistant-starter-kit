@@ -17,8 +17,8 @@ use Symfony\AI\Platform\Result\TextResult;
  * Drives one turn of the conversation: the guard check that must happen
  * before any spend, the system prompt, the framework's own tool-calling loop
  * (via the {@see Bundle}'s agent), and reading back what the grounding
- * pipeline produced. Outcome/tool-call bookkeeping is delegated to
- * {@see TurnOutcomeResolver}.
+ * pipeline produced. Outcome/activity bookkeeping is delegated to
+ * {@see TurnOutcomeResolver} and {@see TurnRetrievalAndToolCallCounter}.
  */
 final class AssistantRunner
 {
@@ -27,7 +27,7 @@ final class AssistantRunner
         private readonly Bundle $bundle,
         private readonly int $requestsToday = 0,
         private readonly TurnOutcomeResolver $outcomeResolver = new TurnOutcomeResolver(),
-        private readonly TurnToolCallCounter $toolCallCounter = new TurnToolCallCounter(),
+        private readonly TurnRetrievalAndToolCallCounter $activityCounter = new TurnRetrievalAndToolCallCounter(),
     ) {}
 
     /**
@@ -65,7 +65,7 @@ final class AssistantRunner
         $this->bundle->trace->record('turn.end', [
             'outcome' => $outcome,
             'cards' => array_map(static fn(ProductCard $card): string => $card->id, $cards),
-            'toolCalls' => $this->toolCallCounter->count($this->bundle->trace),
+            'retrievalStagesAndToolCalls' => $this->activityCounter->count($this->bundle->trace),
         ]);
 
         $prose = $result instanceof TextResult ? $result->getContent() : '';

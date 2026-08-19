@@ -17,7 +17,7 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * the guard, the agent call and the message bag — from growing past a single
  * responsibility; mago's cyclomatic-complexity check flagged the combined
  * class. Tool-call counting is a separate, unrelated concern, split further
- * into {@see TurnToolCallCounter} for the same reason.
+ * into {@see TurnRetrievalAndToolCallCounter} for the same reason.
  */
 final class TurnOutcomeResolver
 {

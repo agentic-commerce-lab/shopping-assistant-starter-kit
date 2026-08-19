@@ -10,6 +10,7 @@ use Swag\AssistantStarterKit\Core\Agent\AssistantRunner;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
+use Swag\AssistantStarterKit\Tests\Support\UsesCatalogFixture;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Tool\Tool;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -17,13 +18,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class AssistantRunnerTest extends TestCase
 {
+    use UsesCatalogFixture;
+
     private function bundle(
         AssistantConfig $config,
         bool $cartAvailable,
         ?HttpClientInterface $http = null,
     ): AssistantAgentFactory\Bundle {
         return AssistantAgentFactory::create(
-            FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json'),
+            FixtureCommerceGateway::fromFile(self::catalogFixturePath()),
             $config,
             $cartAvailable,
             new LlmSettings('https://example.invalid', 'test-key', 'gpt-x'),

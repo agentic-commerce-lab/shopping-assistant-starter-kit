@@ -15,6 +15,7 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Tool\GetProductTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Swag\AssistantStarterKit\Tests\Support\UsesCatalogFixture;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\Toolbox\AgentProcessor;
 use Symfony\AI\Agent\Toolbox\Toolbox;
@@ -49,12 +50,14 @@ use Symfony\Component\HttpClient\Response\MockResponse;
  */
 final class OutputProcessorOrderTest extends TestCase
 {
+    use UsesCatalogFixture;
+
     /**
      * @return array{0: TextResult|null, 1: FactRenderer}
      */
     private function runTurn(bool $groundingFirst): array
     {
-        $gateway = FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
+        $gateway = FixtureCommerceGateway::fromFile(self::catalogFixturePath());
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
         $config = new AssistantConfig();
