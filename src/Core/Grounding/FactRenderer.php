@@ -33,11 +33,18 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * price" cannot change a card, but it can still talk. This method flags any
  * monetary figure in the prose that no rendered card actually backs, so a
  * caller can refuse to ship that reply, or strip the offending sentence.
+ *
+ * The authoritative set itself — the id-keyed map plus the case-insensitive lookup
+ * a candidate id is resolved through, since case is not meaningful in either a
+ * Shopware entity id or this project's fixture ids — is held by
+ * {@see RetrievedProductIndex}, not inline here: the case-insensitive lookup this
+ * class otherwise needed in both {@see self::validate()} and {@see self::render()}
+ * pushed this class's own cyclomatic-complexity total over this project's threshold
+ * (mago sums it per class, across every method).
  */
 final class FactRenderer
 {
-    /** @var array<string, ProductCard> */
-    private array $retrieved = [];
+    private RetrievedProductIndex $index;
 
     /** @var list<string> */
     private array $lastBatchIds = [];
@@ -51,18 +58,16 @@ final class FactRenderer
     public function __construct(
         private readonly TraceRecorder $trace,
         private readonly CurrencyFigureExtractor $currencyFigureExtractor = new CurrencyFigureExtractor(),
-    ) {}
+    ) {
+        $this->index = new RetrievedProductIndex();
+    }
 
     /**
      * @param list<ProductCard> $cards
      */
     public function registerRetrieved(array $cards): void
     {
-        foreach ($cards as $card) {
-            // A later registration for the same id overwrites the earlier one:
-            // a resolved variant supersedes its parent.
-            $this->retrieved[$card->id] = $card;
-        }
+        $this->index->register($cards);
 
         // Replaced, never merged — including with an empty $cards array, which resets
         // this to []. If the last tool call returned nothing, the honest default card
@@ -76,7 +81,7 @@ final class FactRenderer
      */
     public function retrievedIds(): array
     {
-        return array_keys($this->retrieved);
+        return $this->index->ids();
     }
 
     /**
@@ -96,12 +101,19 @@ final class FactRenderer
         $invented = [];
 
         foreach ($returnedIds as $id) {
-            if (\array_key_exists($id, $this->retrieved)) {
-                $accepted[] = $id;
+            $canonicalId = $this->index->canonicalId($id);
+
+            if ($canonicalId !== null) {
+                // Accepted carries the CANONICAL id, never the model's casing — render()
+                // looks candidates up by exact key, and rendered_ids_exactly compares
+                // against the canonical id too.
+                $accepted[] = $canonicalId;
 
                 continue;
             }
 
+            // Invented keeps the id as the model actually wrote it, so the trace shows
+            // what was really emitted rather than a normalised version of it.
             $invented[] = $id;
         }
 
@@ -122,7 +134,12 @@ final class FactRenderer
     {
         $cards = [];
         foreach ($acceptedIds as $id) {
-            $card = $this->retrieved[$id] ?? null;
+            // Resolved through the same index as validate() — accepted ids are already
+            // canonical in practice, but resolving here too means an id reaching render()
+            // by any other route still lands on the right card under its canonical id,
+            // rather than a silent miss against the exact-case key.
+            $canonicalId = $this->index->canonicalId($id);
+            $card = $canonicalId !== null ? $this->index->card($canonicalId) : null;
             if ($card !== null) {
                 $cards[] = $card;
             }

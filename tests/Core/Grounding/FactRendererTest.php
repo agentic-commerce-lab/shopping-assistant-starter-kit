@@ -15,8 +15,10 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 /**
  * Covers registerRetrieved(), retrievedIds(), lastRetrievedBatch(), validate() and
  * render(). {@see FactRendererUnbackedPricesTest} covers unbackedPricesInProse() and
- * unbackedPrices() separately — mago's too-many-methods rule (threshold 10) forced this
- * split once this file grew past nine test methods; see the task report for the ruling.
+ * unbackedPrices() separately, and {@see FactRendererCaseInsensitiveIdTest} covers
+ * validate()/render()'s case-insensitive id matching separately again — mago's
+ * too-many-methods rule (threshold 10) forced both splits once this file grew past
+ * nine test methods; see the task reports for the rulings.
  */
 final class FactRendererTest extends TestCase
 {
