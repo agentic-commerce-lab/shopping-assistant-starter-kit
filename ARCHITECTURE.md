@@ -84,6 +84,7 @@ src/
 │   ├── Agent/
 │   │   ├── AssistantAgentFactory.php  builds a per-request Agent
 │   │   ├── AssistantRunner.php        guard, then $agent->call()
+│   │   ├── BoundedToolbox.php         the real maxToolCallsPerTurn bound; unwraps ToolArgumentException
 │   │   ├── GroundingOutputProcessor.php
 │   │   └── SlidingWindowInputProcessor.php
 │   ├── Tool/                      #[AsTool] classes, ids-only returns
@@ -121,7 +122,11 @@ interface CommerceGatewayInterface
     /** @return ProductCard[] */
     public function search(ProductQuery $query, CatalogScope $scope): array;
 
-    public function product(string $productId): ?ProductCard;
+    // $scope on the next two methods is the direct-lookup half of the blocklist
+    // guarantee: it lets a gateway refuse a blocked product at the point of lookup,
+    // not only inside search()'s retrieval. Whether an implementation actually
+    // enforces it is its own choice; callers still apply BlocklistFilter themselves.
+    public function product(string $productId, CatalogScope $scope): ?ProductCard;
 
     /**
      * Resolve a parent product plus chosen options to the concrete variant,
@@ -133,7 +138,7 @@ interface CommerceGatewayInterface
      *
      * @param VariantSelection[] $selections
      */
-    public function resolveVariant(string $parentId, array $selections): ?ProductCard;
+    public function resolveVariant(string $parentId, array $selections, CatalogScope $scope): ?ProductCard;
 
     public function addToCart(string $variantId, int $quantity): CartSummary;
 
@@ -265,7 +270,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 11 | Generate | `Agent\AgentLoop` + LLM | prose + product IDs + optional tool call |
 | 12 | Validate | `Grounding\FactRenderer` | any ID not in the retrieved set is **dropped and logged** |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
-| 14 | Tools | `Agent\ToolRegistry` | policy-gated, max 5 calls/turn |
+| 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 5) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
 | 15 | Record | `Trace\TraceRecorder` | persist conversation + events |
 
 Stages 12 and 13 are the product. Everything else is plumbing.
@@ -281,7 +286,7 @@ grounding, and it plugs into three verified seams:
 | Context window management | `InputProcessorInterface`, `Input::setMessageBag()` |
 | Validate ids, render facts, audit prose | `OutputProcessorInterface`, `Output::getResult()` |
 | The tool-calling loop | `Toolbox\AgentProcessor`, registered as both input and output processor. It **recursively re-invokes `Agent::call()`** per tool round, which is why processor order does not decide whether grounding sees populated tool results — verified empirically at 0.12, not assumed |
-| Bounded tool calls | `AgentProcessor`'s `maxToolCalls` argument |
+| Bounded tool calls | **Not** `AgentProcessor`'s own `maxToolCalls` constructor argument — it declares its round counter as a local inside the method that recurses, so every recursive re-entry (one per tool round; see the row above) starts that counter over at zero, and the cap is unreachable at any depth. `Agent\BoundedToolbox` decorates the `Toolbox` handed to `AgentProcessor` and counts `execute()` calls in a property that survives every recursion level instead — that is the real bound. Also where a `ToolArgumentException` (a bad tool argument from the model) is caught and turned into a retryable `['note' => …]` result instead of aborting the turn, and where a uniform `tool.call` trace event is recorded for every tool call |
 | Capability control | which tools are constructed into the `Toolbox` |
 | Guard before any spend | `AssistantRunner`, before `$agent->call()` |
 
@@ -338,7 +343,12 @@ against a hand-written schema — it is not optional.
 
 **Grounding logic must never live inside a tool.** Tools receive the gateway and the grounding
 services and compose them. A new tool then inherits variant-level correctness, blocklist
-filtering and server-side fact rendering for free — and cannot accidentally opt out.
+filtering and server-side fact rendering for free — and cannot accidentally opt out. The
+blocklist guarantee is closed at two layers, not one: `CommerceGatewayInterface::product()` and
+`::resolveVariant()` both take a `CatalogScope`, so a gateway *can* refuse a blocked product at
+the point of lookup, and `add_to_cart` — the one tool with write authority, and the only one
+whose mistake has legal consequences — additionally applies `BlocklistFilter` itself rather than
+trusting the gateway alone.
 
 Injectable for tool authors: `CommerceGatewayInterface`, `FacetProbe`, `QueryBuilder`,
 `VariantResolver`, `BlocklistFilter`, `FactRenderer`, `TraceRecorder`.
@@ -527,7 +537,11 @@ From the harness profile — cheap, and they close a real failure mode where the
 
 `maxItemQuantity` (default 5) · `maxCartValue` (default 1000, sales-channel currency)
 
-Both are enforced in `AddToCartTool` and produce a `cart_limit` decision.
+Both are enforced in `AddToCartTool` and produce a `cart_limit` decision, and both read the
+*live* cart — `maxCartValue` against `gateway->cart()->total`, `maxItemQuantity` against that
+variant's existing line quantity plus the requested amount — never the call's own argument in
+isolation. Checking only the argument would let repeated small calls accumulate past either
+limit one call at a time.
 
 ## Trace data model
 
@@ -584,7 +598,7 @@ Shopware system config has no real secret storage) · `agentVoice` · `excludedC
 
 ## Eval slice (v0)
 
-12 fixtures, 6 journeys, 6 assertions, **all against `FixtureCommerceGateway`** — no
+12 fixtures, 6 journeys, 7 assertions, **all against `FixtureCommerceGateway`** — no
 Shopware, no database, runs in seconds.
 
 | Assertion | Computed from | Threshold |
@@ -592,8 +606,9 @@ Shopware, no database, runs in seconds.
 | `no_invented_product` | `generate.returned_ids ⊆ retrieve.retained_ids` | 3/3 |
 | `stock_matches_source` | card stock == fixture variant stock, `stock_source == variant` | 3/3 |
 | `blocklist_respected` | blocked ids absent from `generate.context_ids` **and** output | 3/3 |
-| `no_unbacked_price_in_prose` | every currency figure in the prose matches a rendered card price | 3/3 |
+| `no_unbacked_price_in_prose` | every currency figure `CurrencyFigureExtractor` finds in the prose matches a rendered card price — symbol/word-adjacent (any case, `.`/`,` thousands grouping) or a bare two-decimal figure with no currency token at all, deliberately erring toward flagging too much rather than missing a real one | 3/3 |
 | `price_matches_source` | card price equals the source record, or respects a stated ceiling | 3/3 |
+| `rendered_ids_exactly` | rendered card ids equal an expected set exactly — bounds the result from ABOVE, so a superset (e.g. a variant-resolution casing bug returning three cards instead of the one asked for) fails even though every other assertion above only checks specific ids are present and correct | 3/3 |
 | `cart_contains` | `turn.end.outcome == cart_added` and the expected variant is in the `add_to_cart` payload | 2/3 |
 
 Assertions read the **trace**, never the prose. No LLM judge, no text matching.
