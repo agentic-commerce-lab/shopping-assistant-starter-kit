@@ -13,7 +13,9 @@
     "symfony/ai-generic-platform": "0.12.*",
     "symfony/ai-platform": "0.12.*",
     "symfony/http-client": "~7.4.0",
+    "symfony/http-foundation": "~7.4.0",
     "symfony/http-client-contracts": "^3.0",
+    "symfony/routing": "~7.4.0",
     "symfony/serializer": "~7.4.0"
   },
   "require-dev": {

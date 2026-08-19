@@ -4,5 +4,44 @@
            xsi:schemaLocation="http://symfony.com/schema/dic/services https://symfony.com/schema/dic/services/services-1.0.xsd">
     <services>
         <defaults autowire="true" autoconfigure="true"/>
+
+        <!-- Commerce gateway over the Shopware DAL.
+             Only DTOs cross CommerceGatewayInterface; the Shopware types below this line stay
+             inside Core\Commerce\Dal. -->
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider">
+            <argument type="service" id="request_stack"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalBucketKeys"/>
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalGroupedFacetReader"/>
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader"/>
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalRangeBounds"/>
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFilterTranslator"/>
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\RouterProductUrlResolver">
+            <argument type="service" id="router"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver"
+                 alias="Swag\AssistantStarterKit\Core\Commerce\Dal\RouterProductUrlResolver"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway">
+            <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+        </service>
+
+        <!-- Inside a shop the DAL gateway is the gateway. FixtureCommerceGateway stays
+             constructible for the eval suite, which builds it directly and needs no container. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"
+                 alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway"/>
     </services>
 </container>
