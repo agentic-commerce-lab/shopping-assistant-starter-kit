@@ -58,6 +58,19 @@ the build, and an MCP bundle for the deferred MCP surface.
 `symfony/ai-*` is **0.x**: twelve breaking-change releases from 0.1 to 0.13, and a ~50 KB
 `UPGRADE.md`. The most recent release removed the very API the published docs recommend.
 
+**Confirmed, not assumed (2026-08-19).** The installed `vendor/symfony/ai-agent/README.md`
+states it outright: *"This Component is experimental. Experimental features are not covered by
+Symfony's Backward Compatibility Promise."* The first draft of this ADR guessed that parts
+might be marked experimental; the installed package says so in its own README. Every consumer
+of this dependency is therefore outside Symfony's BC promise by the maintainers' own
+declaration — which is the fact to put in front of anyone deciding whether this graduates
+beyond a research preview.
+
+The 0.12 changelog also shows the churn reaching the primary entry point: 0.12 changed
+`AgentInterface::call()` to accept `string|MessageBag|UserMessage` and **renamed its first
+parameter from `$messages` to `$input`**. Positional calls survived; named-argument calls did
+not. Pass the message bag positionally.
+
 For a **lab prototype** this is acceptable: we pin exactly and do not follow upgrades. For a
 **plugin shipped to other people's shops** it would not be — a merchant's `composer update`
 would break us. Two consequences:

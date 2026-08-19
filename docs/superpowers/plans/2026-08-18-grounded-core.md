@@ -2759,7 +2759,7 @@ custom `ResultInterface` just to smuggle cards through the framework's return ty
 1. `GuardCheck::check($config, $requestsToday)`. Blocked → record `guard.check` and return `new AssistantTurn($decision->message, [], 'error')` **without touching the platform**.
 2. Record `guard.check` as allowed.
 3. Build the bag: system message from `SystemPrompt::build()`, then `$history`, then `Message::ofUser($message)`.
-4. `$result = $agent->call($bag);` — the framework drives the tool loop and our output processor runs inside it.
+4. `$result = $agent->call($bag);` — the framework drives the tool loop and our output processor runs inside it. **Pass the bag positionally.** In 0.12 the first parameter is named `$input`, not `$messages` (renamed in that release), and it also accepts a plain `string` or a `UserMessage`. A named-argument call written against an older example breaks.
 5. Read `$renderer->renderedCards()` and `$renderer->unbackedPrices()`.
 6. `outcome`: `error` (guard) · `escalated` (an `escalate` trace event exists) · `cart_added` (a `tool.call` event for `add_to_cart` with `policyReasonCode: 'allowed'`) · `product_shown` (cards non-empty) · else `no_result`.
 7. Record `turn.end` with `['outcome' => …, 'cards' => …, 'toolCalls' => …]`.
