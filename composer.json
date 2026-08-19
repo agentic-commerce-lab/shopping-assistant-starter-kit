@@ -5,8 +5,10 @@
   "license": "MIT",
   "require": {
     "php": "^8.2",
+    "ext-filter": "*",
     "symfony/ai-agent": "0.12.*",
     "symfony/ai-generic-platform": "0.12.*",
+    "symfony/ai-platform": "0.12.*",
     "symfony/http-client": "~7.4.0",
     "symfony/http-client-contracts": "^3.0"
   },
