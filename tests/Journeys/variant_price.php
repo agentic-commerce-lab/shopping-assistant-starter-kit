@@ -15,6 +15,7 @@ return [
     'assertions' => [
         'no_invented_product' => [],
         'price_matches_source' => ['expect' => ['fx-026-black-m' => 54.90]],
+        'rendered_ids_exactly' => ['expect' => ['fx-026-black-m']],
         'no_unbacked_price_in_prose' => [],
     ],
 ];

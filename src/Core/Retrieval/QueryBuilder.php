@@ -31,15 +31,22 @@ final class QueryBuilder
     {
         $filters = [];
         $dropped = [];
+        $canonicalSelections = [];
 
         $this->collect(PriceFilterResolver::resolve($intent, $facets), $filters, $dropped);
         $this->collect(BrandFilterResolver::resolve($intent, $facets), $filters, $dropped);
 
         foreach ($intent->selections as $selection) {
-            $this->collect(VariantSelectionFilterResolver::resolve($selection, $facets), $filters, $dropped);
+            $resolution = VariantSelectionFilterResolver::resolve($selection, $facets);
+            $this->collect($resolution->filter, $filters, $dropped);
+            $canonicalSelections[] = $resolution->canonical;
         }
 
-        return new QueryBuildResult(new ProductQuery(term: $intent->term, filters: $filters), $dropped);
+        return new QueryBuildResult(
+            new ProductQuery(term: $intent->term, filters: $filters),
+            $dropped,
+            $canonicalSelections,
+        );
     }
 
     /**

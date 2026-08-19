@@ -20,14 +20,12 @@ final class TermsFacetFinder
 
     public static function findContaining(FacetSet $facets, string $option): ?TermsFacetMatch
     {
-        $needle = strtolower($option);
-
         foreach ($facets->facets as $facet) {
             if ($facet->type !== FacetType::Terms) {
                 continue;
             }
 
-            $canonicalValue = self::matchingValue($facet, $needle);
+            $canonicalValue = self::matchInFacet($facet, $option);
             if ($canonicalValue !== null) {
                 return new TermsFacetMatch($facet->field, $canonicalValue);
             }
@@ -36,10 +34,19 @@ final class TermsFacetFinder
         return null;
     }
 
-    private static function matchingValue(Facet $facet, string $lowercasedNeedle): ?string
+    /**
+     * Matches `$option` against one specific facet's own values, case-insensitively,
+     * and reports back the catalog's own spelling. Public so {@see \Swag\AssistantStarterKit\Core\Retrieval\Filter\VariantSelectionFilterResolver}
+     * can canonicalise a GROUPED selection's value the same way this class already
+     * canonicalises a group-less one — the group is already known there, so there is
+     * no need to search every facet, only the one the group names.
+     */
+    public static function matchInFacet(Facet $facet, string $option): ?string
     {
+        $needle = strtolower($option);
+
         foreach ($facet->values as $value) {
-            if (strtolower($value) === $lowercasedNeedle) {
+            if (strtolower($value) === $needle) {
                 return $value;
             }
         }

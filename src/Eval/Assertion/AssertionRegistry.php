@@ -23,6 +23,7 @@ final class AssertionRegistry
             'blocklist_respected' => new BlocklistRespected(),
             'no_unbacked_price_in_prose' => new NoUnbackedPriceInProse(),
             'cart_contains' => new CartContains(),
+            'rendered_ids_exactly' => new RenderedIdsExactly(),
             default => throw new \InvalidArgumentException(\sprintf(
                 'Journey "%s" declares unknown assertion "%s".',
                 $journeyId,

@@ -14,6 +14,7 @@ return [
     'assertions' => [
         'no_invented_product' => [],
         'stock_matches_source' => ['scope' => 'variant', 'expect' => ['fx-026-blue-m' => 0]],
+        'rendered_ids_exactly' => ['expect' => ['fx-026-blue-m']],
         'no_unbacked_price_in_prose' => [],
     ],
 ];

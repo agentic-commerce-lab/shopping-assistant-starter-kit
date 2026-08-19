@@ -127,8 +127,10 @@ final class SearchProductsTool
         // relying on removal afterwards. BlocklistFilter below still runs unconditionally
         // as the second line of defence, for a gateway whose scope mapping is incomplete
         // (the future Shopware DAL implementation, mapping scope onto Store API filters,
-        // plausibly will be one) and for VariantResolver::resolve()'s own
-        // gateway->resolveVariant() call below, which applies no scope filtering at all.
+        // plausibly will be one). VariantResolver::resolve()'s own gateway->resolveVariant()
+        // call below now also takes this same scope (Finding C1's seam change), but
+        // whether an implementation actually enforces it there is its own choice — see
+        // CommerceGatewayInterface::product()'s docblock — so this is not redundant.
         // With FixtureCommerceGateway, whose search() already fully honours the scope,
         // this second line is expected to record zero removals in ordinary operation —
         // an unfireable safety net is not a broken one; its primary control is holding.
@@ -138,7 +140,14 @@ final class SearchProductsTool
             'retainedIds' => array_map(static fn($card) => $card->id, $cards),
         ]);
 
-        $cards = $this->variantResolver->resolve($cards, $intent->selections);
+        // Canonical selections, not $intent->selections: QueryBuilder already resolved
+        // each one against the catalog's own spelling — see
+        // VariantSelectionFilterResolver's docblock (Finding I1). Handing VariantResolver
+        // the raw, model-cased selections instead would make gateway->resolveVariant()'s
+        // case-sensitive matching fail exactly when the model's casing differs from the
+        // catalog's — the retrieval filter above would already have narrowed correctly
+        // while variant resolution silently did not.
+        $cards = $this->variantResolver->resolve($cards, $buildResult->canonicalSelections, $scope);
 
         $filtered = $this->blocklist->apply($cards, $scope);
         $this->trace->record('blocklist.filter', [
