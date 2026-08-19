@@ -31,12 +31,29 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder">
+            <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartSummariser"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter">
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\LineItemFactoryRegistry"/>
+            <argument type="service" id="router"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartSummariser"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway">
             <argument type="service" id="sales_channel.product.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
         </service>
 
         <!-- Inside a shop the DAL gateway is the gateway. FixtureCommerceGateway stays

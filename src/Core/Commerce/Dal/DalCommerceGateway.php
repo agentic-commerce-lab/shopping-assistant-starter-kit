@@ -46,12 +46,21 @@ final readonly class DalCommerceGateway implements CommerceGatewayInterface
      */
     private const FACET_VALUE_LIMIT = 50;
 
+    // @mago-expect lint:excessive-parameter-list
+    // Standing-constraints carve-out 2: a service constructor injecting the collaborators it
+    // orchestrates. Seven is what composing six interface methods over five concerns looks like —
+    // every method below is a single delegation, and neither `cyclomatic-complexity` nor
+    // `too-many-methods` fires, which is the guard that stops this carve-out hiding a bloated
+    // class. Introducing a pass-through class purely to lower this count would add indirection
+    // whose only purpose is satisfying a linter.
     public function __construct(
         private SalesChannelRepository $productRepository,
         private DalCriteriaBuilder $criteriaBuilder,
         private DalProductCardMapper $mapper,
         private DalFacetReader $facetReader,
         private SalesChannelContextProvider $contextProvider,
+        private DalVariantFinder $variantFinder,
+        private DalCartAdapter $cartAdapter,
     ) {}
 
     public function facets(CatalogScope $scope): FacetSet
@@ -128,17 +137,17 @@ final readonly class DalCommerceGateway implements CommerceGatewayInterface
 
     public function resolveVariant(string $parentId, array $selections, CatalogScope $scope): ?ProductCard
     {
-        throw new \LogicException('Variant resolution over the DAL lands with DalVariantFinder.');
+        return $this->variantFinder->find($parentId, $selections, $scope, $this->contextProvider->current());
     }
 
     public function addToCart(string $variantId, int $quantity): CartSummary
     {
-        throw new \LogicException('Cart writes over the DAL land with DalCartAdapter.');
+        return $this->cartAdapter->add($variantId, $quantity, $this->contextProvider->current());
     }
 
     public function cart(): CartSummary
     {
-        throw new \LogicException('Cart reads over the DAL land with DalCartAdapter.');
+        return $this->cartAdapter->summary($this->contextProvider->current());
     }
 
     /**
