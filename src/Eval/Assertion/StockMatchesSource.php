@@ -19,14 +19,28 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * {@see VariantStockCheck::evaluate()}, split out to keep this class's own
  * cyclomatic-complexity total under this project's threshold.
  *
- * With `scope === 'variant'` this assertion also requires a `variant.resolve` trace
- * event to exist at all: its total absence means variant resolution was never even
- * attempted for this turn, which is its own distinct failure from a resolution that ran
- * and produced the wrong figure. Checked via {@see TraceEvents::payloads()} so ANY
- * occurrence across a multi-turn run satisfies it (Ruling R42), not only the last —
- * the per-card stock/stockSource check itself already reads {@see AssistantTurn::$cards},
- * which a multi-turn run's caller merges across every turn (see
- * {@see \Swag\AssistantStarterKit\Eval\TurnAggregate}).
+ * This assertion deliberately does NOT also require a `variant.resolve` trace event
+ * when `scope === 'variant'`. {@see \Swag\AssistantStarterKit\Core\Grounding\VariantResolver::resolve()}
+ * returns early, without recording, when there are no selections to resolve — and
+ * {@see \Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway::search()} indexes
+ * only sellable units, so a plain search can hand back the correct variant card
+ * directly, with no `resolveVariant()` call and therefore no `variant.resolve` event,
+ * even though the answer is exactly right. Requiring that stage failed a turn that was
+ * actually correct: it checks *how* the variant was reached, not *whether* the right
+ * one was.
+ *
+ * The per-card `StockSource::Variant` check above is a strict superset of that stage
+ * requirement, catching the same leak regardless of which route produced the card:
+ * resolution ran but the prose quoted the parent figure — caught by the prose-vs-card
+ * comparison this class's sibling assertions perform; no resolution and search
+ * returned the parent card — caught here, the id or the `stockSource` is wrong; no
+ * card at all — caught, the per-card lookup in {@see VariantStockCheck::evaluate()}
+ * fails outright. Nothing the stage requirement caught is missed by the data check.
+ *
+ * The one thing the stage requirement incidentally provided — refusing to pass
+ * vacuously when there was nothing to check — is now its own explicit guard below: a
+ * `scope === 'variant'` turn with an empty `expect` map fails, rather than looping zero
+ * times and reporting success.
  */
 final class StockMatchesSource implements Assertion
 {
@@ -41,8 +55,13 @@ final class StockMatchesSource implements Assertion
         $expect = $expectations['expect'] ?? [];
         $scope = $expectations['scope'] ?? null;
 
-        if ('variant' === $scope && [] === TraceEvents::payloads($trace, 'variant.resolve')) {
-            return RequiredTraceStage::missing($this->name(), 'variant.resolve');
+        if ('variant' === $scope && [] === $expect) {
+            return new AssertionResult(
+                $this->name(),
+                false,
+                'scope is "variant" but no expected card/stock pairs were given — '
+                . 'this assertion would otherwise pass without checking anything',
+            );
         }
 
         foreach ($expect as $expectedId => $expectedStock) {

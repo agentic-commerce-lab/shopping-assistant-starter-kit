@@ -21,12 +21,21 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * genuinely different failure the assertion's own comparison logic reports separately.
  *
  * Deliberately NOT part of the {@see \Swag\AssistantStarterKit\Eval\Assertion} interface:
- * the interface's exact three methods are dictated verbatim by the task brief, and which
- * stage(s) a given assertion requires is often conditional on its own expectations (e.g.
- * {@see StockMatchesSource} only requires `variant.resolve` when `scope === 'variant'`),
- * so a fixed per-class stage list would not fit every case anyway. Each assertion's own
- * class docblock states, in prose, which stage(s) it requires and under what condition —
- * this class only supplies the shared failure shape once that condition is checked.
+ * the interface's exact three methods are dictated verbatim by the task brief, and
+ * whether a given assertion requires a stage at all — and which one — is a decision each
+ * `evaluate()` makes for itself, so a fixed per-class stage list would not fit every case
+ * anyway. Each assertion's own class docblock states, in prose, which stage(s) it
+ * requires and under what condition — this class only supplies the shared failure shape
+ * once that condition is checked. Current callers: {@see CartContains} (`turn.end`),
+ * {@see NoInventedProduct} (`validate`) and {@see BlocklistRespected} (`blocklist.filter`)
+ * — each required unconditionally within its own journey.
+ *
+ * {@see StockMatchesSource} deliberately does NOT use this class, and is not a current
+ * caller despite once being one: requiring a `variant.resolve` event whenever
+ * `scope === 'variant'` failed turns where a plain search already returned the correct
+ * variant card with no resolution step ever needed — see that class's own docblock for
+ * why the per-card `stockSource` check it already performs is a strict superset of what
+ * the stage requirement caught.
  */
 final class RequiredTraceStage
 {

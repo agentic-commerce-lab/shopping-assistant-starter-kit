@@ -20,12 +20,15 @@ final class StockMatchesSourceTest extends TestCase
 {
     use BuildsEvalCards;
 
+    /**
+     * The control that now carries the whole burden of the leak {@see StockMatchesSource}
+     * exists to catch: a card with the right id but the wrong {@see \Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource}
+     * still fails, regardless of whether a `variant.resolve` trace event exists — no
+     * event is recorded here at all, unlike before this fix.
+     */
     public function testFailsWhenStockCameFromTheParent(): void
     {
-        $trace = new TraceRecorder();
-        $trace->record('variant.resolve', ['attempts' => []]);
-
-        $result = (new StockMatchesSource())->evaluate($this->turnWithParentStock(), $trace, [
+        $result = (new StockMatchesSource())->evaluate($this->turnWithParentStock(), new TraceRecorder(), [
             'scope' => 'variant',
             'expect' => ['fx-026-blue-m' => 0],
         ]);
@@ -34,17 +37,37 @@ final class StockMatchesSourceTest extends TestCase
         self::assertStringContainsString('parent', $result->detail);
     }
 
-    public function testFailsWhenNoVariantResolveEventWasRecorded(): void
+    /**
+     * The regression this fix closes: {@see \Swag\AssistantStarterKit\Core\Grounding\VariantResolver::resolve()}
+     * returns early without recording when there are no selections to resolve, and a
+     * plain search can hand back the correct variant card directly with no
+     * `variant.resolve` event at all — yet the answer is exactly right. Requiring that
+     * stage previously failed this turn even though the card carries the correct id and
+     * {@see \Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource::Variant}.
+     */
+    public function testPassesWithNoVariantResolveEventWhenTheCardIsAlreadyCorrect(): void
     {
-        $trace = new TraceRecorder();
-
-        $result = (new StockMatchesSource())->evaluate($this->turnWithCard('fx-017'), $trace, [
+        $result = (new StockMatchesSource())->evaluate($this->turnWithCard('fx-026-blue-m'), new TraceRecorder(), [
             'scope' => 'variant',
             'expect' => ['fx-026-blue-m' => 0],
         ]);
 
+        self::assertTrue($result->passed);
+    }
+
+    /**
+     * Ruling this project's whole eval design exists to enforce: an empty `expect` map
+     * under `scope === 'variant'` must not pass vacuously by looping zero times.
+     */
+    public function testFailsWithEmptyExpectMapUnderVariantScope(): void
+    {
+        $result = (new StockMatchesSource())->evaluate($this->turnWithCard('fx-026-blue-m'), new TraceRecorder(), [
+            'scope' => 'variant',
+            'expect' => [],
+        ]);
+
         self::assertFalse($result->passed);
-        self::assertStringContainsString('variant.resolve', $result->detail);
+        self::assertStringContainsString('no expected card/stock pairs', $result->detail);
     }
 
     public function testPassesWhenTheCardIsTheResolvedVariant(): void
