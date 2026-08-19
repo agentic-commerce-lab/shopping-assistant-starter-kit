@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
@@ -103,24 +102,7 @@ final class SearchProductsTool
         ]);
 
         $scope = $this->config->scope;
-        // FixtureCommerceGateway (and, per its own docblock, any well-behaved
-        // CommerceGatewayInterface implementation) already excludes blocked products
-        // and categories at the retrieval layer when handed the full scope, which is
-        // the right thing for a query that should never even surface a blocked item.
-        // But that means retrieval-level exclusion alone would make BlocklistFilter —
-        // the app-level compliance control below — structurally unable to ever record
-        // a removal, silently losing it as a safety net against a gateway that does not
-        // enforce the block itself (see VariantResolver's own resolveVariant() call,
-        // which applies no scope filtering at all). Retrieval is therefore scoped only
-        // by category inclusion/exclusion and description-length; BlocklistFilter is
-        // handed the full, unstripped scope and is the sole enforcement point for
-        // blockedProductIds/blockedCategoryIds.
-        $retrievalScope = new CatalogScope(
-            includeCategoryIds: $scope->includeCategoryIds,
-            excludeCategoryIds: $scope->excludeCategoryIds,
-            minDescriptionWords: $scope->minDescriptionWords,
-        );
-        $facets = $this->facetProbe->probe($retrievalScope);
+        $facets = $this->facetProbe->probe($scope);
 
         $buildResult = $this->queryBuilder->build($intent, $facets);
         $this->trace->record('query.build', [
@@ -139,7 +121,18 @@ final class SearchProductsTool
             sort: $buildResult->query->sort,
         );
 
-        $cards = $this->gateway->search($query, $retrievalScope);
+        // The full scope — including blockedProductIds/blockedCategoryIds — goes to
+        // retrieval, not a stripped-down one: a well-behaved gateway should never even
+        // fetch a blocked product, and that is strictly less exposure than fetching it and
+        // relying on removal afterwards. BlocklistFilter below still runs unconditionally
+        // as the second line of defence, for a gateway whose scope mapping is incomplete
+        // (the future Shopware DAL implementation, mapping scope onto Store API filters,
+        // plausibly will be one) and for VariantResolver::resolve()'s own
+        // gateway->resolveVariant() call below, which applies no scope filtering at all.
+        // With FixtureCommerceGateway, whose search() already fully honours the scope,
+        // this second line is expected to record zero removals in ordinary operation —
+        // an unfireable safety net is not a broken one; its primary control is holding.
+        $cards = $this->gateway->search($query, $scope);
         $this->trace->record('retrieve', [
             'hits' => \count($cards),
             'retainedIds' => array_map(static fn($card) => $card->id, $cards),

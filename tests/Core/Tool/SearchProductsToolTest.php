@@ -81,13 +81,16 @@ final class SearchProductsToolTest extends TestCase
 
         $result = $tool(term: 'CO2');
 
+        // fx-014 is never fetched: the full scope (blockedProductIds included) goes to
+        // retrieval, so a scope-honouring gateway excludes it before BlocklistFilter ever
+        // runs. BlocklistFilter still runs unconditionally as the second line of defence
+        // (see the code comment in SearchProductsTool), so its stage is always recorded —
+        // but with this gateway it is expected to have nothing left to remove. Whether
+        // BlocklistFilter itself removes a blocked card is Task 5's unit tests' job, not
+        // this integration test's; this test should not have to disable the first line of
+        // defence to observe the second one firing.
         self::assertNotContains('fx-014', $result['productIds']);
-
-        $payload = $this->trace->payload('blocklist.filter');
-        self::assertNotNull($payload);
-        $removedIds = $payload['removedIds'] ?? null;
-        self::assertIsArray($removedIds);
-        self::assertContains('fx-014', $removedIds);
+        self::assertNotNull($this->trace->payload('blocklist.filter'));
     }
 
     public function testRegistersEveryReturnedIdWithTheFactRenderer(): void
