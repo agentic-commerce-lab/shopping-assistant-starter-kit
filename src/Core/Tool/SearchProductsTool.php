@@ -37,6 +37,13 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 )]
 final class SearchProductsTool
 {
+    /**
+     * Floor for the model-supplied `limit`. A narrower window makes the answer a
+     * function of retrieval ranking rather than of the shopper's question; see
+     * {@see self::__invoke()} for the measured failure this prevents.
+     */
+    private const MIN_LIMIT = 5;
+
     // @mago-expect lint:excessive-parameter-list
     // Every parameter is one collaborator this method orchestrates without reimplementing;
     // the brief dictates this exact list, and the mandated test constructs it positionally
@@ -81,7 +88,28 @@ final class SearchProductsTool
     ): array {
         $term = Guard::boundedString($term, 200, 'term');
         $brand = Guard::boundedString($brand, 120, 'brand');
-        $limit = Guard::boundedInt($limit, 1, 20, 'limit');
+        $requestedLimit = Guard::boundedInt($limit, 1, 20, 'limit');
+
+        // Asymmetric on purpose, against this project's own "reject, never coerce" rule.
+        //
+        // The ceiling stays a rejection: 20 bounds context size and cost, and a model
+        // asking for more is asking for something it may not have.
+        //
+        // The floor is different in kind. A limit of 1 or 2 makes the answer depend on
+        // retrieval *ranking* rather than on the shopper's question, and nothing
+        // downstream can repair it — VariantResolver cannot disambiguate a set of one,
+        // and the blocklist only removes. Worse, the ranking's in-stock bias sorts a
+        // sold-out unit LAST, so "do you have the blue jersey in M?" with limit 1
+        // returns the blue L that happens to be in stock, and the grounding pipeline
+        // then renders a real price for the variant nobody asked about. Measured
+        // against tests/Fixtures/catalog.json: limit 1 on term "Jersey" yields
+        // fx-026-blue-l (stock 12) while fx-026-blue-m (stock 0) ranks third of three.
+        //
+        // Widening the window changes only how many candidates the pipeline considers
+        // before it narrows — never what the shopper asked for, which is what "reject,
+        // never coerce" protects. So this is coerced silently rather than spending one
+        // of the turn's few tool calls on a retry the model cannot learn anything from.
+        $limit = max($requestedLimit, self::MIN_LIMIT);
         $selections = VariantSelectionGuard::fromRaw($options, 'options');
 
         $intent = new ShopperIntent(
@@ -109,6 +137,8 @@ final class SearchProductsTool
             'filtersApplied' => array_map(static fn($filter) => $filter->field, $buildResult->query->filters),
             'filtersDropped' => $buildResult->droppedFields,
             'searchTerm' => $buildResult->query->term,
+            'limitRequested' => $requestedLimit,
+            'limitApplied' => $limit,
         ]);
 
         // QueryBuilder::build() does not carry a limit — ShopperIntent has none — so the
