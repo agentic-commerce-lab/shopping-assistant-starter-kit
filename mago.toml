@@ -45,6 +45,21 @@ unchecked-exceptions = ["RuntimeException", "LogicException"]
 # actually threw exceptions and the analyzer flagged them for real.
 ignore = [
   { code = "unhandled-thrown-type", in = "tests/" },
+  # The plugin base class cannot have a constructor. `Shopware\Core\Framework\Plugin`
+  # declares `__construct` as **final** (verified in the installed 6.7.13 tree), so any
+  # constructor in a subclass is a fatal error — and the properties mago names
+  # ($container, $name, $path) are initialized by that final constructor and Symfony's
+  # Bundle lifecycle, not by us. There is no code change that satisfies this check.
+  #
+  # Scoped to the one file, one code, and left as an error everywhere else: a genuinely
+  # uninitialized typed property in any other class still fails the gate.
+  #
+  # Note the contrast with page-agent-shopware, which never sees this finding because its
+  # mago config stubs the framework (`includes = ["stubs/mago-framework.php"]`) instead of
+  # reading `vendor`. That is not a fix, it is a blind spot — and R6 requires us to analyze
+  # against the installed tree. Keeping `includes = ["vendor"]` and scoping this one code is
+  # the stricter of the two options. Added 2026-08-19, ruling R64.
+  { code = "missing-constructor", in = "src/SwagAssistantStarterKit.php" },
   # BoundedToolbox's job is to catch a `\TypeError` that PHP raises when a
   # model-supplied argument does not match a tool's declared parameter type, and to
   # tell that apart from a `\TypeError` raised inside a tool's own body. Testing that

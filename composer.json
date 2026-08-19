@@ -1,12 +1,14 @@
 {
   "name": "swag/assistant-starter-kit",
   "description": "Shopper-facing, merchant-operated shopping assistant for Shopware 6.7",
-  "type": "library",
+  "type": "shopware-platform-plugin",
   "license": "MIT",
   "require": {
     "php": "^8.2",
     "ext-filter": "*",
     "ext-mbstring": "*",
+    "shopware/core": "~6.7.0",
+    "shopware/storefront": "~6.7.0",
     "symfony/ai-agent": "0.12.*",
     "symfony/ai-generic-platform": "0.12.*",
     "symfony/ai-platform": "0.12.*",
@@ -18,6 +20,7 @@
     "captainhook/captainhook": "^5.25",
     "captainhook/hook-installer": "^1.0",
     "carthage-software/mago": "^1.30",
+    "ext-simplexml": "*",
     "phauthentic/cognitive-code-analysis": "^1.11",
     "phpunit/phpunit": "^11.0",
     "shipmonk/composer-dependency-analyser": "^1.0",
@@ -31,7 +34,6 @@
     "symfony/property-info": ">=8.0",
     "symfony/serializer": ">=8.0",
     "symfony/string": ">=8.0",
-    "symfony/type-info": ">=8.0",
     "symfony/uid": ">=8.0"
   },
   "autoload": {
@@ -40,9 +42,27 @@
   "autoload-dev": {
     "psr-4": { "Swag\\AssistantStarterKit\\Tests\\": "tests/" }
   },
+  "extra": {
+    "shopware-plugin-class": "Swag\\AssistantStarterKit\\SwagAssistantStarterKit",
+    "label": {
+      "en-GB": "Shopping Assistant Starter Kit"
+    },
+    "description": {
+      "en-GB": "Shopper-facing, merchant-operated shopping assistant with server-side grounding."
+    }
+  },
   "config": {
-    "allow-plugins": { "captainhook/hook-installer": true },
-    "sort-packages": true
+    "allow-plugins": {
+      "captainhook/hook-installer": true,
+      "php-http/discovery": true,
+      "symfony/runtime": true
+    },
+    "sort-packages": true,
+    "audit": {
+      "ignore": {
+        "CVE-2026-53965": "mcp/sdk SSE buffer growth, reachable only through symfony/mcp-bundle's MCP client, which this plugin never constructs. shopware/core v6.7.13.0 requires mcp/sdk ^0.6.0 and the fix is 0.7.1, so it is not resolvable from here. Added 2026-08-19 (ruling R57); re-check when shopware/core widens that constraint."
+      }
+    }
   },
   "scripts": {
     "format": "mago fmt",

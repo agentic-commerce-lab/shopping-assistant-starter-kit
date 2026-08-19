@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
+
+    <card>
+        <title>Language model</title>
+
+        <input-field type="text">
+            <name>llmBaseUrl</name>
+            <label>OpenAI-compatible base URL</label>
+            <helpText>Any OpenAI-compatible chat completions endpoint (Azure, OpenRouter, a local
+                model). The URL is validated on every request to block egress into private
+                networks; a private or loopback address is rejected.</helpText>
+        </input-field>
+
+        <input-field type="text">
+            <name>llmModel</name>
+            <label>Model</label>
+            <helpText>The assistant is inert until this is set. A weak model reads as a bad
+                product: prefer a model with reliable tool calling.</helpText>
+        </input-field>
+
+        <input-field type="password">
+            <name>llmApiKey</name>
+            <label>API key</label>
+            <helpText>Prefer an environment variable. Shopware system config has no real secret
+                storage, so a key entered here is readable by anyone with config access and is
+                included in database backups.</helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Voice and catalogue scope</title>
+
+        <input-field type="textarea">
+            <name>agentVoice</name>
+            <label>Agent voice</label>
+            <helpText>Tone and persona only. This text cannot grant the assistant a capability:
+                what it may do is decided by which tools are constructed, never by instruction.</helpText>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>excludedCategories</name>
+            <label>Excluded category IDs</label>
+            <helpText>One ID per line. Products in these categories are never retrieved.</helpText>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>blockedProducts</name>
+            <label>Blocked product IDs</label>
+            <helpText>One ID per line. Blocked products never enter the model's context and never
+                appear in a reply — the block is a retrieval filter, not a prompt instruction.</helpText>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>blockedCategories</name>
+            <label>Blocked category IDs</label>
+            <helpText>One ID per line. Same guarantee as blocked products.</helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Guardrails</title>
+
+        <input-field type="bool">
+            <name>enableAddToCart</name>
+            <label>Allow the assistant to add items to the cart</label>
+            <defaultValue>true</defaultValue>
+            <helpText>When off, the add-to-cart tool is never constructed, so the model cannot see
+                it and cannot call it.</helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>maxItemQuantity</name>
+            <label>Maximum quantity per item</label>
+            <defaultValue>5</defaultValue>
+            <helpText>Checked against the live cart, not against a single call, so repeated small
+                additions cannot accumulate past it.</helpText>
+        </input-field>
+
+        <input-field type="float">
+            <name>maxCartValue</name>
+            <label>Maximum cart value</label>
+            <defaultValue>1000</defaultValue>
+            <helpText>In the sales channel's currency. Also checked against the live cart total.</helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>maxToolCallsPerTurn</name>
+            <label>Maximum tool calls per turn</label>
+            <defaultValue>5</defaultValue>
+            <helpText>Bounds cost and stops a model looping. Reaching the cap ends the turn
+                gracefully with whatever was already grounded, never with an error.</helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>dailyRequestCap</name>
+            <label>Daily request cap</label>
+            <defaultValue>500</defaultValue>
+            <helpText>The chat endpoint is public, so this is a security control rather than an
+                operational nicety.</helpText>
+        </input-field>
+
+        <input-field type="bool">
+            <name>killSwitch</name>
+            <label>Kill switch — stop the assistant</label>
+            <defaultValue>false</defaultValue>
+            <helpText>Rejects every turn before any model spend. Takes precedence over the daily
+                cap, so the trace records why it stopped.</helpText>
+        </input-field>
+    </card>
+
+</config>
