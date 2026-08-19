@@ -19,6 +19,13 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
  * merged in — it is a constrained slot placed after the rules and explicitly
  * subordinated to them, so a merchant cannot phrase a "voice" that instructs
  * the assistant out of its grounding.
+ *
+ * {@see self::build()}'s optional `$vocabulary` (rendered by
+ * {@see \Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary}, shop DATA rather than
+ * shop rules) slots in after the rules for the same reason the voice stays last: it is
+ * placed where the rules above it already bind it, and strictly before the merchant's
+ * voice, so neither shop data nor a merchant's phrasing ever outranks the grounding
+ * rules themselves.
  */
 final class SystemPrompt
 {
@@ -49,9 +56,13 @@ final class SystemPrompt
         Answer in English.
         PROMPT;
 
-    public static function build(AssistantConfig $config): string
+    public static function build(AssistantConfig $config, string $vocabulary = ''): string
     {
         $prompt = self::RULES;
+
+        if ($vocabulary !== '') {
+            $prompt .= "\n\n" . $vocabulary;
+        }
 
         if ($config->agentVoice !== '') {
             $prompt .=

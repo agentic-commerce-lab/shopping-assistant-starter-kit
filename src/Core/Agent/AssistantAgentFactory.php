@@ -12,6 +12,7 @@ use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Core\Llm\PlatformFactory;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
+use Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
@@ -64,6 +65,20 @@ final class AssistantAgentFactory
         $renderer = new FactRenderer($trace);
 
         $facetProbe = new FacetProbe($gateway, $trace);
+
+        // Probed here, once, before we know whether the model will call a tool at all —
+        // FacetProbe caches per scope for the life of this request, so SearchProductsTool's
+        // own probe() call below (same $facetProbe instance, same $config->scope) reuses
+        // this result instead of hitting the gateway again. A turn that never calls a tool
+        // still pays this one probe; that is the accepted cost of having the vocabulary
+        // available before the system prompt is built.
+        $vocabularyStats = CatalogVocabulary::renderWithStats($facetProbe->probe($config->scope));
+        $trace->record('vocabulary.render', [
+            'fieldCount' => $vocabularyStats['fieldCount'],
+            'valueCount' => $vocabularyStats['valueCount'],
+            'truncated' => $vocabularyStats['truncated'],
+        ]);
+
         $queryBuilder = new QueryBuilder();
         $variantResolver = new VariantResolver($gateway, $trace);
         $blocklist = new BlocklistFilter();
@@ -110,6 +125,6 @@ final class AssistantAgentFactory
             outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace)],
         );
 
-        return new Bundle($agent, $renderer, $trace, $toolbox);
+        return new Bundle($agent, $renderer, $trace, $toolbox, $vocabularyStats['text']);
     }
 }

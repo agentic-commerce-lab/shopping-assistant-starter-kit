@@ -19,6 +19,13 @@ use Symfony\AI\Agent\Toolbox\ToolboxInterface;
  * inspect which tools this request actually has available, since capability
  * control is toolbox construction and there is otherwise no way to observe
  * it from outside.
+ *
+ * `$vocabulary` is the already-rendered {@see \Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary}
+ * string, not the {@see \Swag\AssistantStarterKit\Core\Retrieval\FacetProbe} that produced
+ * it: this is a readonly DTO of things one turn needs, and
+ * {@see \Swag\AssistantStarterKit\Core\Agent\AssistantRunner} has no business probing the
+ * catalog itself — it only needs the string to hand to
+ * {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt::build()}.
  */
 final readonly class Bundle
 {
@@ -27,5 +34,6 @@ final readonly class Bundle
         public FactRenderer $renderer,
         public TraceRecorder $trace,
         public ToolboxInterface $toolbox,
+        public string $vocabulary = '',
     ) {}
 }

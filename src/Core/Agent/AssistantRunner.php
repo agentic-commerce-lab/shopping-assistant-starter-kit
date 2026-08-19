@@ -137,7 +137,7 @@ final class AssistantRunner
 
     private function buildMessageBag(string $message, MessageBag $history): MessageBag
     {
-        $bag = new MessageBag(Message::forSystem(SystemPrompt::build($this->config)));
+        $bag = new MessageBag(Message::forSystem(SystemPrompt::build($this->config, $this->bundle->vocabulary)));
 
         foreach ($history->getMessages() as $historyMessage) {
             $bag->add($historyMessage);
