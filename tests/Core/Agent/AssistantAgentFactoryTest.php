@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Swag\AssistantStarterKit\Tests\Core\Agent;
+
+use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
+use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
+use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
+use Swag\AssistantStarterKit\Core\Trace\TraceEvent;
+use Symfony\AI\Platform\Result\ToolCall;
+use Symfony\Component\HttpClient\MockHttpClient;
+
+/**
+ * Ruling R32: exactly ONE CommerceGatewayInterface instance must back every
+ * tool for the whole request, because AddToCartTool reads `gateway->cart()->total`
+ * live to enforce maxCartValue. A gateway built per tool instead of per
+ * request would let every add_to_cart call see an empty cart, letting a model
+ * drip-feed past the limit one item at a time — which is exactly how a model
+ * would do it, and the guardrail would still pass its own unit test because
+ * that test only ever uses one gateway.
+ */
+final class AssistantAgentFactoryTest extends TestCase
+{
+    private function bundle(AssistantConfig $config, bool $cartAvailable = true): AssistantAgentFactory\Bundle
+    {
+        return AssistantAgentFactory::create(
+            $config,
+            $cartAvailable,
+            new LlmSettings('https://example.invalid', 'test-key', 'gpt-x'),
+            new MockHttpClient(static function (): never {
+                throw new \RuntimeException('The platform must not be called by this test.');
+            }),
+        );
+    }
+
+    public function testTwoSuccessiveAddToCartCallsThroughTheSameToolboxAccumulateOnOneGateway(): void
+    {
+        // fx-026-blue-l costs 49.90; one unit fits under 60.0, two do not (99.80 > 60.0).
+        // If the factory built a fresh gateway per tool call, both calls would see an
+        // empty cart and both would be wrongly allowed.
+        $bundle = $this->bundle(new AssistantConfig(maxCartValue: 60.0));
+
+        $bundle->toolbox->execute(new ToolCall('call-1', 'add_to_cart', [
+            'variantId' => 'fx-026-blue-l',
+            'quantity' => 1,
+        ]));
+        $bundle->toolbox->execute(new ToolCall('call-2', 'add_to_cart', [
+            'variantId' => 'fx-026-blue-l',
+            'quantity' => 1,
+        ]));
+
+        $toolCallEvents = array_values(array_filter(
+            $bundle->trace->events(),
+            static fn(TraceEvent $event): bool => 'tool.call' === $event->stage,
+        ));
+
+        self::assertCount(2, $toolCallEvents);
+
+        $first = $toolCallEvents[0] ?? null;
+        $second = $toolCallEvents[1] ?? null;
+        self::assertNotNull($first);
+        self::assertNotNull($second);
+
+        self::assertSame('allowed', $first->payload['policyReasonCode']);
+        self::assertSame('cart_limit', $second->payload['policyReasonCode']);
+    }
+}

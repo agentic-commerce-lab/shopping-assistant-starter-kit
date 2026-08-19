@@ -57,6 +57,14 @@ final class FactRenderer
     }
 
     /**
+     * @return list<string> every id this turn has retrieved so far, in registration order
+     */
+    public function retrievedIds(): array
+    {
+        return array_keys($this->retrieved);
+    }
+
+    /**
      * @param list<string> $returnedIds
      */
     public function validate(array $returnedIds): ValidationResult

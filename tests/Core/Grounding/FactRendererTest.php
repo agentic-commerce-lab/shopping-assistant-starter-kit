@@ -168,4 +168,18 @@ final class FactRendererTest extends TestCase
 
         self::assertSame($unbacked, $renderer->unbackedPrices());
     }
+
+    public function testRetrievedIdsExposesEveryIdRegisteredThisTurn(): void
+    {
+        $renderer = new FactRenderer(new TraceRecorder());
+
+        $first = $this->gateway()->product('fx-017');
+        $second = $this->gateway()->product('fx-007');
+        self::assertNotNull($first);
+        self::assertNotNull($second);
+
+        $renderer->registerRetrieved([$first, $second]);
+
+        self::assertSame(['fx-017', 'fx-007'], $renderer->retrievedIds());
+    }
 }
