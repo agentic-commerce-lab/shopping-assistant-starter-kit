@@ -22,7 +22,11 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * With `scope === 'variant'` this assertion also requires a `variant.resolve` trace
  * event to exist at all: its total absence means variant resolution was never even
  * attempted for this turn, which is its own distinct failure from a resolution that ran
- * and produced the wrong figure.
+ * and produced the wrong figure. Checked via {@see TraceEvents::payloads()} so ANY
+ * occurrence across a multi-turn run satisfies it (Ruling R42), not only the last —
+ * the per-card stock/stockSource check itself already reads {@see AssistantTurn::$cards},
+ * which a multi-turn run's caller merges across every turn (see
+ * {@see \Swag\AssistantStarterKit\Eval\TurnAggregate}).
  */
 final class StockMatchesSource implements Assertion
 {
@@ -37,7 +41,7 @@ final class StockMatchesSource implements Assertion
         $expect = $expectations['expect'] ?? [];
         $scope = $expectations['scope'] ?? null;
 
-        if ('variant' === $scope && null === $trace->payload('variant.resolve')) {
+        if ('variant' === $scope && [] === TraceEvents::payloads($trace, 'variant.resolve')) {
             return RequiredTraceStage::missing($this->name(), 'variant.resolve');
         }
 

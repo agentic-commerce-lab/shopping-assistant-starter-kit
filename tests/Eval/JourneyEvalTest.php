@@ -13,16 +13,27 @@ use Swag\AssistantStarterKit\Eval\JourneyRunner;
 
 /**
  * Drives every journey under tests/Journeys/ through a real LLM endpoint and checks it
- * against its own trace-based assertions. Skipped — not failed — unless
- * ASSISTANT_LLM_BASE_URL, ASSISTANT_LLM_API_KEY and ASSISTANT_LLM_MODEL are all set, so
- * the full suite stays green in CI with no credentials configured.
+ * against its own trace-based assertions. Skipped — never failed — unless
+ * ASSISTANT_LLM_BASE_URL, ASSISTANT_LLM_API_KEY and ASSISTANT_LLM_MODEL are ALL set to a
+ * non-empty value, so the full suite stays green in CI with no credentials configured.
+ *
+ * Ruling R43: the original `setUp()` checked only `ASSISTANT_LLM_BASE_URL`. With that
+ * one variable set but `API_KEY` missing, the test would have attempted a real,
+ * unauthenticated network call instead of skipping — and a stated acceptance criterion
+ * for this suite is that it skips cleanly, not that it fails informatively. All three
+ * are now checked here, and `getenv()` returning `false` (unset) and `''` (set but
+ * empty) are both treated as "missing" — an empty credential is not a usable one.
  */
 #[Group('eval')]
 final class JourneyEvalTest extends TestCase
 {
     protected function setUp(): void
     {
-        if (false === getenv('ASSISTANT_LLM_BASE_URL')) {
+        if (
+            !self::isConfigured(getenv('ASSISTANT_LLM_BASE_URL'))
+            || !self::isConfigured(getenv('ASSISTANT_LLM_API_KEY'))
+            || !self::isConfigured(getenv('ASSISTANT_LLM_MODEL'))
+        ) {
             self::markTestSkipped(
                 'Set ASSISTANT_LLM_BASE_URL, ASSISTANT_LLM_API_KEY and ASSISTANT_LLM_MODEL to run the eval suite.',
             );
@@ -42,9 +53,13 @@ final class JourneyEvalTest extends TestCase
     {
         $journey = Journey::fromFile($path);
 
+        // setUp() already guarantees this is a non-empty string; re-checked here only
+        // so the analyzer can narrow LlmSettings::$model's non-empty-string parameter
+        // type without a pragma (the check between two separate method calls is not
+        // something static analysis can see across, even though it always holds).
         $model = (string) getenv('ASSISTANT_LLM_MODEL');
         if ('' === $model) {
-            self::fail('ASSISTANT_LLM_MODEL must not be empty when ASSISTANT_LLM_BASE_URL is set.');
+            self::markTestSkipped('ASSISTANT_LLM_MODEL must not be empty.');
         }
 
         $settings = new LlmSettings(
@@ -63,5 +78,10 @@ final class JourneyEvalTest extends TestCase
         }
 
         self::fail($report->summary());
+    }
+
+    private static function isConfigured(string|false $value): bool
+    {
+        return \is_string($value) && '' !== $value;
     }
 }

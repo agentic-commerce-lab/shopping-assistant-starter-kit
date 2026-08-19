@@ -28,7 +28,14 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * Its total absence means the filtering mechanism this assertion exists to verify was
  * never exercised this turn at all, which is a distinct failure from "it ran and nothing
  * leaked" — treating it as the latter (as this class did before R40) made a typo in this
- * class's own stage-name string indistinguishable from a passing run.
+ * class's own stage-name string indistinguishable from a passing run. Checked via
+ * {@see TraceEvents::payloads()} — ANY occurrence across a multi-turn run satisfies it
+ * (Ruling R42), not only the last.
+ *
+ * See {@see BlocklistSurvivors} for Ruling R44: the survivors check cannot detect a
+ * blocked *variant* leaking past a parent-level block, only a blocked id leaking
+ * unchanged. The cards-based check immediately below IS a full, independent defence for
+ * that case, since only survivors ever reach {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer::registerRetrieved()}.
  */
 final class BlocklistRespected implements Assertion
 {
@@ -39,7 +46,7 @@ final class BlocklistRespected implements Assertion
 
     public function evaluate(AssistantTurn $turn, TraceRecorder $trace, array $expectations): AssertionResult
     {
-        if (null === $trace->payload('blocklist.filter')) {
+        if ([] === TraceEvents::payloads($trace, 'blocklist.filter')) {
             return RequiredTraceStage::missing($this->name(), 'blocklist.filter');
         }
 

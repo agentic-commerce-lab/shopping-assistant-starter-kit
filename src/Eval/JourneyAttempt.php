@@ -22,8 +22,18 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * {@see FixtureCommerceGateway}, a new {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer}
  * — so this run's trace can never contaminate another's. Within this one run, every
  * turn shares that one bundle and carries the returned prose forward as conversation
- * history, exactly as a real multi-turn shopper session would; {@see JourneyRunner}
- * only ever sees the final turn and the accumulated trace this method returns.
+ * history, exactly as a real multi-turn shopper session would.
+ *
+ * Ruling R42: {@see JourneyRunner} does not see only the final turn — every turn's
+ * {@see AssistantTurn} is collected and merged via {@see TurnAggregate::of()} before
+ * being returned. A single-turn journey's aggregate is trivially that one turn; a
+ * multi-turn journey's (today, only `cart_add`) is the union of every turn's cards,
+ * prose and unbacked prices, so a safety assertion reading {@see AssistantTurn::$cards}
+ * or `$prose` cannot miss something an earlier turn did just because a later turn was
+ * clean. The single {@see TraceRecorder} returned alongside it already accumulates every
+ * turn's events in one object; it needed no change here — see
+ * {@see \Swag\AssistantStarterKit\Eval\Assertion\TraceEvents} for how assertions read
+ * ALL of a stage's events rather than only the last.
  *
  * Split out of {@see JourneyRunner} to keep that class's own cyclomatic-complexity total
  * under this project's threshold (mago sums it per class, across every method).
@@ -55,7 +65,7 @@ final class JourneyAttempt
         $runner = new AssistantRunner($config, $bundle);
 
         $history = new MessageBag();
-        $turn = null;
+        $turns = [];
 
         foreach ($journey->turns as $turnSpec) {
             $message = 'archetype' === $turnSpec
@@ -63,17 +73,18 @@ final class JourneyAttempt
                 : $turnSpec;
 
             $turn = $runner->run($message, $history);
+            $turns[] = $turn;
 
             $history->add(Message::ofUser($message));
             $history->add(Message::ofAssistant($turn->prose));
         }
 
-        if (null === $turn) {
+        if ([] === $turns) {
             // Unreachable: Journey::fromFile() already rejects an empty turns list.
             throw new \LogicException(\sprintf('Journey "%s" declares no turns.', $journey->id));
         }
 
-        return [$turn, $bundle->trace];
+        return [TurnAggregate::of($turns), $bundle->trace];
     }
 
     private function resolveArchetypePhrase(Journey $journey, ?string $phrase): string

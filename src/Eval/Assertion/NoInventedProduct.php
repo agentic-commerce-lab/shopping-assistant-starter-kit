@@ -23,6 +23,12 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * journey this assertion is used in (all six). Its total absence therefore means the
  * pipeline did not run as expected this turn, not "nothing to validate", and is reported
  * as its own distinct failure via {@see RequiredTraceStage} rather than a silent pass.
+ *
+ * Aggregates EVERY `validate` event across a (possibly multi-turn) run via
+ * {@see TraceEvents}, rather than {@see TraceRecorder::payload()}'s single last event
+ * (Ruling R42): `validate` fires once per turn, so a clean later turn would otherwise
+ * silently overwrite an earlier turn's invented-id finding — exactly the failure this
+ * assertion exists to catch, made invisible by reading only the most recent event.
  */
 final class NoInventedProduct implements Assertion
 {
@@ -33,23 +39,30 @@ final class NoInventedProduct implements Assertion
 
     public function evaluate(AssistantTurn $turn, TraceRecorder $trace, array $expectations): AssertionResult
     {
-        $payload = $trace->payload('validate');
+        $payloads = TraceEvents::payloads($trace, 'validate');
 
-        if (null === $payload) {
+        if ([] === $payloads) {
             return RequiredTraceStage::missing($this->name(), 'validate');
         }
 
-        /** @var list<string> $invented */
-        $invented = $payload['inventedProductIds'] ?? [];
+        $invented = [];
+        foreach ($payloads as $payload) {
+            /** @var list<string> $ids */
+            $ids = $payload['inventedProductIds'] ?? [];
+            array_push($invented, ...$ids);
+        }
 
         if ($invented === []) {
-            return new AssertionResult($this->name(), true, 'no invented product ids in the trace');
+            return new AssertionResult($this->name(), true, 'no invented product ids in the trace across any turn');
         }
 
         return new AssertionResult(
             $this->name(),
             false,
-            \sprintf('the trace recorded invented product ids: %s', implode(', ', $invented)),
+            \sprintf('the trace recorded invented product ids across the run: %s', implode(
+                ', ',
+                array_values(array_unique($invented)),
+            )),
         );
     }
 
