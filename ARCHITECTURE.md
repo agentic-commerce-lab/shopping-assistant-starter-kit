@@ -267,13 +267,41 @@ One turn, stage by stage. Each stage emits a trace event.
 | 8 | Blocklist | `Policy\BlocklistFilter` | post-retrieval pass; pre-pass happens via `CatalogScope` |
 | 9 | Rank | `Retrieval\QueryBuilder` (sort) | v0: in-stock bias only |
 | 10 | Compact | `Grounding\FactRenderer` | ~200-token cards for the prompt |
-| 11 | Generate | `Agent\AgentLoop` + LLM | prose + product IDs + optional tool call |
-| 12 | Validate | `Grounding\FactRenderer` | any ID not in the retrieved set is **dropped and logged** |
+| 11 | Generate | `Agent\AgentLoop` + LLM | prose + optional tool call. **Not product ids** — see the correction below stage 15 |
+| 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
 | 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 5) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
 | 15 | Record | `Trace\TraceRecorder` | persist conversation + events |
 
 Stages 12 and 13 are the product. Everything else is plumbing.
+
+> **Correction, 2026-08-19 — where the card set comes from.** The first live run against a
+> real model (OpenRouter, `openai/gpt-4o-mini`) falsified this document's original reading of
+> D3. It said the model emits product ids and the server renders facts, and the implementation
+> took that literally: `GroundingOutputProcessor` selected which cards to render by **scraping
+> ids out of the model's prose**, and the system prompt ordered the model to "refer to products
+> by their id" to make that work.
+>
+> A natural shopper-facing reply contains no product id, so nothing rendered — every
+> card-based eval assertion failed with an empty card set, while two safety assertions passed
+> *vacuously* because an assistant that renders nothing has nothing to invent and nothing to
+> contradict.
+>
+> The corrected division of labour, and the one the code now implements:
+>
+> | Who | Emits |
+> |---|---|
+> | The model | prose, and *which tool to call with which arguments* |
+> | The tools | the product ids — `FactRenderer::registerRetrieved()` receives exactly the ids returned to the model |
+> | The server | every figure: price, stock, delivery, url, image |
+>
+> Prose scraping survives, but only for the job it was always right for: **detecting an
+> invented id**, plus optionally narrowing the card set when the model does name a valid
+> retrieved one. It is no longer the selector. `grounding.select` records which source won.
+>
+> D3's substance is intact — the model still never supplies a fact. What was wrong was the
+> claim that ids travel through the model's *text*. They travel through the *tool boundary*,
+> which is the only place they were ever trustworthy.
 
 ## Agent runtime: Symfony AI
 
@@ -286,7 +314,7 @@ grounding, and it plugs into three verified seams:
 | Context window management | `InputProcessorInterface`, `Input::setMessageBag()` |
 | Validate ids, render facts, audit prose | `OutputProcessorInterface`, `Output::getResult()` |
 | The tool-calling loop | `Toolbox\AgentProcessor`, registered as both input and output processor. It **recursively re-invokes `Agent::call()`** per tool round, which is why processor order does not decide whether grounding sees populated tool results — verified empirically at 0.12, not assumed |
-| Bounded tool calls | **Not** `AgentProcessor`'s own `maxToolCalls` constructor argument — it declares its round counter as a local inside the method that recurses, so every recursive re-entry (one per tool round; see the row above) starts that counter over at zero, and the cap is unreachable at any depth. `Agent\BoundedToolbox` decorates the `Toolbox` handed to `AgentProcessor` and counts `execute()` calls in a property that survives every recursion level instead — that is the real bound. Also where a `ToolArgumentException` (a bad tool argument from the model) is caught and turned into a retryable `['note' => …]` result instead of aborting the turn, and where a uniform `tool.call` trace event is recorded for every tool call |
+| Bounded tool calls | **Not** `AgentProcessor`'s own `maxToolCalls` constructor argument — it declares its round counter as a local inside the method that recurses, so every recursive re-entry (one per tool round; see the row above) starts that counter over at zero, and the cap is unreachable at any depth. `Agent\BoundedToolbox` decorates the `Toolbox` handed to `AgentProcessor` and counts `execute()` calls in a property that survives every recursion level instead — that is the real bound. Also where a bad tool argument from the model is caught and turned into a retryable `['note' => …]` result instead of aborting the turn — our own `ToolArgumentException`, and (since the second live run) the framework's own argument-coercion failures, which `Toolbox::execute()` wraps into a `ToolExecutionException` whose `$previous` is a serializer or type error, and where a uniform `tool.call` trace event is recorded for every tool call |
 | Capability control | which tools are constructed into the `Toolbox` |
 | Guard before any spend | `AssistantRunner`, before `$agent->call()` |
 
@@ -441,7 +469,7 @@ Four specific lessons, each mapping to a decision here:
 | What it did | Consequence | Our decision |
 |---|---|---|
 | Declared `create/read/update/delete customer` permissions for a chatbot | Orders of magnitude more privilege than the task needs; the kind of declaration a rollout review stops | Least privilege. The plugin never reads customer PII; `ProductCard` is an allowlist DTO |
-| No grounding discipline in the prompts — nothing forbids inventing price or availability | The model is free to fabricate commerce data | D3: the model emits IDs, the server renders facts. Plus the harness prompt as the default voice |
+| No grounding discipline in the prompts — nothing forbids inventing price or availability | The model is free to fabricate commerce data | D3: the tools emit ids, the server renders facts, the model never supplies a figure (see the 2026-08-19 correction above). Plus the harness prompt as the default voice |
 | Merchant configuration was one free-text field (`shop.instructions`) interpolated into the prompt | Every merchant-specific behaviour becomes unverifiable prompt text that silently regresses | Blocklist and scope are filters; policy decisions are reason-coded |
 | Operational band-aids in the prompt: *"Never call the present product tool two times in a row"*, *"Don't use Markdown"*, *"use the format Final Answer: {…}"* | Reasoning was parsed out of free text with a string marker — fragile, and a sign of fighting the model instead of constraining it | Structured output for intent extraction; tool-calling with server-side schema validation |
 
