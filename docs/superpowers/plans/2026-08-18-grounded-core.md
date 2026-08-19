@@ -2776,10 +2776,15 @@ custom `ResultInterface` just to smuggle cards through the framework's return ty
    );
    ```
 
-   **Order is load-bearing.** `AgentProcessor` drives the tool loop, so
-   `GroundingOutputProcessor` must come *after* it in `outputProcessors` — otherwise it
-   validates a result the tools have not populated yet. Write a test that fails if the order
-   is swapped rather than relying on a comment.
+   **Order turns out NOT to be load-bearing at 0.12, and this was verified empirically rather
+   than assumed.** An earlier draft of this plan claimed it was and demanded a test that fails
+   when swapped. No such test can be written: the installed `AgentProcessor` **recursively
+   re-invokes `Agent::call()` for each tool round**, so tool execution always precedes any
+   processor seeing a real `TextResult`, in either order. Ship the order above anyway — it is
+   harmless, costing only a few redundant re-validation passes, and it is the order that would
+   be correct if the recursion ever changed. `OutputProcessorOrderTest` records the finding so
+   nobody later removes the redundancy believing they are removing a safeguard, or adds one
+   believing it is load-bearing.
 
    `AgentProcessor` also accepts a `ToolResultConverter`, which is where tool return values
    become messages. We do not customise it: our tools already return ids only (Task 10), which

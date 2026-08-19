@@ -280,7 +280,7 @@ grounding, and it plugs into three verified seams:
 |---|---|
 | Context window management | `InputProcessorInterface`, `Input::setMessageBag()` |
 | Validate ids, render facts, audit prose | `OutputProcessorInterface`, `Output::getResult()` |
-| The tool-calling loop | `Toolbox\AgentProcessor`, registered as both input and output processor |
+| The tool-calling loop | `Toolbox\AgentProcessor`, registered as both input and output processor. It **recursively re-invokes `Agent::call()`** per tool round, which is why processor order does not decide whether grounding sees populated tool results — verified empirically at 0.12, not assumed |
 | Bounded tool calls | `AgentProcessor`'s `maxToolCalls` argument |
 | Capability control | which tools are constructed into the `Toolbox` |
 | Guard before any spend | `AssistantRunner`, before `$agent->call()` |
