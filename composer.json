@@ -14,12 +14,13 @@
     "symfony/http-client-contracts": "^3.0"
   },
   "require-dev": {
-    "phpunit/phpunit": "^11.0",
+    "captainhook/captainhook": "^5.25",
+    "captainhook/hook-installer": "^1.0",
     "carthage-software/mago": "^1.30",
     "phauthentic/cognitive-code-analysis": "^1.11",
+    "phpunit/phpunit": "^11.0",
     "shipmonk/composer-dependency-analyser": "^1.0",
-    "captainhook/captainhook": "^5.25",
-    "captainhook/hook-installer": "^1.0"
+    "symfony/dotenv": "~7.4.0"
   },
   "conflict": {
     "symfony/clock": ">=8.0",
