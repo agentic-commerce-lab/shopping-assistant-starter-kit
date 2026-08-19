@@ -6,6 +6,7 @@
   "require": {
     "php": "^8.2",
     "ext-filter": "*",
+    "ext-mbstring": "*",
     "symfony/ai-agent": "0.12.*",
     "symfony/ai-generic-platform": "0.12.*",
     "symfony/ai-platform": "0.12.*",

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use ShipMonk\ComposerDependencyAnalyser\Config\Configuration;
-use ShipMonk\ComposerDependencyAnalyser\Config\ErrorType;
 
 // shipmonk/composer-dependency-analyser: detects unused + missing/shadow composer deps.
 // Backs the `quality:depcheck` task. Adjust the scanned paths to the project's layout.
@@ -13,13 +12,12 @@ use ShipMonk\ComposerDependencyAnalyser\Config\ErrorType;
 // `use ShipMonk\ComposerDependencyAnalyser\Config\ErrorType;`) only for a real finding —
 // the analyser reports unmatched ignores as errors, so do not pre-declare ignores that do
 // not yet apply.
-$config = (new Configuration())
-    ->addPathToScan(__DIR__ . '/src', isDev: false)
-    // Plan 1 only scaffolds the project and pins the Symfony AI stack; no src/ code
-    // consumes symfony/ai-agent yet. A later task wires the agent/tool-calling layer that
-    // will make this import real. Remove this ignore once that code lands and the
-    // analyser finds genuine usage.
-    ->ignoreErrorsOnPackage('symfony/ai-agent', [ErrorType::UNUSED_DEPENDENCY]);
+//
+// The symfony/ai-agent ignore that used to live here (Plan 1 pinned the package before any
+// src/ code consumed it) is gone: Task 10's SearchProductsTool/GetProductTool now import
+// Symfony\AI\Agent\Toolbox\Attribute\AsTool, so the dependency is genuinely used and the
+// analyser no longer reports it as unused.
+$config = (new Configuration())->addPathToScan(__DIR__ . '/src', isDev: false);
 
 // Scan tests as dev paths only when the directory exists (addPathToScan throws on a
 // missing path, which would break the gate on projects without a tests/ directory).

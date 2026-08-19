@@ -1,0 +1,105 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Swag\AssistantStarterKit\Core\Tool;
+
+use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
+use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
+use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
+use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
+
+/**
+ * Single-product lookup exposed to the model as a Symfony AI tool.
+ *
+ * Only orchestrates the injected services — {@see VariantResolver} owns every
+ * decision about whether a selection narrows to exactly one sellable variant,
+ * {@see BlocklistFilter} owns compliance removal. Returns a product id only;
+ * the card itself is registered with {@see FactRenderer} for the controller
+ * to render after the run.
+ */
+#[AsTool(
+    name: 'get_product',
+    description: 'Look up one product by id, optionally resolving a variant by its option '
+    . 'values. Returns the product id only. Use this to answer questions about a '
+    . 'specific size, colour or configuration.',
+)]
+final class GetProductTool
+{
+    // @mago-expect lint:excessive-parameter-list
+    // Every parameter is one collaborator this method orchestrates without reimplementing;
+    // the brief dictates this exact list, and the mandated test constructs it positionally
+    // with these same six arguments, so the list cannot shrink without either duplicating a
+    // collaborator's logic here or breaking that test.
+    public function __construct(
+        private readonly CommerceGatewayInterface $gateway,
+        private readonly VariantResolver $variantResolver,
+        private readonly BlocklistFilter $blocklist,
+        private readonly FactRenderer $renderer,
+        private readonly TraceRecorder $trace,
+        private readonly AssistantConfig $config,
+    ) {}
+
+    /**
+     * @param string $productId The product id to look up.
+     * @param ?array<int, array{option: string, group?: string}> $options Option
+     *     selections to resolve a specific variant, e.g. [{"option": "Blue"},
+     *     {"option": "M", "group": "Size"}]. Use this catalogue's own spelling for
+     *     "group" exactly — it is matched case-sensitively.
+     *
+     * @return array{productIds: list<string>, total: int, note?: string}
+     */
+    public function __invoke(string $productId, ?array $options = null): array
+    {
+        $productId = Guard::boundedString($productId, 64, 'product_id') ?? '';
+        $selections = VariantSelectionGuard::fromRaw($options, 'options');
+
+        $card = $this->gateway->product($productId);
+
+        // A product that carries variants is never itself an indexed sellable unit —
+        // only its variants are — so its own id only resolves once selections narrow
+        // it to one of them. Fall back to the gateway's variant resolution using the
+        // given id as the parent id, still going through VariantResolver below for the
+        // authoritative match, its de-duplication and its trace event.
+        if ($card === null && $selections !== []) {
+            $card = $this->gateway->resolveVariant($productId, $selections);
+        }
+
+        if ($card === null) {
+            $this->trace->record('retrieve', ['hits' => 0, 'retainedIds' => []]);
+
+            return [
+                'productIds' => [],
+                'total' => 0,
+                'note' => 'No such product in this shop.',
+            ];
+        }
+
+        $this->trace->record('retrieve', ['hits' => 1, 'retainedIds' => [$card->id]]);
+
+        $cards = $this->variantResolver->resolve([$card], $selections);
+
+        $filtered = $this->blocklist->apply($cards, $this->config->scope);
+        $this->trace->record('blocklist.filter', [
+            'stage' => 'post',
+            'removedIds' => $filtered['removed'],
+        ]);
+
+        $survivors = $filtered['cards'];
+        $this->renderer->registerRetrieved($survivors);
+
+        $result = [
+            'productIds' => array_map(static fn($c) => $c->id, $survivors),
+            'total' => \count($survivors),
+        ];
+
+        if ($survivors === []) {
+            $result['note'] = 'Product exists but is not available in this shop.';
+        }
+
+        return $result;
+    }
+}
