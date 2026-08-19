@@ -265,7 +265,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 6 | Retrieve | gateway `search()` | real context, real prices |
 | 7 | Resolve variant | `Grounding\VariantResolver` | refetches the variant's own price and stock |
 | 8 | Blocklist | `Policy\BlocklistFilter` | post-retrieval pass; pre-pass happens via `CatalogScope` |
-| 9 | Rank | `Retrieval\QueryBuilder` (sort) | v0: in-stock bias only |
+| 9 | Rank | *inside the gateway's `search()`, at stage 6* | v0: in-stock bias only. `QueryBuilder` only *names* the sort; the gateway applies it **together with the limit**, before variant resolution — see the correction below |
 | 10 | Compact | `Grounding\FactRenderer` | ~200-token cards for the prompt |
 | 11 | Generate | `Agent\AgentLoop` + LLM | prose + optional tool call. **Not product ids** — see the correction below stage 15 |
 | 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
@@ -302,6 +302,25 @@ Stages 12 and 13 are the product. Everything else is plumbing.
 > D3's substance is intact — the model still never supplies a fact. What was wrong was the
 > claim that ids travel through the model's *text*. They travel through the *tool boundary*,
 > which is the only place they were ever trustworthy.
+
+> **Correction, 2026-08-19 — ranking happens at stage 6, not stage 9.** This table listed *Rank*
+> after *Resolve variant*, implying that ranking cannot remove a variant before resolution gets to
+> disambiguate it. The implementation is the other way round: `QueryBuilder` only *names* a sort,
+> and the gateway's `search()` applies sort **and limit** together at stage 6.
+>
+> Live run 3 turned that gap into a defect. Ranking applies an in-stock bias, so a sold-out unit
+> sorts last; a search with a narrow limit truncates it away, and no later stage can recover it —
+> `VariantResolver` cannot disambiguate a set of one, and the blocklist only removes. Measured
+> against the fixture catalogue, term `Jersey` ranks `fx-026-blue-l` (stock 12) → `fx-026-black-m`
+> (3) → `fx-026-blue-m` (0), so `limit: 1` answers "the blue jersey in M?" with the blue L.
+>
+> **The bias hides the variant precisely when it is out of stock — which is when the shopper most
+> needs the answer.** Mitigated for now by a floor on the model-supplied `limit`
+> (`SearchProductsTool::MIN_LIMIT`), which keeps the window wide enough that ranking cannot
+> truncate the asked-for unit. That is a mitigation, not a fix: the ordering itself is still
+> wrong, and moving limit application after variant resolution is the real repair. It needs the
+> gateway seam to carry the distinction between "how many to retrieve" and "how many to return",
+> so it is recorded here rather than done.
 
 ## Agent runtime: Symfony AI
 
