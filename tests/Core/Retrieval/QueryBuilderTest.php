@@ -28,12 +28,10 @@ final class QueryBuilderTest extends TestCase
 
         self::assertSame('brake pads', $result->query->term);
         self::assertCount(1, $result->query->filters);
-        // @mago-expect analysis:possibly-null-property-access
-        // assertCount above guarantees index 0 exists; the analyzer cannot correlate
-        // that runtime narrowing to the static `list<FilterClause>` element type.
-        self::assertSame('price', $result->query->filters[0]->field);
-        // @mago-expect analysis:possibly-null-property-access
-        self::assertSame(['lte' => 40.0], $result->query->filters[0]->value);
+        $filter = $result->query->filters[0] ?? null;
+        self::assertNotNull($filter);
+        self::assertSame('price', $filter->field);
+        self::assertSame(['lte' => 40.0], $filter->value);
         self::assertSame([], $result->droppedFields);
     }
 
@@ -55,10 +53,10 @@ final class QueryBuilderTest extends TestCase
         )]), $this->facets());
 
         self::assertCount(1, $result->query->filters);
-        // @mago-expect analysis:possibly-null-property-access
-        self::assertSame('properties.Colour', $result->query->filters[0]->field);
-        // @mago-expect analysis:possibly-null-property-access
-        self::assertSame('Blue', $result->query->filters[0]->value);
+        $filter = $result->query->filters[0] ?? null;
+        self::assertNotNull($filter);
+        self::assertSame('properties.Colour', $filter->field);
+        self::assertSame('Blue', $filter->value);
         self::assertSame([], $result->droppedFields);
     }
 }
