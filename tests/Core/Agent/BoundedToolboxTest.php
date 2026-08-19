@@ -9,18 +9,17 @@ use Swag\AssistantStarterKit\Core\Agent\BoundedToolbox;
 use Swag\AssistantStarterKit\Core\Tool\EscalateTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Exception\MaxIterationsExceededException;
-use Symfony\AI\Agent\Toolbox\Exception\ToolExecutionException;
 use Symfony\AI\Agent\Toolbox\Toolbox;
-use Symfony\AI\Agent\Toolbox\ToolboxInterface;
-use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
-use Symfony\AI\Platform\Tool\Tool;
-use Symfony\Component\Serializer\Exception\NotNormalizableValueException;
 
 /**
- * Findings C2 and I2 both live in {@see BoundedToolbox}, so both are proven here
- * against the REAL vendor {@see Toolbox} — not a stub — so these tests exercise the
- * exact wrapping/unwrapping behaviour production code depends on.
+ * Finding C2 lives here, proven against the REAL vendor {@see Toolbox} — not a stub —
+ * so these tests exercise the exact wrapping/unwrapping behaviour production code
+ * depends on. Finding I2's other shapes ({@see \Symfony\Component\Serializer\Exception\NotNormalizableValueException},
+ * a `\TypeError` from argument dispatch, and the boundary that still rethrows a genuine
+ * server fault) live in {@see BoundedToolboxArgumentRejectionTest} — split out once
+ * adding them here pushed this class past mago's too-many-methods threshold, same
+ * reasoning as the FactRendererTest split.
  */
 final class BoundedToolboxTest extends TestCase
 {
@@ -117,110 +116,5 @@ final class BoundedToolboxTest extends TestCase
         $this->expectException(MaxIterationsExceededException::class);
 
         $toolbox->execute(new ToolCall('call-2', 'escalate', ['reason' => 'fine']));
-    }
-
-    /**
-     * Pilot blocker (RED before the fix): a malformed tool-call argument makes Symfony
-     * AI's own argument denormalization throw {@see NotNormalizableValueException}
-     * *before* our tool code ever runs. That class does not implement
-     * `ToolExecutionExceptionInterface`, only the Serializer component's own
-     * {@see \Symfony\Component\Serializer\Exception\ExceptionInterface}, so — same as
-     * any other tool failure per finding I2 — it reached this class uncaught and killed
-     * the whole turn instead of becoming feedback the model could act on.
-     *
-     * Here the inner {@see ToolboxInterface} is a double that throws the serializer
-     * exception directly from `execute()`, per this project's brief, to exercise the
-     * disjoint `catch (SerializerExceptionInterface)` block on its own.
-     */
-    public function testUnwrapsASerializerExceptionThrownDirectlyIntoARetryableNoteInsteadOfThrowing(): void
-    {
-        $trace = new TraceRecorder();
-        $inner = new class implements ToolboxInterface {
-            public function getTools(): array
-            {
-                return [];
-            }
-
-            public function execute(ToolCall $toolCall): ToolResult
-            {
-                throw new NotNormalizableValueException('Expected int, string given.');
-            }
-        };
-
-        $toolbox = new BoundedToolbox($inner, 5, $trace);
-
-        $result = $toolbox->execute(new ToolCall('call-1', 'search_products', ['limit' => 'ten']));
-
-        $payload = $result->getResult();
-        self::assertIsArray($payload);
-        self::assertArrayHasKey('note', $payload);
-        $note = $payload['note'];
-        self::assertIsString($note);
-        self::assertStringContainsString('Expected int, string given.', $note);
-
-        $rejectedEvents = array_values(array_filter(
-            $trace->events(),
-            static fn($event): bool => 'tool.arguments.rejected' === $event->stage,
-        ));
-        self::assertCount(1, $rejectedEvents);
-        self::assertSame('search_products', $rejectedEvents[0]->payload['name'] ?? null);
-        self::assertSame('Expected int, string given.', $rejectedEvents[0]->payload['reason'] ?? null);
-    }
-
-    /**
-     * The shape the REAL vendor `Toolbox::execute()` actually throws in production: it
-     * catches `\Throwable` for anything that is not a `ToolExecutionExceptionInterface`
-     * — `NotNormalizableValueException` included — and wraps it into a
-     * `ToolExecutionException` with the original as `getPrevious()`, exactly like any
-     * other tool failure. Confirmed by reading
-     * `vendor/symfony/ai-agent/src/Toolbox/Toolbox.php` and reproducing it against the
-     * installed package with a throwaway backed-enum-typed tool argument — the
-     * brief's own stack trace (`NotNormalizableValueException` ... `BoundedToolbox.php`
-     * ... `AgentProcessor.php`) is the merged view of exactly this exception chain, not
-     * a raw `NotNormalizableValueException` reaching this class directly. Without the
-     * `$previous instanceof SerializerExceptionInterface` branch inside the existing
-     * `catch (ToolExecutionException)` block, the previous test alone would not close
-     * the reported defect: production never throws the serializer exception unwrapped.
-     */
-    public function testUnwrapsASerializerExceptionWrappedInToolExecutionExceptionIntoARetryableNote(): void
-    {
-        $trace = new TraceRecorder();
-        $toolCall = new ToolCall('call-1', 'search_products', ['limit' => 'ten']);
-        $previous = new NotNormalizableValueException('The data must belong to a backed enumeration of type Foo.');
-
-        $inner = new class($toolCall, $previous) implements ToolboxInterface {
-            public function __construct(
-                private readonly ToolCall $toolCall,
-                private readonly NotNormalizableValueException $previous,
-            ) {}
-
-            public function getTools(): array
-            {
-                return [];
-            }
-
-            public function execute(ToolCall $toolCall): ToolResult
-            {
-                throw ToolExecutionException::executionFailed($this->toolCall, $this->previous);
-            }
-        };
-
-        $toolbox = new BoundedToolbox($inner, 5, $trace);
-
-        $result = $toolbox->execute($toolCall);
-
-        $payload = $result->getResult();
-        self::assertIsArray($payload);
-        self::assertArrayHasKey('note', $payload);
-        $note = $payload['note'];
-        self::assertIsString($note);
-        self::assertStringContainsString('backed enumeration', $note);
-
-        $rejectedEvents = array_values(array_filter(
-            $trace->events(),
-            static fn($event): bool => 'tool.arguments.rejected' === $event->stage,
-        ));
-        self::assertCount(1, $rejectedEvents);
-        self::assertSame('search_products', $rejectedEvents[0]->payload['name'] ?? null);
     }
 }
