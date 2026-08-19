@@ -1778,43 +1778,48 @@ final class VariantResolverTest extends TestCase
         $this->trace = new TraceRecorder();
     }
 
-    public function testReplacesAParentCardWithTheSelectedVariant(): void
+    public function testNarrowsSearchResultsToTheSelectedVariant(): void
     {
-        $parent = $this->gateway->product('fx-026');
-        self::assertNotNull($parent);
+        // Input is what the real pipeline supplies: search returns sellable units,
+        // i.e. variant cards with parentId set. There is no "parent card" in the flow.
+        $cards = $this->gateway->search(new ProductQuery(term: 'Trail Jersey'), new CatalogScope());
+        self::assertGreaterThan(1, \count($cards), 'the fixture must supply sibling variants');
 
         $resolved = (new VariantResolver($this->gateway, $this->trace))->resolve(
-            [$parent],
+            $cards,
             [new VariantSelection('Blue'), new VariantSelection('M')],
         );
 
+        // De-duplication: three sibling variants all resolve to the same one.
         self::assertCount(1, $resolved);
         self::assertSame('fx-026-blue-m', $resolved[0]->id);
         self::assertSame(0, $resolved[0]->stock);
         self::assertSame(StockSource::Variant, $resolved[0]->stockSource);
+        self::assertSame(49.90, $resolved[0]->price);
     }
 
-    public function testKeepsTheParentCardWhenTheSelectionIsAmbiguous(): void
+    public function testKeepsTheOriginalCardsWhenTheSelectionIsAmbiguous(): void
     {
-        $parent = $this->gateway->product('fx-026');
-        self::assertNotNull($parent);
+        $cards = $this->gateway->search(new ProductQuery(term: 'Trail Jersey'), new CatalogScope());
 
         $resolved = (new VariantResolver($this->gateway, $this->trace))->resolve(
-            [$parent],
+            $cards,
             [new VariantSelection('Blue')],
         );
 
-        self::assertSame('fx-026', $resolved[0]->id);
-        self::assertSame(StockSource::Parent, $resolved[0]->stockSource);
+        self::assertSame(
+            array_map(static fn ($c) => $c->id, $cards),
+            array_map(static fn ($c) => $c->id, $resolved),
+            'Blue alone matches both M and L — the resolver must not narrow or drop',
+        );
     }
 
     public function testRecordsEachResolutionAttemptInTheTrace(): void
     {
-        $parent = $this->gateway->product('fx-026');
-        self::assertNotNull($parent);
+        $cards = $this->gateway->search(new ProductQuery(term: 'Trail Jersey'), new CatalogScope());
 
         (new VariantResolver($this->gateway, $this->trace))->resolve(
-            [$parent],
+            $cards,
             [new VariantSelection('Black'), new VariantSelection('M')],
         );
 
@@ -1840,6 +1845,13 @@ final class VariantResolverTest extends TestCase
 }
 ```
 
+> **Do not feed this resolver a hand-built "parent card carrying aggregate stock".** An earlier
+> draft of this task did, and it contradicted Task 3's committed contract — `FixtureIndex` indexes
+> only sellable units, so a variant-bearing product has no unit keyed by its bare parent id and
+> `product('fx-026')` correctly returns `null`. Worse, the synthetic single-card input hid a real
+> bug: with one card in there is no collision, so the duplicate-emission problem below was
+> invisible.
+
 - [ ] **Step 2: Run to verify it fails**
 
 ```bash
@@ -1855,6 +1867,13 @@ Expected: FAIL.
 - Determine the parent id: `$card->parentId ?? $card->id`. Call `$gateway->resolveVariant($parentId, $selections)`.
 - Non-null result → replace the card with it (the gateway already returns variant-level price, stock and `StockSource::Variant`).
 - Null result → keep the original card. **Do not fabricate a variant and do not silently narrow the answer.**
+
+**De-duplicate the result by resulting id, preserving order, first occurrence winning.** This is
+not tidiness: `search()` returns sellable units, so a query like "Trail Jersey" yields three
+sibling variants, and resolving all three against `[Blue, M]` produces the same variant three
+times. Without de-duplication the shopper is shown one product listed three times. De-duplication
+applies **only** to the resolution path — with `$selections === []` the cards pass through
+untouched, and a caller legitimately holding two identical ids is not this class's problem.
 
 Record one `variant.resolve` event for the whole batch: `['attempts' => [['parentId' => …, 'variantId' => …|null, 'priceRefetched' => bool, 'stockRefetched' => bool], …]]`. `priceRefetched`/`stockRefetched` are true exactly when a variant was resolved.
 
