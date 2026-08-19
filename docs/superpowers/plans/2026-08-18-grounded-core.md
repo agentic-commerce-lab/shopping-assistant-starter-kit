@@ -2095,7 +2095,12 @@ final class SearchProductsToolTest extends TestCase
         $result = $tool(term: 'CO2');
 
         self::assertNotContains('fx-014', $result['productIds']);
-        self::assertContains('fx-014', $this->trace->payload('blocklist.filter')['removedIds']);
+        // Do NOT assert removedIds is non-empty. A scope-honouring gateway never fetches
+        // fx-014, so the app-level filter correctly removes nothing. Asserting otherwise
+        // forces the retrieval-level block to be disabled to make the test pass, which
+        // trades the primary control for the secondary one. BlocklistFilter's own removal
+        // behaviour is covered by Task 5's unit tests, which is its proper home.
+        self::assertNotNull($this->trace->payload('blocklist.filter'));
     }
 
     public function testRegistersEveryReturnedIdWithTheFactRenderer(): void
