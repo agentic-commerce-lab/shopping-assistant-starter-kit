@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FilterClause;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FilterOperator;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
@@ -117,5 +118,36 @@ final class FixtureCommerceGatewayTest extends TestCase
         self::assertSame(0, $card->stock);
         self::assertSame(StockSource::Variant, $card->stockSource);
         self::assertSame(49.90, $card->price);
+    }
+
+    public function testRetrievalUsesTheCandidateWindowAndNotTheReturnLimit(): void
+    {
+        // This is the assertion that distinguishes the ordering repair from its
+        // mitigation. A gateway applies sort and limit together, so whatever it
+        // truncates is gone before VariantResolver can disambiguate it — and the
+        // in-stock bias sorts a sold-out unit last, which is exactly the unit a
+        // variant question is usually about. Retrieval must therefore read the
+        // candidate window; narrowing to `limit` is the caller's job, after
+        // resolution.
+        $gateway = FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
+
+        $narrow = $gateway->search(new ProductQuery(term: 'Jersey', limit: 1), new CatalogScope());
+        $wide = $gateway->search(new ProductQuery(term: 'Jersey', limit: 1, candidateLimit: 10), new CatalogScope());
+
+        self::assertCount(1, $narrow);
+        self::assertGreaterThan(\count($narrow), \count($wide));
+    }
+
+    public function testTheSoldOutVariantIsInsideTheCandidateWindowThoughRankingSortsItLast(): void
+    {
+        // The concrete failure from live run 3, stated as data: ranking puts
+        // fx-026-blue-m (stock 0) behind the two in-stock units, so a narrow window
+        // drops precisely the variant whose availability the shopper asked about.
+        $gateway = FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
+
+        $cards = $gateway->search(new ProductQuery(term: 'Jersey', limit: 1, candidateLimit: 10), new CatalogScope());
+
+        $ids = array_map(static fn(ProductCard $card): string => $card->id, $cards);
+        self::assertContains('fx-026-blue-m', $ids);
     }
 }

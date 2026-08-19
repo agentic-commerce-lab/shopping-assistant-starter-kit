@@ -38,11 +38,23 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 final class SearchProductsTool
 {
     /**
-     * Floor for the model-supplied `limit`. A narrower window makes the answer a
-     * function of retrieval ranking rather than of the shopper's question; see
-     * {@see self::__invoke()} for the measured failure this prevents.
+     * How much wider than the model's `limit` the retrieval window is, and its bounds.
+     *
+     * Retrieval, ranking and truncation used to happen together inside the gateway, so a
+     * narrow `limit` decided the answer before variant resolution ever ran. Now the gateway
+     * retrieves this wider window, resolution and the blocklist run over all of it, and the
+     * result is narrowed to the model's own `limit` afterwards — the ordering
+     * ARCHITECTURE.md's lifecycle table always claimed.
+     *
+     * The floor matters more than the multiplier: a family with several variants must fit
+     * inside the window whole, or ranking's in-stock bias can still hide the sold-out unit.
+     * The ceiling bounds retrieval cost, since these are id-only reads.
      */
-    private const MIN_LIMIT = 5;
+    private const CANDIDATE_MULTIPLIER = 4;
+
+    private const MIN_CANDIDATES = 20;
+
+    private const MAX_CANDIDATES = 50;
 
     // @mago-expect lint:excessive-parameter-list
     // Every parameter is one collaborator this method orchestrates without reimplementing;
@@ -90,26 +102,26 @@ final class SearchProductsTool
         $brand = Guard::boundedString($brand, 120, 'brand');
         $requestedLimit = Guard::boundedInt($limit, 1, 20, 'limit');
 
-        // Asymmetric on purpose, against this project's own "reject, never coerce" rule.
+        // The model's `limit` is honoured exactly, and the ceiling stays a rejection: 20
+        // bounds context size and cost, and a model asking for more is asking for something
+        // it may not have.
         //
-        // The ceiling stays a rejection: 20 bounds context size and cost, and a model
-        // asking for more is asking for something it may not have.
+        // What used to be coerced here was the FLOOR, because retrieval and truncation were
+        // the same step: a limit of 1 made the answer a function of retrieval ranking rather
+        // than of the shopper's question, and nothing downstream could repair it —
+        // VariantResolver cannot disambiguate a set of one, and the blocklist only removes.
+        // Ranking's in-stock bias sorts a sold-out unit LAST, so "do you have the blue jersey
+        // in M?" with limit 1 returned the blue L that happens to be in stock, and the
+        // grounding pipeline then rendered a real price for the variant nobody asked about.
         //
-        // The floor is different in kind. A limit of 1 or 2 makes the answer depend on
-        // retrieval *ranking* rather than on the shopper's question, and nothing
-        // downstream can repair it — VariantResolver cannot disambiguate a set of one,
-        // and the blocklist only removes. Worse, the ranking's in-stock bias sorts a
-        // sold-out unit LAST, so "do you have the blue jersey in M?" with limit 1
-        // returns the blue L that happens to be in stock, and the grounding pipeline
-        // then renders a real price for the variant nobody asked about. Measured
-        // against tests/Fixtures/catalog.json: limit 1 on term "Jersey" yields
-        // fx-026-blue-l (stock 12) while fx-026-blue-m (stock 0) ranks third of three.
-        //
-        // Widening the window changes only how many candidates the pipeline considers
-        // before it narrows — never what the shopper asked for, which is what "reject,
-        // never coerce" protects. So this is coerced silently rather than spending one
-        // of the turn's few tool calls on a retry the model cannot learn anything from.
-        $limit = max($requestedLimit, self::MIN_LIMIT);
+        // The two concerns are now separate rather than traded off: retrieval reads the wider
+        // candidate window below, and narrowing to the model's own limit happens after
+        // resolution and the blocklist have run over all of it. So `limit` no longer needs
+        // coercing, and the shopper's bound is no longer silently ignored.
+        $candidateLimit = min(self::MAX_CANDIDATES, max(
+            $requestedLimit * self::CANDIDATE_MULTIPLIER,
+            self::MIN_CANDIDATES,
+        ));
         $selections = VariantSelectionGuard::fromRaw($options, 'options');
 
         $intent = new ShopperIntent(
@@ -138,17 +150,18 @@ final class SearchProductsTool
             'filtersDropped' => $buildResult->droppedFields,
             'searchTerm' => $buildResult->query->term,
             'limitRequested' => $requestedLimit,
-            'limitApplied' => $limit,
+            'candidateLimit' => $candidateLimit,
         ]);
 
         // QueryBuilder::build() does not carry a limit — ShopperIntent has none — so the
-        // guarded $limit argument is applied here, on top of the query it produced,
-        // rather than being silently dropped on the floor.
+        // guarded limit and the candidate window are applied here, on top of the query it
+        // produced, rather than being silently dropped on the floor.
         $query = new ProductQuery(
             term: $buildResult->query->term,
             filters: $buildResult->query->filters,
-            limit: $limit,
+            limit: $requestedLimit,
             sort: $buildResult->query->sort,
+            candidateLimit: $candidateLimit,
         );
 
         // The full scope — including blockedProductIds/blockedCategoryIds — goes to
@@ -168,6 +181,7 @@ final class SearchProductsTool
         $this->trace->record('retrieve', [
             'hits' => \count($cards),
             'retainedIds' => array_map(static fn($card) => $card->id, $cards),
+            'candidateLimit' => $candidateLimit,
         ]);
 
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
@@ -186,14 +200,35 @@ final class SearchProductsTool
         ]);
 
         $survivors = $filtered['cards'];
-        $this->renderer->registerRetrieved($survivors);
+
+        // Narrowing happens HERE, not in retrieval. Everything above needed the full
+        // candidate window to be correct — VariantResolver cannot disambiguate a set of
+        // one — and nothing below can recover a unit that retrieval already dropped.
+        $returned = \array_slice($survivors, offset: 0, length: $requestedLimit);
+
+        // Recorded rather than silent: a bounded result that nobody wrote down reads as
+        // complete coverage. This is its own stage because `retrieve` keeps meaning "what
+        // retrieval returned" — BlocklistSurvivors diffs that set against the blocklist's
+        // removals, and narrowing must not quietly shrink what that check sees.
+        $this->trace->record('retrieve.narrow', [
+            'candidateLimit' => $candidateLimit,
+            'returnLimit' => $requestedLimit,
+            'survivors' => \count($survivors),
+            'truncated' => \count($survivors) - \count($returned),
+            'returnedIds' => array_map(static fn($card) => $card->id, $returned),
+        ]);
+
+        // The narrowed set, never $survivors: FactRenderer treats the last registered set
+        // as the authority on what the model saw, so registering cards the model never
+        // received would widen what counts as "not invented" and reopen R47's gap.
+        $this->renderer->registerRetrieved($returned);
 
         $result = [
-            'productIds' => array_map(static fn($card) => $card->id, $survivors),
-            'total' => \count($survivors),
+            'productIds' => array_map(static fn($card) => $card->id, $returned),
+            'total' => \count($returned),
         ];
 
-        if ($survivors === []) {
+        if ($returned === []) {
             $result['note'] = 'No matching products in this shop.';
         }
 

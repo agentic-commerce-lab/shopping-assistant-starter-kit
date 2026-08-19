@@ -27,6 +27,11 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * blue-M (stock 0) ranks third of three. The bias buries the exact variant the
  * shopper asked about precisely when it is sold out, and nothing downstream can
  * repair it — VariantResolver cannot disambiguate a set of one.
+ *
+ * The floor that first mitigated this is gone. Retrieval now reads a candidate window
+ * and narrowing to the model's `limit` happens after variant resolution, which is the
+ * repair ARCHITECTURE.md recorded as needed but not done. See
+ * {@see \Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery::retrievalLimit()}.
  */
 final class SearchProductsToolLimitTest extends TestCase
 {
@@ -61,25 +66,38 @@ final class SearchProductsToolLimitTest extends TestCase
     }
 
     /**
-     * The floor on `limit` is load-bearing, not cosmetic. Ranking applies an in-stock
-     * bias, so a sold-out unit sorts LAST — and with `limit: 1` the shopper's own
-     * variant is truncated away before VariantResolver ever sees it, leaving the
-     * pipeline to render a real price for a variant nobody asked about.
+     * The guarantee this test has always been about: ranking must not be able to truncate
+     * the shopper's own variant away *before* VariantResolver sees it. Ranking applies an
+     * in-stock bias, so a sold-out unit sorts LAST, and once it is gone nothing downstream
+     * can repair it — VariantResolver cannot disambiguate a set of one, and the blocklist
+     * only removes.
      *
-     * Asserting the surviving ids, not just the number: with the floor removed this
-     * search returns fx-026-blue-l (stock 12) alone and fx-026-blue-m (stock 0) is
-     * gone, so this test fails on the outcome rather than on a bookkeeping figure.
+     * What changed is where the guarantee is enforced, not the guarantee. It used to be a
+     * FLOOR on the model's `limit`, which widened retrieval by silently overriding the
+     * shopper's bound and then handed back everything it found. Retrieval and narrowing are
+     * now separate steps: retrieval reads the wider candidate window, and narrowing to the
+     * model's own `limit` happens after resolution. So the assertion moves from the returned
+     * ids to the retrieved ones — which is the set resolution actually gets to work with —
+     * and `limit: 1` now genuinely returns one product, as asked.
      */
-    public function testWidensATooNarrowLimitSoRankingCannotTruncateTheAskedForVariant(): void
+    public function testRankingCannotTruncateTheAskedForVariantBeforeResolutionSeesIt(): void
     {
         $result = $this->tool()(term: 'Jersey', limit: 1);
 
-        self::assertContains('fx-026-blue-m', $result['productIds']);
+        $retrieve = $this->trace->payload('retrieve');
+        self::assertIsArray($retrieve);
+
+        $retained = $retrieve['retainedIds'];
+        self::assertIsArray($retained);
+        self::assertContains('fx-026-blue-m', $retained);
+
+        // The model's bound is honoured exactly rather than overridden.
+        self::assertCount(1, $result['productIds']);
 
         $payload = $this->trace->payload('query.build');
         self::assertIsArray($payload);
         self::assertSame(1, $payload['limitRequested']);
-        self::assertSame(5, $payload['limitApplied']);
+        self::assertSame(20, $payload['candidateLimit']);
     }
 
     /** A limit above the ceiling stays a rejection — that bound is not negotiable. */

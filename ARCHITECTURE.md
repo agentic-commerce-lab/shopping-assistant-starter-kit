@@ -315,12 +315,33 @@ Stages 12 and 13 are the product. Everything else is plumbing.
 > (3) → `fx-026-blue-m` (0), so `limit: 1` answers "the blue jersey in M?" with the blue L.
 >
 > **The bias hides the variant precisely when it is out of stock — which is when the shopper most
-> needs the answer.** Mitigated for now by a floor on the model-supplied `limit`
-> (`SearchProductsTool::MIN_LIMIT`), which keeps the window wide enough that ranking cannot
-> truncate the asked-for unit. That is a mitigation, not a fix: the ordering itself is still
-> wrong, and moving limit application after variant resolution is the real repair. It needs the
-> gateway seam to carry the distinction between "how many to retrieve" and "how many to return",
-> so it is recorded here rather than done.
+> needs the answer.** It was first mitigated by a floor on the model-supplied `limit`
+> (`SearchProductsTool::MIN_LIMIT`), which kept the window wide enough that ranking could not
+> truncate the asked-for unit. That was a mitigation, not a fix: the ordering itself stayed wrong.
+>
+> > **Correction, 2026-08-19 — done, and `MIN_LIMIT` is gone.** The seam now carries the
+> > distinction this note said it needed. `ProductQuery::retrievalLimit()` is what every gateway
+> > applies; `ProductQuery::$limit` is what the *caller* narrows to, in `SearchProductsTool`,
+> > **after** variant resolution and the blocklist have run over the whole candidate window. A
+> > candidate window narrower than the return limit is ignored rather than honoured, so the
+> > truncation cannot be reintroduced through the seam. `MIN_LIMIT` was deleted rather than
+> > superseded: coercing the model's bound is no longer necessary, so the shopper's `limit` is now
+> > honoured exactly instead of being silently overridden — which it had been, in both directions.
+> >
+> > New trace stage `retrieve.narrow` records `candidateLimit`, `returnLimit`, `survivors`,
+> > `truncated` and `returnedIds`. It is a separate stage rather than extra fields on `retrieve`
+> > on purpose: `BlocklistSurvivors` diffs `retrieve.retainedIds` against the blocklist's
+> > removals, and narrowing must not quietly shrink the set that check sees.
+> > `FactRenderer::registerRetrieved()` receives the **narrowed** set, because it treats the last
+> > registered set as the authority on what the model saw — registering more would widen what
+> > counts as "not invented" and reopen R47's gap.
+> >
+> > Honest limit on the test coverage: the ordering defect is **not observable through
+> > `SearchProductsTool` against `tests/Fixtures/catalog.json`**, because no fixture family has
+> > more than four variants and `MIN_LIMIT` was 5, so the floor alone already masked it. The
+> > assertions that distinguish repaired from mitigated therefore sit at the seam
+> > (`FixtureCommerceGatewayTest`) and on the narrowing step, and all three were mutation-checked
+> > by reverting the control and confirming they go red.
 
 ## Agent runtime: Symfony AI
 

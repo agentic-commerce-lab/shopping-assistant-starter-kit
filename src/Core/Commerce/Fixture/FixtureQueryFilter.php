@@ -61,7 +61,10 @@ final class FixtureQueryFilter
             return $stockComparison !== 0 ? $stockComparison : $a->price <=> $b->price;
         });
 
-        return \array_slice($units, offset: 0, length: $query->limit);
+        // retrievalLimit(), never limit: this slice runs *before* variant resolution, and
+        // anything it drops cannot be recovered downstream. `limit` is what the caller
+        // narrows to afterwards. See ProductQuery::retrievalLimit().
+        return \array_slice($units, offset: 0, length: $query->retrievalLimit());
     }
 
     private static function matchesTerm(ProductCard $unit, string $term): bool
