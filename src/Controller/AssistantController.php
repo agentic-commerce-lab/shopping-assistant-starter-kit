@@ -10,6 +10,7 @@ use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Trace\ConversationStore;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
+use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -75,12 +76,17 @@ class AssistantController extends StorefrontController
         $result = $this->turnRunner->run($message, $salesChannelId, $history);
         $turn = $result->turn;
 
-        // Both turns are persisted, the shopper's included: without it the replayed conversation
+        // Both messages are stored, the shopper's included: without it the replayed conversation
         // reads as the assistant talking to itself, and "add that to my cart" loses its antecedent.
+        //
+        // **The trace belongs to exactly one of them.** Passing it to both wrote every event twice —
+        // measured in the real shop, where one turn produced two identical rows per event, so a
+        // merchant counting tool calls counted double. There is one trace per turn, and it is the
+        // assistant's turn that produced it.
         $this->conversations->append(
             $token,
             new ConversationTurn(ConversationTurn::ROLE_USER, $message),
-            $result->trace,
+            new TraceRecorder(),
         );
         $this->conversations->append(
             $token,

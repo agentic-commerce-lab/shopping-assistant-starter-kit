@@ -157,4 +157,30 @@ final class ConversationStoreContractTest extends TestCase
         self::assertCount(2, $history);
         self::assertSame(['two', 'three'], array_map(static fn($turn): string => $turn->prose, $history));
     }
+
+    public function testTwoTurnsEventsDoNotCollideOnTheSameSequenceNumber(): void
+    {
+        // TraceRecorder restarts `seq` at 0 for every turn, because it is built fresh per turn — but
+        // a store ordered by `seq` within a CONVERSATION then interleaves turns. Measured in the real
+        // shop: one conversation had two different events both at seq 13, from different turns, and
+        // reading the trace in order was impossible. A store must make `seq` monotonic per
+        // conversation.
+        $store = $this->store();
+        $token = $store->start(self::CHANNEL, 'en-GB');
+
+        $first = new TraceRecorder();
+        $first->record('guard.check', ['verdict' => 'allow']);
+        $first->record('turn.end', ['outcome' => 'product_shown']);
+        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'one'), $first);
+
+        $second = new TraceRecorder();
+        $second->record('guard.check', ['verdict' => 'allow']);
+        $second->record('turn.end', ['outcome' => 'cart_added']);
+        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'two'), $second);
+
+        $sequences = array_map(static fn($event): int => $event->seq, $store->traceEvents($token));
+
+        self::assertCount(4, $sequences);
+        self::assertSame($sequences, array_unique($sequences), 'sequence numbers collided across turns');
+    }
 }

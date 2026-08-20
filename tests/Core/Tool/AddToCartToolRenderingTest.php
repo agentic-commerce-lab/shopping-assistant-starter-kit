@@ -19,7 +19,7 @@ use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
 use Swag\AssistantStarterKit\Core\Tool\ToolArgumentException;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
-final class AddToCartToolTest extends TestCase
+final class AddToCartToolRenderingTest extends TestCase
 {
     private TraceRecorder $trace;
 
@@ -29,6 +29,12 @@ final class AddToCartToolTest extends TestCase
     // "new" inside another "new"'s arguments) purely to satisfy the analyzer's
     // uninitialized-property check; tool() below still replaces it before any
     // assertion runs, so this only matters for the analyzer, not test behaviour.
+    /**
+     * Split out of {@see AddToCartToolTest} (too-many-methods) rather than suppressed.
+     *
+     * Covers which card the shopper sees after an add — the defect a real turn exposed, where the
+     * confirmation named Black/M at 69.90 while the rendered card was the parent at 79.90 with stock 35.
+     */
     /** @param non-empty-string $name */
     public function __construct(string $name)
     {
@@ -103,84 +109,25 @@ final class AddToCartToolTest extends TestCase
         };
     }
 
-    public function testAddsTheRequestedVariantAndReportsTheCart(): void
+    public function testTheAddedVariantBecomesTheRenderedCard(): void
     {
-        $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2);
+        // Measured against the real shop before this was fixed: a turn that added Black/M rendered
+        // the PARENT product — stock 35 at 79.90 — beside prose correctly saying "Black, size M,
+        // €69.90", because FactRenderer's last batch was whatever the previous search left behind.
+        // A UI showing stock 35 for a variant with 3 is a shopper-visible lie about availability,
+        // which is the failure class D4 exists for.
+        $tool = $this->tool();
 
-        self::assertSame(2, $result['cart']['itemCount']);
-        self::assertSame('allowed', $this->trace->payload('tool.call')['policyReasonCode']);
-    }
+        // Stand in for an earlier search in the same turn that retrieved a DIFFERENT unit of the
+        // same family — which is exactly what happened in the real run: the search left the wrong
+        // card as the last batch, and nothing afterwards corrected it.
+        $gateway = FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
+        $earlier = $gateway->product('fx-026-blue-l', new CatalogScope());
+        self::assertNotNull($earlier);
+        $this->renderer->registerRetrieved([$earlier]);
 
-    public function testBlocksAQuantityAboveMaxItemQuantity(): void
-    {
-        $result = $this->tool(new AssistantConfig(maxItemQuantity: 5))(variantId: 'fx-026-blue-l', quantity: 99);
+        $tool(variantId: 'fx-026-black-m');
 
-        self::assertSame('cart_limit', $this->trace->payload('tool.call')['policyReasonCode']);
-        self::assertArrayNotHasKey('cart', $result);
-        self::assertStringContainsString('at most 5', $result['note']);
-    }
-
-    /**
-     * Finding C3 (RED before the fix): each call individually stayed under the
-     * per-call quantity check, so six calls of 5 accumulated to 30 units in one
-     * line — the same class of bug maxCartValue was already hardened against
-     * (reading the live cart, not just the argument). Repeats a quantity that is
-     * itself always within bounds, so only the ACCUMULATED total can be what trips
-     * the limit.
-     */
-    public function testBlocksWhenRepeatedCallsWouldAccumulatePastMaxItemQuantity(): void
-    {
-        $tool = $this->tool(new AssistantConfig(maxItemQuantity: 5, maxCartValue: 100_000.0));
-
-        $first = $tool(variantId: 'fx-026-blue-l', quantity: 5);
-        self::assertSame(5, $first['cart']['itemCount'] ?? null);
-
-        $second = $tool(variantId: 'fx-026-blue-l', quantity: 5);
-
-        self::assertArrayNotHasKey('cart', $second);
-        self::assertSame('cart_limit', $this->trace->payload('tool.call')['policyReasonCode']);
-        self::assertStringContainsString('at most 5', $second['note']);
-    }
-
-    public function testBlocksWhenTheCartWouldExceedMaxCartValue(): void
-    {
-        $result = $this->tool(new AssistantConfig(maxCartValue: 100.0))(variantId: 'fx-026-blue-l', quantity: 5);
-
-        self::assertSame('cart_limit', $this->trace->payload('tool.call')['policyReasonCode']);
-        self::assertArrayNotHasKey('cart', $result);
-    }
-
-    public function testReportsAnUnknownVariantInsteadOfGuessing(): void
-    {
-        $result = $this->tool()(variantId: 'fx-999');
-
-        self::assertStringContainsString('No such product', $result['note']);
-    }
-
-    /**
-     * Finding C1 (RED before the fix): AddToCartTool never consulted the blocklist
-     * at all, so a blocked product ("Added 1 to the cart" against fx-014, blocked by
-     * id and category) reached the cart unfiltered. Uses {@see scopeIgnoringGateway()}
-     * so this test exercises AddToCartTool's OWN check, not FixtureCommerceGateway's
-     * separately-tested one.
-     */
-    public function testRefusesABlockedProduct(): void
-    {
-        $gateway = $this->scopeIgnoringGateway();
-        $config = new AssistantConfig(scope: new CatalogScope(blockedProductIds: ['fx-014']));
-        $tool = new AddToCartTool($gateway, new BlocklistFilter(), $this->renderer, $this->trace, $config);
-
-        $result = $tool(variantId: 'fx-014', quantity: 1);
-
-        self::assertArrayNotHasKey('cart', $result);
-        self::assertSame('blocked_product', $this->trace->payload('tool.call')['policyReasonCode']);
-        self::assertSame(0, $gateway->cart()->itemCount, 'a blocked product must never mutate the cart');
-    }
-
-    public function testRejectsAnOversizedVariantId(): void
-    {
-        $this->expectException(ToolArgumentException::class);
-
-        $this->tool()(variantId: str_repeat('x', 200));
+        self::assertSame(['fx-026-black-m'], $this->renderer->lastRetrievedBatch());
     }
 }

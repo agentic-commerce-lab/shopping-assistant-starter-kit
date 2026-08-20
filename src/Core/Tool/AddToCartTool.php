@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Policy\PolicyDecision;
@@ -32,9 +33,19 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  * age-restricted, recalled or region-restricted item reaching a cart), so it
  * does not trust that the gateway remembered.
  *
- * Deliberately does NOT register the added card with {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer}:
- * the shopper already chose it, and widening the turn's retrieved set here
- * would let the model re-quote it as a fresh recommendation.
+ * **Correction, 2026-08-20.** This class previously did NOT register the added card, on the grounds
+ * that "the shopper already chose it, and widening the turn's retrieved set here would let the model
+ * re-quote it as a fresh recommendation". Measured against the real shop, that cost more than it
+ * saved: a turn that added Black/M rendered the **parent** product — stock 35 at 79.90 — beside prose
+ * that correctly said "Black, size M, €69.90", because `FactRenderer`'s last batch was still whatever
+ * the previous search left behind. `claims.audit` then discarded the correct 69.90 as unbacked. The
+ * safety net worked; the card was a lie about stock, which is the failure class D4 exists for.
+ *
+ * The old reasoning was also half wrong about the mechanism. `registerRetrieved()` **replaces** the
+ * last batch (which decides what is rendered) and only *adds* to the cumulative authoritative set
+ * (which decides what the model may name without being flagged as inventing). So registering here
+ * narrows what the shopper sees to the variant they asked for, and the only thing it widens is
+ * permission to name a product the shopper explicitly chose — which is not an invention.
  *
  * Availability is not a method on this class. The toolbox is built per
  * request (task 12) and this tool is simply never constructed when
@@ -53,6 +64,7 @@ final class AddToCartTool
     public function __construct(
         private readonly CommerceGatewayInterface $gateway,
         private readonly BlocklistFilter $blocklist,
+        private readonly FactRenderer $renderer,
         private readonly TraceRecorder $trace,
         private readonly AssistantConfig $config,
     ) {}
@@ -115,6 +127,19 @@ final class AddToCartTool
         }
 
         $cart = $this->gateway->addToCart($variantId, $quantity);
+
+        // Register the variant that was ACTUALLY added, so it is the card the shopper sees beside
+        // the confirmation. Without this, `FactRenderer`'s last registered set is whatever the
+        // previous search left behind — measured against the real shop: a turn that added Black/M
+        // rendered the PARENT product (stock 35 at 79.90) next to prose correctly saying
+        // "Black, size M, €69.90". `claims.audit` caught the resulting mismatch and discarded the
+        // 69.90 as unbacked, which is the safety net working — but the card was still wrong, and a
+        // UI showing stock 35 for a variant with 3 is a shopper-visible lie.
+        //
+        // `$filtered['cards']` rather than `$card`: the blocklist has already passed it, so this
+        // registers the survivor rather than the pre-check lookup.
+        $this->renderer->registerRetrieved($filtered['cards']);
+
         $this->trace->record('tool.call', [
             'name' => 'add_to_cart',
             'policyVerdict' => 'allow',

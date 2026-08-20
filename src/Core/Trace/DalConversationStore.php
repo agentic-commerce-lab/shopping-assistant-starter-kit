@@ -71,6 +71,16 @@ final readonly class DalConversationStore implements ConversationStore
 
         $events = [];
 
+        // `TraceEvent::$seq` restarts at 0 for every turn, because `TraceRecorder` is built fresh per
+        // turn — but this table is ordered by `seq` **within a conversation**. Storing the raw value
+        // makes a multi-turn trace unreadable: measured in the real shop, one conversation had two
+        // different events both at seq 13, from different turns, and `traceEvents()` interleaved them.
+        //
+        // Offsetting by what is already stored makes `seq` monotonic per conversation, which is what
+        // the ordering assumes. Turn boundaries stay visible without a second column: every turn ends
+        // with a `turn.end` event.
+        $offset = $this->nextSeq($token, $context);
+
         // events(), never stages(): stages() de-duplicates by design (ruling R18), so a store built
         // on it would drop the second tool round — which is where the tool-call budget failures live,
         // and exhausting that budget was a live pilot blocker (ruling R52).
@@ -78,7 +88,7 @@ final readonly class DalConversationStore implements ConversationStore
             $events[] = [
                 'id' => Uuid::randomHex(),
                 'conversationId' => $token,
-                'seq' => $event->seq,
+                'seq' => $offset + $event->seq,
                 'stage' => $event->stage,
                 'payload' => $event->payload,
             ];
@@ -119,6 +129,24 @@ final readonly class DalConversationStore implements ConversationStore
         }
 
         return $events;
+    }
+
+    /**
+     * One past the highest `seq` already stored for this conversation.
+     *
+     * Read rather than counted: a `COUNT(*)` would be wrong the moment an event was ever removed,
+     * and the retention task exists precisely to remove them.
+     */
+    private function nextSeq(#[\SensitiveParameter] string $token, Context $context): int
+    {
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('conversationId', $token));
+        $criteria->addSorting(new FieldSorting('seq', FieldSorting::DESCENDING));
+        $criteria->setLimit(1);
+
+        $last = $this->eventRepository->search($criteria, $context)->first();
+
+        return $last instanceof TraceEventEntity ? $last->getSeq() + 1 : 0;
     }
 
     /**

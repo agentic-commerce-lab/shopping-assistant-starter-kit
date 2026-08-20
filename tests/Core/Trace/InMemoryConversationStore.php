@@ -39,8 +39,14 @@ final class InMemoryConversationStore implements ConversationStore
     {
         $this->turns[$token][] = $turn;
 
+        // Offset exactly as the DAL store does: `TraceRecorder` restarts `seq` at 0 each turn, so a
+        // conversation-wide ordering needs it made monotonic. A double that skipped this would let
+        // the contract test pass here and fail against the real store.
+        $stored = $this->events[$token] ?? [];
+        $offset = $stored === [] ? 0 : max(array_map(static fn(TraceEvent $event): int => $event->seq, $stored)) + 1;
+
         foreach ($trace->events() as $event) {
-            $this->events[$token][] = $event;
+            $this->events[$token][] = new TraceEvent($offset + $event->seq, $event->stage, $event->payload);
         }
     }
 
