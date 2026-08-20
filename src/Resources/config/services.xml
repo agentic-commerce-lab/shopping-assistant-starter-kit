@@ -137,5 +137,11 @@
              constructible for the eval suite, which builds it directly and needs no container. -->
         <service id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"
                  alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway"/>
+
+        <!-- Storefront widget. The Twig extension is the only gate deciding whether the entry point
+             renders, and it reuses the config services rather than re-deriving their rules; the
+             `twig.extension` tag comes from autoconfigure. -->
+        <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings"/>
+        <service id="Swag\AssistantStarterKit\Storefront\AssistantWidgetExtension"/>
     </services>
 </container>

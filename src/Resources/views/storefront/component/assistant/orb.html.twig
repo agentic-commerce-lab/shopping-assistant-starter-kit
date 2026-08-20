@@ -1,0 +1,42 @@
+{% block swag_assistant_root %}
+    {# Every value the browser needs, passed as data attributes rather than inlined script. Route
+       URLs come from path() so a shop with a prefix or a non-default domain keeps working, and the
+       locale comes from the request so prices format the way the rest of the page does. #}
+    <div class="swag-assistant"
+         data-swag-assistant-root
+         data-chat-url="{{ path('frontend.assistant.chat') }}"
+         data-history-url="{{ path('frontend.assistant.history') }}"
+         data-cart-url="{{ path('frontend.checkout.line-item.add') }}"
+         data-locale="{{ app.request.locale|default('en-GB')|replace({'_': '-'}) }}"
+         data-assistant-name="{{ swag_assistant_widget_name(context.salesChannelId) }}"
+         data-greeting="{{ swag_assistant_greeting(context.salesChannelId) ?: 'swagAssistant.panel.defaultGreeting'|trans }}"
+         data-add-to-cart-enabled="{{ swag_assistant_add_to_cart_enabled(context.salesChannelId) ? 'true' : 'false' }}"
+         style="--swag-assistant-signet: url('{{ asset('bundles/swagassistantstarterkit/assistant/shopware-signet.png') }}')">
+
+        {% block swag_assistant_orb %}
+            {# A button, not a div: it is operated by keyboard and needs a role and a name for free. #}
+            <button class="swag-assistant-orb"
+                    type="button"
+                    data-swag-assistant-orb
+                    aria-label="{{ 'swagAssistant.orb.open'|trans }}"
+                    aria-expanded="false">
+                <span class="swag-assistant-orb__face" aria-hidden="true">
+                    <span class="swag-assistant-orb__eye"></span>
+                    <span class="swag-assistant-orb__eye"></span>
+
+                    {# Override this block to replace or remove the Shopware signet. The widget runs
+                       in a merchant's storefront, so their mark belongs here if they want one. #}
+                    {% block swag_assistant_orb_signet %}
+                        <span class="swag-assistant-orb__signet"></span>
+                    {% endblock %}
+                </span>
+            </button>
+        {% endblock %}
+
+        {% block swag_assistant_nudge %}
+            <span class="swag-assistant-nudge" data-swag-assistant-nudge hidden>
+                {{ 'swagAssistant.orb.nudge'|trans }}
+            </span>
+        {% endblock %}
+    </div>
+{% endblock %}

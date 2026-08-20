@@ -1,0 +1,42 @@
+{
+  "swagAssistant": {
+    "orb": {
+      "open": "Open the shopping assistant",
+      "nudge": "Ask me anything about this shop"
+    },
+    "panel": {
+      "close": "Close the assistant",
+      "inputLabel": "Your message",
+      "inputPlaceholder": "Ask about this shop…",
+      "send": "Send",
+      "defaultGreeting": "Hi. I can look things up in this shop's catalogue."
+    },
+    "card": {
+      "view": "View product",
+      "add": "Add to cart",
+      "noImage": "No image available",
+      "inStock": "In stock",
+      "lowStock": "Low stock",
+      "outOfStock": "Out of stock",
+      "outOfStockReason": "Out of stock, so it cannot be added to the cart",
+      "parentStock": "Stock shown for the product, not this variant.",
+      "delivery": "Delivery: %time%"
+    },
+    "thinking": {
+      "start": "Thinking…",
+      "waiting": "Still looking. Give me a sec.",
+      "patient": "This one's taking a moment."
+    },
+    "warning": {
+      "availability": "This is currently out of stock. The card below is correct.",
+      "price": "The prices on the cards are the ones that apply."
+    },
+    "error": {
+      "network": "That didn't get through. Try again?",
+      "retry": "Try again",
+      "unavailable": "The assistant is unavailable right now.",
+      "tooLong": "That message is too long. Please shorten it.",
+      "cartFailed": "Could not add this to the cart."
+    }
+  }
+}

@@ -103,7 +103,24 @@ final readonly class SystemConfigAssistantConfig
     {
         $value = $this->systemConfig->get(self::PREFIX . $key, $salesChannelId);
 
-        // Absent means default; a stored value — including false — means what it says.
-        return $value === null ? $default : (bool) $value;
+        if ($value === null) {
+            // Absent means the documented default.
+            return $default;
+        }
+
+        // **Not `(bool)`.** `bin/console system:config:set` stores every value as a string, so a
+        // guardrail turned off from the CLI arrives as the string `"false"` — and `(bool) "false"`
+        // is `true`. Measured in the real shop: `system_config` held `{"_value":"false"}` for
+        // `killSwitch` while the assistant read it as ON.
+        //
+        // The direction that matters is `enableAddToCart`, whose help text promises the tool "is
+        // never constructed" when off: under a plain cast, a merchant disabling it from the CLI
+        // would get the tool constructed anyway — a guardrail failing **open** while the admin form
+        // shows it as disabled. The admin UI sends real JSON booleans and is unaffected, which is
+        // exactly why this stayed invisible.
+        //
+        // FILTER_VALIDATE_BOOLEAN reads "false"/"0"/"" as false and "true"/"1"/"on"/"yes" as true,
+        // and passes real booleans through unchanged.
+        return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
     }
 }

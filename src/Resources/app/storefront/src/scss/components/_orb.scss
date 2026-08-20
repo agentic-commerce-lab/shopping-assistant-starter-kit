@@ -1,0 +1,189 @@
+/*
+Assistant widget — the entry orb
+==============================================
+Always on the page, so it is CSS only: no JavaScript runs on page load for the idle state. The panel
+and everything in it lives in a lazily-imported chunk.
+*/
+
+.swag-assistant {
+    position: fixed;
+    right: $swag-assistant-orb-inset;
+    // Other things live in this corner. The cookie-consent bar is `position: fixed` at z-index 1100
+    // and 57px tall in the default theme — measured in the real shop, where it covered 38px of the
+    // 60px orb, on a first visit, which is exactly when the discovery nudge fires.
+    //
+    // Raising the orb above it would be worse: it would sit on top of the consent buttons. The
+    // height is not a constant either — the bar wraps at narrow widths — so the offset is measured
+    // at runtime by orb.plugin.js and published here. Zero by default, so this degrades to the plain
+    // inset if the script never runs.
+    bottom: calc(#{$swag-assistant-orb-inset} + var(--swag-assistant-obstruction, 0px));
+    z-index: $swag-assistant-z;
+    transition: bottom 200ms $swag-assistant-ease;
+}
+
+// The theme's scroll-up button is fixed to this exact corner ($spacer-lg / $spacer-lg), so the two
+// overlap. Lift it above the orb, scoped so a shop with the widget switched off is untouched.
+body:has(.swag-assistant) .scroll-up-button {
+    bottom: $swag-assistant-orb-inset + $swag-assistant-orb-size + 12px;
+}
+
+.swag-assistant-orb {
+    position: relative;
+    display: block;
+    width: $swag-assistant-orb-size;
+    height: $swag-assistant-orb-size;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+
+    // The one gradient and the one coloured shadow in the entire widget, both deliberate. The brand
+    // spec permits a gradient for a brand moment such as an illustration, and this orb is a mark
+    // rather than a control surface — flat-filling it throws away what makes it read as a character.
+    // Everywhere else in this widget: flat fills and neutral shadows.
+    background: radial-gradient(
+        circle at 32% 28%,
+        $swag-assistant-accent-light 0%,
+        $swag-assistant-accent 45%,
+        $swag-assistant-accent-dark 100%
+    );
+    box-shadow:
+        0 0 0 6px rgba(24, 158, 255, 0.1),
+        0 8px 24px rgba(0, 21, 62, 0.18);
+
+    animation: swag-assistant-breathe 4s ease-in-out infinite;
+    transition:
+        transform 150ms $swag-assistant-ease,
+        box-shadow 150ms $swag-assistant-ease;
+
+    // The luminous rim.
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border: 1.5px solid rgba(24, 158, 255, 0.5);
+        border-radius: 50%;
+    }
+
+    &:hover {
+        transform: scale(1.06);
+        box-shadow:
+            0 0 0 9px rgba(24, 158, 255, 0.14),
+            0 10px 28px rgba(0, 21, 62, 0.22);
+    }
+
+    &:focus-visible {
+        outline: 2px solid $swag-assistant-accent;
+        outline-offset: 2px;
+    }
+}
+
+.swag-assistant-orb__face {
+    position: absolute;
+    inset: 0;
+}
+
+.swag-assistant-orb__eye {
+    position: absolute;
+    top: 36%;
+    width: 7px;
+    height: 14px;
+    background: $swag-assistant-surface;
+    border-radius: 3.5px;
+    // The delay is randomised per page load by orb.plugin.js. Without it every orb in every open
+    // tab blinks in lockstep, which reads as a synchronised animation rather than as a creature.
+    animation: swag-assistant-blink 7s var(--swag-assistant-blink-delay, 0ms) infinite;
+    transition: transform 150ms $swag-assistant-ease;
+
+    &:first-of-type {
+        left: 30%;
+    }
+
+    &:last-of-type {
+        right: 30%;
+    }
+
+    // Looks up on hover. Nearly free, and it is the moment the orb stops being a button.
+    .swag-assistant-orb:hover & {
+        transform: translateY(-2px);
+    }
+}
+
+.swag-assistant-orb__signet {
+    position: absolute;
+    right: 22%;
+    bottom: 20%;
+    width: 16px;
+    height: 16px;
+    // Masked rather than recoloured: the approved standalone signet supplies the shape through its
+    // alpha channel and the fill is ours, so no brand asset is modified. The URL arrives as a custom
+    // property from the template via asset(), which keeps sub-directory installs and asset
+    // versioning working.
+    background: rgba(255, 255, 255, 0.55);
+    mask-image: var(--swag-assistant-signet);
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+.swag-assistant-nudge {
+    position: absolute;
+    right: $swag-assistant-orb-size + 12px;
+    bottom: 18px;
+    padding: 8px 12px;
+    background: $swag-assistant-surface;
+    border-radius: $swag-assistant-radius-control;
+    box-shadow: 0 4px 16px rgba(0, 21, 62, 0.14);
+    color: $swag-assistant-text;
+    font-size: $swag-assistant-font-meta;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+@keyframes swag-assistant-breathe {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.025);
+    }
+}
+
+@keyframes swag-assistant-blink {
+    0%,
+    95%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    97% {
+        transform: scaleY(0.1);
+    }
+}
+
+@media (max-width: 575px) {
+    .swag-assistant-orb {
+        width: $swag-assistant-orb-size-mobile;
+        height: $swag-assistant-orb-size-mobile;
+    }
+}
+
+// Motion is optional. Nothing here carries information, so all of it goes.
+@media (prefers-reduced-motion: reduce) {
+    .swag-assistant,
+    .swag-assistant-orb,
+    .swag-assistant-orb__eye {
+        animation: none;
+        transition: none;
+    }
+
+    .swag-assistant-orb:hover {
+        transform: none;
+    }
+
+    .swag-assistant-orb:hover .swag-assistant-orb__eye {
+        transform: none;
+    }
+}

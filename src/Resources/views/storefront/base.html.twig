@@ -1,0 +1,16 @@
+{% sw_extends '@Storefront/storefront/base.html.twig' %}
+
+{% block base_body_inner %}
+    {{ parent() }}
+
+    {# Gated in PHP, not here: an unconfigured shop, a killed assistant, or a merchant who switched
+       the widget off renders nothing at all. See AssistantWidgetExtension for why the rule has one
+       owner.
+
+       The widget renders on every storefront page. Excluding some — checkout, for instance — means
+       wrapping this include in your own condition, and that is the documented extension point
+       rather than a decision made for you. #}
+    {% if swag_assistant_widget_enabled(context.salesChannelId) %}
+        {% sw_include '@Storefront/storefront/component/assistant/orb.html.twig' %}
+    {% endif %}
+{% endblock %}

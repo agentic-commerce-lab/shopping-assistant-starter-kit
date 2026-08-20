@@ -1,0 +1,45 @@
+/*
+Assistant widget — design tokens
+==============================================
+Every value here traces to the Shopware brand spec. A new value is a deliberate system addition,
+never a one-off: a hardcoded colour or size beside a token system is the drift this file exists to
+prevent.
+*/
+
+// Colour. The palette contains no red, which is why "out of stock" is muted grey rather than
+// alarming and why warnings and errors both use Orange.
+$swag-assistant-surface: #ffffff;
+$swag-assistant-text: #00153e;          // Night Blue
+$swag-assistant-meta: #a3a6b5;          // Light Gray
+$swag-assistant-accent: #0870ff;        // SW 500 — the one accent colour in the widget
+$swag-assistant-accent-light: #4a8fff;  // SW 400 — orb highlight only
+$swag-assistant-accent-dark: #005cd7;   // SW 600
+$swag-assistant-brand: #189eff;         // Bright Blue — orb glow and rim only
+$swag-assistant-bubble: #f0f6ff;        // SW 50
+$swag-assistant-hairline: #e6e9f0;
+$swag-assistant-in-stock: #57d998;      // Teal
+$swag-assistant-low-stock: #f88138;     // Orange — also the warning and error colour
+$swag-assistant-out-of-stock: #838489;  // Dark Gray
+
+// Type. Three steps, ratios 1.33 and 1.25 — a fourth would flatten the hierarchy back out.
+// Inter comes from the theme ($sw-font-family-base), so no font is loaded for this widget.
+$swag-assistant-font-meta: 12px;
+$swag-assistant-font-body: 16px;
+$swag-assistant-font-heading: 20px;
+
+// Radius. The brand spec asks for the tighter option; these are it.
+$swag-assistant-radius-panel: 12px;
+$swag-assistant-radius-card: 8px;
+$swag-assistant-radius-control: 6px;
+
+// Geometry.
+$swag-assistant-orb-size: 60px;
+$swag-assistant-orb-size-mobile: 56px;
+$swag-assistant-orb-inset: 20px;
+$swag-assistant-panel-width: 420px;
+
+// Above the theme's scroll-up button, which shares this corner.
+$swag-assistant-z: 1035;
+
+// Motion. Exponential ease-out: real objects decelerate, they do not bounce.
+$swag-assistant-ease: cubic-bezier(0.2, 0.9, 0.25, 1);

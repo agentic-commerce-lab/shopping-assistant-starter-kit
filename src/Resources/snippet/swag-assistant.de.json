@@ -1,0 +1,42 @@
+{
+  "swagAssistant": {
+    "orb": {
+      "open": "Einkaufsassistenten öffnen",
+      "nudge": "Frag mich alles über diesen Shop"
+    },
+    "panel": {
+      "close": "Assistenten schließen",
+      "inputLabel": "Ihre Nachricht",
+      "inputPlaceholder": "Frage zum Shop stellen…",
+      "send": "Senden",
+      "defaultGreeting": "Hallo. Ich kann im Katalog dieses Shops nachsehen."
+    },
+    "card": {
+      "view": "Produkt ansehen",
+      "add": "In den Warenkorb",
+      "noImage": "Kein Bild verfügbar",
+      "inStock": "Auf Lager",
+      "lowStock": "Wenig auf Lager",
+      "outOfStock": "Nicht auf Lager",
+      "outOfStockReason": "Nicht auf Lager und kann daher nicht hinzugefügt werden",
+      "parentStock": "Lagerbestand gilt für das Produkt, nicht für diese Variante.",
+      "delivery": "Lieferung: %time%"
+    },
+    "thinking": {
+      "start": "Ich denke nach…",
+      "waiting": "Ich suche noch. Einen Moment.",
+      "patient": "Das dauert diesmal etwas länger."
+    },
+    "warning": {
+      "availability": "Dieser Artikel ist nicht auf Lager. Die Karte unten ist korrekt.",
+      "price": "Es gelten die Preise auf den Karten."
+    },
+    "error": {
+      "network": "Das kam nicht durch. Nochmal versuchen?",
+      "retry": "Nochmal versuchen",
+      "unavailable": "Der Assistent ist gerade nicht verfügbar.",
+      "tooLong": "Diese Nachricht ist zu lang. Bitte kürzen.",
+      "cartFailed": "Konnte nicht in den Warenkorb gelegt werden."
+    }
+  }
+}

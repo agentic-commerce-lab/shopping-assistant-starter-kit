@@ -18,7 +18,8 @@
     "symfony/http-foundation": "~7.4.0",
     "symfony/http-client-contracts": "^3.0",
     "symfony/routing": "~7.4.0",
-    "symfony/serializer": "~7.4.0"
+    "symfony/serializer": "~7.4.0",
+    "twig/twig": "^3.26"
   },
   "require-dev": {
     "captainhook/captainhook": "^5.25",

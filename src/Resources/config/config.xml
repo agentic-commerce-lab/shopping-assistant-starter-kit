@@ -110,4 +110,31 @@
         </input-field>
     </card>
 
+    <card>
+        <title>Storefront widget</title>
+
+        <input-field type="bool">
+            <name>widgetEnabled</name>
+            <label>Show the assistant in the storefront</label>
+            <defaultValue>true</defaultValue>
+            <helpText>When off, no entry point renders. The chat endpoint stays reachable, so a
+                custom interface built against it keeps working. The entry point is also hidden
+                automatically when no model is configured or the kill switch is on.</helpText>
+        </input-field>
+
+        <input-field type="text">
+            <name>assistantName</name>
+            <label>Assistant name</label>
+            <helpText>Shown in the panel heading and used as its accessible name. Defaults to
+                "Shopping Assistant".</helpText>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>greeting</name>
+            <label>Greeting</label>
+            <helpText>The first message a shopper sees. Say what the assistant can look up, not how
+                advanced it is. Left empty, a translated default is used.</helpText>
+        </input-field>
+    </card>
+
 </config>
