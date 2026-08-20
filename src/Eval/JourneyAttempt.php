@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Eval;
 use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 use Swag\AssistantStarterKit\Core\Agent\AssistantRunner;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
+use Swag\AssistantStarterKit\Core\Agent\BoundedToolbox;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
@@ -22,7 +23,22 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * {@see FixtureCommerceGateway}, a new {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer}
  * — so this run's trace can never contaminate another's. Within this one run, every
  * turn shares that one bundle and carries the returned prose forward as conversation
- * history, exactly as a real multi-turn shopper session would.
+ * history.
+ *
+ * **Correction, 2026-08-20 (ruling R84):** that sharing was described here as "exactly as a real
+ * multi-turn shopper session would". It is not. `ShopwareChatTurnRunner` builds a **fresh bundle per
+ * HTTP request**, so a real session gets a new tool-call budget, trace and renderer per message. The
+ * shared bundle survives here because {@see TurnAggregate} and ruling R42's multi-turn assertions
+ * depend on one `TraceRecorder` accumulating every turn's events — but the **budget** is now reset
+ * per turn via {@see BoundedToolbox::startTurn()}, because leaving it shared made `cart_add` fail 6
+ * of 6 runs on a limit production would have refreshed.
+ *
+ * One discrepancy is knowingly left: the shared {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer}
+ * means turn 2 here still knows turn 1's retrieved ids, where production would not. That makes
+ * `no_invented_product` marginally more permissive in the harness than in the shop. It matters little
+ * in practice — since ruling R47 the model no longer emits ids in prose at all — and changing it
+ * changes what a safety assertion sees, which is its own decision rather than a side effect of this
+ * one.
  *
  * Ruling R42: {@see JourneyRunner} does not see only the final turn — every turn's
  * {@see AssistantTurn} is collected and merged via {@see TurnAggregate::of()} before
@@ -71,6 +87,15 @@ final class JourneyAttempt
             $message = 'archetype' === $turnSpec
                 ? $this->resolveArchetypePhrase($journey, $archetypePhrase)
                 : $turnSpec;
+
+            // Each turn gets its own tool-call budget, because that is what production does:
+            // ShopwareChatTurnRunner builds a fresh bundle per HTTP request. Sharing the counter made
+            // the bound per CONVERSATION here, and `cart_add` failed 6 of 6 runs on a budget the
+            // endpoint would have refreshed — a harness artifact reported as a product defect
+            // (ruling R84).
+            if ($bundle->toolbox instanceof BoundedToolbox) {
+                $bundle->toolbox->startTurn();
+            }
 
             $turn = $runner->run($message, $history);
             $turns[] = $turn;

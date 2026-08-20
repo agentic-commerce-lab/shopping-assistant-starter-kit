@@ -117,4 +117,25 @@ final class BoundedToolboxTest extends TestCase
 
         $toolbox->execute(new ToolCall('call-2', 'escalate', ['reason' => 'fine']));
     }
+
+    public function testStartTurnGivesTheNextTurnItsOwnBudget(): void
+    {
+        $trace = new TraceRecorder();
+        // Production builds a fresh bundle per HTTP request, so every shopper message gets its own
+        // budget — which is what `maxToolCallsPerTurn` promises and what config.xml's help text says.
+        // The eval harness reuses one bundle across a journey's turns, and the shared counter made the
+        // bound per CONVERSATION: `cart_add` spent ~3 calls finding the variant and could not afford
+        // to add it, failing 6 of 6 runs on a limit the endpoint would have refreshed (ruling R84).
+        $toolbox = $this->toolbox($trace, 2);
+
+        $toolbox->execute(new ToolCall('1', 'escalate', ['reason' => 'one']));
+        $toolbox->execute(new ToolCall('2', 'escalate', ['reason' => 'two']));
+
+        $toolbox->startTurn();
+
+        // Without the reset this third call exceeds the budget of 2 and throws.
+        $result = $toolbox->execute(new ToolCall('3', 'escalate', ['reason' => 'three']));
+
+        self::assertNotNull($result);
+    }
 }

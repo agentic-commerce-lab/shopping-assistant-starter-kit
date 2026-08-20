@@ -137,6 +137,26 @@ final class BoundedToolbox implements ToolboxInterface
         private readonly TraceRecorder $trace,
     ) {}
 
+    /**
+     * Starts a new turn's budget.
+     *
+     * The counter is a property rather than a local precisely so it survives `AgentProcessor`'s
+     * recursion (see the class docblock) — which means it also survives a *second turn* on the same
+     * instance. In production that never happens: `ShopwareChatTurnRunner` builds a fresh bundle per
+     * HTTP request, so every shopper message gets its own budget, which is what
+     * `$maxToolCallsPerTurn` promises and what `config.xml`'s help text says.
+     *
+     * The eval harness reuses one bundle across a journey's turns, and there the shared counter made
+     * the bound **per conversation**: measured, `cart_add`'s two-turn journey spent ~3 calls finding
+     * the variant and then could not afford to add it — 6 of 6 runs ended `tool_limit_exceeded`
+     * against a budget the endpoint would have refreshed. A caller driving several turns through one
+     * toolbox calls this between them (ruling R84).
+     */
+    public function startTurn(): void
+    {
+        $this->calls = 0;
+    }
+
     /** @return Tool[] */
     public function getTools(): array
     {

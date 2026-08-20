@@ -58,6 +58,14 @@ final class FactRenderer
     /** @var list<string> */
     private array $unbackedAvailability = [];
 
+    /**
+     * The shopper's own message for this turn.
+     *
+     * Held so the price audit can tell a figure the model *claimed* from one the shopper introduced
+     * and the model merely restated — see {@see ProseAudit::unbackedPrices()} and ruling R85.
+     */
+    private string $shopperMessage = '';
+
     public function __construct(
         private readonly TraceRecorder $trace,
         private readonly ProseAudit $proseAudit = new ProseAudit(),
@@ -177,9 +185,24 @@ final class FactRenderer
     /**
      * @return list<string>
      */
+    /**
+     * Records the shopper's message for this turn, before the model is called.
+     *
+     * Request-scoped like everything else on this class: one renderer per turn, so there is no way
+     * for one shopper's message to reach another's audit.
+     */
+    public function registerShopperMessage(string $message): void
+    {
+        $this->shopperMessage = $message;
+    }
+
     public function unbackedPricesInProse(string $prose): array
     {
-        $unbacked = $this->proseAudit->unbackedPrices($prose, array_values($this->renderedCards));
+        $unbacked = $this->proseAudit->unbackedPrices(
+            $prose,
+            array_values($this->renderedCards),
+            $this->shopperMessage,
+        );
 
         $this->unbackedPrices = $unbacked;
 

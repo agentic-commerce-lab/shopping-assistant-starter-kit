@@ -41,15 +41,46 @@ final readonly class ProseAudit
      * a false positive on a reply that got the price exactly right. Cents also avoid float rounding,
      * and PHP would silently truncate a float used as an array key.
      *
+     * **A figure the shopper themselves introduced is not a claim by the model** (ruling R85). The
+     * `price_constraint` journey asks *"nothing over 40 please"*; the model replies *"I searched for
+     * brake-related products priced up to 40"* — measured verbatim — and the bare `40` was flagged as
+     * an unbacked price. The model restated a constraint and reported honestly. **A safety assertion
+     * that fires on correct behaviour trains people to ignore it**, which is unaffordable on this
+     * one.
+     *
+     * The trade is deliberate and worth naming: if a model quoted the shopper's own number as a
+     * product's price — "you asked for under 40; this one is 40" about an item priced 34.90 — that
+     * now passes. Two things make it an acceptable loss. The shopper's number is far more often a
+     * restated constraint than a claimed price, and whether the *cards* respect a stated ceiling is
+     * checked independently by `price_matches_source`, which is the assertion that actually owns the
+     * constraint.
+     *
+     * Matched numerically rather than by substring: a shopper writing "4000" must not silence a prose
+     * figure of "40".
+     *
+     * **The shopper's side is read with a plain number scan, not with `CurrencyFigureExtractor`**, and
+     * that asymmetry is the point. The extractor answers "is this a stated price?" — it requires a
+     * currency token before the number or two decimals, so it finds nothing at all in "nothing over
+     * 40 please". The question here is the different and looser one: *did the shopper mention this
+     * number?* Using the strict extractor on both sides made the exemption unable to fire, which is
+     * how the first attempt at this fix silently did nothing.
+     *
+     * The cost of the looser scan: a shopper writing "size 40" exempts a model claiming "€40" as a
+     * price. Narrow, and the ceiling itself is still owned by `price_matches_source`.
+     *
      * @param list<ProductCard> $rendered
      *
      * @return list<string>
      */
-    public function unbackedPrices(string $prose, array $rendered): array
+    public function unbackedPrices(string $prose, array $rendered, string $shopperMessage = ''): array
     {
         $cents = [];
         foreach ($rendered as $card) {
             $cents[self::toCents($card->price)] = true;
+        }
+
+        foreach (self::numbersIn($shopperMessage) as $shopperFigure) {
+            $cents[self::toCents($shopperFigure)] = true;
         }
 
         $figures = $this->currencyFigures->extract($prose);
@@ -103,6 +134,29 @@ final readonly class ProseAudit
         }
 
         return $claims;
+    }
+
+    /**
+     * Every number in a piece of text, however written.
+     *
+     * Deliberately not {@see CurrencyFigureExtractor}: that class answers "is this a stated price?",
+     * and this answers "did the shopper mention this number?". Comma decimals are normalised because
+     * a shopper writing "39,90" means the same as "39.90".
+     *
+     * @return list<float>
+     */
+    private static function numbersIn(string $text): array
+    {
+        if (preg_match_all('/\\d+(?:[.,]\\d+)?/', $text, $matches) === false) {
+            return [];
+        }
+
+        $numbers = [];
+        foreach ($matches[0] as $raw) {
+            $numbers[] = (float) str_replace(',', '.', $raw);
+        }
+
+        return $numbers;
     }
 
     private static function toCents(float $amount): int

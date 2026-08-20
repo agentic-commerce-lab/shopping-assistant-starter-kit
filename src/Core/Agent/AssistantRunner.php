@@ -77,6 +77,10 @@ final class AssistantRunner
             'reasonCode' => $decision->reasonCode,
         ]);
 
+        // Before the model runs: the price audit needs to know which figures the SHOPPER introduced,
+        // so it does not flag the model for restating them (ruling R85).
+        $this->bundle->renderer->registerShopperMessage($message);
+
         try {
             $result = $this->bundle->agent->call($this->buildMessageBag($message, $history));
         } catch (MaxIterationsExceededException) {
