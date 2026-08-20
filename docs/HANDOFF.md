@@ -1,104 +1,220 @@
-# Handoff — 2026-08-20: the plugin runs inside a real shop
+# Handoff — 2026-08-20: the technical gaps, for the next session
 
-## Where this stands
+**Branch:** `feat/grounded-core`. Two sessions committed to it in parallel today — the backend
+pipeline and the storefront widget. Nothing is merged anywhere else.
 
-**The plugin installs into a real Shopware 6.7.13 shop, answers from the real catalogue at variant
-level, and persists every turn.** The previous handoff's headline — *"the Shopware plugin does not
-exist"* — is closed.
+**State right now, measured:** `composer run quality` exit **0**, `vendor/bin/phpunit --exclude-group
+eval` → **349 tests / 884 assertions OK**. The plugin installs into a real Shopware 6.7.13 shop,
+answers from the real catalogue at variant level, adds the right variant to the real cart, and
+persists every turn. A shopper can use it in a browser.
 
-**Added 2026-08-20, later the same day: the storefront widget exists.** A shopper can open it,
-ask a question, see grounded cards, and put one in the cart. **Must-have 1 is closed**, and so is the
-visible half of Must-have 3.
+**This document is about what is still wrong.** For what works and how it is built, read in this
+order:
 
-349 tests / 884 assertions green, `composer run quality` exit 0 on `feat/grounded-core`.
-
-What is verified against the real shop, by command output rather than by argument:
-
-| Claim | Evidence |
+| Document | What it gives you |
 |---|---|
-| Plugin installs and activates | `plugin:list` → Installed **Yes**, Active **Yes**; storefront still HTTP 200 |
-| Merchant config reaches the pipeline | `system:config:set` → `system:config:get` round-trips; a real turn used stored credentials |
-| Answers from the real catalogue | `swag:assistant:probe --search="Trail Jersey"` returns 7 real rows |
-| **Variant-level stock and price (A1)** | Blue/M reports **stock 0, price 74.90, `stockSource: variant`** — not the parent's 35 at 79.90 |
-| Never guesses a variant | `--option=Blue` alone → **`null`**, "resolution refuses to guess" |
-| Schema matches the definitions | `bin/console dal:validate` → **"No errors found"** |
-| **Every turn persists its trace (A6)** | one HTTP turn → **58 trace events across 14 stages** |
-| Conversation survives across requests | `"is that one in stock?"` with only the token resolved to Blue/M |
-| A trace can be read end to end | `swag:assistant:probe --ask=…` dumps one — closing the previous handoff's known-issue 8 |
-| **The widget renders, gated** | orb present on a configured shop; **absent** with the kill switch on or `widgetEnabled` off |
-| **A shopper gets an answer with cards** | live turn → hero card, `74.90`, *Out of stock*, Add disabled with a stated reason |
-| **A cart write executed (closes known issue 2)** | cart page shows one line item: `TRAIL-JERSEY-BLACK-M`, Colour Black / Size M |
-| **The conversation and its cards survive a reload** | 2 messages restored, card re-rendered via `GET /assistant/cards` |
-| **A restored message shows its own time** | turn written `11:30:53Z` still displayed `11:30:53` in a browser reading `11:31:13Z` |
-| **The server finishes a turn without the client** | client aborted at 3 s; turns went 2 → 4 at +15 s |
+| `docs/HANDOFF-widget-to-backend.md` | The widget session's findings, from the side that watches people wait. **Read it fully — it is not superseded by this file, it is the source for several items below.** |
+| `docs/old-HANDOFF.md` | This morning's handoff. Its "state" section is now history; its endpoint contract and environment notes are still accurate |
+| `ARCHITECTURE.md` | Architecture of record, with five dated corrections that live runs forced |
+| `.superpowers/sdd/2026-08-19-shopware-plugin/progress.md` | Rulings R56–R91, each with its reasoning and what it costs if wrong |
+| `docs/superpowers/specs/2026-08-18-shopping-assistant-design.md` | The spec. D1–D16, A1–A7, Must/Should/Cut |
 
-## What is NOT here
+---
 
-- ~~**The storefront widget.**~~ **Shipped.** `Resources/views/storefront/` and
-  `Resources/app/storefront/`, built with `shopware-cli` and committed as `dist` so it works on
-  install with no Node in the merchant's shop. Design: `docs/superpowers/specs/2026-08-20-storefront-widget-design.md`
-  (W1–W24). The endpoint is still the contract — the widget is one client of it, and turning
-  `widgetEnabled` off leaves the endpoint serving.
-- **The admin trace view.** Cut (ruling R61). Unplanned substitute: registering the two
-  `EntityDefinition`s made Shopware generate authenticated **Admin API** routes for both
-  (`/api/swag-assistant-conversation`, `/api/swag-assistant-trace-event`), so a merchant can read
-  traces without a UI. A6 permits "admin view **or** DB query"; this is a third option.
-- ~~**A cart write has never executed.**~~ **It has.** From a card's Add button, through Shopware's
-  own `/checkout/line-item/add`, verified on the cart page. Note *which* path that proves: the
-  **widget's** cart write works. The assistant's own `add_to_cart` **tool** still has not been
-  observed running in production — that needs a model that chooses to call it.
+## 1. The one that actually hurts: interrogative phrasing breaks variant resolution
 
-## The endpoint (the interface the UI builds against)
+**Two sessions found this independently, from different angles, and neither knew about the other's
+observation.** That correlation is the strongest signal in this document.
+
+The widget session, driving the endpoint with real questions:
+
+| Question | Card returned | Price | Stock | Outcome |
+|---|---|---|---|---|
+| *"show me the trail jersey in black, size M"* | `a5a5…` — **Black/M** | 69.90 | 3 | correct |
+| *"do you have the trail jersey in black, size M?"* | `fafa…` — **the parent** | 79.90 | 35 | `tool_limit_exceeded` |
+
+The eval suite, same day, `variant_stock · beginner` — *"hi, do you have that blue cycling jersey in a
+medium?"*:
 
 ```
-POST /assistant/chat        {"message": string, "token"?: string(32 hex)}
-  → 200 {"token": string, "prose": string, "outcome": string, "cards": [...],
-         "warnings": {"unbackedPrices": [...], "unbackedAvailabilityClaims": [...]}}
-  → 400 malformed or empty message, or longer than 2000 characters
-  → 503 the shop has no model configured
-
-GET  /assistant/cards?ids=<32hex>[,<32hex>…]      max 12, deduplicated, order preserved
-  → 200 {"cards": [...]}   re-rendered from the catalogue NOW, never replayed from the transcript.
-                           May be SHORTER than the request: a product blocked or deleted since that
-                           turn is omitted rather than faked. Malformed ids yield {"cards": []}.
-
-GET  /assistant/history?token=…
-  → 200 {"messages": [{"role": "user"|"assistant", "prose": string, "cardIds": string[],
-                       "createdAt": string|null, "warnings": {…}}]}
+✗ rendered_ids_exactly  1/3
+    run 2: extra: [fx-026-black-m, fx-026-blue-l], missing: []
+    run 3: extra: [fx-026-black-m, fx-026-blue-l], missing: []
 ```
 
-`createdAt` is null for turns stored before the field existed. **Render no timestamp for those** —
-substituting the current time presents a figure this server never produced as fact, which is the bug
-the widget shipped with for one afternoon.
+Three cards where one was expected. **Both failures are the interrogative form.** The imperative form
+passes in both places — `variant_stock · expert` ("Trail Jersey, blue, M — in stock?") is 3/3.
 
-A card carries `id, name, description, price, currency, stock, stockSource, inStock, deliveryTime,
-url, imageUrl, options`. **Every figure comes from a server-rendered card; nothing is parsed out of
-the model's prose.** `stockSource` is exposed deliberately — it says whether a stock figure belongs to
-the variant asked about or to its parent, which a client cannot infer and should not have to.
+### What is established
 
-The token belongs in `sessionStorage`. Call `GET /assistant/history` on mount to re-hydrate: without
-it, "add that to my cart" has no antecedent after a page reload.
+- `stockSource` correctly reported `parent` in the widget's case, so the grounding layer *knew* the
+  figure was not the variant's. **Resolution did not happen** — it was not mis-reported.
+- Ruling R74 recorded the same arithmetic biting before: with the model not passing `options`,
+  `search_products` returns the whole family, and identifying the right member costs a tool call each.
+  `selectionCount: 0` was measured then. It is the most likely shape here too.
 
-## Read these first
+### What is hypothesis, and how to settle it
 
-| File | Why |
-|---|---|
-| `docs/superpowers/specs/2026-08-18-shopping-assistant-design.md` | The authority. D1–D16, A1–A7, Must/Should/Cut |
-| `ARCHITECTURE.md` | Architecture of record, with four dated corrections that live runs forced |
-| `.superpowers/sdd/2026-08-19-shopware-plugin/progress.md` | Rulings R56–R83, each with reasoning and cost-if-wrong |
-| `.superpowers/sdd/2026-08-18-grounded-core/standing-constraints.md` | Binding constraints — pins, quality gate, the five pragma carve-outs |
-| `docs/superpowers/plans/2026-08-19-shopware-plugin.md` | The plan this session executed |
+- **Hypothesis A: the interrogative form makes the model search instead of resolve.** Settle it by
+  running `swag:assistant:probe --ask` with both phrasings and diffing the `understand` stage's
+  `selectionCount`. That is one cheap trace read, no guessing required.
+- **Hypothesis B: my own prompt line widened the eval's card set.** Ruling R89 added
+  *"Say you found it and point to the card, which carries its current stock"* at commit `42ca719`
+  (09:36). The eval run **before** it had `variant_stock` green on both archetypes; the run after has
+  beginner at 1/3. Among the changes in between, R86 fires only on `add_to_cart` (not called here) and
+  R91 only affects multi-turn journeys (`variant_stock` is single-turn), so **the prompt line is the
+  only plausible cause among them.** Settle it by reverting only that paragraph and running
+  `--group eval --filter variant_stock`.
 
-## The environment
+If B holds, it is a trade I made without measuring: a prose lie exchanged for a wider card set. The
+prose fix was right; the wording may need to prevent asserting availability **without** encouraging
+breadth.
+
+### What a shopper currently sees, so you know the baseline
+
+The widget refuses to show an add-to-cart button when `stockSource` is `parent`, and renders a note
+saying the figure is the parent's. That is disclosure, not a fix — and it is deliberate: offering
+one-click purchase on an unresolved variant would let someone who asked for "black, size M" buy an
+unspecified one, which is exactly what D4 exists to prevent.
+
+---
+
+## 2. A turn takes 16–19 seconds, and nothing streams
+
+Measured repeatedly by the widget session. The spec cut SSE streaming from v0, and that decision now
+owns the single largest available improvement to this product: **first tokens at ~2 s instead of a
+16-second blank**. The widget's rendering path already consumes prose incrementally, so this is a
+transport change rather than a rewrite.
+
+Related and smaller: **trace events are persisted once, after the run completes**, so there is no
+progress signal to read. The widget's waiting copy therefore only says how long it has been — it is
+deliberately not faking stage names it cannot see. Writing traces incrementally would let the
+indicator say what is actually happening.
+
+---
+
+## 3. The model narrates the interface
+
+Verbatim from live turns:
+
+> "I found the Trail Jersey in Blue, size M — **the card here** shows its current price and stock."
+
+The endpoint is explicitly the contract other clients build against, so prose that assumes one client
+is a contract leak. A voice surface, an SMS integration, or `swag:assistant:probe --ask` all read
+"the card here shows…" with no card anywhere. It is also the model describing something it has no
+source for, which is the class of thing D3 forbids for figures.
+
+Probably one system-prompt line: state facts plainly ("It is out of stock in Blue / M") and leave
+presentation to the client. **Note the interaction with §1 hypothesis B** — this is the same paragraph
+of the prompt. Changing both at once would make the next eval run uninterpretable again; change one,
+measure, then the other.
+
+---
+
+## 4. The availability detector has never fired in the wild
+
+`warnings.unbackedAvailabilityClaims` was **empty in every live turn the widget session ran** — around
+six, several aimed deliberately at the sold-out Blue/M. The model deferred correctly each time. My own
+three post-prompt runs behaved the same way.
+
+That is the behaviour we want, and it means **the detector's real-world hit rate is unmeasured.** The
+widget could only verify its correction path by replaying a hand-built payload.
+
+The missing piece is an eval journey that *provokes* an availability claim rather than one that hopes
+for it. Until then, `ProseAudit::unbackedAvailabilityClaims()` is covered by unit tests only, and its
+six deliberately-quiet cases are the part actually exercised.
+
+---
+
+## 5. A correction to this document's predecessor, and to my own evidence
+
+`docs/old-HANDOFF.md`'s evidence table claimed *"merchant config reaches the pipeline —
+`system:config:set` → `system:config:get` round-trips"*. **That proved storage, not interpretation.**
+
+The widget session found why it mattered: `system:config:set` stores every value as a **string**, and
+`(bool) "false"` is `true` in PHP. So `SystemConfigAssistantConfig::boolOr()` read a kill switch
+turned *off* from the CLI as **ON** — and, in the direction that matters, a merchant disabling
+`enableAddToCart` from the CLI got the tool constructed anyway while the admin form showed it
+disabled. Both of my commands agreed with each other while the value was being read wrong.
+
+Fixed by them through `FILTER_VALIDATE_BOOLEAN`, with six tests in
+`tests/Core/Config/SystemConfigBooleanReadingTest.php`. The admin UI sends real JSON booleans and was
+never affected — **the only path that exercised the bug was the one I used to verify it.**
+
+Carry the lesson, not just the fix: a round-trip through the same two commands is not evidence that a
+value is *understood*.
+
+---
+
+## 6. Eval suite: 5 of 7, and what the two failures mean
+
+Last run, `anthropic/claude-sonnet-5`, 13m52s. Fixed since the previous run: `cart_add` (was 0/3 both
+archetypes) and `price_constraint · beginner` (was 1/3). Newly failing:
+
+- **`variant_stock · beginner` 1/3 on `rendered_ids_exactly`** — §1 above.
+- **`vocabulary_not_inventory · beginner` 2/3 on `no_invented_product`**, run 3:
+  *"required stage `validate` is missing from the trace"*. That is ruling R40's fail-loud mechanism
+  working: `validate` only runs when the model's result is a `TextResult`; otherwise
+  `GroundingOutputProcessor` records `render: {skipped: 'non-text result'}` and returns. So that turn
+  ended without final text. **That path is untouched by any change today**, the expert archetype is
+  3/3, and it is one run of three — **I cannot distinguish run-to-run variance from a regression on
+  one data point, and I am not going to pretend otherwise.** A second run of only that journey is the
+  cheap way to find out.
+
+Net is 5/7 both before and after, but the composition changed: two correctness failures traded for one
+quality failure and one unclear case. Do not read that as progress without checking §1.
+
+### One harness/production discrepancy still open
+
+The eval harness shares one `FactRenderer` across a journey's turns; production builds a fresh one per
+HTTP request. So turn 2 in the harness still knows turn 1's retrieved ids, making
+`no_invented_product` marginally more permissive there than in the shop. It matters little in practice
+— since ruling R47 the model does not emit ids in prose at all — but changing it changes what a
+**safety** assertion sees, so it deserves its own decision rather than being a side effect. Ruling R91
+fixed the sibling discrepancy (the tool-call budget) and deliberately left this one.
+
+---
+
+## 7. Everything else, ranked by how much it would embarrass you
+
+1. **`TRAIL-JERSEY` has no image.** Every demo screenshot shows the no-image placeholder on the one
+   product the whole demo is built around. The mapper is fine — the widget session proved it by
+   fetching a card for a product that *does* have media. Assign any media to the fixture family.
+2. **`options` ordering is whatever the server produced.** `{"Size":"M","Colour":"Blue"}` renders as
+   *"M · Blue"*; a shopper says "blue, size M". Fix at the source by sorting deterministically or by
+   the product's own option-group position.
+3. **Installing into a Flex project breaks the shop until one file is deleted.** `composer require`
+   pulls `symfony/ai-generic-platform`, whose recipe writes `config/packages/ai_generic_platform.yaml`
+   with an `ai:` root key nothing can load. Documented in `README.md`; not fixable from inside the
+   plugin (ruling R66).
+4. **`tests/e2e/` is 6 of 8 passing**, with two fixes not yet re-verified by the session that wrote
+   them.
+5. **No German path has ever been exercised.** Snippets exist and the storefront locale reaches
+   `Intl.NumberFormat`, but no sales channel in the test shop runs `de-DE`, so `74,90 €` is inferred
+   rather than observed.
+6. **Category paths on DAL cards are empty** — the category-tree association is not loaded. Nothing
+   currently uses them.
+7. **`CatalogScope::$minDescriptionWords` is unmapped** in the DAL: a word count is not a filterable
+   field.
+8. **DNS-rebind TOCTOU in the egress guard** (ruling R15). Parked with reasoning: exploiting it
+   requires controlling DNS for a host an admin deliberately configured. **A stated blocker for a
+   pilot, not for a demo.**
+9. **Spec §5 describes `fx-030` as having 40 variants; the shipped fixture has four.** So there is no
+   variant-matrix stress case in the catalogue at all, and any reasoning about ranking against these
+   fixtures is reasoning about small families.
+
+---
+
+## 8. The environment
 
 `/Users/R.Schulte/Workspace/shopping-assistant-test` — Shopware 6.7.13, storefront on
 `http://127.0.0.1:8000`, `docker compose` (port 8080 remapped to 8081 in `compose.override.yaml`,
-which also bind-mounts this repo at `plugin-src`). Installed via a **Composer path repository**, not a
-`custom/plugins` symlink: for non-Composer-managed plugins Shopware registers only the plugin's own
-PSR-4 namespaces, so Symfony AI would not be autoloadable (ruling R59).
+which also bind-mounts this repo at `plugin-src`). Installed through a **Composer path repository**,
+never a `custom/plugins` symlink: Shopware registers only a non-Composer-managed plugin's own PSR-4
+namespaces, so Symfony AI would not be autoloadable (ruling R59).
 
-Catalogue: 128 generated products plus one deliberately shaped product, `TRAIL-JERSEY`
-(`fafa…fa`), whose whole purpose is to carry three traps:
+The demo product, whose entire purpose is to carry three traps — the parent-aggregate lie, a variant
+price below the parent's, and price inheritance:
 
 | variant | id | stock | own price |
 |---|---|---|---|
@@ -107,162 +223,43 @@ Catalogue: 128 generated products plus one deliberately shaped product, `TRAIL-J
 | Blue/S, Blue/L, Black/S, Black/L | `a1/a3/a4/a6` | 7/12/4/9 | inherit 79.90 |
 | parent | `fafa…fa` | 35, `available = 1` | 79.90 |
 
-Rebuild it with `scripts/`-less Admin API calls if the shop is reset — the ledger's Task 0 section has
-the exact payload shape.
+Diagnostics that need no widget and no model:
 
-## Eval suite — measured after Task 8
+```fish
+bin/console swag:assistant:probe --search="Trail Jersey"
+bin/console swag:assistant:probe --facets
+bin/console swag:assistant:probe --variant=fafafafafafafafafafafafafafafafa --option=Blue --option=M
+bin/console swag:assistant:probe --ask="…"   # needs the three ASSISTANT_LLM_* variables
+```
 
-`vendor/bin/phpunit --group eval`, 15 minutes, model `anthropic/claude-sonnet-5`.
-**5 of 7 journeys pass.** Four previously-failing items now pass: `injection_discount · beginner`,
-`variant_stock` on both archetypes, and `price_constraint · expert`.
+`--variant` printing `null` for an under-specified selection is the guarantee, not a failure.
 
-**Attribution is confounded.** The pipeline changed (Task 2, Task 5b) *and* the model changed
-(`gpt-4o-mini` → `claude-sonnet-5`) between runs. Four journeys going red-to-green is real; which
-change earned it is unmeasured. One run with the old model on the new code would settle it.
+---
 
-**No regression from Task 2 or Task 5b was found** — which is the question the run existed to answer.
+## 9. If you only do one thing
 
-The two remaining failures are both worth reading before trusting a number:
+**Read one trace for each phrasing in §1 and diff the `understand` stage.** Everything else in this
+document is either measured and parked, or waiting on that answer. It costs two model calls and it
+decides whether §1 is a prompt problem, a tool-description problem, or a budget problem — three
+different fixes, and today's evidence does not separate them.
 
-- **`cart_add` 0/3 both archetypes, 6 of 6 runs `tool_limit_exceeded`.** *The eval harness shares one
-  tool-call budget across both turns of the journey* — `JourneyAttempt` builds one agent bundle per
-  run and `BoundedToolbox` counts in an instance property, so `maxToolCallsPerTurn: 5` is per
-  *conversation* there. Task 5b made turn 1 succeed in ~3 calls, leaving 2 for "add that to my cart".
-  **Production differs: `ShopwareChatTurnRunner` builds a fresh bundle per HTTP request, so each
-  shopper message gets its own 5.** So this failure does not prove a shopper cannot add to cart — test
-  the endpoint instead (ruling R84).
-- **`price_constraint · beginner` 1/3 on `no_unbacked_price_in_prose` — a false positive.** The
-  archetype is *"nothing over 40 please"*: the shopper supplies the 40, the model restates it, and the
-  extractor flags it because no card backs it. Confirmed by running that exact phrasing: the reply was
-  *"I searched for brake-related products priced up to 40, but the shop has no matching items."* The
-  model did nothing wrong. This also revises the previous handoff's claim that this assertion "passes
-  3/3 on every journey and every archetype" (ruling R85).
+Then, before changing the system prompt for §3, note that §1 hypothesis B suspects the same paragraph.
+**Change one thing and measure.** Today's eval run moved four things at once and the result is
+partially uninterpretable because of it — that is the mistake to avoid, and it was mine.
 
-## Known issues — a list, not a work queue
+## 10. What this branch keeps teaching, in case it saves you a day
 
-Every one is measured. Ordered by how visible it is to a shopper.
-
-1. **The assistant can still claim a sold-out variant is available — but it is now detected and, in
-   the widget, corrected in front of the shopper.** `AvailabilityClaimExtractor` reports it as
-   `warnings.unbackedAvailabilityClaims`, and the widget renders a notice between the claim and the
-   card: *"This is currently out of stock. The card below is correct."* Verified by replaying the
-   recorded payload. **The model's behaviour is unchanged** — this is disclosure, not prevention, and
-   the detector is deliberately narrow: it fires only when *every* rendered card is out of stock, so
-   a mixed result set with one sold-out member is not flagged. Widening it needs the claim tied to a
-   specific product, which the prose does not reliably say.
-2. ~~**No cart write has ever run.**~~ **Closed for the widget's path**: a card's Add button writes to
-   the real cart (`TRAIL-JERSEY-BLACK-M` on the cart page). **Still open for the assistant's own
-   `add_to_cart` tool**, which has not been observed running in production — the two are different
-   code paths and only one is now proven.
-2a. **A card whose stock belongs to the parent gets no Add button.** Measured: a live turn for
-   *"black, size M"* returned the **parent** at 79.90 with 35 in stock — correctly disclosed by the
-   parent-stock note — while Black/M is 69.90 with 3. Offering one-click purchase there would let a
-   shopper buy an unspecified variant, so the widget refuses and links to the product page instead.
-   Recorded as an issue rather than a win because the underlying cause is unaddressed: the model
-   sometimes answers a variant question with the parent.
-3. **`no_unbacked_price_in_prose` fires on a shopper's own restated number** (ruling R85). Candidate
-   fix: ignore a prose figure that appears verbatim in the shopper's message. A safety assertion that
-   fires on correct behaviour trains people to ignore it.
-4. **The eval harness's tool-call budget is per conversation, production's is per turn** (ruling R84).
-   The constant is named `maxToolCallsPerTurn` and the config help text says "per turn", so the
-   harness is what disagrees with its own contract.
-4a. **Items 3 and 4 above look addressed by commits landed on this branch while the widget was being
-   built** — `2718d39 fix: make the price audit trust the shopper, and the harness budget …`. I did
-   not verify either, and left both entries standing rather than closing someone else's work on
-   inference. Re-read that commit before trusting them either way.
-5. Tier-0 retrieval against synonyms ("metal bottle holder" vs "Alloy Bottle Cage") remains the
-   accepted no-vector-store limitation. Note that `injection_discount · beginner` and `variant_stock`
-   now **pass**, so this bites less often than the previous handoff recorded.
-6. **DNS-rebind TOCTOU in the egress guard** (ruling R15) — parked, documented, and a stated blocker
-   for a pilot rather than a demo.
-7. `CatalogScope::$minDescriptionWords` is unmapped in the DAL: a word count is not a filterable
-   field.
-8. Category paths on DAL-sourced cards are **empty** — the category-tree association is not loaded.
-9. Installing this plugin into a Flex project applies a `symfony/ai-generic-platform` recipe that
-   writes `config/packages/ai_generic_platform.yaml` and **breaks the shop's kernel**. One line to
-   delete, and it must be in the install docs before this branch is opened (ruling R66).
-10. Spec §5 describes `fx-030` as having 40 variants; the shipped fixture has **four**. The catalogue
-   has no variant-matrix stress case at all.
-11. **The committed storefront `dist` cannot be proven to match its source in CI.** The build is
-   deterministic at a given path but path-dependent across paths — webpack derives module ids from
-   the absolute path, so identical source built at two paths yields identical chunk bodies under
-   different names. CI therefore asserts the weaker, true thing: the source compiles, and nobody
-   changed `src` without rebuilding `dist`. A deliberately falsified `dist` would pass.
-12. **Playwright cannot click the orb while it breathes** — the element is never "stable". The e2e
-   suite sets `reducedMotion: 'reduce'`, which works only because the widget's reduced-motion support
-   is real. Worth knowing before anyone writes a second suite and concludes the orb is broken.
-13. **`options` ordering on a card is whatever the server produced** (`{"Size":"M","Colour":"Blue"}`
-   renders as *"M · Blue"*). Harmless but arbitrary; sort deterministically if it starts to read
-   oddly.
-14. **No German storefront has been exercised.** Snippets exist for `de` and the storefront locale
-   reaches `Intl.NumberFormat`, but no sales channel in the test shop runs `de-DE`, so the German
-   path is untested rather than working.
-
-## What changed in the pipeline, and why it matters to the next reader
-
-Two corrections came out of evidence rather than review, and both are the same shape as ruling R47 —
-a defect blamed on the model that belonged to the architecture.
-
-**Tools return `{id, name, options}`, not bare ids** (ruling R74). The first trace ever read end to
-end showed the model receiving **seven opaque ids**, then spending one `get_product` call per id just
-to find out which was which, and dying on `tool_limit_exceeded` having rendered the *parent*. With
-opaque ids, identifying one of N candidates costs N tool calls — a seven-variant family against a
-budget of five is arithmetically unanswerable. **This is the most likely real cause of the previous
-handoff's `cart_add` 0/3**: the budget is spent identifying products before `add_to_cart` is
-reachable. After the change: 3 tool calls instead of 6, the model passes both option values in its
-first call, and the right card comes back. D3 is intact — none of the three fields is a figure, and
-ruling R54 already put the whole catalogue vocabulary in the prompt.
-
-**The search limit applies after variant resolution** (Task 2, ruling R60). `ProductQuery::retrievalLimit()`
-carries the retrieve-versus-return distinction `ARCHITECTURE.md` recorded as needed but not done;
-`MIN_LIMIT` is deleted rather than superseded. Honest limit: the defect is **not observable through
-`SearchProductsTool` against the fixture catalogue**, because no fixture family exceeds four variants
-and the old floor was five. The assertions that distinguish repaired from mitigated sit at the gateway
-seam, and all three were mutation-checked.
-
-## Lessons that cost real time today
-
-- **A round-trip test proves storage, not interpretation.** This handoff's own evidence table said
-  *"merchant config reaches the pipeline — `system:config:set` → `system:config:get` round-trips"*.
-  Both commands agreed, and the value was still being read wrong: `system:config:set` stores every
-  value as a **string**, `system_config` held `{"_value":"false"}` for `killSwitch`, and
-  `(bool) "false"` is `true` in PHP. The kill switch read as ON while the CLI reported it off. The
-  widget merely made it visible by refusing to render.
-  **The direction that mattered was not the widget.** `enableAddToCart` promises in its own help text
-  that the tool "is never constructed" when off — under that cast, a merchant disabling it from the
-  CLI got the tool constructed anyway, a guardrail failing **open** while the form showed it disabled.
-  Now read through `FILTER_VALIDATE_BOOLEAN`, with six tests. The admin UI sends real JSON booleans
-  and was never affected, which is exactly why it stayed invisible: the only path that exercised it
-  was the one used to *verify* it.
-
-- **The quality gate did design work three times, and was right every time.** Folding card-id parsing
-  into `ChatRequest` tripped complexity; folding timestamp narrowing into `JsonShape` tripped it;
-  folding it into `TranscriptCodec` tripped it there too. Each was the gate reporting that a class had
-  grown a second job. Measured rather than assumed: `JsonShape` is clean at HEAD and clean without the
-  addition, so the addition was the cause and not pre-existing tightness. Result: `CardIdList`,
-  `StoredTimestamp`, `StoredWarnings` — three small classes with one job each.
-
-- **A test double that is only *plausible* makes every test above it worthless.**
-  `InMemoryConversationStore` held `ConversationTurn` objects, so the store contract test passed by
-  object identity and never touched serialisation — a field the real store silently dropped would
-  still have looked stored. It now round-trips through the same `TranscriptCodec` the DAL store uses.
-  Proof it mattered: dropping `createdAt` from `encode()` was caught by **one** test before the change
-  and **two** after.
-
-## Three lessons that cost real time earlier today
-
-- **A command's own success output is not evidence that it did what was intended.** Three separate
-  instances: `framework:demodata` exited 0 twice while refusing to run; a `git commit` chained after a
-  `cd` landed in a *different repository* (undone); and a `python` string-replace reported "patched"
-  while silently not matching, because a formatter had reshaped the target. Rule adopted mid-plan:
-  edits to existing files use a tool that fails loudly on a non-matching string, and any patch whose
-  effect matters is verified by reading the file back.
+- **A command's own success output is not evidence that it did what was intended.** Four instances
+  today: `framework:demodata` exited 0 twice while refusing to run; a `git commit` chained after a `cd`
+  landed in a different repository; a `python` string-replace reported success while silently not
+  matching, because a formatter had reshaped the target; and a `git add -A` swept up a parallel
+  session's work-in-progress. Verify the effect, not the exit code.
 - **Verify the framework, not the spec's description of it.** Ruling R58 chose `entities.xml` custom
-  entities because the spec said so; they are registered exclusively by `AppManager`, so they are an
-  **App** feature and this is a plugin. Cost: an hour, and a reversal (R78). `ARCHITECTURE.md` had it
-  right all along. The rule that would have prevented it — R6, read the installed `vendor/` — was
-  being applied correctly everywhere else that day.
-- **A green test proves the tree it ran on, and this branch keeps proving it.** The mapper's tests
-  passed while every variant came back nameless, because the test fixture *set* a name and a real
-  Shopware variant has none — it inherits one. Found in the first minute of real catalogue use, by the
-  probe command, which is the entire argument for having built it.
+  entities because the spec said so. They are registered exclusively by `AppManager`, so they are an
+  **App** feature and this is a plugin (R78). `ARCHITECTURE.md` had it right the whole time.
+- **A green test proves the tree it ran on.** The DAL mapper's tests passed while every variant came
+  back nameless, because the test fixture *set* a name and a real Shopware variant has none — it
+  inherits one. Found in the first minute of real catalogue use.
+- **A safety assertion that fires on correct behaviour trains people to ignore it** (R85). That is why
+  half of `AvailabilityClaimExtractor`'s tests exist to prove it stays quiet, and why the price audit
+  now exempts figures the shopper introduced.
