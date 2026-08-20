@@ -59,6 +59,16 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
         </service>
 
+        <!-- Merchant configuration. Until these exist, config.xml is a form that changes nothing —
+             including the kill switch, which is a security control rather than an ops nicety. -->
+        <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
         <!-- Console: verifies the gateway against the real catalogue and dumps a trace. The first
              thing in this project that executes a DAL query, and the first trace reader. -->
         <service id="Swag\AssistantStarterKit\Command\TraceDumper"/>
