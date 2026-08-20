@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
 use Shopware\Core\Content\Product\SalesChannel\SalesChannelProductEntity;
-use Shopware\Core\Content\Property\Aggregate\PropertyGroupOption\PropertyGroupOptionCollection;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
@@ -25,7 +24,13 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *    TRAIL-JERSEY variants carry no own price and inherit the parent's, so a raw read returns
  *    null for them — and a null price in front of a shopper is the failure this whole project
  *    is about.
- * 2. **`$source` is passed in, never inferred.** Whether a card may claim variant-level stock
+ * 2. **Translated fields are read through `translated`, not through the own-value getter.** A
+ *    variant normally has no name or description of its own — Shopware resolves both from the
+ *    parent by inheritance and puts the result in `translated`. `getName()` returns the *own*
+ *    value, which is null, so reading it hands the shopper a product with no name. Found by the
+ *    first probe against the real catalogue; the fixture gateway copies the parent's name onto
+ *    each variant, so no fixture test could ever have shown it.
+ * 3. **`$source` is passed in, never inferred.** Whether a card may claim variant-level stock
  *    is the caller's knowledge (it knows whether it fetched a variant or a parent), and
  *    labelling a parent's aggregate stock as `variant` is the defect that cancels orders (D4).
  *    This class will not upgrade the source it is handed.
@@ -34,6 +39,7 @@ final readonly class DalProductCardMapper
 {
     public function __construct(
         private ProductUrlResolver $urls,
+        private PropertyGroupOptionReader $options = new PropertyGroupOptionReader(),
     ) {}
 
     /**
@@ -48,8 +54,8 @@ final readonly class DalProductCardMapper
         return new ProductCard(
             id: $product->getId(),
             parentId: $product->getParentId(),
-            name: $product->getName() ?? '',
-            description: $product->getDescription(),
+            name: $this->inherited($product->getTranslation('name'), $product->getName()) ?? '',
+            description: $this->inherited($product->getTranslation('description'), $product->getDescription()),
             price: $product->getCalculatedPrice()->getUnitPrice(),
             currency: $currency,
             stock: $product->getStock(),
@@ -57,60 +63,21 @@ final readonly class DalProductCardMapper
             deliveryTime: $product->getDeliveryTime()?->getName(),
             url: $this->urls->urlFor($product->getId()),
             imageUrl: $product->getCover()?->getMedia()?->getUrl(),
-            options: $this->singleValued($product->getOptions()),
+            options: $this->options->singleValued($product->getOptions()),
             categoryPath: [],
-            properties: $this->multiValued($product->getProperties()),
+            properties: $this->options->multiValued($product->getProperties()),
         );
     }
 
     /**
-     * A variant's options: one value per group, e.g. ['Colour' => 'Blue', 'Size' => 'M'].
+     * Prefers the inheritance-resolved value over the entity's own.
      *
-     * An option whose group association is not loaded has a null group, and an option can
-     * have a null name. Either is dropped rather than keyed by a guess — inventing a group
-     * name here would hand VariantResolver a group this catalogue does not have, and a
-     * fabricated key is worse than a missing one.
-     *
-     * @return array<string, string>
+     * `translated` is where the DAL puts a field after resolving parent inheritance and the
+     * language chain; the own-value getter returns null for a variant that inherits. Falling back
+     * to the own value keeps a product working when no translation was loaded at all.
      */
-    private function singleValued(?PropertyGroupOptionCollection $options): array
+    private function inherited(mixed $translated, ?string $own): ?string
     {
-        $mapped = [];
-
-        foreach ($options ?? [] as $option) {
-            $group = $option->getGroup()?->getName();
-            $name = $option->getName();
-
-            if ($group === null || $name === null) {
-                continue;
-            }
-
-            $mapped[$group] = $name;
-        }
-
-        return $mapped;
-    }
-
-    /**
-     * A product's properties: several values per group, e.g. ['Material' => ['Merino', 'Nylon']].
-     *
-     * @return array<string, list<string>>
-     */
-    private function multiValued(?PropertyGroupOptionCollection $properties): array
-    {
-        $mapped = [];
-
-        foreach ($properties ?? [] as $property) {
-            $group = $property->getGroup()?->getName();
-            $name = $property->getName();
-
-            if ($group === null || $name === null) {
-                continue;
-            }
-
-            $mapped[$group][] = $name;
-        }
-
-        return $mapped;
+        return \is_string($translated) && $translated !== '' ? $translated : $own;
     }
 }

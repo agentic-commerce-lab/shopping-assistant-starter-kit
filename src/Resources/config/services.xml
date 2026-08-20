@@ -27,8 +27,11 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver"
                  alias="Swag\AssistantStarterKit\Core\Commerce\Dal\RouterProductUrlResolver"/>
 
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\PropertyGroupOptionReader"/>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\PropertyGroupOptionReader"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder">
@@ -54,6 +57,22 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
+        </service>
+
+        <!-- Console: verifies the gateway against the real catalogue and dumps a trace. The first
+             thing in this project that executes a DAL query, and the first trace reader. -->
+        <service id="Swag\AssistantStarterKit\Command\TraceDumper"/>
+
+        <service id="Swag\AssistantStarterKit\Command\ProbeTurnRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\ProbeCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\ProbeTurnRunner"/>
+            <tag name="console.command"/>
         </service>
 
         <!-- Inside a shop the DAL gateway is the gateway. FixtureCommerceGateway stays
