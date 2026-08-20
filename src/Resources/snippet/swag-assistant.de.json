@@ -20,7 +20,8 @@
       "outOfStock": "Nicht auf Lager",
       "outOfStockReason": "Nicht auf Lager und kann daher nicht hinzugefügt werden",
       "parentStock": "Lagerbestand gilt für das Produkt, nicht für diese Variante.",
-      "delivery": "Lieferung: %time%"
+      "delivery": "Lieferung: %time%",
+      "addedToCart": "Hinzugefügt"
     },
     "thinking": {
       "start": "Ich denke nach…",

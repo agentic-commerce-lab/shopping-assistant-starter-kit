@@ -164,6 +164,21 @@ function buildActions(card, { addToCartEnabled, translations }) {
         return actions;
     }
 
+    // **No add button on a card whose stock belongs to the parent.**
+    //
+    // `stockSource: 'parent'` means the server could not tell which variant this is about — it is
+    // the state the parent-stock note exists to disclose. Offering one-click purchase there would
+    // let a shopper who asked for "black, size M" buy an unspecified variant, which is precisely the
+    // expectation D4 exists to prevent. The assistant's own resolver refuses to guess a variant;
+    // the interface holds the same line and sends them to the product page, where they choose it
+    // themselves.
+    //
+    // Measured: a live turn for "black, size M" returned the parent at 79.90 with 35 in stock while
+    // Black/M is 69.90 with 3.
+    if (card.stockSource === 'parent') {
+        return actions;
+    }
+
     const add = document.createElement('button');
     add.className = 'swag-assistant-card__add';
     add.type = 'button';

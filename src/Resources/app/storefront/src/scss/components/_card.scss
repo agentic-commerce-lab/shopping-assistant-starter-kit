@@ -203,6 +203,13 @@ Cards appear only inside an assistant message. They are never the structure of a
     }
 }
 
+// Succeeded. Not a colour-only signal: the label itself changes to "Added".
+.swag-assistant-card__add.is-added {
+    border-color: $swag-assistant-in-stock;
+    background: $swag-assistant-in-stock;
+    color: $swag-assistant-text;
+}
+
 .swag-assistant-card__error {
     margin: 8px 0 0;
     color: $swag-assistant-low-stock;

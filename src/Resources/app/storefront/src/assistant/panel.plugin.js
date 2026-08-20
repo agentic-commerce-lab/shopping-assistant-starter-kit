@@ -90,6 +90,55 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         });
 
         this.input?.addEventListener('input', () => this._reflectLength());
+
+        // Delegated: cards are created long after this handler is bound, and rebinding per card
+        // would leak a listener for every product a long conversation shows.
+        this.log?.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-swag-assistant-add]');
+
+            if (button && !button.disabled) {
+                this._addToCart(button);
+            }
+        });
+    }
+
+    /**
+     * Adds a card's product through Shopware's **own** cart route.
+     *
+     * The shop keeps ownership of cart rules, prices and stock reservation; this plugin adds no cart
+     * logic. The button is only rendered at all when the merchant's `enableAddToCart` guardrail is
+     * on — that flag governs the assistant's tool rather than this route, and gating the button on it
+     * anyway is the only reading of the setting a merchant would accept.
+     */
+    async _addToCart(button) {
+        const card = button.closest('.swag-assistant-card');
+        const original = button.textContent;
+
+        button.disabled = true;
+        card?.querySelector('.swag-assistant-card__error')?.remove();
+
+        try {
+            await this.transport.addToCart(button.dataset.swagAssistantAdd);
+
+            // Re-render the header's cart count through the theme's own plugin. `fetch()` is
+            // CartWidgetPlugin's public method — verified against the installed 6.7 storefront rather
+            // than guessed, because an invented event name fails silently and leaves a stale count.
+            window.PluginManager.getPluginInstances('CartWidget')
+                ?.forEach((instance) => instance.fetch?.());
+
+            button.textContent = this.translations.addedToCart ?? original;
+            button.classList.add('is-added');
+        } catch {
+            button.disabled = false;
+
+            // Inline on the card, not a toast: the failure belongs to this product, and a toast
+            // floating over the storefront is detached from the thing that failed.
+            const message = document.createElement('p');
+            message.className = 'swag-assistant-card__error';
+            message.setAttribute('role', 'alert');
+            message.textContent = this.translations.errorCartFailed ?? '';
+            card?.querySelector('.swag-assistant-card__info')?.appendChild(message);
+        }
     }
 
     isOpen() {

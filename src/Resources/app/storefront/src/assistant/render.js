@@ -58,6 +58,7 @@ export function renderMessage(log, message) {
         role,
         prose,
         cards,
+        warnings,
         createdAt,
         locale,
         translations = {},
@@ -78,6 +79,12 @@ export function renderMessage(log, message) {
     }
 
     wrapper.appendChild(buildProse(prose));
+
+    // Order is the argument: the claim, then the correction, then the evidence that corrects it.
+    const warning = buildWarning(warnings, translations);
+    if (warning) {
+        wrapper.appendChild(warning);
+    }
 
     if (Array.isArray(cards) && cards.length > 0) {
         renderCards(wrapper, cards, { locale, addToCartEnabled, translations });
@@ -125,6 +132,53 @@ function buildProse(prose) {
     });
 
     return body;
+}
+
+/**
+ * Says out loud when the reply's own words contradict the cards beside them.
+ *
+ * The server supplies this: `warnings.unbackedAvailabilityClaims` and `warnings.unbackedPrices`. The
+ * controller's comment states the intent — *"the cards are always authoritative; this says when the
+ * sentence beside them is not, so the interface can annotate it, de-emphasise it, or drop it."*
+ * Ignoring it would leave the handsomest part of the product carrying its ugliest known defect: a
+ * live turn once replied *"the Trail Jersey is available in Blue, size M"* beside a card reporting
+ * stock 0.
+ *
+ * The notice can be **specific** rather than hedging, because the signal is narrow by design: an
+ * availability claim is only flagged when *every* rendered card is out of stock, so the true state is
+ * known rather than guessed.
+ *
+ * Three things this deliberately does not do:
+ *
+ * - **It does not edit or delete the prose.** Rewriting a reply to hide a mistake is how a product
+ *   loses the right to be trusted, and phrase-level surgery would mangle sentences.
+ * - **It does not dim the prose.** "De-emphasise" is one of the options the server offers, but
+ *   reducing body-text contrast fails the accessibility floor. Emphasis is added to the correction,
+ *   never subtracted from the text.
+ * - **It does not highlight the offending phrase inline.** Underlining the model's error mid-sentence
+ *   draws the eye to one failure and quietly undermines every other sentence.
+ */
+function buildWarning(warnings, translations) {
+    const availability = warnings?.unbackedAvailabilityClaims ?? [];
+    const prices = warnings?.unbackedPrices ?? [];
+
+    if (availability.length === 0 && prices.length === 0) {
+        return null;
+    }
+
+    const el = document.createElement('p');
+    el.className = 'swag-assistant-warning';
+    // "note" rather than "alert": it is a correction to something already on screen, not an
+    // interruption, and an assertive live region would talk over the reply itself.
+    el.setAttribute('role', 'note');
+
+    // Availability outranks price. Being told a sold-out item is available is the failure that
+    // cancels an order; a restated number is a smaller sin.
+    el.textContent = availability.length > 0
+        ? (translations.warningAvailability ?? '')
+        : (translations.warningPrice ?? '');
+
+    return el;
 }
 
 /**

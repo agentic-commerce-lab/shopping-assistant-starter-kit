@@ -20,7 +20,8 @@
       "outOfStock": "Out of stock",
       "outOfStockReason": "Out of stock, so it cannot be added to the cart",
       "parentStock": "Stock shown for the product, not this variant.",
-      "delivery": "Delivery: %time%"
+      "delivery": "Delivery: %time%",
+      "addedToCart": "Added"
     },
     "thinking": {
       "start": "Thinking…",

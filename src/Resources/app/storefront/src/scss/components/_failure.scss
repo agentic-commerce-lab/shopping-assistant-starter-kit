@@ -59,3 +59,35 @@ Orange, because the brand palette contains no red. Icon plus text, never colour 
         outline-color: $swag-assistant-low-stock;
     }
 }
+
+/*
+The correction notice: shown when the server reports that the reply's prose contradicts the cards.
+Sits between the claim and the evidence. Orange with an icon, because the palette has no red and
+because colour alone must never carry it.
+*/
+.swag-assistant-warning {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    background: rgba(248, 129, 56, 0.1);
+    border-radius: $swag-assistant-radius-control;
+    color: $swag-assistant-text;
+    font-size: $swag-assistant-font-meta;
+    font-weight: 500;
+    line-height: 1.4;
+
+    &::before {
+        content: '';
+        flex: 0 0 auto;
+        width: 14px;
+        height: 14px;
+        margin-top: 1px;
+        background: $swag-assistant-low-stock;
+        mask-image: $swag-assistant-icon-warning;
+        mask-repeat: no-repeat;
+        mask-position: center;
+        mask-size: contain;
+    }
+}
