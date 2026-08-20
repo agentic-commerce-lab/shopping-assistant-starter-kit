@@ -54,7 +54,11 @@ final class GetProductTool
      *     NOT matched case-sensitively: it is canonicalised against this catalogue's
      *     own facet values before resolution, so "blue" and "Blue" behave the same.
      *
-     * @return array{productIds: list<string>, total: int, note?: string}
+     * @return array{
+     *     products: list<array{id: string, name: string, options: array<string, string>}>,
+     *     total: int,
+     *     note?: string,
+     * }
      */
     public function __invoke(string $productId, ?array $options = null): array
     {
@@ -95,7 +99,7 @@ final class GetProductTool
             $this->trace->record('retrieve', ['hits' => 0, 'retainedIds' => []]);
 
             return [
-                'productIds' => [],
+                'products' => [],
                 'total' => 0,
                 'note' => 'No such product in this shop.',
             ];
@@ -115,7 +119,9 @@ final class GetProductTool
         $this->renderer->registerRetrieved($survivors);
 
         $result = [
-            'productIds' => array_map(static fn($c) => $c->id, $survivors),
+            // Same shape as search_products: the model must be able to confirm WHICH variant it
+            // got back, which a bare id cannot tell it. See ToolProductSummary.
+            'products' => ToolProductSummary::of($survivors),
             'total' => \count($survivors),
         ];
 

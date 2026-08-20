@@ -68,7 +68,7 @@ final class SearchProductsToolVariantCasingTest extends TestCase
             ['option' => 'm', 'group' => 'Size'],
         ]);
 
-        self::assertSame(['fx-026-black-m'], $result['productIds']);
+        self::assertSame(['fx-026-black-m'], self::ids($result));
     }
 
     public function testResolvesAGrouplessSelectionWhoseValueCasingDiffersFromTheCatalog(): void
@@ -78,6 +78,31 @@ final class SearchProductsToolVariantCasingTest extends TestCase
             ['option' => 'm'],
         ]);
 
-        self::assertSame(['fx-026-black-m'], $result['productIds']);
+        self::assertSame(['fx-026-black-m'], self::ids($result));
+    }
+
+    /**
+     * The ids out of a tool result. Tools return id + name + options per product (see
+     * ToolProductSummary); these assertions are about which products came back, so they
+     * project the ids out rather than restating the whole shape everywhere.
+     *
+     * @param array<string, mixed> $result
+     *
+     * @return list<string>
+     */
+    private static function ids(array $result): array
+    {
+        $products = $result['products'] ?? [];
+        self::assertIsArray($products);
+
+        $ids = [];
+        foreach ($products as $product) {
+            self::assertIsArray($product);
+            $id = $product['id'] ?? null;
+            self::assertIsString($id);
+            $ids[] = $id;
+        }
+
+        return $ids;
     }
 }

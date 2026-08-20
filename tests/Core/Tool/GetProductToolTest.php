@@ -53,9 +53,9 @@ final class GetProductToolTest extends TestCase
     {
         $result = $this->tool()(productId: 'fx-026', options: [['option' => 'Blue'], ['option' => 'M']]);
 
-        self::assertSame(['fx-026-blue-m'], $result['productIds']);
+        self::assertSame(['fx-026-blue-m'], self::ids($result));
 
-        $cards = $this->renderer->render($result['productIds']);
+        $cards = $this->renderer->render(self::ids($result));
         $card = $cards[0] ?? null;
         self::assertNotNull($card);
         self::assertSame(0, $card->stock);
@@ -66,7 +66,7 @@ final class GetProductToolTest extends TestCase
     {
         $result = $this->tool()(productId: 'fx-999');
 
-        self::assertSame([], $result['productIds']);
+        self::assertSame([], self::ids($result));
         $note = $result['note'] ?? null;
         self::assertNotNull($note);
         self::assertStringContainsString('No such product', $note);
@@ -76,7 +76,7 @@ final class GetProductToolTest extends TestCase
     {
         $tool = $this->tool(new CatalogScope(blockedProductIds: ['fx-014']));
 
-        self::assertSame([], $tool(productId: 'fx-014')['productIds']);
+        self::assertSame([], self::ids($tool(productId: 'fx-014')));
     }
 
     /**
@@ -93,9 +93,9 @@ final class GetProductToolTest extends TestCase
             ['option' => 'm', 'group' => 'Size'],
         ]);
 
-        self::assertSame(['fx-026-black-m'], $result['productIds']);
+        self::assertSame(['fx-026-black-m'], self::ids($result));
 
-        $cards = $this->renderer->render($result['productIds']);
+        $cards = $this->renderer->render(self::ids($result));
         $card = $cards[0] ?? null;
         self::assertNotNull($card);
         self::assertSame(54.90, $card->price);
@@ -109,9 +109,9 @@ final class GetProductToolTest extends TestCase
             ['option' => 'm'],
         ]);
 
-        self::assertSame(['fx-026-black-m'], $result['productIds']);
+        self::assertSame(['fx-026-black-m'], self::ids($result));
 
-        $cards = $this->renderer->render($result['productIds']);
+        $cards = $this->renderer->render(self::ids($result));
         $card = $cards[0] ?? null;
         self::assertNotNull($card);
         self::assertSame(54.90, $card->price);
@@ -129,9 +129,34 @@ final class GetProductToolTest extends TestCase
             ['option' => 'purple', 'group' => 'Colour'],
         ]);
 
-        self::assertSame([], $result['productIds']);
+        self::assertSame([], self::ids($result));
         $note = $result['note'] ?? null;
         self::assertNotNull($note);
         self::assertStringContainsString('No such product', $note);
+    }
+
+    /**
+     * The ids out of a tool result. Tools return id + name + options per product (see
+     * ToolProductSummary); these assertions are about which products came back, so they
+     * project the ids out rather than restating the whole shape everywhere.
+     *
+     * @param array<string, mixed> $result
+     *
+     * @return list<string>
+     */
+    private static function ids(array $result): array
+    {
+        $products = $result['products'] ?? [];
+        self::assertIsArray($products);
+
+        $ids = [];
+        foreach ($products as $product) {
+            self::assertIsArray($product);
+            $id = $product['id'] ?? null;
+            self::assertIsString($id);
+            $ids[] = $id;
+        }
+
+        return $ids;
     }
 }

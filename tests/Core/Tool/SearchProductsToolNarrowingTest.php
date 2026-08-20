@@ -70,7 +70,7 @@ final class SearchProductsToolNarrowingTest extends TestCase
         // plus the two assertions below about where narrowing happens.
         $result = $this->tool()(term: 'Jersey', options: [['option' => 'Blue'], ['option' => 'M']], limit: 1);
 
-        self::assertSame(['fx-026-blue-m'], $result['productIds']);
+        self::assertSame(['fx-026-blue-m'], self::ids($result));
     }
 
     public function testTheToolReturnsNoMoreThanTheModelAskedFor(): void
@@ -81,7 +81,7 @@ final class SearchProductsToolNarrowingTest extends TestCase
         // ignored, which also means it could not bound context size or cost.
         $result = $this->tool()(term: 'Jersey', limit: 1);
 
-        self::assertCount(1, $result['productIds']);
+        self::assertCount(1, self::ids($result));
         self::assertSame(1, $result['total']);
     }
 
@@ -97,5 +97,30 @@ final class SearchProductsToolNarrowingTest extends TestCase
         self::assertGreaterThan(1, $payload['candidateLimit']);
         self::assertIsInt($payload['truncated']);
         self::assertGreaterThan(0, $payload['truncated']);
+    }
+
+    /**
+     * The ids out of a tool result. Tools return id + name + options per product (see
+     * ToolProductSummary); these assertions are about which products came back, so they
+     * project the ids out rather than restating the whole shape everywhere.
+     *
+     * @param array<string, mixed> $result
+     *
+     * @return list<string>
+     */
+    private static function ids(array $result): array
+    {
+        $products = $result['products'] ?? [];
+        self::assertIsArray($products);
+
+        $ids = [];
+        foreach ($products as $product) {
+            self::assertIsArray($product);
+            $id = $product['id'] ?? null;
+            self::assertIsString($id);
+            $ids[] = $id;
+        }
+
+        return $ids;
     }
 }

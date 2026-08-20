@@ -57,10 +57,10 @@ final class SearchProductsToolTest extends TestCase
     {
         $result = $this->tool()(term: 'bottle');
 
-        self::assertArrayHasKey('productIds', $result);
+        self::assertArrayHasKey('products', $result);
         self::assertArrayNotHasKey('cards', $result);
         self::assertArrayNotHasKey('price', $result);
-        foreach ($result['productIds'] as $id) {
+        foreach (self::ids($result) as $id) {
             self::assertIsString($id);
         }
     }
@@ -69,8 +69,8 @@ final class SearchProductsToolTest extends TestCase
     {
         $result = $this->tool()(term: 'bottle', priceMax: 15.00);
 
-        self::assertNotEmpty($result['productIds']);
-        foreach ($this->renderer->render($result['productIds']) as $card) {
+        self::assertNotEmpty(self::ids($result));
+        foreach ($this->renderer->render(self::ids($result)) as $card) {
             self::assertLessThanOrEqual(15.00, $card->price);
         }
     }
@@ -89,7 +89,7 @@ final class SearchProductsToolTest extends TestCase
         // BlocklistFilter itself removes a blocked card is Task 5's unit tests' job, not
         // this integration test's; this test should not have to disable the first line of
         // defence to observe the second one firing.
-        self::assertNotContains('fx-014', $result['productIds']);
+        self::assertNotContains('fx-014', self::ids($result));
         self::assertNotNull($this->trace->payload('blocklist.filter'));
     }
 
@@ -97,8 +97,8 @@ final class SearchProductsToolTest extends TestCase
     {
         $result = $this->tool()(term: 'mudguard');
 
-        self::assertNotEmpty($result['productIds']);
-        self::assertSame($result['productIds'], $this->renderer->validate($result['productIds'])->accepted);
+        self::assertNotEmpty(self::ids($result));
+        self::assertSame(self::ids($result), $this->renderer->validate(self::ids($result))->accepted);
     }
 
     public function testRecordsTheUnderstandStageFromItsOwnArguments(): void
@@ -125,5 +125,30 @@ final class SearchProductsToolTest extends TestCase
         $this->expectExceptionMessage('options');
 
         $this->tool()(term: 'jersey', options: array_fill(0, 30, ['option' => 'Blue']));
+    }
+
+    /**
+     * The ids out of a tool result. Tools return id + name + options per product (see
+     * ToolProductSummary); these assertions are about which products came back, so they
+     * project the ids out rather than restating the whole shape everywhere.
+     *
+     * @param array<string, mixed> $result
+     *
+     * @return list<string>
+     */
+    private static function ids(array $result): array
+    {
+        $products = $result['products'] ?? [];
+        self::assertIsArray($products);
+
+        $ids = [];
+        foreach ($products as $product) {
+            self::assertIsArray($product);
+            $id = $product['id'] ?? null;
+            self::assertIsString($id);
+            $ids[] = $id;
+        }
+
+        return $ids;
     }
 }

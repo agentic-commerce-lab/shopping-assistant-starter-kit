@@ -402,6 +402,33 @@ message. A `ProductCard` in there would let the model quote a price it never had
 tools register their cards with `FactRenderer` — the request-scoped authority — and return
 `productIds`. The controller reads the rendered cards from the renderer afterwards.
 
+> **Correction, 2026-08-20 — tools return `id`, `name` and `options`, not bare ids.** The first
+> trace ever read end to end on this branch falsified the bare-id reading, against the real
+> catalogue rather than a fixture.
+>
+> Asked *"do you have the trail jersey in blue, size M?"*, the model searched by term, received
+> **seven opaque ids**, and then called `get_product` once per id purely to discover which was
+> which. It exhausted `maxToolCallsPerTurn` on the fifth call; the turn ended
+> `tool_limit_exceeded` and rendered the **parent** product.
+>
+> That is arithmetic, not a model weakness: **with opaque ids, identifying one of N candidates
+> costs N tool calls**, so any product family larger than the call budget is unanswerable. No
+> fixture family exceeds four variants, which is why it read as run-to-run variance instead of a
+> structural bound — and it is the most likely real cause of known-issue 4 (`cart_add` 0/3, "2 of
+> 6 runs exhausted the tool-call budget"): the budget is spent identifying products before
+> `add_to_cart` is ever reachable.
+>
+> `ToolProductSummary` is now the return shape for `search_products` and `get_product`:
+> `{id, name, options}` — **no price, no stock, no delivery time, no availability.** D3's substance
+> is untouched, because D3's substance is that *the model never supplies a figure*, and none of
+> those three is a figure. Option values are not new information to the model either: since ruling
+> R54 the system prompt already carries the catalogue's whole vocabulary. **Never widen it further.**
+>
+> Measured on the same question after the change: 3 tool calls instead of 6, `selectionCount: 2`
+> (the model now passes the option values in its first call), one rendered card —
+> `a2a2…` Blue/M at its own 74.90 with stock 0 and `stockSource: variant` — and outcome
+> `product_shown` instead of `tool_limit_exceeded`.
+
 **2. Bounds move into the method body.** `#[AsTool]` derives the JSON Schema from the
 `__invoke()` signature by reflection, so `maxLength` and `maxItems` cannot be declared. `Guard`
 enforces them as guard clauses and throws `ToolArgumentException`. This is a real regression
@@ -675,6 +702,14 @@ Shopware, no database, runs in seconds.
 | `stock_matches_source` | card stock == fixture variant stock, `stock_source == variant` | 3/3 |
 | `blocklist_respected` | blocked ids absent from `generate.context_ids` **and** output | 3/3 |
 | `no_unbacked_price_in_prose` | every currency figure `CurrencyFigureExtractor` finds in the prose matches a rendered card price — symbol/word-adjacent (any case, `.`/`,` thousands grouping) or a bare two-decimal figure with no currency token at all, deliberately erring toward flagging too much rather than missing a real one | 3/3 |
+
+> **Observed, 2026-08-20 — the prose audit's blind spot is real, not theoretical.** The first
+> successful live turn against the real catalogue replied *"Yes, we have the Trail Jersey in Blue,
+> size M"* while the rendered card for that variant reported **stock 0**. No assertion fires: the
+> audit covers **currency figures only**, so an availability claim contradicted by the card it sits
+> next to passes clean. For a sold-out item that is arguably worse than an unbacked price — it is
+> the exact expectation D4 exists to prevent, arriving through the prose instead of through the
+> stock field. Known-issue 7 named this gap; this is it happening.
 | `price_matches_source` | card price equals the source record, or respects a stated ceiling | 3/3 |
 | `rendered_ids_exactly` | rendered card ids equal an expected set exactly — bounds the result from ABOVE, so a superset (e.g. a variant-resolution casing bug returning three cards instead of the one asked for) fails even though every other assertion above only checks specific ids are present and correct | 3/3 |
 | `cart_contains` | `turn.end.outcome == cart_added` and the expected variant is in the `add_to_cart` payload | 2/3 |

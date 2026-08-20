@@ -29,10 +29,15 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 #[AsTool(
     name: 'search_products',
     description: 'Search this shop\'s catalogue. Price limits are honoured exactly. '
+    . 'ALWAYS pass every option value the shopper named — colour, size and so on — in this '
+    . 'same call via "options". Doing so resolves the exact variant in one step and returns '
+    . 'its own stock and price; leaving them out returns the whole product family instead, '
+    . 'and identifying the right member afterwards wastes the turn\'s tool-call budget. '
     . 'Option group names, when given, must match this catalogue\'s own spelling '
     . 'exactly (for example "Colour", not "colour") — a group name that does not '
     . 'match a group this catalogue actually has is dropped rather than guessed at. '
-    . 'Returns product ids only — the shop renders names, prices, stock and links. '
+    . 'Returns each product\'s id, name and option values, so you can tell them apart. '
+    . 'It returns NO prices, stock or availability: the shop renders those. '
     . 'Never state a figure yourself.',
 )]
 final class SearchProductsTool
@@ -83,7 +88,11 @@ final class SearchProductsTool
      *     "group" exactly — it is matched case-sensitively.
      * @param int $limit Maximum number of products to return (1-20).
      *
-     * @return array{productIds: list<string>, total: int, note?: string}
+     * @return array{
+     *     products: list<array{id: string, name: string, options: array<string, string>}>,
+     *     total: int,
+     *     note?: string,
+     * }
      */
     // @mago-expect lint:excessive-parameter-list
     // #[AsTool] derives the model-facing JSON Schema from this exact signature by reflection
@@ -224,7 +233,9 @@ final class SearchProductsTool
         $this->renderer->registerRetrieved($returned);
 
         $result = [
-            'productIds' => array_map(static fn($card) => $card->id, $returned),
+            // id + name + options, never a figure — see ToolProductSummary for why bare ids made
+            // variant identification cost one tool call per candidate.
+            'products' => ToolProductSummary::of($returned),
             'total' => \count($returned),
         ];
 

@@ -92,7 +92,7 @@ final class SearchProductsToolLimitTest extends TestCase
         self::assertContains('fx-026-blue-m', $retained);
 
         // The model's bound is honoured exactly rather than overridden.
-        self::assertCount(1, $result['productIds']);
+        self::assertCount(1, self::ids($result));
 
         $payload = $this->trace->payload('query.build');
         self::assertIsArray($payload);
@@ -106,5 +106,30 @@ final class SearchProductsToolLimitTest extends TestCase
         $this->expectException(ToolArgumentException::class);
 
         $this->tool()(term: 'Jersey', limit: 21);
+    }
+
+    /**
+     * The ids out of a tool result. Tools return id + name + options per product (see
+     * ToolProductSummary); these assertions are about which products came back, so they
+     * project the ids out rather than restating the whole shape everywhere.
+     *
+     * @param array<string, mixed> $result
+     *
+     * @return list<string>
+     */
+    private static function ids(array $result): array
+    {
+        $products = $result['products'] ?? [];
+        self::assertIsArray($products);
+
+        $ids = [];
+        foreach ($products as $product) {
+            self::assertIsArray($product);
+            $id = $product['id'] ?? null;
+            self::assertIsString($id);
+            $ids[] = $id;
+        }
+
+        return $ids;
     }
 }
