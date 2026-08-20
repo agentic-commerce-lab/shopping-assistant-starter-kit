@@ -89,6 +89,7 @@ final class AssistantRunner
 
         $cards = $this->bundle->renderer->renderedCards();
         $unbackedPrices = $this->bundle->renderer->unbackedPrices();
+        $unbackedAvailability = $this->bundle->renderer->unbackedAvailability();
 
         $outcome = $this->outcomeResolver->outcome($this->bundle->trace, $cards);
 
@@ -96,7 +97,7 @@ final class AssistantRunner
 
         $prose = $result instanceof TextResult ? $result->getContent() : '';
 
-        return new AssistantTurn($prose, $cards, $outcome, $unbackedPrices);
+        return new AssistantTurn($prose, $cards, $outcome, $unbackedPrices, $unbackedAvailability);
     }
 
     /**

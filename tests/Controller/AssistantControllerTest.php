@@ -96,4 +96,17 @@ final class AssistantControllerTest extends AssistantEndpointTestCase
 
         self::assertNotSame([], $this->store->traceEvents($token));
     }
+
+    public function testTheResponseSaysWhenTheProseContradictsTheCards(): void
+    {
+        // A client that renders the reply verbatim has to know. A live turn told a shopper the Trail
+        // Jersey "is available in Blue, size M" beside a card reporting stock 0 (ruling R75), and the
+        // cards are authoritative — so the response states where the sentence beside them is not.
+        $payload = $this->decode($this->controller()->chat($this->post(['message' => 'hi']), $this->context()));
+
+        $warnings = $payload['warnings'] ?? null;
+        self::assertIsArray($warnings);
+        self::assertArrayHasKey('unbackedPrices', $warnings);
+        self::assertArrayHasKey('unbackedAvailabilityClaims', $warnings);
+    }
 }

@@ -55,9 +55,12 @@ final class FactRenderer
     /** @var list<string> */
     private array $unbackedPrices = [];
 
+    /** @var list<string> */
+    private array $unbackedAvailability = [];
+
     public function __construct(
         private readonly TraceRecorder $trace,
-        private readonly CurrencyFigureExtractor $currencyFigureExtractor = new CurrencyFigureExtractor(),
+        private readonly ProseAudit $proseAudit = new ProseAudit(),
     ) {
         $this->index = new RetrievedProductIndex();
     }
@@ -176,36 +179,63 @@ final class FactRenderer
      */
     public function unbackedPricesInProse(string $prose): array
     {
-        // Compare numerically, in integer cents rather than as formatted strings or raw
-        // floats: the brief's regex accepts a whole-euro figure like "24" with no decimals,
-        // which would never string-match a card price formatted to two decimals ("24.00"),
-        // producing a false positive on a model reply that got the price exactly right.
-        // Cents avoid both that mismatch and float rounding error; PHP would also silently
-        // truncate a float used directly as an array key, so cents are cast to int instead.
-        $renderedPriceCents = [];
-        foreach ($this->renderedCards as $card) {
-            $renderedPriceCents[self::toCents($card->price)] = true;
-        }
-
-        $figures = $this->currencyFigureExtractor->extract($prose);
-
-        $unbacked = array_values(array_filter($figures, static function (string $figure) use (
-            $renderedPriceCents,
-        ): bool {
-            if (!\is_numeric($figure)) {
-                // The extractor's regex only ever emits digits and a dot, so this
-                // never triggers in practice; it exists purely to give the analyzer
-                // a numeric-string narrowing before the cast below.
-                return true;
-            }
-
-            return !\array_key_exists(self::toCents((float) $figure), $renderedPriceCents);
-        }));
+        $unbacked = $this->proseAudit->unbackedPrices($prose, array_values($this->renderedCards));
 
         $this->unbackedPrices = $unbacked;
 
         if ($unbacked !== []) {
             $this->trace->record('claims.audit', ['modelClaimsDiscarded' => $unbacked]);
+        }
+
+        return $unbacked;
+    }
+
+    /**
+     * @return list<string> the figures the last {@see self::unbackedAvailabilityInProse()} call found
+     */
+    public function unbackedAvailability(): array
+    {
+        return $this->unbackedAvailability;
+    }
+
+    /**
+     * Availability claims in the prose that the rendered cards contradict.
+     *
+     * The gap this closes was measured, not theorised: a live turn replied *"Yes, the Trail Jersey is
+     * available in Blue, size M"* beside a rendered card reporting **stock 0**, and nothing fired
+     * because the audit covered currency figures only. For a sold-out item that is worse than an
+     * unbacked price — it is the expectation D4 exists to prevent, arriving through the prose instead
+     * of the stock field.
+     *
+     * **Deliberately narrow, and the narrowness is the design.** A claim is only counted as
+     * contradicted when *every* rendered card is out of stock. Two reasons:
+     *
+     * 1. With a mixed set, "we have it" most likely refers to the in-stock member, and guessing which
+     *    product a sentence is about is exactly the kind of inference that produces false positives.
+     * 2. Ruling R85: `no_unbacked_price_in_prose` fires on a model merely restating the shopper's own
+     *    budget, and **an assertion that fires on correct behaviour trains people to ignore it.**
+     *    Narrow and trusted beats broad and disregarded, on a control that must never be doubted.
+     *
+     * Known limitation, stated rather than hidden: a turn rendering one in-stock card and one
+     * sold-out card will not flag a claim about the sold-out one. Widening that needs the claim tied
+     * to a specific product, which the prose does not reliably say.
+     *
+     * A claim with **no** rendered cards at all is also flagged: there is then nothing that could
+     * back it.
+     *
+     * @return list<string>
+     */
+    public function unbackedAvailabilityInProse(string $prose): array
+    {
+        $unbacked = $this->proseAudit->unbackedAvailabilityClaims($prose, array_values($this->renderedCards));
+
+        $this->unbackedAvailability = $unbacked;
+
+        if ($unbacked !== []) {
+            $this->trace->record('claims.audit', [
+                'unbackedAvailabilityClaims' => $unbacked,
+                'renderedCardCount' => \count($this->renderedCards),
+            ]);
         }
 
         return $unbacked;

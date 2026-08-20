@@ -84,6 +84,10 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
 
         $this->renderer->render($toRender);
         $this->renderer->unbackedPricesInProse($text);
+
+        // The second half of the prose audit. Prices were covered from the start; availability was
+        // not, and a live turn told a shopper a sold-out variant was available (ruling R75).
+        $this->renderer->unbackedAvailabilityInProse($text);
     }
 
     /**

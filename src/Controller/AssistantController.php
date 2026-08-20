@@ -104,6 +104,15 @@ class AssistantController extends StorefrontController
             'prose' => $turn->prose,
             'cards' => $this->cardPayload->of($turn->cards),
             'outcome' => $turn->outcome,
+            // Where the prose contradicts the cards, said out loud rather than logged and forgotten.
+            // A client that renders the reply verbatim needs to know: a live turn told a shopper
+            // "the Trail Jersey is available in Blue, size M" beside a card reporting stock 0
+            // (ruling R75). The cards are always authoritative; this says when the sentence beside
+            // them is not, so the interface can annotate it, de-emphasise it, or drop it.
+            'warnings' => [
+                'unbackedPrices' => $turn->unbackedPrices,
+                'unbackedAvailabilityClaims' => $turn->unbackedAvailabilityClaims,
+            ],
         ]);
     }
 
