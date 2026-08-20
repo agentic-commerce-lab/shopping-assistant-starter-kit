@@ -24,7 +24,11 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         $token = $this->store->start(self::CHANNEL, 'en-GB');
         $this->store->append(
             $token,
-            new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'The Trail Jersey in Blue / M.', ['a2']),
+            new ConversationTurn(
+                role: ConversationTurn::ROLE_ASSISTANT,
+                prose: 'The Trail Jersey in Blue / M.',
+                cardIds: ['a2'],
+            ),
             new TraceRecorder(),
         );
 
@@ -33,6 +37,60 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         $messages = $payload['messages'];
         self::assertIsArray($messages);
         self::assertCount(1, $messages);
+    }
+
+    public function testHistoryCarriesTheTurnsTimestampAndWarnings(): void
+    {
+        // Both exist so a re-hydrated conversation does not lose what the turn knew: the widget
+        // once displayed the current time for a four-minute-old message, and restored a claim of
+        // availability with no correction beside the sold-out card.
+        $controller = $this->controller();
+        $token = $this->store->start(self::CHANNEL, 'en-GB');
+        $written = new \DateTimeImmutable('2026-08-20T09:41:07+00:00');
+
+        $this->store->append(
+            $token,
+            new ConversationTurn(
+                role: ConversationTurn::ROLE_ASSISTANT,
+                prose: 'Yes, the Trail Jersey is available in Blue, size M.',
+                cardIds: [self::BLUE_M_ID],
+                outcome: 'product_shown',
+                createdAt: $written,
+                warnings: ['unbackedAvailabilityClaims' => ['is available']],
+            ),
+            new TraceRecorder(),
+        );
+
+        $payload = $this->decode($controller->history(Request::create('/assistant/history?token=' . $token)));
+        $messages = $payload['messages'];
+        self::assertIsArray($messages);
+        $message = $messages[0];
+        self::assertIsArray($message);
+
+        self::assertSame($written->format(\DATE_ATOM), $message['createdAt']);
+        self::assertSame(['unbackedAvailabilityClaims' => ['is available']], $message['warnings']);
+    }
+
+    public function testATurnStoredBeforeTimestampsExistedReportsNullRatherThanNow(): void
+    {
+        // A client must render no timestamp for this, never the current time — that would present a
+        // figure this server never produced as fact.
+        $controller = $this->controller();
+        $token = $this->store->start(self::CHANNEL, 'en-GB');
+        $this->store->append(
+            $token,
+            new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'show me the trail jersey'),
+            new TraceRecorder(),
+        );
+
+        $payload = $this->decode($controller->history(Request::create('/assistant/history?token=' . $token)));
+        $messages = $payload['messages'];
+        self::assertIsArray($messages);
+        $message = $messages[0];
+        self::assertIsArray($message);
+
+        self::assertNull($message['createdAt']);
+        self::assertSame([], $message['warnings']);
     }
 
     public function testHistoryWithNoTokenIsAnEmptyConversationRatherThanAnError(): void

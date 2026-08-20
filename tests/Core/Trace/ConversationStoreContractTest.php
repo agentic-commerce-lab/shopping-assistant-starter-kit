@@ -35,16 +35,16 @@ final class ConversationStoreContractTest extends TestCase
 
         $store->append(
             $token,
-            new ConversationTurn(ConversationTurn::ROLE_USER, 'show me the trail jersey in blue, size L'),
+            new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'show me the trail jersey in blue, size L'),
             new TraceRecorder(),
         );
         $store->append(
             $token,
             new ConversationTurn(
-                ConversationTurn::ROLE_ASSISTANT,
-                'The Trail Jersey in Blue / L is available.',
-                [self::BLUE_L_ID],
-                'product_shown',
+                role: ConversationTurn::ROLE_ASSISTANT,
+                prose: 'The Trail Jersey in Blue / L is available.',
+                cardIds: [self::BLUE_L_ID],
+                outcome: 'product_shown',
             ),
             new TraceRecorder(),
         );
@@ -83,7 +83,7 @@ final class ConversationStoreContractTest extends TestCase
         $trace->record('retrieve', ['hits' => 3]);
         $trace->record('render', ['stockSource' => 'variant']);
 
-        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'ok'), $trace);
+        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'), $trace);
 
         // A6: every turn produces a persisted trace with all pipeline stages. A store keeping only
         // the last event per stage would satisfy the letter and lose the turn.
@@ -105,7 +105,7 @@ final class ConversationStoreContractTest extends TestCase
         $trace->record('tool.call', ['name' => 'search_products']);
         $trace->record('tool.call', ['name' => 'get_product']);
 
-        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'ok'), $trace);
+        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'), $trace);
 
         self::assertCount(2, $store->traceEvents($token));
     }
@@ -119,11 +119,11 @@ final class ConversationStoreContractTest extends TestCase
 
         $first = new TraceRecorder();
         $first->record('validate', ['inventedProductIds' => ['fx-999']]);
-        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'one'), $first);
+        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'one'), $first);
 
         $second = new TraceRecorder();
         $second->record('validate', ['inventedProductIds' => []]);
-        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'two'), $second);
+        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'two'), $second);
 
         self::assertCount(2, $store->traceEvents($token));
     }
@@ -134,7 +134,11 @@ final class ConversationStoreContractTest extends TestCase
         $first = $store->start(self::CHANNEL, 'en-GB');
         $second = $store->start(self::CHANNEL, 'en-GB');
 
-        $store->append($first, new ConversationTurn(ConversationTurn::ROLE_USER, 'mine'), new TraceRecorder());
+        $store->append(
+            $first,
+            new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'mine'),
+            new TraceRecorder(),
+        );
 
         self::assertNotSame($first, $second);
         self::assertCount(1, $store->history($first));
@@ -149,7 +153,11 @@ final class ConversationStoreContractTest extends TestCase
         $token = $store->start(self::CHANNEL, 'en-GB');
 
         foreach (['one', 'two', 'three'] as $text) {
-            $store->append($token, new ConversationTurn(ConversationTurn::ROLE_USER, $text), new TraceRecorder());
+            $store->append(
+                $token,
+                new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: $text),
+                new TraceRecorder(),
+            );
         }
 
         $history = $store->history($token, 2);
@@ -171,12 +179,12 @@ final class ConversationStoreContractTest extends TestCase
         $first = new TraceRecorder();
         $first->record('guard.check', ['verdict' => 'allow']);
         $first->record('turn.end', ['outcome' => 'product_shown']);
-        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'one'), $first);
+        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'one'), $first);
 
         $second = new TraceRecorder();
         $second->record('guard.check', ['verdict' => 'allow']);
         $second->record('turn.end', ['outcome' => 'cart_added']);
-        $store->append($token, new ConversationTurn(ConversationTurn::ROLE_ASSISTANT, 'two'), $second);
+        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'two'), $second);
 
         $sequences = array_map(static fn($event): int => $event->seq, $store->traceEvents($token));
 

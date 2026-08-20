@@ -22,10 +22,15 @@ final readonly class TranscriptCodec
 {
     public function __construct(
         private JsonShape $shape = new JsonShape(),
+        private StoredTimestamp $timestamps = new StoredTimestamp(),
+        private StoredWarnings $warnings = new StoredWarnings(),
     ) {}
 
     /**
-     * @return array{role: string, prose: string, cardIds: list<string>, outcome: string}
+     * @return array{
+     *     role: string, prose: string, cardIds: list<string>, outcome: string,
+     *     createdAt: string|null, warnings: array<string, list<string>>,
+     * }
      */
     public function encode(ConversationTurn $turn): array
     {
@@ -36,6 +41,11 @@ final readonly class TranscriptCodec
             // the next page load. Every figure is re-rendered from the catalogue on read.
             'cardIds' => $turn->cardIds,
             'outcome' => $turn->outcome,
+            // When the turn happened, not when it is read. A timestamp is the one thing here that is
+            // *not* re-derived on read, because unlike a price it does not change.
+            'createdAt' => $turn->createdAt?->format(\DATE_ATOM),
+            // Stored so a reload does not restore the misleading sentence without its correction.
+            'warnings' => $turn->warnings,
         ];
     }
 
@@ -75,6 +85,8 @@ final readonly class TranscriptCodec
             prose: $prose,
             cardIds: $this->shape->strings($fields['cardIds'] ?? null),
             outcome: $this->shape->text($fields['outcome'] ?? null),
+            createdAt: $this->timestamps->orNull($fields['createdAt'] ?? null),
+            warnings: $this->warnings->fromStored($fields['warnings'] ?? null),
         );
     }
 }

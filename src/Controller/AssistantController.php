@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Controller;
 
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
+use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Trace\ConversationStore;
@@ -83,18 +84,26 @@ class AssistantController extends StorefrontController
         // measured in the real shop, where one turn produced two identical rows per event, so a
         // merchant counting tool calls counted double. There is one trace per turn, and it is the
         // assistant's turn that produced it.
+        // One clock for both turns, so a stored conversation cannot show the reply arriving before
+        // the question that caused it.
+        $now = new \DateTimeImmutable();
+
         $this->conversations->append(
             $token,
-            new ConversationTurn(ConversationTurn::ROLE_USER, $message),
+            new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: $message, createdAt: $now),
             new TraceRecorder(),
         );
         $this->conversations->append(
             $token,
             new ConversationTurn(
-                ConversationTurn::ROLE_ASSISTANT,
-                $turn->prose,
-                array_map(static fn($card): string => $card->id, $turn->cards),
-                $turn->outcome,
+                role: ConversationTurn::ROLE_ASSISTANT,
+                prose: $turn->prose,
+                cardIds: array_map(static fn($card): string => $card->id, $turn->cards),
+                outcome: $turn->outcome,
+                createdAt: $now,
+                // Persisted with the turn, not merely returned: without this a page reload restores
+                // the misleading sentence with no correction beside it.
+                warnings: self::warnings($turn),
             ),
             $result->trace,
         );
@@ -109,11 +118,22 @@ class AssistantController extends StorefrontController
             // "the Trail Jersey is available in Blue, size M" beside a card reporting stock 0
             // (ruling R75). The cards are always authoritative; this says when the sentence beside
             // them is not, so the interface can annotate it, de-emphasise it, or drop it.
-            'warnings' => [
-                'unbackedPrices' => $turn->unbackedPrices,
-                'unbackedAvailabilityClaims' => $turn->unbackedAvailabilityClaims,
-            ],
+            'warnings' => self::warnings($turn),
         ]);
+    }
+
+    /**
+     * The one place the warning shape is built, so what a client receives live and what it receives
+     * from history cannot drift apart.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function warnings(AssistantTurn $turn): array
+    {
+        return [
+            'unbackedPrices' => $turn->unbackedPrices,
+            'unbackedAvailabilityClaims' => $turn->unbackedAvailabilityClaims,
+        ];
     }
 
     #[Route(
@@ -137,8 +157,14 @@ class AssistantController extends StorefrontController
                 'prose' => $turn->prose,
                 // Card ids only. Re-rendering their facts would mean re-querying the catalogue on
                 // every page load, and replaying stored figures would show numbers that were true
-                // when written — the UI asks again if it wants them.
+                // when written — the UI asks again, at `GET /assistant/cards`.
                 'cardIds' => $turn->cardIds,
+                // Null for a turn stored before this field existed. A client must render no
+                // timestamp for that rather than substituting the current time, which would present
+                // a figure this server never produced as fact.
+                'createdAt' => $turn->createdAt?->format(\DATE_ATOM),
+                // Unlike the figures, a warning does not go stale: it describes what that reply said.
+                'warnings' => $turn->warnings,
             ];
         }
 

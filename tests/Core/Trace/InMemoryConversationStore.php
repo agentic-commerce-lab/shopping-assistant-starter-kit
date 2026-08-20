@@ -8,6 +8,7 @@ use Swag\AssistantStarterKit\Core\Trace\ConversationStore;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 use Swag\AssistantStarterKit\Core\Trace\TraceEvent;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Swag\AssistantStarterKit\Core\Trace\TranscriptCodec;
 
 /**
  * An in-memory {@see ConversationStore} for tests, held to the same contract test as the Shopware
@@ -16,7 +17,14 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  */
 final class InMemoryConversationStore implements ConversationStore
 {
-    /** @var array<string, list<ConversationTurn>> */
+    private readonly TranscriptCodec $codec;
+
+    public function __construct(?TranscriptCodec $codec = null)
+    {
+        $this->codec = $codec ?? new TranscriptCodec();
+    }
+
+    /** @var array<string, list<array<string, mixed>>> */
     private array $turns = [];
 
     /** @var array<string, list<TraceEvent>> */
@@ -37,7 +45,12 @@ final class InMemoryConversationStore implements ConversationStore
 
     public function append(#[\SensitiveParameter] string $token, ConversationTurn $turn, TraceRecorder $trace): void
     {
-        $this->turns[$token][] = $turn;
+        // Encoded and decoded through the **same codec the DAL store uses**, rather than kept as an
+        // object. Holding the object made the contract test pass by identity: it never touched
+        // serialisation, so a field the real store silently dropped would still have looked stored.
+        // This is the same reasoning as the seq offset below — a double that is merely plausible
+        // makes the tests above it worthless.
+        $this->turns[$token][] = $this->codec->encode($turn);
 
         // Offset exactly as the DAL store does: `TraceRecorder` restarts `seq` at 0 each turn, so a
         // conversation-wide ordering needs it made monotonic. A double that skipped this would let
@@ -52,7 +65,7 @@ final class InMemoryConversationStore implements ConversationStore
 
     public function history(#[\SensitiveParameter] string $token, int $limit = 20): array
     {
-        return \array_slice($this->turns[$token] ?? [], -$limit);
+        return $this->codec->decodeAll(\array_slice($this->turns[$token] ?? [], -$limit));
     }
 
     public function traceEvents(#[\SensitiveParameter] string $token): array
