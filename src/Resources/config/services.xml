@@ -97,6 +97,26 @@
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
         </service>
 
+        <!-- The shopper-facing HTTP surface. The widget UI is out of this plan's scope (Robin's
+             separate work); this endpoint is the contract it builds against. -->
+        <service id="Swag\AssistantStarterKit\Core\Agent\ShopwareChatTurnRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface"
+                 alias="Swag\AssistantStarterKit\Core\Agent\ShopwareChatTurnRunner"/>
+
+        <service id="Swag\AssistantStarterKit\Controller\AssistantController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\ConversationStore"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+        </service>
+
         <!-- Console: verifies the gateway against the real catalogue and dumps a trace. The first
              thing in this project that executes a DAL query, and the first trace reader. -->
         <service id="Swag\AssistantStarterKit\Command\TraceDumper"/>

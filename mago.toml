@@ -70,6 +70,17 @@ ignore = [
   # exists solely for entities; if anything else is ever put there, this ignore is wrong and the
   # directory is the thing to fix. Added 2026-08-20, ruling R79.
   { code = "missing-constructor", in = "src/Entity/" },
+  # Symfony sets `$container` on a controller through `setContainer()`, not through a constructor:
+  # `AbstractController` declares it and the DI definition calls the setter (see services.xml). A
+  # controller therefore cannot initialize it, and every Symfony and Shopware controller is written
+  # this way. Scoped to `src/Controller/`, which holds nothing but controllers.
+  # Added 2026-08-20, ruling R81.
+  # Reported against the vendor file that DECLARES the property, which is why the scope points
+  # there rather than at src/Controller/. Symfony sets `$container` on a controller through
+  # `setContainer()`, not a constructor: `AbstractController` declares it and the DI definition
+  # calls the setter (see services.xml). No controller can initialize it, and every Symfony and
+  # Shopware controller is written this way. Added 2026-08-20, ruling R81.
+  { code = "uninitialized-property", in = "vendor/symfony/framework-bundle/" },
   # BoundedToolbox's job is to catch a `\TypeError` that PHP raises when a
   # model-supplied argument does not match a tool's declared parameter type, and to
   # tell that apart from a `\TypeError` raised inside a tool's own body. Testing that

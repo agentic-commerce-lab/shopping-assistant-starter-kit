@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use ShipMonk\ComposerDependencyAnalyser\Config\Configuration;
-use ShipMonk\ComposerDependencyAnalyser\Config\ErrorType;
 
 // shipmonk/composer-dependency-analyser: detects unused + missing/shadow composer deps.
 // Backs the `quality:depcheck` task. Adjust the scanned paths to the project's layout.
@@ -20,13 +19,11 @@ use ShipMonk\ComposerDependencyAnalyser\Config\ErrorType;
 // analyser no longer reports it as unused.
 $config = (new Configuration())->addPathToScan(__DIR__ . '/src', isDev: false);
 
-// shopware/core is genuinely used — SwagAssistantStarterKit extends Shopware\Core\Framework\Plugin.
-// shopware/storefront is not, yet: the first consumer is the storefront controller, which extends
-// Shopware\Storefront\Controller\StorefrontController. It is required now rather than later because
-// resolving the Shopware tree against the pinned Symfony 7.4 and Symfony AI 0.12 versions is the
-// risky part and it is now proven; deferring the package would only repeat that risk.
-// REMOVE THIS IGNORE when the storefront controller lands.
-$config->ignoreErrorsOnPackage('shopware/storefront', [ErrorType::UNUSED_DEPENDENCY]);
+// shopware/core and shopware/storefront are both genuinely used now: SwagAssistantStarterKit
+// extends Shopware\Core\Framework\Plugin, and AssistantController extends
+// Shopware\Storefront\Controller\StorefrontController. The temporary UNUSED_DEPENDENCY ignore for
+// shopware/storefront is gone — the analyser reported it as "never applied", which is exactly the
+// signal the note asked the next reader to watch for.
 
 // Scan tests as dev paths only when the directory exists (addPathToScan throws on a
 // missing path, which would break the gate on projects without a tests/ directory).

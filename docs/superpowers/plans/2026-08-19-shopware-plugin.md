@@ -1517,7 +1517,21 @@ git commit -m "feat: persist conversations and traces as custom entities"
 
 ---
 
-### Task 8: Storefront controller and chat widget
+### Task 8: Storefront chat endpoint
+
+> **Scope reduced 2026-08-20 (Robin's decision): the widget UI is out of this plan.** Twig
+> templates, the storefront JS plugin and the SCSS are his — he has separate plans for the
+> interface. What stays is the server side the UI builds against: `POST /assistant/chat` and
+> `GET /assistant/history`, with guard ordering, cards rendered from `FactRenderer`, and
+> persistence.
+>
+> **Consequence, stated plainly: Must-have 1 ("chat widget in the storefront of a real 6.7 shop")
+> and the visible half of Must-have 3 ("the cart page proves it") can no longer be demonstrated by
+> this plan.** The endpoint is verifiable with `curl` against the real shop — token, cards, stock,
+> real cart — but "a shopper touches it" now depends on the UI that lands separately. The JSON
+> contract below is therefore documented as an interface rather than as an internal detail.
+
+### Task 8 (original text): Storefront controller and chat widget
 
 Must-have 1 and Must-have 3 — the thing a shopper actually touches. **No streaming**, per the spec's
 cut list.
