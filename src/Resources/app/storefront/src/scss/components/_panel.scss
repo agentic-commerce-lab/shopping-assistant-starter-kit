@@ -1,0 +1,199 @@
+/*
+Assistant widget — the panel
+==============================================
+Lives in the lazily-loaded chunk's territory, but its styles ship with the theme so the panel is
+correct the instant it is unhidden.
+*/
+
+.swag-assistant-panel {
+    position: absolute;
+    right: 0;
+    bottom: $swag-assistant-orb-size + 16px;
+    display: flex;
+    flex-direction: column;
+    width: $swag-assistant-panel-width;
+    max-width: calc(100vw - #{$swag-assistant-orb-inset * 2});
+    height: min(640px, calc(100vh - 7rem));
+    background: $swag-assistant-surface;
+    // Elevation only, no border. One decision per surface: the panel floats, so its edge is light.
+    box-shadow: 0 12px 40px rgba(0, 21, 62, 0.16);
+    color: $swag-assistant-text;
+    font-size: $swag-assistant-font-body;
+    overflow: hidden;
+
+    // Morphs out of the orb: radius and scale only, never width or height. Animating a layout
+    // property here would make the whole storefront reflow on every frame.
+    transform: scale(0.92) translateY(8px);
+    opacity: 0;
+    border-radius: 30px;
+    transition:
+        transform 320ms $swag-assistant-ease,
+        opacity 200ms $swag-assistant-ease,
+        border-radius 320ms $swag-assistant-ease;
+
+    .swag-assistant.is-open & {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+        border-radius: $swag-assistant-radius-panel;
+    }
+}
+
+.swag-assistant-panel__header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 0 0 auto;
+    height: 56px;
+    padding: 0 8px 0 16px;
+    border-bottom: 1px solid $swag-assistant-hairline;
+}
+
+// The orb, docked. Reads as the same object that was just clicked.
+.swag-assistant-panel__avatar {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    background: radial-gradient(
+        circle at 32% 28%,
+        $swag-assistant-accent-light 0%,
+        $swag-assistant-accent 45%,
+        $swag-assistant-accent-dark 100%
+    );
+    border-radius: 50%;
+}
+
+.swag-assistant-panel__title {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: $swag-assistant-font-heading;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.swag-assistant-panel__close {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: $swag-assistant-radius-control;
+    background: none;
+    color: $swag-assistant-meta;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 150ms $swag-assistant-ease;
+
+    &:hover {
+        color: $swag-assistant-text;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $swag-assistant-accent;
+        outline-offset: 2px;
+    }
+}
+
+.swag-assistant-log {
+    flex: 1 1 auto;
+    padding: 16px;
+    // Vertical only. A card row scrolls inside its own container; the panel never scrolls sideways.
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.swag-assistant-composer {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex: 0 0 auto;
+    padding: 12px 16px 16px;
+    border-top: 1px solid $swag-assistant-hairline;
+}
+
+.swag-assistant-composer__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.swag-assistant-composer__input {
+    flex: 1 1 auto;
+    max-height: 120px;
+    padding: 10px 12px;
+    border: 1px solid $swag-assistant-hairline;
+    border-radius: $swag-assistant-radius-control;
+    color: $swag-assistant-text;
+    font: inherit;
+    font-size: $swag-assistant-font-body;
+    line-height: 1.4;
+    resize: none;
+
+    &::placeholder {
+        color: $swag-assistant-meta;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $swag-assistant-accent;
+        outline-offset: 1px;
+    }
+}
+
+.swag-assistant-composer__send {
+    flex: 0 0 auto;
+    padding: 11px 14px;
+    border: 0;
+    border-radius: $swag-assistant-radius-control;
+    background: $swag-assistant-accent;
+    color: $swag-assistant-surface;
+    font: inherit;
+    font-size: $swag-assistant-font-meta;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 150ms $swag-assistant-ease;
+
+    &:hover:not(:disabled) {
+        background: $swag-assistant-accent-dark;
+    }
+
+    &:disabled {
+        background: $swag-assistant-hairline;
+        color: $swag-assistant-out-of-stock;
+        cursor: not-allowed;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $swag-assistant-accent;
+        outline-offset: 2px;
+    }
+}
+
+// Full-screen sheet on mobile: a 420px panel on a 375px viewport is not a panel.
+@media (max-width: 575px) {
+    .swag-assistant-panel {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        max-width: none;
+        height: 100vh;
+        height: 100dvh; // survives the mobile URL bar collapsing
+        border-radius: 0;
+
+        .swag-assistant.is-open & {
+            border-radius: 0;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .swag-assistant-panel,
+    .swag-assistant-panel__close,
+    .swag-assistant-composer__send {
+        transition: none;
+    }
+}

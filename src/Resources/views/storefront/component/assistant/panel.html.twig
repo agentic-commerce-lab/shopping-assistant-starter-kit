@@ -1,0 +1,62 @@
+{% block swag_assistant_panel_inner %}
+    {# Not `aria-modal` on desktop: the panel is genuinely non-modal, the storefront behind it stays
+       usable, and claiming modality to a screen reader while the page is still reachable is a lie.
+       The mobile sheet covers the viewport, and sets it in JS where it is true. #}
+    <section class="swag-assistant-panel"
+             data-swag-assistant-panel
+             role="dialog"
+             aria-modal="false"
+             aria-label="{{ swag_assistant_widget_name(context.salesChannelId) }}"
+             hidden>
+
+        {% block swag_assistant_panel_header %}
+            <header class="swag-assistant-panel__header">
+                <span class="swag-assistant-panel__avatar" aria-hidden="true"></span>
+
+                <h2 class="swag-assistant-panel__title">
+                    {{ swag_assistant_widget_name(context.salesChannelId) }}
+                </h2>
+
+                <button class="swag-assistant-panel__close"
+                        type="button"
+                        data-swag-assistant-close
+                        aria-label="{{ 'swagAssistant.panel.close'|trans }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </header>
+        {% endblock %}
+
+        {% block swag_assistant_panel_log %}
+            {# role="log" with aria-relevant="additions": a screen reader announces new messages, not
+               the whole transcript again every time one arrives. #}
+            <div class="swag-assistant-log"
+                 data-swag-assistant-log
+                 role="log"
+                 aria-live="polite"
+                 aria-relevant="additions"></div>
+        {% endblock %}
+
+        {% block swag_assistant_panel_composer %}
+            <form class="swag-assistant-composer" data-swag-assistant-form novalidate>
+                {# A real label, visually hidden. A placeholder is not an accessible name. #}
+                <label class="swag-assistant-composer__label" for="swag-assistant-input">
+                    {{ 'swagAssistant.panel.inputLabel'|trans }}
+                </label>
+
+                <textarea class="swag-assistant-composer__input"
+                          id="swag-assistant-input"
+                          data-swag-assistant-input
+                          rows="1"
+                          maxlength="2000"
+                          autocomplete="off"
+                          placeholder="{{ 'swagAssistant.panel.inputPlaceholder'|trans }}"></textarea>
+
+                <button class="swag-assistant-composer__send"
+                        type="submit"
+                        data-swag-assistant-send>
+                    {{ 'swagAssistant.panel.send'|trans }}
+                </button>
+            </form>
+        {% endblock %}
+    </section>
+{% endblock %}

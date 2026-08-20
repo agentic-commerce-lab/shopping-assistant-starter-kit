@@ -70,3 +70,41 @@ jobs:
       # phpcca does not fail on a threshold breach, so this never blocks the gate.
       - name: Maintainability (advisory)
         run: composer run quality:maintainability || true
+
+  # The storefront's compiled JS is committed so the plugin works on install without a Node
+  # toolchain in the merchant's shop — the same reason SwagPayPal ships its dist. That makes it an
+  # artefact which can silently disagree with its source, which is the failure shape docs/HANDOFF.md
+  # records as "a command's own success output is not evidence that it did what was intended".
+  # So: rebuild it here and require the diff to be empty.
+  #
+  # This is not ecosystem practice. It is this repo's own standard applied to a new artefact type.
+  storefront-dist:
+    name: Storefront dist matches src
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer
+
+      - name: Setup shopware-cli
+        uses: shopware/shopware-cli-action@v3
+
+      - name: Rebuild storefront assets
+        run: composer run build:storefront
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code -- src/Resources/app/storefront/dist; then
+            echo "::error::The committed storefront dist does not match src. Run 'composer run build:storefront' and commit the result."
+            exit 1
+          fi
+          echo "Committed dist matches src."
+

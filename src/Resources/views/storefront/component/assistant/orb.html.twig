@@ -38,5 +38,9 @@
                 {{ 'swagAssistant.orb.nudge'|trans }}
             </span>
         {% endblock %}
+
+        {% block swag_assistant_panel %}
+            {% sw_include '@Storefront/storefront/component/assistant/panel.html.twig' %}
+        {% endblock %}
     </div>
 {% endblock %}
