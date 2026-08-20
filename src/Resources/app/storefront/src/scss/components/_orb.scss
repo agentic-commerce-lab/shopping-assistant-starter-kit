@@ -1,8 +1,14 @@
 /*
-Assistant widget — the entry orb
+Assistant widget — the entry point
 ==============================================
-Always on the page, so it is CSS only: no JavaScript runs on page load for the idle state. The panel
-and everything in it lives in a lazily-imported chunk.
+Always on the page, so the resting state is **CSS only**: no JavaScript runs on page load to make the
+bubble breathe, wobble or blink. `orb.plugin.js` adds what CSS cannot know — where the pointer is,
+and when to hop — and the orb is complete without it.
+
+One structural rule holds the whole file together: **the `<button>` never moves.** Every transform
+lives on `.swag-assistant-orb__body` inside it. That keeps the hit target still while the creature
+squashes and hops over it, and it is why the end-to-end suite can click the thing at all — a
+`<button>` under a running transform is never "stable" to a browser driver.
 */
 
 .swag-assistant {
@@ -12,9 +18,9 @@ and everything in it lives in a lazily-imported chunk.
     // and 57px tall in the default theme — measured in the real shop, where it covered 38px of the
     // 60px orb, on a first visit, which is exactly when the discovery nudge fires.
     //
-    // Raising the orb above it would be worse: it would sit on top of the consent buttons. The
-    // height is not a constant either — the bar wraps at narrow widths — so the offset is measured
-    // at runtime by orb.plugin.js and published here. Zero by default, so this degrades to the plain
+    // Raising the orb above it would be worse: it would sit on top of the consent buttons. The height
+    // is not a constant either — the bar wraps at narrow widths — so the offset is measured at
+    // runtime by orb.plugin.js and published here. Zero by default, so this degrades to the plain
     // inset if the script never runs.
     bottom: calc(#{$swag-assistant-orb-inset} + var(--swag-assistant-obstruction, 0px));
     z-index: $swag-assistant-z;
@@ -28,162 +34,190 @@ body:has(.swag-assistant) .scroll-up-button {
 }
 
 .swag-assistant-orb {
+    --swag-assistant-unit: #{$swag-assistant-orb-size};
+
     position: relative;
     display: block;
-    width: $swag-assistant-orb-size;
-    height: $swag-assistant-orb-size;
+    width: var(--swag-assistant-unit);
+    height: var(--swag-assistant-unit);
     padding: 0;
     border: 0;
+    background: none;
+    // A round button with a square focus ring looks broken, and the ring is the only part of this
+    // element a keyboard user ever sees.
     border-radius: 50%;
     cursor: pointer;
-
-    // The one gradient and the one coloured shadow in the entire widget, both deliberate. The brand
-    // spec permits a gradient for a brand moment such as an illustration, and this orb is a mark
-    // rather than a control surface — flat-filling it throws away what makes it read as a character.
-    // Everywhere else in this widget: flat fills and neutral shadows.
-    background: radial-gradient(
-        circle at 32% 28%,
-        $swag-assistant-accent-light 0%,
-        $swag-assistant-accent 45%,
-        $swag-assistant-accent-dark 100%
-    );
-    box-shadow:
-        0 0 0 6px rgba(24, 158, 255, 0.1),
-        0 8px 24px rgba(0, 21, 62, 0.18);
-
-    animation: swag-assistant-breathe 4s ease-in-out infinite;
-    transition:
-        transform 150ms $swag-assistant-ease,
-        box-shadow 150ms $swag-assistant-ease;
-
-    // The luminous rim.
-    &::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border: 1.5px solid rgba(24, 158, 255, 0.5);
-        border-radius: 50%;
-    }
-
-    &:hover {
-        transform: scale(1.06);
-        box-shadow:
-            0 0 0 9px rgba(24, 158, 255, 0.14),
-            0 10px 28px rgba(0, 21, 62, 0.22);
-    }
+    // Stops iOS turning a long press on the creature into a text-selection drag.
+    -webkit-tap-highlight-color: transparent;
 
     &:focus-visible {
         outline: 2px solid $swag-assistant-accent;
-        outline-offset: 2px;
+        outline-offset: 4px;
     }
 }
 
-.swag-assistant-orb__face {
+.swag-assistant-orb__body {
+    @include swag-assistant-bubble;
+
     position: absolute;
     inset: 0;
+
+    /*
+    Elevation, and nothing else.
+
+    A soft blue halo used to sit on the page behind this. It went for the reason every zero-offset
+    chromatic glow goes: that is not depth, it is a sticker's aura — and the bubble's own rim and
+    glint already carry all the light it needs. What is left is a real drop shadow with a real
+    vertical offset, plus an inset that darkens the underside so the sphere has a bottom.
+    */
+    box-shadow:
+        0 2px 6px rgba(0, 21, 62, 0.16),
+        0 10px 26px rgba(0, 21, 62, 0.22),
+        inset 0 calc(-0.06 * var(--swag-assistant-unit)) calc(0.14 * var(--swag-assistant-unit)) rgba(0, 21, 62, 0.28);
+
+    // Two loops at different periods, so the pair never lines up into an obvious cycle.
+    animation:
+        swag-assistant-float 4.2s ease-in-out infinite,
+        swag-assistant-wobble 9s ease-in-out infinite;
+    transition: box-shadow 220ms $swag-assistant-ease;
+
+    // Promoted only while something is actually running. Left on permanently it costs a layer on
+    // every storefront page for the whole session.
+    will-change: transform, border-radius;
 }
 
-.swag-assistant-orb__eye {
-    position: absolute;
-    top: 36%;
-    width: 7px;
-    height: 14px;
-    background: $swag-assistant-surface;
-    border-radius: 3.5px;
-    // The delay is randomised per page load by orb.plugin.js. Without it every orb in every open
-    // tab blinks in lockstep, which reads as a synchronised animation rather than as a creature.
-    animation: swag-assistant-blink 7s var(--swag-assistant-blink-delay, 0ms) infinite;
-    transition: transform 150ms $swag-assistant-ease;
+/*
+Hover, and the no-JavaScript floor.
 
-    &:first-of-type {
-        left: 30%;
+The mood machine turns the creature `happy` on hover, but hover has to work when nothing has loaded
+yet — so the shadow and the eye-lift are CSS. If `orb.plugin.js` never arrives, the orb still
+responds; it just does not follow the pointer or hop.
+*/
+.swag-assistant-orb:hover {
+    .swag-assistant-orb__body {
+        box-shadow:
+            0 3px 9px rgba(0, 21, 62, 0.18),
+            0 14px 34px rgba(0, 21, 62, 0.26),
+            inset 0 calc(-0.06 * var(--swag-assistant-unit)) calc(0.14 * var(--swag-assistant-unit)) rgba(0, 21, 62, 0.24);
     }
 
-    &:last-of-type {
-        right: 30%;
-    }
-
-    // Looks up on hover. Nearly free, and it is the moment the orb stops being a button.
-    .swag-assistant-orb:hover & {
-        transform: translateY(-2px);
+    .swag-assistant-face {
+        transform:
+            translate(var(--swag-assistant-look-x, 0px), var(--swag-assistant-look-y, 0px))
+            translateY(-1.5px);
     }
 }
 
-.swag-assistant-orb__signet {
-    position: absolute;
-    right: 22%;
-    bottom: 20%;
-    width: 16px;
-    height: 16px;
-    // Masked rather than recoloured: the approved standalone signet supplies the shape through its
-    // alpha channel and the fill is ours, so no brand asset is modified. The URL arrives as a custom
-    // property from the template via asset(), which keeps sub-directory installs and asset
-    // versioning working.
-    background: rgba(255, 255, 255, 0.55);
-    mask-image: var(--swag-assistant-signet);
-    mask-repeat: no-repeat;
-    mask-position: center;
-    mask-size: contain;
+/*
+Press. The squash is on the body and it is instantaneous, because the one thing a touch interface
+must never make you wonder is whether it registered.
+*/
+.swag-assistant-orb:active .swag-assistant-orb__body {
+    transform: scale(0.9, 0.86) translateY(2px);
+    transition: transform 90ms $swag-assistant-ease;
 }
 
+/*
+Open. The creature gets out of the panel's way and settles into listening: smaller, and with its loops
+stopped. Stopping them matters — a bubble still bobbing beside an open conversation competes with the
+thing the shopper came to read.
+*/
+.swag-assistant.is-open .swag-assistant-orb .swag-assistant-orb__body {
+    animation: none;
+    // The creature's own body, which is the one place in this widget an overshoot belongs.
+    transform: scale(0.86);
+    transition: transform 320ms $swag-assistant-ease-spring;
+    will-change: auto;
+}
+
+/*
+The nudge: a speech bubble, once per session.
+
+A real speech bubble with a tail rather than a floating pill, because a pill beside the orb reads as a
+tooltip for the button and this is the creature talking. The tail is a rotated square tucked under the
+bubble's own corner.
+*/
 .swag-assistant-nudge {
     position: absolute;
-    right: $swag-assistant-orb-size + 12px;
-    bottom: 18px;
-    padding: 8px 12px;
+    right: calc(var(--swag-assistant-orb-size, #{$swag-assistant-orb-size}) + 14px);
+    bottom: 14px;
+    max-width: 15rem;
+    padding: 10px 13px;
     background: $swag-assistant-surface;
-    border-radius: $swag-assistant-radius-control;
-    box-shadow: 0 4px 16px rgba(0, 21, 62, 0.14);
+    border-radius: $swag-assistant-radius-panel $swag-assistant-radius-panel 4px $swag-assistant-radius-panel;
+    box-shadow: $swag-assistant-lift-2;
     color: $swag-assistant-text;
     font-size: $swag-assistant-font-meta;
     font-weight: 500;
-    white-space: nowrap;
+    line-height: 1.35;
+    // Arrives from the bubble it belongs to, not from nowhere — and decelerates rather than
+    // overshooting. The creature may bounce; the thing it says does not.
+    transform-origin: bottom right;
+    animation: swag-assistant-nudge-in 360ms $swag-assistant-ease-out both;
+
+    // The tail.
+    &::after {
+        content: '';
+        position: absolute;
+        right: -4px;
+        bottom: 3px;
+        width: 10px;
+        height: 10px;
+        background: $swag-assistant-surface;
+        border-radius: 0 0 3px 0;
+        transform: rotate(-14deg);
+    }
 }
 
-@keyframes swag-assistant-breathe {
-    0%,
-    100% {
-        transform: scale(1);
+@keyframes swag-assistant-nudge-in {
+    from {
+        transform: scale(0.86) translate(6px, 6px);
+        opacity: 0;
     }
 
-    50% {
-        transform: scale(1.025);
-    }
-}
-
-@keyframes swag-assistant-blink {
-    0%,
-    95%,
-    100% {
-        transform: scaleY(1);
-    }
-
-    97% {
-        transform: scaleY(0.1);
+    to {
+        transform: scale(1) translate(0, 0);
+        opacity: 1;
     }
 }
 
 @media (max-width: 575px) {
     .swag-assistant-orb {
-        width: $swag-assistant-orb-size-mobile;
-        height: $swag-assistant-orb-size-mobile;
+        --swag-assistant-unit: #{$swag-assistant-orb-size-mobile};
+    }
+
+    .swag-assistant-nudge {
+        --swag-assistant-orb-size: #{$swag-assistant-orb-size-mobile};
     }
 }
 
-// Motion is optional. Nothing here carries information, so all of it goes.
+/*
+Reduced motion.
+
+Everything that loops goes, and so does every transform — including hover and press. What survives is
+the material and the expression: the bubble still looks like a bubble, and `data-mood` still reshapes
+its face, because a smile is state rather than decoration. `creature.js` checks the same query before
+it schedules a single hop, so nothing here has to be undone with `!important`.
+*/
 @media (prefers-reduced-motion: reduce) {
     .swag-assistant,
-    .swag-assistant-orb,
-    .swag-assistant-orb__eye {
+    .swag-assistant-orb__body,
+    .swag-assistant-nudge {
         animation: none;
         transition: none;
+        // Nothing runs, so nothing needs a compositor layer held open for it.
+        will-change: auto;
     }
 
-    .swag-assistant-orb:hover {
-        transform: none;
+    .swag-assistant-orb:hover,
+    .swag-assistant-orb:active {
+        .swag-assistant-orb__body,
+        .swag-assistant-face {
+            transform: none;
+        }
     }
 
-    .swag-assistant-orb:hover .swag-assistant-orb__eye {
+    .swag-assistant.is-open .swag-assistant-orb .swag-assistant-orb__body {
         transform: none;
     }
 }

@@ -1,7 +1,9 @@
 {% block swag_assistant_panel_inner %}
-    {# Not `aria-modal` on desktop: the panel is genuinely non-modal, the storefront behind it stays
-       usable, and claiming modality to a screen reader while the page is still reachable is a lie.
-       The mobile sheet covers the viewport, and sets it in JS where it is true. #}
+    {# `aria-modal` is set from JavaScript, not here, because whether it is true depends on the
+       viewport: on desktop the panel is genuinely non-modal — the storefront behind it stays usable,
+       and claiming modality to a screen reader while the page is still reachable is a lie — while the
+       mobile sheet covers the whole viewport, where it is simply true. The attribute starts `false`
+       so the honest value is the one that survives if the script never runs. #}
     <section class="swag-assistant-panel"
              data-swag-assistant-panel
              role="dialog"
@@ -11,23 +13,48 @@
 
         {% block swag_assistant_panel_header %}
             <header class="swag-assistant-panel__header">
-                <span class="swag-assistant-panel__avatar" aria-hidden="true"></span>
+                {# The creature, docked — the same markup and the same moods as the orb, so opening the
+                   panel reads as the bubble coming along rather than as an avatar appearing in a
+                   frame. It blinks here too. #}
+                <span class="swag-assistant-panel__avatar" data-swag-assistant-avatar data-mood="happy">
+                    {% sw_include '@Storefront/storefront/component/assistant/face.html.twig' %}
+                </span>
 
+                {# The merchant's name for the assistant, and the only place it is shown.
+
+                   There is deliberately no status line beside it. "Ready" would be a constant — the
+                   widget is gated in PHP and never renders on a shop that cannot answer — and
+                   "Thinking" would duplicate the phased indicator in the log, which is better placed
+                   and already announced through `role="log"`. #}
                 <h2 class="swag-assistant-panel__title">
                     {{ swag_assistant_widget_name(context.salesChannelId) }}
                 </h2>
 
-                <button class="swag-assistant-panel__close"
-                        type="button"
-                        data-swag-assistant-close
-                        aria-label="{{ 'swagAssistant.panel.close'|trans }}">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <span class="swag-assistant-panel__actions">
+                    {# Icon controls, so `aria-label` is the accessible name rather than a decorative
+                       glyph being read out. Both glyphs come from the Meteor Icon Kit through
+                       `mask-image`, which is why they take the button's own colour in every state. #}
+                    <button class="swag-assistant-panel__action swag-assistant-panel__action--reset"
+                            type="button"
+                            data-swag-assistant-reset
+                            aria-label="{{ 'swagAssistant.panel.reset'|trans }}"
+                            title="{{ 'swagAssistant.panel.reset'|trans }}">
+                        <span class="swag-assistant-icon swag-assistant-icon--reset" aria-hidden="true"></span>
+                    </button>
+
+                    <button class="swag-assistant-panel__action"
+                            type="button"
+                            data-swag-assistant-close
+                            aria-label="{{ 'swagAssistant.panel.close'|trans }}"
+                            title="{{ 'swagAssistant.panel.close'|trans }}">
+                        <span class="swag-assistant-icon swag-assistant-icon--times" aria-hidden="true"></span>
+                    </button>
+                </span>
             </header>
         {% endblock %}
 
-        {# Snippets are a server-side concern, so the strings the browser needs travel through the
-           DOM as JSON rather than being duplicated in JavaScript. One element, parsed once. #}
+        {# Snippets are a server-side concern, so the strings the browser needs travel through the DOM
+           as JSON rather than being duplicated in JavaScript. One element, parsed once. #}
         {% block swag_assistant_translations %}
             <script type="application/json" data-swag-assistant-translations>
                 {{- {
@@ -41,6 +68,10 @@
                     outOfStockReason: 'swagAssistant.card.outOfStockReason'|trans,
                     parentStock: 'swagAssistant.card.parentStock'|trans,
                     delivery: 'swagAssistant.card.delivery'|trans,
+                    suggestionsLabel: 'swagAssistant.panel.suggestionsLabel'|trans,
+                    suggestionOne: 'swagAssistant.panel.suggestionOne'|trans,
+                    suggestionTwo: 'swagAssistant.panel.suggestionTwo'|trans,
+                    suggestionThree: 'swagAssistant.panel.suggestionThree'|trans,
                     thinkingStart: 'swagAssistant.thinking.start'|trans,
                     thinkingWaiting: 'swagAssistant.thinking.waiting'|trans,
                     thinkingPatient: 'swagAssistant.thinking.patient'|trans,
@@ -84,10 +115,16 @@
                           autocomplete="off"
                           placeholder="{{ 'swagAssistant.panel.inputPlaceholder'|trans }}"></textarea>
 
+                {# An icon rather than a word, because the control is 40px across and a label does not
+                   fit in one. The snippet still carries the accessible name, so nothing is lost to a
+                   screen reader — and the paper plane is the glyph every messaging interface has
+                   already taught. #}
                 <button class="swag-assistant-composer__send"
                         type="submit"
-                        data-swag-assistant-send>
-                    {{ 'swagAssistant.panel.send'|trans }}
+                        data-swag-assistant-send
+                        aria-label="{{ 'swagAssistant.panel.send'|trans }}"
+                        title="{{ 'swagAssistant.panel.send'|trans }}">
+                    <span class="swag-assistant-icon swag-assistant-icon--send" aria-hidden="true"></span>
                 </button>
             </form>
         {% endblock %}

@@ -2,9 +2,9 @@
  * A product card, built entirely from server-rendered fields.
  *
  * **Every figure here comes from the `cards[]` payload.** Nothing is read out of the model's prose —
- * that separation is the product's central claim, and this file is where a client would break it
- * most easily. If a value you want is not on the card, the answer is to render it on the server, not
- * to parse it out of a sentence.
+ * that separation is the product's central claim, and this file is where a client would break it most
+ * easily. If a value you want is not on the card, the answer is to render it on the server, not to
+ * parse it out of a sentence.
  */
 import { formatPrice } from './render';
 
@@ -14,14 +14,14 @@ const STOCK_LOW_THRESHOLD = 5;
 /** Beyond this, staggering the entrance stops reading as choreography and starts reading as lag. */
 const MAX_STAGGER_STEPS = 6;
 
-const STAGGER_STEP_MS = 40;
+const STAGGER_STEP_MS = 45;
 
 /**
  * One card is an answer; several are a shortlist.
  *
- * A single decisive result gets the full-width hero treatment, because that is exactly the moment
- * price and availability must be unmissable. Several become a horizontally scrollable row — inside
- * its own container, so the panel itself never scrolls sideways.
+ * A single decisive result gets the full-width horizontal treatment, because that is exactly the
+ * moment price and availability must be unmissable. Several become a horizontally scrollable row of
+ * upright cards — inside its own container, so the panel itself never scrolls sideways.
  */
 export function renderCards(container, cards, options) {
     if (!Array.isArray(cards) || cards.length === 0) {
@@ -62,20 +62,6 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
         info.appendChild(text('p', 'swag-assistant-card__options', options.join(' · ')));
     }
 
-    const price = formatPrice(card.price, card.currency, locale);
-    if (price !== '') {
-        info.appendChild(text('p', 'swag-assistant-card__price', price));
-    }
-
-    info.appendChild(buildStock(card, translations));
-
-    // `stockSource` says whether the stock figure belongs to the variant the shopper asked about or
-    // to its parent. A client cannot infer it, and a shopper who is quoted the parent's number is
-    // the shopper whose order gets cancelled. Nothing else in this product says this out loud.
-    if (card.stockSource === 'parent' && translations.parentStock) {
-        info.appendChild(text('p', 'swag-assistant-card__note', translations.parentStock));
-    }
-
     if (card.deliveryTime && translations.delivery) {
         info.appendChild(text(
             'p',
@@ -84,6 +70,14 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
         ));
     }
 
+    // `stockSource` says whether the stock figure belongs to the variant the shopper asked about or
+    // to its parent. A client cannot infer it, and a shopper who is quoted the parent's number is
+    // the shopper whose order gets cancelled. Nothing else in this product says this out loud.
+    if (card.stockSource === 'parent' && translations.parentStock) {
+        info.appendChild(text('p', 'swag-assistant-card__note', translations.parentStock));
+    }
+
+    info.appendChild(buildFacts(card, { locale, translations }));
     info.appendChild(buildActions(card, { addToCartEnabled, translations }));
     el.appendChild(info);
 
@@ -93,9 +87,10 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
 /**
  * A designed absence, not a broken image.
  *
- * Every product in the demo catalogue has `imageUrl: null`, so this is the common path rather than
- * the edge case. It carries an accessible name because a decorative-looking box that is actually
- * "we have no picture of this" is information.
+ * Every product in the demo catalogue has `imageUrl: null`, so this is the common path rather than the
+ * edge case — which is why it is a soft brand wash with the icon kit's own glyph rather than a grey
+ * box. It carries an accessible name because a decorative-looking rectangle that actually means "we
+ * have no picture of this" is information.
  */
 function buildMedia(card, translations) {
     const media = document.createElement('div');
@@ -120,9 +115,27 @@ function buildMedia(card, translations) {
 }
 
 /**
+ * Price and stock on one row, because they are one question. Reading the price and then hunting for
+ * whether the thing can actually be bought is two lookups for what is a single thought.
+ */
+function buildFacts(card, { locale, translations }) {
+    const facts = document.createElement('div');
+    facts.className = 'swag-assistant-card__facts';
+
+    const price = formatPrice(card.price, card.currency, locale);
+    if (price !== '') {
+        facts.appendChild(text('p', 'swag-assistant-card__price', price));
+    }
+
+    facts.appendChild(buildStock(card, translations));
+
+    return facts;
+}
+
+/**
  * Status is never colour alone: the dot is decorative and the label carries the meaning. The brand
- * palette has no red, so "out of stock" is muted grey rather than alarming — which is also the
- * honest register for it.
+ * palette has no red, so "out of stock" is muted grey rather than alarming — which is also the honest
+ * register for it.
  */
 function buildStock(card, translations) {
     const stock = document.createElement('p');
@@ -166,11 +179,11 @@ function buildActions(card, { addToCartEnabled, translations }) {
 
     // **No add button on a card whose stock belongs to the parent.**
     //
-    // `stockSource: 'parent'` means the server could not tell which variant this is about — it is
-    // the state the parent-stock note exists to disclose. Offering one-click purchase there would
-    // let a shopper who asked for "black, size M" buy an unspecified variant, which is precisely the
-    // expectation D4 exists to prevent. The assistant's own resolver refuses to guess a variant;
-    // the interface holds the same line and sends them to the product page, where they choose it
+    // `stockSource: 'parent'` means the server could not tell which variant this is about — it is the
+    // state the parent-stock note exists to disclose. Offering one-click purchase there would let a
+    // shopper who asked for "black, size M" buy an unspecified variant, which is precisely the
+    // expectation D4 exists to prevent. The assistant's own resolver refuses to guess a variant; the
+    // interface holds the same line and sends them to the product page, where they choose it
     // themselves.
     //
     // Measured: a live turn for "black, size M" returned the parent at 79.90 with 35 in stock while
@@ -179,11 +192,27 @@ function buildActions(card, { addToCartEnabled, translations }) {
         return actions;
     }
 
+    actions.appendChild(buildAdd(card, translations));
+
+    return actions;
+}
+
+/**
+ * The glyph is a shopping bag and it becomes a check on success — but the *label* is what carries the
+ * outcome, changing from "Add to cart" to "Added". Colour and iconography confirm; they never inform.
+ */
+function buildAdd(card, translations) {
     const add = document.createElement('button');
     add.className = 'swag-assistant-card__add';
     add.type = 'button';
     add.dataset.swagAssistantAdd = card.id;
-    add.textContent = translations.add ?? '';
+
+    add.appendChild(icon('cart'));
+
+    const label = document.createElement('span');
+    label.className = 'swag-assistant-card__add-label';
+    label.textContent = translations.add ?? '';
+    add.appendChild(label);
 
     if (!card.inStock) {
         add.disabled = true;
@@ -193,9 +222,48 @@ function buildActions(card, { addToCartEnabled, translations }) {
         add.setAttribute('aria-label', `${translations.add ?? ''} — ${reason}`);
     }
 
-    actions.appendChild(add);
+    return add;
+}
 
-    return actions;
+/**
+ * Swaps the button into its succeeded state, and pulses the card once so the confirmation belongs to
+ * the product rather than floating over the storefront.
+ *
+ * @param {HTMLButtonElement} button
+ * @param {string} label
+ */
+export function markAdded(button, label) {
+    const icons = button.querySelector('.swag-assistant-icon');
+    const text = button.querySelector('.swag-assistant-card__add-label');
+
+    button.classList.remove('is-adding');
+    button.classList.add('is-added');
+
+    if (icons) {
+        icons.className = 'swag-assistant-icon swag-assistant-icon--check';
+    }
+
+    if (text) {
+        text.textContent = label;
+    }
+
+    const card = button.closest('.swag-assistant-card');
+
+    if (!card) {
+        return;
+    }
+
+    // Removed after it plays, so a second add to the same card can pulse again.
+    card.classList.add('is-added');
+    card.addEventListener('animationend', () => card.classList.remove('is-added'), { once: true });
+}
+
+export function icon(name) {
+    const el = document.createElement('span');
+    el.className = `swag-assistant-icon swag-assistant-icon--${name}`;
+    el.setAttribute('aria-hidden', 'true');
+
+    return el;
 }
 
 function text(tag, className, value) {

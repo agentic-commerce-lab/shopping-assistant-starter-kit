@@ -1,7 +1,17 @@
 /*
 Assistant widget — product cards
 ==============================================
-Cards appear only inside an assistant message. They are never the structure of anything.
+Cards appear only inside an assistant message. They are never the structure of anything — which is
+why they are the widget's only "card" and why nothing else in it is one.
+
+They now sit on the log's tinted ground rather than on white, and that is what let the card become a
+real object at all: a white fill with a defined edge reads as something placed on a surface, where on
+the old white-on-white panel the same treatment read as nothing.
+
+**A border and no shadow.** Cards sit in the flow rather than floating, so the edge is the truthful
+signal — and a scroll row of shadowed cards reads as floating debris. Hover deepens the edge and lifts
+by a single pixel; it does not add elevation, because a surface does not become a different kind of
+object when you point at it.
 */
 
 .swag-assistant-cards {
@@ -12,50 +22,108 @@ Cards appear only inside an assistant message. They are never the structure of a
         gap: 10px;
         // The row scrolls inside its own container so the panel never scrolls sideways.
         overflow-x: auto;
-        padding-bottom: 6px;
+        // Room for the hover lift and the shadow, which a tight container would clip.
+        margin: 12px -4px 0;
+        padding: 4px 4px 8px;
         scroll-snap-type: x proximity;
         scrollbar-width: thin;
+        scrollbar-color: rgba(0, 21, 62, 0.16) transparent;
+
+        &::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            border-radius: $swag-assistant-radius-pill;
+            background: rgba(0, 21, 62, 0.16);
+        }
 
         .swag-assistant-card {
-            flex: 0 0 170px;
+            flex: 0 0 176px;
             flex-direction: column;
+            gap: 0;
+            padding: 0;
             scroll-snap-align: start;
         }
 
         .swag-assistant-card__media {
             flex: 0 0 auto;
             width: 100%;
-            height: 104px;
+            height: 96px;
+            border-radius: calc(#{$swag-assistant-radius-card} - 1px) calc(#{$swag-assistant-radius-card} - 1px) 0 0;
+        }
+
+        .swag-assistant-card__info {
+            padding: 10px 11px 11px;
+        }
+
+        /*
+        Stacked, full width. Side by side they did not fit: "View product" and "Add to cart" need more
+        than the 154px inside a card this narrow, and the Add button was being clipped by the card's
+        own edge. Found by rendering four real products at 420px, which is the width the panel
+        actually is.
+        */
+        .swag-assistant-card__actions {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
         }
     }
 }
 
 .swag-assistant-card {
+    position: relative;
     display: flex;
     gap: 12px;
-    padding: 12px;
-    // A border and no shadow. Cards sit in the flow, so a defined edge is the truthful signal —
-    // and a scroll row of shadowed cards reads as floating debris.
+    padding: 11px;
     border: 1px solid $swag-assistant-hairline;
     border-radius: $swag-assistant-radius-card;
     background: $swag-assistant-surface;
-    animation: swag-assistant-card-in 240ms $swag-assistant-ease var(--swag-assistant-card-delay, 0ms) both;
+    animation: swag-assistant-card-in 320ms $swag-assistant-ease-out var(--swag-assistant-card-delay, 0ms) both;
+    transition:
+        transform 240ms $swag-assistant-ease-out,
+        border-color 240ms $swag-assistant-ease;
+
+    // A card is not a link — the "View product" action inside it is — so the whole card does not
+    // respond to a click. It responds to being *considered*, which is what a hover is.
+    &:hover {
+        transform: translateY(-1px);
+        border-color: rgba(8, 112, 255, 0.32);
+    }
+
+    // Focus inside the card marks it too, so a keyboard user sees the same object respond that a
+    // mouse user does.
+    &:focus-within {
+        border-color: rgba(8, 112, 255, 0.4);
+    }
 }
 
 .swag-assistant-card__media {
-    flex: 0 0 72px;
-    width: 72px;
-    height: 72px;
-    border-radius: $swag-assistant-radius-control;
+    position: relative;
+    flex: 0 0 76px;
+    width: 76px;
+    height: 76px;
+    border-radius: $swag-assistant-radius-card;
+    background: $swag-assistant-bubble;
     overflow: hidden;
 
+    // Still. A product photograph that drifts under the pointer is motion spent on the one thing in
+    // the card the shopper is already looking at.
     img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
 
-    // Every product in the demo catalogue has imageUrl null, so this is the common path.
+    /*
+    A designed absence, not a broken image.
+
+    Every product in the demo catalogue has `imageUrl: null`, so this is the common path rather than
+    the edge case — which is exactly why it must not look like a failure. SW 50 with the icon kit's own
+    image glyph reads as "no photograph", where a flat grey box reads as "something went wrong".
+
+    A flat fill, not a wash. The creature is this widget's one gradient; a placeholder is not a second.
+    */
     &--empty {
         display: flex;
         align-items: center;
@@ -64,8 +132,8 @@ Cards appear only inside an assistant message. They are never the structure of a
 
         &::after {
             content: '';
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             background: #9fc4ff; // SW 200
             mask-image: $swag-assistant-icon-image;
             mask-repeat: no-repeat;
@@ -76,6 +144,8 @@ Cards appear only inside an assistant message. They are never the structure of a
 }
 
 .swag-assistant-card__info {
+    display: flex;
+    flex-direction: column;
     flex: 1 1 auto;
     min-width: 0;
 }
@@ -84,46 +154,78 @@ Cards appear only inside an assistant message. They are never the structure of a
     margin: 0;
     color: $swag-assistant-text;
     font-size: $swag-assistant-font-body;
-    font-weight: 600;
+    font-weight: 620;
+    letter-spacing: -0.006em;
     line-height: 1.3;
+    // Two lines, then ellipsis. A four-line product name in a 168px card pushes the price out of
+    // sight, and the price is the reason the card exists.
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .swag-assistant-card__options,
 .swag-assistant-card__delivery {
-    margin: 2px 0 0;
+    margin: 3px 0 0;
     color: $swag-assistant-meta;
-    font-size: $swag-assistant-font-meta;
+    font-size: $swag-assistant-font-micro;
+    line-height: 1.35;
 }
 
 // The variant-stock disclosure. Full-strength text, not meta grey: it is the difference between an
 // honest answer and the one that cancels an order.
 .swag-assistant-card__note {
-    margin: 6px 0 0;
+    margin: 7px 0 0;
+    padding: 5px 7px;
+    border-radius: 5px;
+    background: rgba(248, 129, 56, 0.1);
     color: $swag-assistant-text;
-    font-size: $swag-assistant-font-meta;
+    font-size: $swag-assistant-font-micro;
+    font-weight: 500;
     line-height: 1.35;
 }
 
+/*
+Price and stock share one row, because they are one question. Reading "€74.90" and then hunting for
+whether it can be bought is two lookups for a decision that is a single thought.
+*/
+.swag-assistant-card__facts {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    // Pushes price and stock to the bottom of a variable-height card, so a row of cards lines its
+    // prices up regardless of how long each name ran.
+    margin-top: auto;
+    padding-top: 7px;
+}
+
 .swag-assistant-card__price {
-    margin: 6px 0 0;
+    margin: 0;
     color: $swag-assistant-text;
     font-size: $swag-assistant-font-body;
-    font-weight: 650;
+    font-weight: 680;
+    letter-spacing: -0.015em;
     // A price that shifts width as its digits change reads as unreliable.
     font-variant-numeric: tabular-nums;
 }
 
 .swag-assistant-card__stock {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     align-items: center;
-    margin: 4px 0 0;
+    margin: 0;
+    padding: 3px 8px 3px 6px;
+    border-radius: $swag-assistant-radius-pill;
+    background: rgba(0, 21, 62, 0.05);
     color: $swag-assistant-text;
-    font-size: $swag-assistant-font-meta;
+    font-size: $swag-assistant-font-micro;
     font-weight: 600;
+    white-space: nowrap;
 
-    // **The dot carries the colour; the label carries the meaning.** Teal measures 1.9:1 on white
-    // and Dark Gray 3.73:1 — as text, both fail the contrast floor. As a 8px decorative dot beside
+    // **The dot carries the colour; the label carries the meaning.** Teal measures 1.78:1 on white
+    // and Dark Gray 3.73:1 — as text, both fail the contrast floor. As a 7px decorative dot beside
     // a legible label, they are exactly right, and the rule that status is never signalled by
     // colour alone is satisfied by construction rather than by good intentions.
     &--in .swag-assistant-card__dot {
@@ -141,28 +243,37 @@ Cards appear only inside an assistant message. They are never the structure of a
 
 .swag-assistant-card__dot {
     flex: 0 0 auto;
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
 }
 
 .swag-assistant-card__actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
-    flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 9px;
 }
 
 .swag-assistant-card__view {
-    color: $swag-assistant-accent;
+    flex: 1 1 auto;
+    padding: 7px 10px;
+    border: 1px solid $swag-assistant-hairline;
+    border-radius: $swag-assistant-radius-control;
+    color: $swag-assistant-accent-dark;
     font-size: $swag-assistant-font-meta;
     font-weight: 600;
+    text-align: center;
     text-decoration: none;
+    transition:
+        border-color 150ms $swag-assistant-ease,
+        background-color 150ms $swag-assistant-ease;
 
     &:hover {
+        border-color: $swag-assistant-accent;
+        background: $swag-assistant-bubble;
         color: $swag-assistant-accent-dark;
-        text-decoration: underline;
+        text-decoration: none;
     }
 
     &:focus-visible {
@@ -171,8 +282,20 @@ Cards appear only inside an assistant message. They are never the structure of a
     }
 }
 
+/*
+Add to cart.
+
+Icon plus label, and the label is what carries it: on success the word changes to "Added" and the bag
+becomes a check. Colour is the confirmation, never the message — someone who cannot see the green
+still reads that it worked.
+*/
 .swag-assistant-card__add {
-    padding: 6px 10px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    padding: 7px 11px;
     border: 1px solid $swag-assistant-accent;
     border-radius: $swag-assistant-radius-control;
     background: $swag-assistant-accent;
@@ -180,12 +303,20 @@ Cards appear only inside an assistant message. They are never the structure of a
     font: inherit;
     font-size: $swag-assistant-font-meta;
     font-weight: 600;
+    line-height: 1.2;
     cursor: pointer;
-    transition: background-color 150ms $swag-assistant-ease;
+    transition:
+        background-color 150ms $swag-assistant-ease,
+        border-color 150ms $swag-assistant-ease,
+        transform 200ms $swag-assistant-ease-out;
 
     &:hover:not(:disabled) {
         background: $swag-assistant-accent-dark;
         border-color: $swag-assistant-accent-dark;
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0) scale(0.96);
     }
 
     &:disabled {
@@ -195,11 +326,22 @@ Cards appear only inside an assistant message. They are never the structure of a
         // shopper something ("out of stock"), not merely being unavailable.
         color: $swag-assistant-meta;
         cursor: not-allowed;
+        transform: none;
     }
 
     &:focus-visible {
         outline: 2px solid $swag-assistant-accent;
         outline-offset: 2px;
+    }
+
+    // In flight. The bag pulses rather than the button spinning: a spinner on a 12px control is a
+    // grey smudge.
+    &.is-adding {
+        cursor: progress;
+
+        .swag-assistant-icon {
+            animation: swag-assistant-add-pending 900ms ease-in-out infinite;
+        }
     }
 }
 
@@ -207,35 +349,101 @@ Cards appear only inside an assistant message. They are never the structure of a
 .swag-assistant-card__add.is-added {
     border-color: $swag-assistant-in-stock;
     background: $swag-assistant-in-stock;
+    // 10:1 on Teal. Night Blue rather than white, because white on Teal is 1.78:1.
     color: $swag-assistant-text;
+
+    // Decelerates. The overshoot in this widget belongs to the creature's body and face; a check mark
+    // inside a button is neither.
+    .swag-assistant-icon {
+        animation: swag-assistant-add-done 380ms $swag-assistant-ease-out both;
+    }
+}
+
+/*
+The whole card confirms once, briefly — through its own edge.
+
+An expanding ring would have been the obvious gesture and it is the wrong one: a zero-offset coloured
+halo is the shape this widget refuses everywhere else, and refusing it only where it is inconvenient
+is not a rule. Flashing the border the card already has costs no layout, moves nothing while the
+shopper is still reading, and confirms on the element that actually changed.
+*/
+.swag-assistant-card.is-added {
+    animation: swag-assistant-card-confirm 900ms $swag-assistant-ease-out both;
 }
 
 .swag-assistant-card__error {
     margin: 8px 0 0;
-    color: $swag-assistant-low-stock;
-    font-size: $swag-assistant-font-meta;
+    // Orange shaded until it passes as text: 6.32:1 on white, where the palette's own Orange is
+    // 2.56:1 and can only ever be a fill.
+    color: #a04408;
+    font-size: $swag-assistant-font-micro;
     font-weight: 600;
 }
 
 @keyframes swag-assistant-card-in {
     from {
-        transform: translateY(4px);
+        transform: translateY(8px) scale(0.97);
         opacity: 0;
     }
 
     to {
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes swag-assistant-card-confirm {
+    0%,
+    35% {
+        border-color: $swag-assistant-in-stock;
+    }
+
+    100% {
+        border-color: $swag-assistant-hairline;
+    }
+}
+
+@keyframes swag-assistant-add-pending {
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+// The check arrives drawn rather than swapped: it scales up through an overshoot from nothing, which
+// is the smallest gesture that reads as "done" instead of "changed".
+@keyframes swag-assistant-add-done {
+    from {
+        transform: scale(0.2) rotate(-18deg);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1) rotate(0);
         opacity: 1;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .swag-assistant-card {
+    .swag-assistant-card,
+    .swag-assistant-card.is-added,
+    .swag-assistant-card__add .swag-assistant-icon,
+    .swag-assistant-card__add.is-added .swag-assistant-icon,
+    .swag-assistant-card__add.is-adding .swag-assistant-icon {
         animation: none;
-    }
-
-    .swag-assistant-card__add,
-    .swag-assistant-card__view {
         transition: none;
     }
+
+    .swag-assistant-card:hover,
+    .swag-assistant-card__add:hover:not(:disabled),
+    .swag-assistant-card__add:active:not(:disabled) {
+        transform: none;
+    }
+
 }

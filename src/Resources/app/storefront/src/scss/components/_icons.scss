@@ -1,15 +1,74 @@
 /*
 Assistant widget — icons
 ==============================================
-Glyphs from the **Shopware Meteor Icon Kit** (@shopware-ag/meteor-icon-kit 5.10.0, icons/regular),
-which the brand spec names as the sanctioned source. Inlined as data URIs and applied through
-`mask-image`, so the kit is not a runtime dependency and the glyph takes its colour from a token
-rather than carrying its own — one stroke weight, one source, no hand-drawn approximations.
+Glyphs from the **Shopware Meteor Icon Kit** (@shopware-ag/meteor-icon-kit, `icons/regular`), which
+the brand spec names as the sanctioned source. Inlined as data URIs and applied through
+`mask-image`, so the kit is not a runtime dependency and every glyph takes its colour from
+`currentColor` rather than carrying its own — one stroke weight, one source, no hand-drawn
+approximations and no emoji standing in for an icon.
 
-The `fill` in each URI is irrelevant: a mask uses the alpha channel only.
+The `fill` inside each URI is irrelevant: a mask reads the alpha channel only.
 */
 
 $swag-assistant-icon-image: url("data:image/svg+xml,<svg fill='%23000' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M2 20.4948L9.25259 12.3356C9.63485 11.9056 10.3003 11.886 10.7071 12.2929L12.7071 14.2929C12.7219 14.3077 12.7361 14.3228 12.7498 14.3382L15.2318 11.3598C15.6082 10.9081 16.2913 10.8771 16.7071 11.2929L22 16.5858V3C22 2.44772 21.5523 2 21 2H3C2.44772 2 2 2.44772 2 3V20.4948ZM3.33795 22H21C21.5523 22 22 21.5523 22 21V19.4142L16.0672 13.4814L11.7682 18.6402C11.4147 19.0645 10.7841 19.1218 10.3598 18.7682C9.93554 18.4147 9.87821 17.7841 10.2318 17.3598L11.4842 15.857C11.416 15.8159 11.3517 15.7659 11.2929 15.7071L10.0428 14.457L3.33795 22ZM3 0H21C22.6569 0 24 1.34315 24 3V21C24 22.6569 22.6569 24 21 24H3C1.34315 24 0 22.6569 0 21V3C0 1.34315 1.34315 0 3 0ZM7.5 11C5.567 11 4 9.433 4 7.5C4 5.567 5.567 4 7.5 4C9.433 4 11 5.567 11 7.5C11 9.433 9.433 11 7.5 11ZM7.5 9C8.32843 9 9 8.32843 9 7.5C9 6.67157 8.32843 6 7.5 6C6.67157 6 6 6.67157 6 7.5C6 8.32843 6.67157 9 7.5 9Z'/></svg>");
 
 $swag-assistant-icon-warning: url("data:image/svg+xml,<svg fill='%23000' viewBox='0 0 24 23' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M13.7744 1.41218L23.4802 20.0771C23.9898 21.0571 23.6085 22.2646 22.6285 22.7742C22.3435 22.9224 22.027 22.9998 21.7058 22.9998H2.29425C1.18968 22.9998 0.29425 22.1044 0.29425 20.9998C0.29425 20.6786 0.371621 20.3621 0.519817 20.0771L10.2256 1.41218C10.7352 0.432187 11.9427 0.0508554 12.9227 0.560452C13.2874 0.75009 13.5848 1.04749 13.7744 1.41218ZM2.29425 20.9998H21.7058L12 2.33489L2.29425 20.9998ZM12 16.9998C12.5523 16.9998 13 17.4475 13 17.9998C13 18.5521 12.5523 18.9998 12 18.9998C11.4477 18.9998 11 18.5521 11 17.9998C11 17.4475 11.4477 16.9998 12 16.9998ZM13 14.9998C13 15.5521 12.5523 15.9998 12 15.9998C11.4477 15.9998 11 15.5521 11 14.9998V9.99981C11 9.44752 11.4477 8.99981 12 8.99981C12.5523 8.99981 13 9.44752 13 9.99981V14.9998Z'/></svg>");
 
+$swag-assistant-icon-times: url("data:image/svg+xml,<svg fill='%23000' viewBox='0 0 18 18' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M7.5858 9L0.29289 1.70711C-0.09763 1.31658 -0.09763 0.68342 0.29289 0.29289C0.68342 -0.09763 1.31658 -0.09763 1.70711 0.29289L9 7.5858L16.2929 0.29289C16.6834 -0.09763 17.3166 -0.09763 17.7071 0.29289C18.0976 0.68342 18.0976 1.31658 17.7071 1.70711L10.4142 9L17.7071 16.2929C18.0976 16.6834 18.0976 17.3166 17.7071 17.7071C17.3166 18.0976 16.6834 18.0976 16.2929 17.7071L9 10.4142L1.70711 17.7071C1.31658 18.0976 0.68342 18.0976 0.29289 17.7071C-0.09763 17.3166 -0.09763 16.6834 0.29289 16.2929L7.5858 9z'/></svg>");
+
+$swag-assistant-icon-send: url("data:image/svg+xml,<svg fill='%23000' viewBox='0 0 21 20' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M4.72076 11L2.68973 17.0931L17.664 10L2.68973 2.90692L4.72076 9H10C10.5523 9 11 9.4477 11 10C11 10.5523 10.5523 11 10 11H4.72076zM2.94591 10L0.05132 1.31623C-0.22718 0.48074 0.63218 -0.28074 1.42809 0.09626L20.4281 9.0963C21.1906 9.4575 21.1906 10.5425 20.4281 10.9037L1.42809 19.9037C0.63218 20.2807 -0.22718 19.5193 0.05132 18.6838L2.94591 10z'/></svg>");
+
+$swag-assistant-icon-check: url("data:image/svg+xml,<svg fill='%23000' viewBox='0 0 22 15' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M1.70711 6.2929C1.31658 5.90237 0.68342 5.90237 0.29289 6.2929C-0.097631 6.6834 -0.097631 7.3166 0.29289 7.7071L7.29289 14.7071C7.68342 15.0976 8.31658 15.0976 8.70711 14.7071L21.7071 1.70711C22.0976 1.31658 22.0976 0.68342 21.7071 0.29289C21.3166 -0.09763 20.6834 -0.09763 20.2929 0.29289L8 12.5858L1.70711 6.2929z'/></svg>");
+
+$swag-assistant-icon-reset: url("data:image/svg+xml,<svg fill='%23000' viewBox='0 0 19 23' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M14.5858 6H9.5C5.35786 6 2 9.35786 2 13.5C2 17.6421 5.35786 21 9.5 21C13.6421 21 17 17.6421 17 13.5C17 12.9477 17.4477 12.5 18 12.5C18.5523 12.5 19 12.9477 19 13.5C19 18.7467 14.7467 23 9.5 23C4.25329 23 0 18.7467 0 13.5C0 8.25329 4.25329 4 9.5 4H14.5858L12.2929 1.70711C11.9024 1.31658 11.9024 0.683418 12.2929 0.292893C12.6834 -0.0976311 13.3166 -0.0976311 13.7071 0.292893L17.7071 4.29289C18.0976 4.68342 18.0976 5.31658 17.7071 5.70711L13.7071 9.70711C13.3166 10.0976 12.6834 10.0976 12.2929 9.70711C11.9024 9.31658 11.9024 8.68342 12.2929 8.29289L14.5858 6z'/></svg>");
+
+$swag-assistant-icon-cart: url("data:image/svg+xml,<svg fill='%23000' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M5.89204 3.00002C6.44433 3.00002 6.89204 3.44774 6.89204 4.00002C6.89204 4.55231 6.44433 5.00002 5.89204 5.00002H3.78955C3.25769 5.00002 2.81888 5.41634 2.79093 5.94746L2.00146 20.9475C1.97243 21.499 2.39599 21.9696 3.00008 22H20.8103C21.3626 22 21.8103 21.5523 21.8089 20.9475L21.0195 5.94744C20.9915 5.41632 20.5527 5 20.0208 5H17.892C17.3398 5 16.892 4.55228 16.892 4C16.892 3.44772 17.3398 3 17.892 3H20.0208C21.6164 3 22.9328 4.24895 23.0167 5.84232L23.8062 20.8423C23.8096 20.9211 23.8096 20.9211 23.8103 21C23.8103 22.6569 22.4672 24 20.8103 24H3.00008C2.9212 23.9993 2.9212 23.9993 2.8424 23.9959C1.18783 23.9088 -0.0828608 22.4969 0.00422151 20.8423L0.793695 5.84235C0.877557 4.24897 2.19397 3.00002 3.78955 3.00002H5.89204ZM9.89204 5C9.89204 5.55228 9.44433 6 8.89204 6C8.33976 6 7.89204 5.55228 7.89204 5V3C7.89204 1.34315 9.23519 0 10.892 0H12.892C14.5489 0 15.892 1.34315 15.892 3V5C15.892 5.55228 15.4443 6 14.892 6C14.3398 6 13.892 5.55228 13.892 5V3C13.892 2.44772 13.4443 2 12.892 2H10.892C10.3398 2 9.89204 2.44772 9.89204 3V5Z'/></svg>");
+
+$swag-assistant-icon-sparkle: url("data:image/svg+xml,<svg fill='%23000' viewBox='1 1 22 22' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M8.68555 8.40386C8.63473 8.53272 8.53272 8.63473 8.40386 8.68555L1.17935 11.5349C0.757274 11.7013 0.757275 12.2987 1.17935 12.4651L8.40386 15.3144C8.53272 15.3653 8.63473 15.4673 8.68555 15.5961L11.5349 22.8206C11.7013 23.2427 12.2987 23.2427 12.4651 22.8206L15.3144 15.5961C15.3653 15.4673 15.4673 15.3653 15.5961 15.3144L22.8206 12.4651C23.2427 12.2987 23.2427 11.7013 22.8206 11.5349L15.5961 8.68555C15.4673 8.63473 15.3653 8.53272 15.3144 8.40386L12.4651 1.17935C12.2987 0.757274 11.7013 0.757275 11.5349 1.17935L8.68555 8.40386ZM12 5.4512L10.5461 9.13764C10.292 9.78195 9.78195 10.292 9.13764 10.5461L5.4512 12L9.13764 13.4539C9.78195 13.708 10.292 14.218 10.5461 14.8623L12 18.5488L13.4539 14.8623C13.708 14.218 14.218 13.708 14.8623 13.4539L18.5488 12L14.8623 10.5461C14.218 10.292 13.708 9.78195 13.4539 9.13764L12 5.4512Z'/></svg>");
+
+/*
+One element renders any glyph.
+
+`background: currentColor` means it inherits whatever colour the control is in — hover and disabled
+states included — for free.
+
+Size comes from `--swag-assistant-icon`, defaulting to `1em`. An explicit property rather than the
+host's `font-size`: on a button with no text, `font-size` would be a layout knob wearing a
+typographic name, and a `15px` sitting in a rule beside a four-step type scale reads as drift even
+when it is not sizing any text. The `1em` default is what makes the glyph match the label it sits
+beside on the card's Add button, where it *is* typographic.
+*/
+.swag-assistant-icon {
+    display: block;
+    flex: 0 0 auto;
+    width: var(--swag-assistant-icon, 1em);
+    height: var(--swag-assistant-icon, 1em);
+    background: currentColor;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+
+    &--times {
+        mask-image: $swag-assistant-icon-times;
+    }
+
+    &--send {
+        mask-image: $swag-assistant-icon-send;
+    }
+
+    &--check {
+        mask-image: $swag-assistant-icon-check;
+    }
+
+    &--reset {
+        mask-image: $swag-assistant-icon-reset;
+    }
+
+    &--cart {
+        mask-image: $swag-assistant-icon-cart;
+    }
+
+    &--sparkle {
+        mask-image: $swag-assistant-icon-sparkle;
+    }
+}

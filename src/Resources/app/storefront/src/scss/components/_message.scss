@@ -1,35 +1,54 @@
 /*
 Assistant widget — messages
 ==============================================
-One contrast carries the whole hierarchy: the shopper is contained, the assistant is not.
+One contrast carries the whole hierarchy, and the redesign keeps it: **the shopper is contained, the
+assistant is not.** A shopper's message is a bubble; the assistant's is full-width text with no
+container at all. That reads as the shop speaking rather than as a peer in a group chat, which is why
+no avatar or accent rule is added on top of it.
+
+What changed is the strength of the contrast, not its direction. The shopper's bubble was a pale
+tint on a white panel — barely a container. It is now a solid accent fill, which is the same argument
+made properly.
 */
 
 .swag-assistant-message {
-    margin-bottom: 20px;
-    transform: translateY(0);
-    opacity: 1;
-    transition:
-        transform 240ms $swag-assistant-ease,
-        opacity 240ms $swag-assistant-ease;
+    margin-bottom: 18px;
 
     &:last-child {
         margin-bottom: 0;
     }
+}
 
-    // Applied for one frame on a genuinely new message, then removed. Re-hydrated history never
-    // gets it, so nothing ever sits at opacity 0 at rest.
+/*
+Entrance.
+
+Applied for one frame on a genuinely new message, then removed, so nothing ever sits at opacity 0 at
+rest. Re-hydrated history never gets it: restored messages are content, not events, and animating a
+transcript back in on every page load would be theatre.
+
+The origin is the corner the bubble belongs to, so each side's message grows out of its own edge.
+*/
+.swag-assistant-message {
+    transform: none;
+    opacity: 1;
+    transition:
+        transform 300ms $swag-assistant-ease-out,
+        opacity 200ms $swag-assistant-ease;
+
     &.is-entering {
-        transform: translateY(4px);
+        transform: translateY(8px) scale(0.96);
         opacity: 0;
     }
 }
 
 // The assistant: unbounded, full width, no container. The shop speaking.
 .swag-assistant-message--assistant {
+    transform-origin: left bottom;
+
     .swag-assistant-message__body p {
         margin: 0 0 8px;
         font-size: $swag-assistant-font-body;
-        line-height: 1.55;
+        line-height: 1.6;
 
         &:last-child {
             margin-bottom: 0;
@@ -37,19 +56,25 @@ One contrast carries the whole hierarchy: the shopper is contained, the assistan
     }
 }
 
-// The shopper: contained, right-aligned.
+// The shopper: contained, right-aligned, and the one place accent appears as a fill.
 .swag-assistant-message--user {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    transform-origin: right bottom;
 
     .swag-assistant-message__body {
-        max-width: 85%;
-        padding: 10px 12px;
-        background: $swag-assistant-bubble;
+        position: relative;
+        max-width: 84%;
+        padding: 9px 14px;
+        // SW 600, not SW 500: white on SW 500 measures 4.40:1 and misses the body-text floor, while
+        // white on SW 600 is 5.98:1. One step darker is the difference between a legible message and
+        // a decorative one.
+        background: $swag-assistant-accent-dark;
         // The one chat affordance kept: an asymmetric corner. A uniformly-radiused rectangle stops
         // reading as speech.
         border-radius: $swag-assistant-radius-panel $swag-assistant-radius-panel 4px $swag-assistant-radius-panel;
+        color: $swag-assistant-surface;
     }
 
     .swag-assistant-message__body p {
@@ -65,10 +90,12 @@ One contrast carries the whole hierarchy: the shopper is contained, the assistan
 
 .swag-assistant-message__time {
     display: block;
-    margin-top: 6px;
+    margin-top: 5px;
+    padding: 0 2px;
     color: $swag-assistant-meta;
-    font-size: $swag-assistant-font-meta;
+    font-size: $swag-assistant-font-micro;
     font-weight: 500;
+    // A timestamp that shifts width as its digits change reads as unreliable.
     font-variant-numeric: tabular-nums;
 }
 

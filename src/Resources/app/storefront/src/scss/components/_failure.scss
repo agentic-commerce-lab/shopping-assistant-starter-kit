@@ -1,27 +1,35 @@
 /*
 Assistant widget — failure states
 ==============================================
-Orange, because the brand palette contains no red. Icon plus text, never colour alone.
+Orange, because the brand palette contains no red. Icon plus text, never colour alone — and the
+Orange itself is never the text: at 2.56:1 on white it is a decorative fill, so it colours the glyph
+and the wash while the words stay Night Blue.
+
+The over-length composer state lives in `_composer.scss`, next to the field it belongs to.
 */
 
 .swag-assistant-failure {
     display: flex;
-    gap: 8px;
+    gap: 9px;
     align-items: center;
     flex-wrap: wrap;
-    margin-bottom: 20px;
-    padding: 10px 12px;
-    background: rgba(248, 129, 56, 0.1);
-    border-radius: $swag-assistant-radius-control;
+    margin-bottom: 18px;
+    padding: 11px 12px;
+    border: 1px solid rgba(248, 129, 56, 0.28);
+    border-radius: 10px;
+    background: rgba(248, 129, 56, 0.09);
     color: $swag-assistant-text;
-    font-size: $swag-assistant-font-meta;
+    font-size: 12px;
     font-weight: 500;
+    line-height: 1.4;
+    // Arrives like a message, because that is what it is standing in for.
+    animation: swag-assistant-failure-in 300ms $swag-assistant-ease-out both;
 
     &::before {
         content: '';
         flex: 0 0 auto;
-        width: 14px;
-        height: 14px;
+        width: 15px;
+        height: 15px;
         background: $swag-assistant-low-stock;
         mask-image: $swag-assistant-icon-warning;
         mask-repeat: no-repeat;
@@ -31,18 +39,27 @@ Orange, because the brand palette contains no red. Icon plus text, never colour 
 }
 
 .swag-assistant-failure__retry {
-    padding: 4px 10px;
+    margin-left: auto;
+    padding: 5px 11px;
     border: 1px solid $swag-assistant-accent;
     border-radius: $swag-assistant-radius-control;
-    background: none;
-    color: $swag-assistant-accent;
+    background: $swag-assistant-surface;
+    color: $swag-assistant-accent-dark;
     font: inherit;
-    font-size: $swag-assistant-font-meta;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
+    transition:
+        background-color 150ms $swag-assistant-ease,
+        transform 200ms $swag-assistant-ease-out;
 
     &:hover {
         background: $swag-assistant-bubble;
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0) scale(0.97);
     }
 
     &:focus-visible {
@@ -51,19 +68,11 @@ Orange, because the brand palette contains no red. Icon plus text, never colour 
     }
 }
 
-// Past the server's 2000-character limit. The border is the signal; the disabled Send is the rule.
-.swag-assistant-composer__input.is-too-long {
-    border-color: $swag-assistant-low-stock;
-
-    &:focus-visible {
-        outline-color: $swag-assistant-low-stock;
-    }
-}
-
 /*
 The correction notice: shown when the server reports that the reply's prose contradicts the cards.
-Sits between the claim and the evidence. Orange with an icon, because the palette has no red and
-because colour alone must never carry it.
+Sits between the claim and the evidence — the claim, then the correction, then the evidence that
+corrects it. Orange with an icon, because the palette has no red and because colour alone must never
+carry it.
 */
 .swag-assistant-warning {
     display: flex;
@@ -71,10 +80,10 @@ because colour alone must never carry it.
     align-items: flex-start;
     margin: 10px 0 0;
     padding: 8px 10px;
+    border-radius: 8px;
     background: rgba(248, 129, 56, 0.1);
-    border-radius: $swag-assistant-radius-control;
     color: $swag-assistant-text;
-    font-size: $swag-assistant-font-meta;
+    font-size: 12px;
     font-weight: 500;
     line-height: 1.4;
 
@@ -89,5 +98,30 @@ because colour alone must never carry it.
         mask-repeat: no-repeat;
         mask-position: center;
         mask-size: contain;
+    }
+}
+
+@keyframes swag-assistant-failure-in {
+    from {
+        transform: translateY(6px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .swag-assistant-failure,
+    .swag-assistant-failure__retry {
+        animation: none;
+        transition: none;
+    }
+
+    .swag-assistant-failure__retry:hover,
+    .swag-assistant-failure__retry:active {
+        transform: none;
     }
 }

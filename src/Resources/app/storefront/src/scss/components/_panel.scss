@@ -3,95 +3,200 @@ Assistant widget — the panel
 ==============================================
 Lives in the lazily-loaded chunk's territory, but its styles ship with the theme so the panel is
 correct the instant it is unhidden.
+
+The panel's job is to make a conversation feel like it is happening *somewhere*. Three decisions do
+most of that work, and each replaces a field of undifferentiated white:
+
+- the log has a **ground** (SW 50 lifted), so a white product card inside it reads as an object
+  sitting on a surface rather than as a rectangle drawn on the same sheet as everything else;
+- the composer is **translucent and blurred**, so the transcript visibly passes beneath it — glass
+  used for the one thing glass is actually for, occlusion, rather than as decoration;
+- the log is **masked at the top**, so a message scrolling away dissolves under the header instead of
+  being guillotined by it.
+
+None of the three is a surface effect applied to a surface. There is no wash behind the header, no
+glow around the panel and no gradient on any control — the widget's one gradient is the creature,
+which is an illustration.
 */
 
 .swag-assistant-panel {
     position: absolute;
     right: 0;
-    bottom: $swag-assistant-orb-size + 16px;
+    bottom: calc(#{$swag-assistant-orb-size} + 18px);
     display: flex;
     flex-direction: column;
     width: $swag-assistant-panel-width;
     max-width: calc(100vw - #{$swag-assistant-orb-inset * 2});
-    height: min(640px, calc(100vh - 7rem));
+    /*
+    As tall as the conversation, up to a ceiling.
+
+    A fixed 640px panel opens onto one line of greeting and 500px of nothing, and no honest content
+    exists to fill that — so the panel stops claiming the space instead. It grows upward from the
+    composer as the transcript does, which is the direction it is anchored in anyway, and once it
+    reaches the ceiling the log scrolls and the panel stops moving. Two turns in, it is at full height
+    and stable for the rest of the conversation.
+
+    The floor keeps a one-line conversation from reading as a tooltip.
+    */
+    min-height: 240px;
+    max-height: min(640px, calc(100vh - 7rem));
     background: $swag-assistant-surface;
-    // Elevation only, no border. One decision per surface: the panel floats, so its edge is light.
-    box-shadow: 0 12px 40px rgba(0, 21, 62, 0.16);
+    border-radius: $swag-assistant-radius-panel;
+    // Elevation, and no border with it. The panel floats above the storefront, so a shadow is the
+    // truthful signal and a hairline on top of it would be the surface claiming to be both a floating
+    // object and a framed one.
+    box-shadow: $swag-assistant-lift-3;
     color: $swag-assistant-text;
     font-size: $swag-assistant-font-body;
     overflow: hidden;
 
-    // Morphs out of the orb: radius and scale only, never width or height. Animating a layout
-    // property here would make the whole storefront reflow on every frame.
-    transform: scale(0.92) translateY(8px);
+    /*
+    The focal moment: the panel leaves the bubble.
+
+    Origin at the bottom-right corner, which is where the orb is, so it unfolds *from* the thing that
+    was clicked. Scale and opacity only — animating width or height here would reflow the entire
+    storefront on every frame. The slight blur on the way in is what sells it as one object
+    resolving into another rather than two elements crossfading.
+    */
+    transform: scale(0.9) translate(8px, 12px);
+    transform-origin: bottom right;
     opacity: 0;
-    border-radius: 30px;
+    filter: blur(3px);
+    // Exponential deceleration, not an overshoot. The creature is allowed to bounce; a 420px panel
+    // arriving at a corner of the storefront is not.
     transition:
-        transform 320ms $swag-assistant-ease,
+        transform 380ms $swag-assistant-ease-out,
         opacity 200ms $swag-assistant-ease,
-        border-radius 320ms $swag-assistant-ease;
+        filter 260ms $swag-assistant-ease;
 
     .swag-assistant.is-open & {
-        transform: scale(1) translateY(0);
+        transform: scale(1) translate(0, 0);
         opacity: 1;
-        border-radius: $swag-assistant-radius-panel;
+        filter: blur(0);
+    }
+
+    /*
+    `display: none` while hidden, restated because this rule set's `display: flex` outranks the user
+    agent's `[hidden]` and would otherwise silently defeat it.
+
+    Not cosmetic. A `display: flex` panel at `opacity: 0` is still laid out and still hit-tested, and
+    on a phone the sheet is `position: fixed; inset: 0` — so the invisible panel covered the entire
+    viewport and swallowed the tap that was supposed to open it. Found by clicking the orb at 390px
+    wide in a browser; the end-to-end suite runs Desktop Chrome only, where the panel sits clear of
+    the orb and the defect never shows.
+
+    The two-frame dance in `open()` exists for exactly this: one frame to let the display change land,
+    the next to give the transition a start state.
+    */
+    &[hidden] {
+        display: none;
     }
 }
 
+/*
+The header: does it need to exist at all?
+
+It nearly did not. The first version carried a live status line — a pulsing dot beside the word
+"Ready" — and that was the wrong answer twice over. "Ready" is *always* true: the widget is gated in
+PHP and never renders on a shop that cannot answer, so the line reported a constant. "Thinking"
+duplicated the phased indicator already sitting in the log, which is better placed and already
+announced to a screen reader. And the dot pulsed on a timer rather than on anything happening, which
+is decoration wearing the costume of telemetry.
+
+So the status line is gone, and with it the radial wash that used to bleed brand colour behind the
+avatar. What is left is the reason a header exists at all:
+
+- **the name**, which the merchant configures and which appears nowhere else;
+- **close**, which is not optional — on a phone the panel is a full-screen sheet and covers the orb,
+  so without this control there is no visible way out;
+- **new conversation**, which exists nowhere else in the widget;
+- **the creature**, which on that same phone is the only place it appears once the sheet covers the
+  orb, and which costs nothing on desktop.
+
+Four things that each answer "what would be lost without it". That is the whole test a header has to
+pass.
+*/
 .swag-assistant-panel__header {
     display: flex;
-    gap: 10px;
+    gap: 11px;
     align-items: center;
     flex: 0 0 auto;
-    height: 56px;
-    padding: 0 8px 0 16px;
+    padding: 11px 11px 11px 16px;
     border-bottom: 1px solid $swag-assistant-hairline;
+    background: $swag-assistant-surface;
 }
 
-// The orb, docked. Reads as the same object that was just clicked.
+// The creature, docked. Same markup and same moods as the orb — it blinks, it smiles when a reply
+// lands, and it is the reason opening the panel reads as the bubble coming with you.
 .swag-assistant-panel__avatar {
+    @include swag-assistant-bubble;
+
+    --swag-assistant-unit: 32px;
+
     flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
-    background: radial-gradient(
-        circle at 32% 28%,
-        $swag-assistant-accent-light 0%,
-        $swag-assistant-accent 45%,
-        $swag-assistant-accent-dark 100%
-    );
-    border-radius: 50%;
+    width: var(--swag-assistant-unit);
+    height: var(--swag-assistant-unit);
+    box-shadow:
+        0 1px 3px rgba(0, 21, 62, 0.16),
+        inset 0 -2px 5px rgba(0, 21, 62, 0.24);
+    // Arrives just after the panel, so the creature reads as following the shopper in rather than as
+    // part of the frame.
+    animation: swag-assistant-avatar-in 380ms $swag-assistant-ease-out 100ms both;
 }
 
 .swag-assistant-panel__title {
     flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
     font-size: $swag-assistant-font-heading;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     line-height: 1.2;
+    // A merchant can name this anything; a long name truncates rather than pushing the controls off
+    // the end of the row.
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.swag-assistant-panel__close {
+.swag-assistant-panel__actions {
+    display: flex;
+    gap: 2px;
+    align-items: center;
     flex: 0 0 auto;
-    width: 36px;
-    height: 36px;
+}
+
+/*
+Icon buttons, 34px of target around a 15px glyph. The glyph is what a sighted user reads and
+`aria-label` is what everybody else gets, so neither audience is served a decoration. The hover fill
+is what makes a bare icon read as a control rather than as an ornament.
+*/
+.swag-assistant-panel__action {
+    --swag-assistant-icon: 15px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
     padding: 0;
     border: 0;
     border-radius: $swag-assistant-radius-control;
     background: none;
     color: $swag-assistant-meta;
-    font-size: 24px;
-    line-height: 1;
     cursor: pointer;
-    transition: color 150ms $swag-assistant-ease;
+    transition:
+        background-color 150ms $swag-assistant-ease,
+        color 150ms $swag-assistant-ease;
 
     &:hover {
+        background: $swag-assistant-bubble;
         color: $swag-assistant-text;
     }
 
     &:focus-visible {
         outline: 2px solid $swag-assistant-accent;
-        outline-offset: 2px;
+        outline-offset: 1px;
     }
 }
 
@@ -99,114 +204,103 @@ correct the instant it is unhidden.
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
-    padding: 16px;
+    // Lets the log shrink below its content height so the panel's max-height wins and the log
+    // scrolls, rather than the panel growing past its ceiling.
+    min-height: 0;
+    padding: 18px 16px 14px;
+    // The ground. Without it a white card on a white panel has no edge to sit on.
+    background: $swag-assistant-tint;
     // Vertical only. A card row scrolls inside its own container; the panel never scrolls sideways.
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    // Dissolves under the header instead of being cut by it. 14px is enough to read as a soft edge
+    // and short enough that no line of text is ever half-faded while you are reading it.
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+
+    // A scrollbar that belongs to the panel rather than to the operating system.
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 21, 62, 0.18) transparent;
+
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: $swag-assistant-radius-pill;
+        background: rgba(0, 21, 62, 0.16);
+        background-clip: content-box;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 21, 62, 0.3);
+        background-clip: content-box;
+    }
 }
 
-// Pushes a short conversation to the bottom of a 640px panel instead of leaving it stranded at the
+// Pushes a short conversation to the bottom of a tall panel instead of leaving it stranded at the
 // top under a field of white. `margin-top: auto` rather than `justify-content: flex-end`, which
 // clips the first message once the log actually overflows.
 .swag-assistant-log > :first-child {
     margin-top: auto;
 }
 
-.swag-assistant-composer {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-    flex: 0 0 auto;
-    padding: 12px 16px 16px;
-    border-top: 1px solid $swag-assistant-hairline;
-}
-
-.swag-assistant-composer__label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-}
-
-.swag-assistant-composer__input {
-    flex: 1 1 auto;
-    max-height: 120px;
-    padding: 10px 12px;
-    border: 1px solid $swag-assistant-hairline;
-    border-radius: $swag-assistant-radius-control;
-    color: $swag-assistant-text;
-    font: inherit;
-    font-size: $swag-assistant-font-body;
-    line-height: 1.4;
-    resize: none;
-
-    &::placeholder {
-        color: $swag-assistant-meta;
+@keyframes swag-assistant-avatar-in {
+    from {
+        transform: scale(0.5) translateY(4px);
+        opacity: 0;
     }
 
-    &:focus-visible {
-        // 1px outline over a 1px accent border reads as a single 2px edge. A 2px outline on top of
-        // the border totalled 3px of blue and dominated the panel's whole bottom edge.
-        border-color: $swag-assistant-accent;
-        outline: 1px solid $swag-assistant-accent;
-        outline-offset: 0;
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
     }
 }
 
-.swag-assistant-composer__send {
-    flex: 0 0 auto;
-    padding: 11px 14px;
-    border: 0;
-    border-radius: $swag-assistant-radius-control;
-    background: $swag-assistant-accent;
-    color: $swag-assistant-surface;
-    font: inherit;
-    font-size: $swag-assistant-font-meta;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 150ms $swag-assistant-ease;
-
-    &:hover:not(:disabled) {
-        background: $swag-assistant-accent-dark;
-    }
-
-    &:disabled {
-        background: $swag-assistant-hairline;
-        // Same reason as the card's disabled Add: 3.07:1 was unreadable.
-        color: $swag-assistant-meta;
-        cursor: not-allowed;
-    }
-
-    &:focus-visible {
-        outline: 2px solid $swag-assistant-accent;
-        outline-offset: 2px;
-    }
-}
-
-// Full-screen sheet on mobile: a 420px panel on a 375px viewport is not a panel.
+// Full-screen sheet on mobile: a 400px panel on a 375px viewport is not a panel.
 @media (max-width: 575px) {
     .swag-assistant-panel {
         position: fixed;
         inset: 0;
         width: 100vw;
         max-width: none;
+        // A sheet is the viewport, not a size that follows its content.
+        min-height: 0;
+        max-height: none;
         height: 100vh;
         height: 100dvh; // survives the mobile URL bar collapsing
+        border: 0;
         border-radius: 0;
+        // A sheet rises from the bottom edge; it does not unfold from a corner that is off-screen.
+        transform: translateY(14px) scale(1);
+        transform-origin: center bottom;
 
         .swag-assistant.is-open & {
-            border-radius: 0;
+            transform: translateY(0);
         }
+    }
+
+    .swag-assistant-panel__header {
+        // Clears the notch on a phone where the sheet reaches the top edge of the display.
+        padding-top: max(12px, env(safe-area-inset-top));
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .swag-assistant-panel,
-    .swag-assistant-panel__close,
-    .swag-assistant-composer__send {
+    .swag-assistant-panel__action {
         transition: none;
+        transform: none;
+        filter: none;
+    }
+
+    .swag-assistant-panel__avatar {
+        animation: none;
+    }
+
+    .swag-assistant-log {
+        scroll-behavior: auto;
     }
 }

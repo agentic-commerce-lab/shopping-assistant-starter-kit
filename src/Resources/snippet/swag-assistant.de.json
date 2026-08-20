@@ -9,7 +9,12 @@
       "inputLabel": "Ihre Nachricht",
       "inputPlaceholder": "Frage zum Shop stellen…",
       "send": "Senden",
-      "defaultGreeting": "Hallo. Ich kann im Katalog dieses Shops nachsehen."
+      "defaultGreeting": "Hallo. Ich kann im Katalog dieses Shops nachsehen.",
+      "reset": "Neue Unterhaltung beginnen",
+      "suggestionsLabel": "Das könntest du fragen",
+      "suggestionOne": "Was verkaufst du?",
+      "suggestionTwo": "Hilf mir, ein Geschenk zu finden",
+      "suggestionThree": "Wie schnell ist die Lieferung?"
     },
     "card": {
       "view": "Produkt ansehen",

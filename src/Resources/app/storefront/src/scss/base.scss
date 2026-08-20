@@ -2,15 +2,20 @@
 Shopping Assistant Starter Kit — storefront styles
 ==============================================
 Compiled by Shopware's own scssphp pipeline (`bin/console theme:compile`), so no Node toolchain is
-needed to style this plugin.
+needed to style this plugin — and no JavaScript animation library either. Every motion in this widget
+is a CSS keyframe or a Web Animations call, which is why the storefront pays nothing for it.
 
-Order matters: tokens and icons define the values every component below reads.
+Order matters. `tokens` defines every value below it; `icons` defines the glyphs; `bubble` defines the
+creature's material and its six expressions, which the orb, the panel's avatar and the thinking
+indicator all include rather than reimplement.
 */
 
 @import 'components/tokens';
 @import 'components/icons';
+@import 'components/bubble';
 @import 'components/orb';
 @import 'components/panel';
+@import 'components/composer';
 @import 'components/message';
 @import 'components/card';
 @import 'components/thinking';

@@ -206,3 +206,56 @@ function buildTime(createdAt, locale) {
 export function scrollToLatest(log) {
     log.scrollTop = log.scrollHeight;
 }
+/**
+ * Suggestion chips, under the greeting, on first open only.
+ *
+ * The empty state used to be a greeting and a blank field, which asks a shopper to invent a question
+ * before they know what the assistant can answer. These are *prompts*, not shortcuts: picking one
+ * fills the composer and focuses it, so the shopper still sends their own message and can edit it
+ * first. That distinction is why they are buttons inside a labelled group rather than links that fire
+ * a request.
+ *
+ * They leave the moment the conversation starts. A first-run affordance that stays is clutter.
+ *
+ * @param {HTMLElement} container the greeting message to hang them under
+ * @param {Array<string>} prompts
+ * @param {{label: string, onPick: (prompt: string) => void}} options
+ * @returns {HTMLElement|null}
+ */
+export function renderChips(container, prompts, { label, onPick }) {
+    const usable = (prompts ?? []).map((prompt) => String(prompt).trim()).filter((prompt) => prompt !== '');
+
+    if (usable.length === 0) {
+        return null;
+    }
+
+    const group = document.createElement('div');
+    group.className = 'swag-assistant-chips';
+    // A named group, so a screen reader announces what these three buttons are for before reading
+    // them out as a list of unrelated questions.
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', label ?? '');
+
+    usable.forEach((prompt, index) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'swag-assistant-chip';
+        chip.textContent = prompt;
+        chip.style.setProperty('--swag-assistant-chip-delay', `${index * 60}ms`);
+        chip.addEventListener('click', () => onPick(prompt));
+        group.appendChild(chip);
+    });
+
+    // Above the timestamp, not after it: the chips are part of the greeting, and a stamp is what ends
+    // a message.
+    const time = container.querySelector('.swag-assistant-message__time');
+
+    if (time) {
+        container.insertBefore(group, time);
+    } else {
+        container.appendChild(group);
+    }
+
+    return group;
+}
+

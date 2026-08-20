@@ -1,0 +1,287 @@
+/*
+Assistant widget — the composer
+==============================================
+The one control a shopper actually operates, so it gets the panel's only real focus treatment and
+its only glass.
+
+Translucent and blurred is not a style choice here: the log scrolls *underneath* this bar, and
+seeing a message pass beneath it is what tells you the transcript continues below. That is occlusion
+— the single thing a backdrop filter is genuinely for.
+*/
+
+.swag-assistant-composer {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex: 0 0 auto;
+    padding: 12px 14px;
+    border-top: 1px solid rgba(0, 21, 62, 0.07);
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(14px) saturate(140%);
+    // Solid fallback where the filter is unsupported, so the transcript never shows through unblurred.
+    @supports not (backdrop-filter: blur(1px)) {
+        background: $swag-assistant-surface;
+    }
+
+    // Clears the home indicator on a phone, where the composer sits on the display's bottom edge.
+    @media (max-width: 575px) {
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+}
+
+.swag-assistant-composer__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/*
+The field.
+
+A pill rather than a rectangle, to match the round send button beside it and the creature above it —
+one radius family across the whole widget. It grows with its content up to 120px; `panel.plugin.js`
+sets the height from `scrollHeight`, which is the only way to do it for a textarea, and 120px is
+where it stops and starts scrolling instead.
+*/
+.swag-assistant-composer__input {
+    flex: 1 1 auto;
+    // Matches the 40px send button when empty, so the two sit on one line rather than stepping.
+    min-height: 40px;
+    max-height: 120px;
+    padding: 10px 14px;
+    border: 1px solid $swag-assistant-hairline;
+    border-radius: $swag-assistant-radius-pill;
+    background: $swag-assistant-surface;
+    color: $swag-assistant-text;
+    font: inherit;
+    font-size: $swag-assistant-font-body;
+    line-height: 1.35;
+    resize: none;
+    transition:
+        border-color 160ms $swag-assistant-ease,
+        box-shadow 200ms $swag-assistant-ease;
+
+    &::placeholder {
+        // 5.70:1 on white. The palette's own secondary grey measures 2.42:1, which no placeholder
+        // should ever be — a hint nobody can read is not a hint.
+        color: $swag-assistant-meta;
+    }
+
+    /*
+    The border turns accent and a soft accent ring grows outside it, which reads as the field lighting
+    up rather than as an outline stacked on a border.
+
+    This is a zero-offset coloured ring, which is the shape the rest of the widget refuses — and the
+    exception is the point: a focus indicator *is* a chromatic ring by convention, and reading as one
+    is the whole job. What the rule bans is elevation faked with a coloured glow. Nothing here is
+    pretending to be depth.
+    */
+    &:focus {
+        border-color: $swag-assistant-accent;
+        box-shadow: 0 0 0 3px rgba(8, 112, 255, 0.16);
+        outline: none;
+    }
+
+    // Keyboard users get the halo *and* a real outline, because a colour change alone is not a
+    // focus indicator.
+    &:focus-visible {
+        outline: 1px solid $swag-assistant-accent;
+        outline-offset: 0;
+    }
+}
+
+/*
+Send.
+
+An icon, because the button is 40px square and a word does not fit in one — and the paper plane is
+the glyph every messaging interface has already taught. It stays grey and quiet until there is
+something to send, then fills with accent: the control tells you it is armed before you press it.
+*/
+.swag-assistant-composer__send {
+    --swag-assistant-icon: 15px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: $swag-assistant-hairline;
+    color: $swag-assistant-meta;
+    cursor: pointer;
+    transition:
+        background-color 180ms $swag-assistant-ease,
+        color 180ms $swag-assistant-ease,
+        transform 200ms $swag-assistant-ease-out;
+
+    // Set by panel.plugin.js the moment the field stops being empty.
+    // The fill is the whole signal. A coloured glow under it would be a second, weaker way of saying
+    // the same thing.
+    &.is-armed {
+        background: $swag-assistant-accent;
+        color: $swag-assistant-surface;
+    }
+
+    &.is-armed:hover {
+        background: $swag-assistant-accent-dark;
+        transform: scale(1.06);
+    }
+
+    // The plane leaves before the message does.
+    &.is-armed:active {
+        transform: scale(0.92);
+
+        .swag-assistant-icon {
+            transform: translate(2px, -2px);
+        }
+    }
+
+    &:disabled {
+        background: $swag-assistant-hairline;
+        // 4.69:1 against the fill. A disabled control still has to be readable.
+        color: $swag-assistant-meta;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $swag-assistant-accent;
+        outline-offset: 2px;
+    }
+
+    .swag-assistant-icon {
+        transition: transform 160ms $swag-assistant-ease-out;
+    }
+}
+
+/*
+Suggestion chips.
+
+The empty state was a greeting and a blank field, which asks a shopper to invent a question before
+they know what the assistant can answer. Three chips answer that instead — and they are *prompts*,
+not buttons that do something: tapping one fills the composer and focuses it, so the shopper still
+sends their own message and can edit it first.
+
+They are removed the moment the conversation starts. A first-run affordance that stays is clutter.
+*/
+.swag-assistant-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.swag-assistant-chip {
+    padding: 7px 12px;
+    border: 1px solid rgba(8, 112, 255, 0.24);
+    border-radius: $swag-assistant-radius-pill;
+    background: $swag-assistant-surface;
+    color: $swag-assistant-accent-dark;
+    font: inherit;
+    font-size: $swag-assistant-font-meta;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+    // Staggered, so three chips arrive as a set rather than as a block appearing.
+    animation: swag-assistant-chip-in 300ms $swag-assistant-ease-out var(--swag-assistant-chip-delay, 0ms) both;
+    transition:
+        background-color 150ms $swag-assistant-ease,
+        border-color 150ms $swag-assistant-ease,
+        transform 200ms $swag-assistant-ease-out,
+        box-shadow 200ms $swag-assistant-ease;
+
+    // A bordered chip takes the edge, not elevation. Both at once is a control asserting it is a
+    // framed object and a floating one.
+    &:hover {
+        border-color: $swag-assistant-accent;
+        background: $swag-assistant-bubble;
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0) scale(0.97);
+    }
+
+    &:focus-visible {
+        outline: 2px solid $swag-assistant-accent;
+        outline-offset: 2px;
+    }
+}
+
+// Leaving, once the shopper has asked something of their own.
+.swag-assistant-chips.is-leaving {
+    overflow: hidden;
+    animation: swag-assistant-chips-out 220ms $swag-assistant-ease both;
+    pointer-events: none;
+}
+
+@keyframes swag-assistant-chip-in {
+    from {
+        transform: translateY(6px) scale(0.96);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes swag-assistant-chips-out {
+    from {
+        max-height: 6rem;
+        opacity: 1;
+    }
+
+    to {
+        max-height: 0;
+        margin-top: 0;
+        opacity: 0;
+    }
+}
+
+// Past the server's 2000-character limit. The border is the signal; the disabled Send is the rule.
+.swag-assistant-composer__input.is-too-long {
+    border-color: $swag-assistant-low-stock;
+
+    &:focus {
+        border-color: $swag-assistant-low-stock;
+        box-shadow: 0 0 0 3px rgba(248, 129, 56, 0.18);
+    }
+
+    &:focus-visible {
+        outline-color: $swag-assistant-low-stock;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .swag-assistant-composer__input,
+    .swag-assistant-composer__send,
+    .swag-assistant-composer__send .swag-assistant-icon,
+    .swag-assistant-chip {
+        transition: none;
+        animation: none;
+        transform: none;
+    }
+
+    // The chip row is removed outright rather than collapsed, since the collapse *is* the animation.
+    .swag-assistant-chips.is-leaving {
+        display: none;
+        animation: none;
+    }
+
+    .swag-assistant-composer__send.is-armed:hover,
+    .swag-assistant-composer__send.is-armed:active,
+    .swag-assistant-chip:hover,
+    .swag-assistant-chip:active {
+        transform: none;
+    }
+}

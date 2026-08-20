@@ -50,6 +50,10 @@ request. Verified in `Framework/Plugin/KernelPluginLoader/KernelPluginLoader.php
 From the shop's project root:
 
 ```fish
+# Do this FIRST — see the note below. One line, and the shop never breaks.
+mkdir -p config/packages && printf '# Intentionally empty — see SwagAssistantStarterKit README.\n' \
+    > config/packages/ai_generic_platform.yaml
+
 composer config repositories.assistant '{"type":"path","url":"../shopping-assistant-starter-kit","options":{"symlink":true}}'
 composer require "swag/assistant-starter-kit:*@dev"
 bin/console plugin:refresh
@@ -57,22 +61,27 @@ bin/console plugin:install --activate SwagAssistantStarterKit
 bin/console cache:clear
 ```
 
-> **One manual step, and skipping it leaves a dead shop.** `composer require` pulls
-> `symfony/ai-generic-platform`, and in a Symfony Flex project — which `shopware/production` is —
-> Flex applies that package's recipe and writes `config/packages/ai_generic_platform.yaml` containing
-> an `ai:` root key. Nothing registers `symfony/ai-bundle` (this plugin builds its platform itself,
-> see `docs/adr/0001-symfony-ai-as-agent-runtime.md`), so the next `bin/console` call dies with
-> *"There is no extension able to load the configuration for 'ai'"* — and the storefront with it.
+> **Why that first line exists.** `composer require` pulls `symfony/ai-generic-platform`, and in a
+> Symfony Flex project — which `shopware/production` is — Flex applies that package's recipe and
+> writes `config/packages/ai_generic_platform.yaml` containing an `ai:` root key. Nothing registers
+> `symfony/ai-bundle` (this plugin builds its platform itself, see
+> `docs/adr/0001-symfony-ai-as-agent-runtime.md`), so the container stops loading with *"There is no
+> extension able to load the configuration for 'ai'"* — and the **whole storefront returns 500**, not
+> just the assistant. Measured on Shopware 6.7.13: writing that file took the storefront from 200 to
+> 500 on the next request.
 >
-> **Delete that file after installing:**
+> Creating the file yourself first prevents it, rather than repairing it afterwards. Flex does not
+> overwrite a file that already exists — `Options::shouldWriteFile()` returns false for an existing
+> path unless `--force` is passed, and a plain `composer require` never passes it. Verified by
+> removing the package's `symfony.lock` entry with the placeholder in place and re-running
+> `composer recipes:install symfony/ai-generic-platform`: Flex reported the recipe as configured,
+> left the file byte-identical, and the storefront stayed at 200.
 >
-> ```fish
-> rm config/packages/ai_generic_platform.yaml
-> bin/console cache:clear
-> ```
+> A comment-only YAML file is safe to leave in place forever: Symfony's loader treats a file that
+> parses to null as empty and skips it.
 >
-> It is not fixable from inside the plugin: the recipe belongs to a dependency and is applied by the
-> *shop's* Flex.
+> The **recipe itself** is still not preventable from inside the plugin — it belongs to a dependency
+> and is applied by the *shop's* Flex. What is preventable is the outage.
 
 Then configure a model — in the Administration under the plugin's settings, or as environment
 variables, which take precedence:
@@ -130,9 +139,33 @@ Override any of these Twig blocks from a theme or plugin:
 | Block | Changes |
 |---|---|
 | `swag_assistant_orb` | the entry point's markup |
-| `swag_assistant_orb_signet` | the Shopware signet on the orb — replace it with your own mark, or drop it |
+| `swag_assistant_face` | the creature's eyes and mouth, shared by the orb and the panel's avatar |
+| `swag_assistant_orb_signet` | empty by default — override it to put a merchant's own mark on the bubble |
 | `swag_assistant_panel_header` | the panel's heading row |
 | `swag_assistant_panel_composer` | the input and send button |
+
+`swag_assistant_orb_signet` used to render the Shopware signet, and now renders nothing: the creature
+has a mouth in that spot, and a mouth that can change expression is worth more there than a mark. The
+block is kept so an existing override still works — position anything you put there clear of the lower
+centre of the face. `assistant/shopware-signet.png` is still shipped for exactly that purpose.
+
+### The creature
+
+The orb, the avatar in the panel header and the bubble leading the thinking indicator are **one
+object**: one Twig include (`swag_assistant_face`), one SCSS mixin (`swag-assistant-bubble`), one
+behaviour module (`assistant/creature.js`). Size travels as `--swag-assistant-unit`, so the same
+markup renders at 60px in the corner and 32px in the header with its proportions intact.
+
+Expressions are a single `data-mood` attribute with seven values — `idle`, `happy`, `laugh`,
+`curious`, `wow`, `sleepy`, `focus`. **JavaScript only ever writes that string; the stylesheet owns
+what each one looks like.** That split is why the whole personality survives
+`prefers-reduced-motion`: every mood changes a *shape*, which is state, so the creature still smiles
+and still squints with every animation switched off. Only the motion — the hops, the squash, the
+pointer tracking — is guarded, and it is guarded in one place.
+
+**No animation library.** Everything is CSS keyframes plus a small Web Animations layer, which is why
+the orb chunk that loads on every storefront page is 2.3 KB gzipped rather than 25 KB. Gestures use
+`composite: 'add'` so a hop composes on top of the resting float instead of replacing it.
 
 The widget renders on every storefront page from `base_body_inner`. To exclude some — checkout, for
 instance — wrap the include in `src/Resources/views/storefront/base.html.twig` in your own condition.

@@ -4,6 +4,10 @@ Assistant widget — design tokens
 Every value here traces to the Shopware brand spec. A new value is a deliberate system addition,
 never a one-off: a hardcoded colour or size beside a token system is the drift this file exists to
 prevent.
+
+Where a value the bubble needs is not in the palette, it is **derived from a palette colour** by
+tint or shade rather than invented — the same move already made for `$swag-assistant-meta`, and the
+reason every colour below can still be traced to an approved one.
 */
 
 // Colour. The palette contains no red, which is why "out of stock" is muted grey rather than
@@ -17,25 +21,48 @@ $swag-assistant-text: #00153e;          // Night Blue
 $swag-assistant-meta: mix(#00153e, #ffffff, 65%);
 $swag-assistant-meta-quiet: #a3a6b5;    // Light Gray — decoration only, never text
 $swag-assistant-accent: #0870ff;        // SW 500 — the one accent colour in the widget
-$swag-assistant-accent-light: #4a8fff;  // SW 400 — orb highlight only
+$swag-assistant-accent-light: #4a8fff;  // SW 400
 $swag-assistant-accent-dark: #005cd7;   // SW 600
-$swag-assistant-brand: #189eff;         // Bright Blue — orb glow and rim only
+$swag-assistant-brand: #189eff;         // Bright Blue
 $swag-assistant-bubble: #f0f6ff;        // SW 50
+$swag-assistant-tint: #f7faff;          // SW 50 lifted — the log's ground, so white cards read
 $swag-assistant-hairline: #e6e9f0;
 $swag-assistant-in-stock: #57d998;      // Teal
 $swag-assistant-low-stock: #f88138;     // Orange — also the warning and error colour
 $swag-assistant-out-of-stock: #838489;  // Dark Gray
 
-// Type. Three steps, ratios 1.33 and 1.25 — a fourth would flatten the hierarchy back out.
-// Inter comes from the theme ($sw-font-family-base), so no font is loaded for this widget.
+/*
+The creature's material.
+
+Three derived values, because a bubble of water needs a depth the two-stop palette cannot express:
+a core dark enough to read as volume, a rim bright enough to read as a caught highlight, and a
+near-white glint for the specular. All three are shades or tints of SW 600 / Bright Blue.
+*/
+$swag-assistant-abyss: mix($swag-assistant-accent-dark, $swag-assistant-text, 72%);
+$swag-assistant-rim: mix($swag-assistant-brand, $swag-assistant-surface, 30%);
+$swag-assistant-glint: mix($swag-assistant-brand, $swag-assistant-surface, 8%);
+
+/*
+Type. Inter comes from the theme ($sw-font-family-base), so no font is loaded for this widget.
+
+Four steps, and the fourth is a floor rather than a design step: 11px is the smallest functional UI
+text worth setting, and `micro` exists so a timestamp has a token to reach for instead of a
+hardcoded number. Anything smaller is not a smaller step, it is unreadable.
+
+**Nothing in this widget sets a font size that is not one of these four.** A 13px or 15px appearing
+next to a scale like this is drift, not a decision.
+*/
+$swag-assistant-font-micro: 11px;
 $swag-assistant-font-meta: 12px;
 $swag-assistant-font-body: 16px;
 $swag-assistant-font-heading: 20px;
 
-// Radius. The brand spec asks for the tighter option; these are it.
+// Radius. The brand spec asks for the tighter option; these are it. The pill is not a fourth step
+// in that scale — it is `border-radius: 999px` on controls that are round by construction.
 $swag-assistant-radius-panel: 12px;
 $swag-assistant-radius-card: 8px;
 $swag-assistant-radius-control: 6px;
+$swag-assistant-radius-pill: 999px;
 
 // Geometry.
 $swag-assistant-orb-size: 60px;
@@ -46,5 +73,34 @@ $swag-assistant-panel-width: 420px;
 // Above the theme's scroll-up button, which shares this corner.
 $swag-assistant-z: 1035;
 
-// Motion. Exponential ease-out: real objects decelerate, they do not bounce.
+/*
+Elevation. Two layers each: a tight contact shadow that says the surface touches something, and a
+wide ambient one that says how far off the page it floats. A single blurred shadow reads as a sticker.
+
+Neutral, always — every one of these is a tint of Night Blue at low alpha with a real vertical
+offset. A coloured, zero-offset halo is not elevation, it is a glow, and this widget has no glows.
+
+**A surface takes elevation or a border, never both.** The panel floats, so it takes the shadow. A
+card sits in the flow on the log's own ground, so it takes the edge. Stacking the two is how a
+surface ends up asserting it is both.
+*/
+$swag-assistant-lift-1: 0 1px 2px rgba(0, 21, 62, 0.06), 0 4px 12px rgba(0, 21, 62, 0.06);
+$swag-assistant-lift-2: 0 2px 6px rgba(0, 21, 62, 0.08), 0 12px 28px rgba(0, 21, 62, 0.12);
+$swag-assistant-lift-3: 0 4px 12px rgba(0, 21, 62, 0.10), 0 24px 64px rgba(0, 21, 62, 0.18);
+
+/*
+Motion.
+
+`$swag-assistant-ease` and `-ease-out` are exponential decelerations: real objects arrive and stop.
+Everything structural uses them.
+
+`-ease-spring` overshoots, and is scoped to **the creature's own body and face, and nothing else** —
+a hop, a squash, a mouth opening into a laugh. A soap bubble that stopped dead would be the wrong
+object, so here the overshoot is the brief rather than a reflex.
+
+Everything that is not the creature decelerates: the panel, the nudge, the chips, every control. An
+overshoot on a panel edge is the tell that the easing was picked once and then applied everywhere.
+*/
 $swag-assistant-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+$swag-assistant-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+$swag-assistant-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);

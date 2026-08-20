@@ -1,0 +1,357 @@
+/*
+Assistant widget — the creature
+==============================================
+The assistant appears in three places: the orb in the corner, docked in the panel header, and
+leading the thinking indicator. It is **one object**, so it has one implementation here rather than
+three that drift apart. Both mixins are pure geometry and material; every behaviour is a `data-mood`
+selector further down this file.
+
+Size travels as `--swag-assistant-unit`, a length the host sets once. Every dimension in the face is
+a multiple of it, so the same markup renders at 60px in the corner and 26px in the header with the
+proportions intact — no second set of magic numbers, and no `transform: scale()` softening the
+1.5px rim into mush.
+*/
+
+/*
+The bubble's material: a droplet of shop-blue water.
+
+Four layers, because that is what reads as liquid rather than as a glossy plastic button:
+
+1. the body — a radial gradient from a bright shoulder to a dark core, offset up and left so the
+   light has a direction;
+2. `::before` — the specular glint, a small soft ellipse where the light source actually is;
+3. `::after` — the caught rim, brightest at the top-left and fading away by the bottom-right,
+   which is what a curved transparent surface does and what a uniform 1.5px ring never did;
+4. the host's own `box-shadow` — a contact shadow and an ambient one, both neutral.
+
+There is deliberately no glow around it. A coloured halo on the page behind the bubble is the thing
+that turns a rendered object back into a sticker, and the rim above already carries the light.
+
+The brand spec permits a gradient for a brand moment such as an illustration. This is the widget's
+one illustration, and it is the only place gradients appear: every control surface below is a flat
+fill.
+*/
+@mixin swag-assistant-bubble {
+    position: relative;
+    border-radius: 50%;
+    background:
+        radial-gradient(
+            circle at 30% 24%,
+            $swag-assistant-accent-light 0%,
+            $swag-assistant-accent 38%,
+            $swag-assistant-accent-dark 72%,
+            $swag-assistant-abyss 100%
+        );
+    // Isolated so the layers below composite against the bubble, not against whatever it floats over.
+    isolation: isolate;
+
+    // The glint. Diffuse rather than a hard white dot: a wet surface scatters its highlight, and a
+    // crisp one turns the bubble back into moulded plastic.
+    &::before {
+        content: '';
+        position: absolute;
+        top: 13%;
+        left: 19%;
+        width: 30%;
+        height: 22%;
+        border-radius: 50%;
+        background: radial-gradient(
+            ellipse at center,
+            rgba(255, 255, 255, 0.72) 0%,
+            rgba(255, 255, 255, 0.22) 48%,
+            rgba(255, 255, 255, 0) 100%
+        );
+        transform: rotate(-24deg);
+    }
+
+    // The caught rim. A gradient border via `mask`, so the ring itself can fade — the thing a plain
+    // `border` cannot do, and the reason the old uniform ring read as a sticker outline.
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: max(1px, calc(0.025 * var(--swag-assistant-unit, 60px)));
+        background: linear-gradient(
+            145deg,
+            $swag-assistant-rim 0%,
+            rgba(255, 255, 255, 0.45) 22%,
+            rgba(255, 255, 255, 0) 52%,
+            rgba(255, 255, 255, 0.14) 88%,
+            $swag-assistant-rim 100%
+        );
+        mask:
+            linear-gradient(#000 0 0) content-box exclude,
+            linear-gradient(#000 0 0);
+        // `mask-composite` is the Safari/WebKit spelling of the same intersection.
+        -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        pointer-events: none;
+    }
+}
+
+/*
+The face.
+
+Every shape is a wrapper of fixed size with the visible shape centred inside it. That looks like one
+element too many until an expression changes: a mood that widens an eye or turns it into an arc
+would shift its own centre if the shape were the positioned element, and the eyes would drift apart
+as the creature laughed. The wrapper holds the anchor; the shape is free to become anything.
+*/
+@mixin swag-assistant-face {
+    position: absolute;
+    inset: 0;
+    // The whole face slides a little toward whatever the creature is looking at, rather than pupils
+    // moving inside static eyes — these eyes have no pupils to move.
+    transform: translate(var(--swag-assistant-look-x, 0px), var(--swag-assistant-look-y, 0px));
+    transition: transform 380ms $swag-assistant-ease-out;
+    pointer-events: none;
+}
+
+.swag-assistant-face {
+    @include swag-assistant-face;
+}
+
+.swag-assistant-face__eye,
+.swag-assistant-face__mouth {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.swag-assistant-face__eye {
+    top: calc(0.3 * var(--swag-assistant-unit));
+    width: calc(0.22 * var(--swag-assistant-unit));
+    height: calc(0.28 * var(--swag-assistant-unit));
+
+    &--left {
+        left: calc(0.235 * var(--swag-assistant-unit));
+    }
+
+    &--right {
+        right: calc(0.235 * var(--swag-assistant-unit));
+    }
+}
+
+.swag-assistant-face__mouth {
+    left: 0;
+    right: 0;
+    top: calc(0.6 * var(--swag-assistant-unit));
+    height: calc(0.2 * var(--swag-assistant-unit));
+}
+
+/*
+The eye at rest: an upright capsule. Height and radius are what every mood rewrites, so both
+transition — and `background-color` and `border-width` with them, because two moods trade the filled
+capsule for a drawn arc.
+*/
+.swag-assistant-face__pupil {
+    display: block;
+    width: calc(0.115 * var(--swag-assistant-unit));
+    height: calc(0.235 * var(--swag-assistant-unit));
+    border: 0 solid $swag-assistant-surface;
+    border-radius: $swag-assistant-radius-pill;
+    background: $swag-assistant-surface;
+    transition:
+        width 220ms $swag-assistant-ease-out,
+        height 220ms $swag-assistant-ease-out,
+        border-radius 220ms $swag-assistant-ease-out,
+        border-width 220ms $swag-assistant-ease-out,
+        background-color 180ms linear,
+        transform 140ms $swag-assistant-ease;
+    // The phase is randomised per creature in JS. Without it every bubble in every open tab blinks
+    // in lockstep, which reads as a synchronised animation rather than as something alive.
+    animation: swag-assistant-blink 7s var(--swag-assistant-blink-delay, 0ms) infinite;
+}
+
+/*
+The mouth. Absent at rest — a resting face is eyes only, and drawing a permanent line under them
+made the creature look worried. Each mood below gives it a shape to grow into.
+*/
+.swag-assistant-face__lip {
+    display: block;
+    width: 0;
+    height: 0;
+    border: 0 solid $swag-assistant-surface;
+    background: transparent;
+    opacity: 0;
+    transition:
+        width 240ms $swag-assistant-ease-spring,
+        height 240ms $swag-assistant-ease-spring,
+        border-radius 240ms $swag-assistant-ease-out,
+        border-width 200ms $swag-assistant-ease-out,
+        background-color 200ms linear,
+        opacity 180ms linear;
+}
+
+/*
+Expressions
+----------------------------------------------
+One attribute, six values, no JavaScript styling. `data-mood` is set on whichever element hosts the
+face, which is why the same six rules serve the orb, the header avatar and the thinking indicator.
+
+Note what is deliberately *not* motion: every mood below changes a **shape**. That is why the whole
+expression system survives `prefers-reduced-motion` untouched — the creature still smiles and still
+squints, it just stops bobbing while it does it.
+*/
+
+/* Content, and mildly interested. A closed-lip smile. */
+[data-mood='happy'] {
+    .swag-assistant-face__pupil {
+        height: calc(0.16 * var(--swag-assistant-unit));
+    }
+
+    .swag-assistant-face__lip {
+        width: calc(0.26 * var(--swag-assistant-unit));
+        height: calc(0.11 * var(--swag-assistant-unit));
+        border-bottom-width: max(1.5px, calc(0.035 * var(--swag-assistant-unit)));
+        border-radius: 0 0 $swag-assistant-radius-pill $swag-assistant-radius-pill;
+        opacity: 1;
+    }
+}
+
+/* Laughing. The eyes stop being capsules and become the two arcs of a `^ ^`, drawn rather than
+   filled, and the mouth opens into a half-ellipse. */
+[data-mood='laugh'] {
+    .swag-assistant-face__pupil {
+        width: calc(0.185 * var(--swag-assistant-unit));
+        height: calc(0.1 * var(--swag-assistant-unit));
+        border-top-width: max(1.5px, calc(0.04 * var(--swag-assistant-unit)));
+        border-radius: $swag-assistant-radius-pill $swag-assistant-radius-pill 0 0;
+        background: transparent;
+    }
+
+    .swag-assistant-face__lip {
+        width: calc(0.3 * var(--swag-assistant-unit));
+        height: calc(0.19 * var(--swag-assistant-unit));
+        border-radius: calc(0.03 * var(--swag-assistant-unit)) calc(0.03 * var(--swag-assistant-unit))
+            calc(0.18 * var(--swag-assistant-unit)) calc(0.18 * var(--swag-assistant-unit));
+        background: $swag-assistant-surface;
+        opacity: 1;
+    }
+}
+
+/* Caught mid-thought, looking off to one side. The tilt is on the face, so the eyes tilt with it. */
+[data-mood='curious'] {
+    .swag-assistant-face {
+        transform:
+            translate(var(--swag-assistant-look-x, 0px), var(--swag-assistant-look-y, 0px))
+            rotate(-7deg);
+    }
+
+    .swag-assistant-face__eye--right .swag-assistant-face__pupil {
+        height: calc(0.19 * var(--swag-assistant-unit));
+    }
+
+    .swag-assistant-face__lip {
+        width: calc(0.1 * var(--swag-assistant-unit));
+        height: calc(0.1 * var(--swag-assistant-unit));
+        border-radius: 50%;
+        background: $swag-assistant-surface;
+        opacity: 0.85;
+    }
+}
+
+/* Surprised — the shape the creature makes when an answer lands. Round eyes, small open mouth. */
+[data-mood='wow'] {
+    .swag-assistant-face__pupil {
+        width: calc(0.17 * var(--swag-assistant-unit));
+        height: calc(0.17 * var(--swag-assistant-unit));
+        border-radius: 50%;
+    }
+
+    .swag-assistant-face__lip {
+        width: calc(0.13 * var(--swag-assistant-unit));
+        height: calc(0.15 * var(--swag-assistant-unit));
+        border-radius: 50%;
+        background: $swag-assistant-surface;
+        opacity: 1;
+    }
+}
+
+/* Idle for a long time. Eyes almost shut, and the blink stops — a creature that is dozing does not
+   blink. */
+[data-mood='sleepy'] {
+    .swag-assistant-face__pupil {
+        width: calc(0.15 * var(--swag-assistant-unit));
+        height: calc(0.045 * var(--swag-assistant-unit));
+        animation: none;
+    }
+}
+
+/* Concentrating: the panel is open and the creature is listening. A level line, not a frown. */
+[data-mood='focus'] {
+    .swag-assistant-face__pupil {
+        height: calc(0.13 * var(--swag-assistant-unit));
+    }
+
+    .swag-assistant-face__lip {
+        width: calc(0.17 * var(--swag-assistant-unit));
+        height: max(1.5px, calc(0.03 * var(--swag-assistant-unit)));
+        border-radius: $swag-assistant-radius-pill;
+        background: rgba(255, 255, 255, 0.7);
+        opacity: 1;
+    }
+}
+
+@keyframes swag-assistant-blink {
+    0%,
+    95%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    97% {
+        transform: scaleY(0.08);
+    }
+}
+
+/*
+The silhouette. A soap bubble is never a circle for long, so the body's radius drifts through four
+asymmetric states. Slow (9s) and shallow on purpose: at this size a wobble you can catch yourself
+watching is a wobble that has become a distraction.
+*/
+@keyframes swag-assistant-wobble {
+    0%,
+    100% {
+        border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+    }
+
+    25% {
+        border-radius: 54% 46% 49% 51% / 47% 52% 48% 53%;
+    }
+
+    50% {
+        border-radius: 47% 53% 52% 48% / 53% 47% 53% 47%;
+    }
+
+    75% {
+        border-radius: 51% 49% 46% 54% / 49% 51% 49% 51%;
+    }
+}
+
+/* The rest position: a shallow rise and fall, as if floating in water. */
+@keyframes swag-assistant-float {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-3px) scale(1.02);
+    }
+}
+
+/* Motion is optional; the expression is not. Only the loops go — every `data-mood` shape above is
+   state, and state is never decoration. */
+@media (prefers-reduced-motion: reduce) {
+    .swag-assistant-face,
+    .swag-assistant-face__pupil,
+    .swag-assistant-face__lip {
+        transition: none;
+        animation: none;
+    }
+}

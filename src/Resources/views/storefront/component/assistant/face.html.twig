@@ -1,0 +1,34 @@
+{#
+    The creature's face.
+
+    Included wherever the assistant appears with a face — the orb in the corner and the avatar docked
+    in the panel header — so the two are literally the same markup rather than two that drift. The
+    thinking indicator builds the same five elements in `assistant/face.js`, because it is created
+    client-side at the moment a turn starts.
+
+    Every visible shape sits inside a wrapper of fixed size. That looks like one element too many
+    until an expression changes: a mood that widens an eye or turns it into an arc would shift its own
+    centre if the shape were the positioned element, and the eyes would drift apart every time the
+    creature laughed. The wrapper holds the anchor; the shape inside it is free to become anything.
+
+    Sizing comes from `--swag-assistant-unit` on the host, so the same markup renders at 60px in the
+    corner and 34px in the header with its proportions intact.
+#}
+{% block swag_assistant_face %}
+    <span class="swag-assistant-face" aria-hidden="true">
+        <span class="swag-assistant-face__eye swag-assistant-face__eye--left">
+            <i class="swag-assistant-face__pupil"></i>
+        </span>
+
+        <span class="swag-assistant-face__eye swag-assistant-face__eye--right">
+            <i class="swag-assistant-face__pupil"></i>
+        </span>
+
+        {# Absent at rest, and every mood gives it a shape to grow into. This is where the Shopware
+           signet used to sit; a mouth the creature can actually change is worth more there than a
+           mark, and the widget runs in a merchant's storefront where our mark was never the point. #}
+        <span class="swag-assistant-face__mouth">
+            <i class="swag-assistant-face__lip"></i>
+        </span>
+    </span>
+{% endblock %}

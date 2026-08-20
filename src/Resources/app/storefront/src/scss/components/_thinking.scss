@@ -1,89 +1,89 @@
 /*
-Assistant widget — the thinking indicator
+Assistant widget — the wait
 ==============================================
-A real turn takes ~19s. Each phase gives the orb something different to do, so a shopper sees state
-changing rather than one loop repeating. `[data-phase]` is set from JS on elapsed time.
+A real turn takes ~19 seconds, measured, which makes this the single most important element in the
+widget. A two-second loop played ten times is where "cute" goes to die, so the indicator is *phased*:
+the creature changes what it is doing and the copy changes with it, and what a shopper perceives is
+state changing rather than one animation repeating.
+
+`[data-phase]` is set from elapsed time by `thinking.js`, and `[data-mood]` beside it drives the face
+through the same six expressions the orb uses. This file owns only the body motion for each phase.
+
+**Nothing here claims to know what the server is doing.** Trace events are persisted once, after the
+run completes, so there is no progress signal to read — a line like "searching the catalogue…" would
+be invented, in a product whose whole thesis is that the interface never states what the server did
+not produce. The copy only ever says how long it has been, which is something we actually know.
 */
 
 .swag-assistant-thinking {
-    position: relative;
     display: flex;
     gap: 10px;
     align-items: center;
-    margin-bottom: 20px;
-    color: $swag-assistant-meta;
-    font-size: $swag-assistant-font-meta;
-    font-weight: 500;
+    margin-bottom: 18px;
+    animation: swag-assistant-thinking-in 300ms $swag-assistant-ease-out both;
+}
+
+/*
+The stage holds the creature and the shelf it scans as two separate things. Nesting the shelf inside
+the creature would have been fewer elements and wrong: the creature tilts during the search phase,
+and a shelf that tilts with it is not a shelf being scanned — it is a decoration glued to a face.
+*/
+.swag-assistant-thinking__stage {
+    --swag-assistant-unit: 34px;
+
+    position: relative;
+    flex: 0 0 auto;
+    width: var(--swag-assistant-unit);
+    height: var(--swag-assistant-unit);
 }
 
 .swag-assistant-thinking__orb {
-    position: relative;
-    flex: 0 0 auto;
-    width: 32px;
-    height: 32px;
-    background: radial-gradient(
-        circle at 32% 28%,
-        $swag-assistant-accent-light 0%,
-        $swag-assistant-accent 45%,
-        $swag-assistant-accent-dark 100%
-    );
-    border-radius: 50%;
-}
+    @include swag-assistant-bubble;
 
-.swag-assistant-thinking__face {
     position: absolute;
     inset: 0;
+    // Neutral, like every other shadow in the widget. A blue-tinted one was left here after the orb's
+    // coloured halo went, which is exactly how a rule survives in one file and dies in another.
+    box-shadow:
+        0 1px 3px rgba(0, 21, 62, 0.16),
+        0 4px 12px rgba(0, 21, 62, 0.16),
+        inset 0 -2px 5px rgba(0, 21, 62, 0.26);
+    animation: swag-assistant-wobble 9s ease-in-out infinite;
 }
 
-.swag-assistant-thinking__eye {
-    position: absolute;
-    top: 36%;
-    width: 4px;
-    height: 9px;
-    background: $swag-assistant-surface;
-    border-radius: 2px;
-    transition: height 200ms $swag-assistant-ease;
-
-    &:first-of-type {
-        left: 27%;
-    }
-
-    &:last-of-type {
-        right: 27%;
-    }
+.swag-assistant-thinking__copy {
+    color: $swag-assistant-meta;
+    font-size: 12px;
+    font-weight: 500;
+    // The copy swaps four times across ~19s. Fading each one in stops the change reading as a glitch.
+    animation: swag-assistant-thinking-copy 300ms $swag-assistant-ease-out;
 }
 
-// The shelf the orb appears to scan during the search phase.
+// The shelf the creature appears to scan during the search phase.
 .swag-assistant-thinking__sweep {
     position: absolute;
     left: 0;
-    bottom: -2px;
-    width: 32px;
+    right: 0;
+    bottom: -4px;
     height: 2px;
-    background: #c8ddff; // SW 100
-    border-radius: 1px;
+    border-radius: $swag-assistant-radius-pill;
+    background: $swag-assistant-brand;
     opacity: 0;
 }
 
-/* Phase 1 — wake: arrives, blinks twice. */
-[data-phase='wake'] {
-    .swag-assistant-thinking__orb {
-        animation: swag-assistant-think-wake 700ms $swag-assistant-ease both;
-    }
-
-    .swag-assistant-thinking__eye {
-        animation: swag-assistant-think-blink 1400ms steps(1, end) 2;
-    }
+/* Phase 1 — wake: the creature arrives. */
+[data-phase='wake'] .swag-assistant-thinking__orb {
+    animation:
+        swag-assistant-think-wake 620ms $swag-assistant-ease-spring both,
+        swag-assistant-wobble 9s ease-in-out infinite;
 }
 
-/* Phase 2 — search: tilts, eyes track a sweep beneath it. */
+/* Phase 2 — search: it tilts side to side, and the sweep passes beneath it. */
 [data-phase='search'] {
     .swag-assistant-thinking__orb {
-        animation: swag-assistant-think-tilt 2400ms ease-in-out infinite;
-    }
-
-    .swag-assistant-thinking__eye {
-        animation: swag-assistant-think-scan 2400ms ease-in-out infinite;
+        animation:
+            swag-assistant-think-tilt 2400ms ease-in-out infinite,
+            swag-assistant-wobble 9s ease-in-out infinite;
     }
 
     .swag-assistant-thinking__sweep {
@@ -91,88 +91,75 @@ changing rather than one loop repeating. `[data-phase]` is set from JS on elapse
     }
 }
 
-/* Phase 3 — still working: slow bob, one eye squints. */
-[data-phase='waiting'] {
-    .swag-assistant-thinking__orb {
-        animation: swag-assistant-think-bob 3200ms ease-in-out infinite;
+/* Phase 3 — still working: a slow, patient bob. */
+[data-phase='waiting'] .swag-assistant-thinking__orb {
+    animation:
+        swag-assistant-think-bob 3200ms ease-in-out infinite,
+        swag-assistant-wobble 9s ease-in-out infinite;
+}
+
+/* Phase 4 — patience: it settles and breathes. `thinking.js` also turns the face `sleepy` here, which
+   is the part that survives reduced motion. */
+[data-phase='patient'] .swag-assistant-thinking__orb {
+    animation:
+        swag-assistant-think-settle 2800ms ease-in-out infinite,
+        swag-assistant-wobble 9s ease-in-out infinite;
+}
+
+@keyframes swag-assistant-thinking-in {
+    from {
+        transform: translateY(6px);
+        opacity: 0;
     }
 
-    .swag-assistant-thinking__eye:last-of-type {
-        height: 4px;
+    to {
+        transform: translateY(0);
+        opacity: 1;
     }
 }
 
-/* Phase 4 — patience: slow pulse, eyes half closed. */
-[data-phase='patient'] {
-    .swag-assistant-thinking__orb {
-        animation: swag-assistant-think-pulse 2800ms ease-in-out infinite;
+@keyframes swag-assistant-thinking-copy {
+    from {
+        opacity: 0;
     }
 
-    .swag-assistant-thinking__eye {
-        height: 3px;
+    to {
+        opacity: 1;
     }
 }
 
 @keyframes swag-assistant-think-wake {
-    0% {
-        transform: scale(0.6);
+    from {
+        transform: scale(0.4);
         opacity: 0;
     }
 
-    60% {
-        transform: scale(1.05);
-        opacity: 1;
-    }
-
-    100% {
+    to {
         transform: scale(1);
         opacity: 1;
-    }
-}
-
-@keyframes swag-assistant-think-blink {
-    0%,
-    88%,
-    100% {
-        transform: scaleY(1);
-    }
-
-    92% {
-        transform: scaleY(0.1);
     }
 }
 
 @keyframes swag-assistant-think-tilt {
     0%,
     100% {
-        transform: rotate(-7deg);
+        transform: rotate(-8deg) translateX(-1px);
     }
 
     50% {
-        transform: rotate(7deg);
-    }
-}
-
-@keyframes swag-assistant-think-scan {
-    0%,
-    100% {
-        transform: translateX(-1px);
-    }
-
-    50% {
-        transform: translateX(1px);
+        transform: rotate(8deg) translateX(1px);
     }
 }
 
 @keyframes swag-assistant-think-sweep {
     0%,
     100% {
-        opacity: 0.25;
-        transform: scaleX(0.4) translateX(-12px);
+        opacity: 0.2;
+        transform: scaleX(0.35) translateX(-13px);
     }
 
     50% {
-        opacity: 1;
+        opacity: 0.9;
         transform: scaleX(1) translateX(6px);
     }
 }
@@ -184,30 +171,34 @@ changing rather than one loop repeating. `[data-phase]` is set from JS on elapse
     }
 
     50% {
-        transform: translateY(-3px);
+        transform: translateY(-4px);
     }
 }
 
-@keyframes swag-assistant-think-pulse {
+@keyframes swag-assistant-think-settle {
     0%,
     100% {
-        transform: scale(1);
-        opacity: 0.85;
+        transform: scale(0.97);
     }
 
     50% {
-        transform: scale(1.05);
-        opacity: 1;
+        transform: scale(1.03);
     }
 }
 
-// Motion is optional; the reassurance is not. Every phase still swaps the copy, and the eye-shape
-// changes for the later phases are kept because they are state, not decoration.
+/*
+Motion is optional; the reassurance is not. Every phase still swaps the copy, and `thinking.js` still
+swaps the mood — so the creature visibly changes expression four times across the wait even with
+every animation removed. That is the part that was carrying the information.
+*/
 @media (prefers-reduced-motion: reduce) {
+    .swag-assistant-thinking,
     .swag-assistant-thinking__orb,
-    .swag-assistant-thinking__eye,
-    .swag-assistant-thinking__sweep {
-        animation: none !important;
+    .swag-assistant-thinking__copy,
+    .swag-assistant-thinking__sweep,
+    [data-phase] .swag-assistant-thinking__orb,
+    [data-phase] .swag-assistant-thinking__sweep {
+        animation: none;
         transition: none;
     }
 

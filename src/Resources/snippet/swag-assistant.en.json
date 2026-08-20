@@ -9,7 +9,12 @@
       "inputLabel": "Your message",
       "inputPlaceholder": "Ask about this shop…",
       "send": "Send",
-      "defaultGreeting": "Hi. I can look things up in this shop's catalogue."
+      "defaultGreeting": "Hi. I can look things up in this shop's catalogue.",
+      "reset": "Start a new conversation",
+      "suggestionsLabel": "Things you could ask",
+      "suggestionOne": "What do you sell?",
+      "suggestionTwo": "Help me find a gift",
+      "suggestionThree": "How fast is delivery?"
     },
     "card": {
       "view": "View product",
