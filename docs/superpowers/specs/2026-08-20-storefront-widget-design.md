@@ -18,13 +18,19 @@ The backend is done and measured. This design consumes it and must not re-litiga
 
 ```
 POST /assistant/chat        {"message": string, "token"?: string(32 hex)}
-  → 200 {"token", "prose", "outcome", "cards": [...]}
+  → 200 {"token", "prose", "outcome", "cards": [...],
+         "warnings": {"unbackedPrices": [...], "unbackedAvailabilityClaims": [...]}}
   → 400 malformed, empty, or > 2000 characters
   → 503 the shop has no model configured
 
 GET  /assistant/history?token=…
-  → 200 {"messages": [{"role", "prose", "cardIds"}]}
+  → 200 {"messages": [{"role", "prose", "cardIds"}]}     ← carries no warnings (W24)
 ```
+
+> **`warnings` landed on `feat/grounded-core` in commit `42ca719` while this design was being
+> written, and `docs/HANDOFF.md` does not yet document it.** The code is the authority here; the
+> handoff's endpoint section and its known-issue 1 are both three commits stale. Verified by reading
+> `AssistantController`, `AssistantTurn`, `AvailabilityClaimExtractor` and `FactRenderer` at `HEAD`.
 
 A card carries `id, name, description, price, currency, stock, stockSource, inStock, deliveryTime,
 url, imageUrl, options`. **Every figure comes from a server-rendered `ProductCard`; nothing is parsed
@@ -40,6 +46,7 @@ Each was obtained by running the thing, not by reading about it.
 | **A real turn takes ~19 s** | one `curl` against `POST /assistant/chat` | the loading state is the single most important element in the widget (§6) |
 | `imageUrl` is `null` for fixture products | same response | the no-image state is a designed surface, not an edge case (§5.4) |
 | `deliveryTime` is `null` | same response | the row is omitted, never rendered as `—` or `null` |
+| **`unbackedAvailabilityClaims` fires only when *every* rendered card is out of stock** (or there are no cards) | `FactRenderer::unbackedAvailabilityInProse()` doc block at `HEAD` | the signal is narrow by design, so when it fires the true state is **known** — the UI can state a specific fact, not a vague hedge (W24) |
 | **No per-message timestamp exists** | `ConversationTurn` is `{role, prose, cardIds, outcome}`; the transcript is a single `JsonField` (`ConversationDefinition:65`) | timestamps require a backend change (W20) |
 | Plugin JS is collected from `dist/storefront/js/<name>/<name>.js` | `StorefrontPluginConfigurationFactory:131` | a committed `dist` makes the plugin work on install (W3) |
 | `window.PluginBaseClass` is a documented global | `plugin.manager.js:799` + developer docs | no framework import, so no bundler-resolution requirement |
@@ -346,10 +353,45 @@ The row scrolls inside its own container; the panel never scrolls horizontally.
 | `price` + `currency` | `Intl.NumberFormat` with the storefront locale; we receive `74.9` and `"EUR"`, not a formatted string |
 | `inStock: false` | Dark Gray dot, explicit label, Add button disabled **with a stated reason** |
 
-**The `stockSource` note is the most valuable sentence in the UI.** It is D4 made visible to a
-shopper, and nothing else in the product says it. Known issue 1 — the assistant calling a sold-out
-variant available — is not fixed by this widget, but the card makes the contradiction visible at the
-moment it happens instead of invisible.
+**The `stockSource` note is D4 made visible to a shopper**, and nothing else in the product says it.
+
+### 5.5 The `warnings` field
+
+### W24 — When the prose contradicts the cards, the UI corrects it in words
+
+`POST /assistant/chat` returns `warnings.unbackedPrices` and
+`warnings.unbackedAvailabilityClaims` — the phrases in the reply that the rendered cards contradict.
+The controller's own comment states the intent: *"The cards are always authoritative; this says when
+the sentence beside them is not, so the interface can annotate it, de-emphasise it, or drop it."*
+Ignoring it would leave the handsomest part of the product carrying the ugliest known defect.
+
+**`unbackedAvailabilityClaims` non-empty** → a correction notice renders **between the prose and the
+cards**:
+
+> ⚠ *This is currently out of stock. The card below is correct.*
+
+The notice can be this specific because the signal is narrow: it fires only when *every* rendered
+card is out of stock, so the true state is not a guess. Orange, icon plus text label, never colour
+alone.
+
+**`unbackedPrices` non-empty** → a quieter note in the same slot: *"The prices on the cards are the
+ones that apply."*
+
+Three things this deliberately does **not** do:
+
+- **It does not edit or delete the prose.** Rewriting a reply to hide a mistake is how a product
+  loses the right to be trusted, and phrase-level surgery would mangle sentences.
+- **It does not reduce the prose's opacity.** "De-emphasise" is one of the options the comment
+  offers, but dimming body text fails the contrast floor in §8. Emphasis is added to the correction,
+  not subtracted from the text.
+- **It does not highlight the offending phrase inline.** Underlining the model's error mid-sentence
+  draws the eye to a failure and undermines confidence in every other sentence.
+
+**`GET /assistant/history` does not return `warnings`, so a reloaded conversation loses the
+correction** and the misleading sentence returns unannotated. That is unacceptable for the most
+shopper-visible defect in the product, and the fix sits on exactly the seam W20 already opens: the
+transcript is where both `createdAt` and `warnings` belong. **W20 is therefore extended to persist
+and re-emit warnings alongside the timestamp** — same file, same mapping, one change instead of two.
 
 ---
 
@@ -421,9 +463,13 @@ No per-message timestamp exists today: the transcript is one `JsonField` and `Co
 `{role, prose, cardIds, outcome}`. Since the spec requires a timestamp under every message and a
 conversation survives page loads, the timestamp must survive with it.
 
-- `ConversationTurn` gains `?\DateTimeImmutable $createdAt`
-- the transcript JSON stores it per turn; deserialisation tolerates existing rows without one
-- both `POST /assistant/chat` and `GET /assistant/history` emit it
+- `ConversationTurn` gains `?\DateTimeImmutable $createdAt` **and the turn's `warnings`** (W24)
+- the transcript JSON stores both per turn; deserialisation tolerates existing rows without either
+- both `POST /assistant/chat` and `GET /assistant/history` emit them
+
+Warnings ride along with the timestamp because they need the identical change — the same DTO, the
+same transcript mapping, the same history payload. Splitting them would mean touching
+`DalConversationStore` twice for one seam.
 
 A client-side alternative (timestamps in `sessionStorage` beside the token, which has an identical
 lifetime) was rejected: message times would exist only in one browser tab and be invisible to a
@@ -451,6 +497,7 @@ button needs no token. On success the shop's cart count refreshes.
 | `429` / kill switch | *"The assistant is unavailable right now."* Input disabled, orb stays |
 | Network failure | the shopper's message stays in the log with a retry affordance; nothing is silently lost |
 | Cart add failed | inline on the card, not a toast |
+| Prose contradicts the cards | correction notice between prose and cards (W24) |
 
 ### W23 — No cancel affordance
 
@@ -500,9 +547,11 @@ a contract deliberately changed is legitimate; loosening one to get green is not
 - **SSE / token streaming.** The largest perceived-latency win and a backend change (controller,
   runner, incremental trace writes). W16 keeps the rendering path incremental so it drops in later.
 - **Real staged progress from trace events.** Needs incremental trace writes plus a polling endpoint.
-- **Fixing known issue 1** (the assistant calling a sold-out variant available). That is an
-  availability-claim extractor beside `CurrencyFigureExtractor`, not a UI change. The card makes the
-  contradiction *visible*; it does not prevent it.
+- **Widening the availability-claim detector.** The extractor landed in commit `42ca719` and is
+  deliberately narrow: a mixed result set with one in-stock and one sold-out card does not flag a
+  claim about the sold-out one, because the prose does not reliably say which product it means. The
+  widget consumes the signal as given (W24) and does not attempt to improve it. Widening it needs the
+  claim tied to a specific product — a grounding change, not a UI one.
 - **Markdown rendering in prose.** Prose is escaped and rendered as plain text with paragraph breaks.
   A parser is an XSS surface for no established benefit.
 - **Admin trace UI.** Cut in ruling R61; the Admin API already serves it.
@@ -525,6 +574,12 @@ command behind it is not evidence.
    choreography fights us. Decide with the code in front of us.
 5. **`options` ordering.** The payload is a map (`{"Size":"M","Colour":"Blue"}`); rendering order is
    whatever the server produced. If it proves unstable, sort deterministically.
+6. **The branch was moving while this was written.** `warnings` landed in `42ca719` mid-design;
+   `AssistantRunner`, `FactRenderer` and `ProseAudit` had **uncommitted edits in the working tree**;
+   and `DalConversationStore` — which W20 must modify — changed in `36ada74`. Every line reference in
+   this document was read at that `HEAD`. **Re-read these files at implementation time instead of
+   trusting the references here**, and confirm the `warnings` shape has not moved again. This is the
+   same failure class as the handoff's *"a green test proves the tree it ran on"*.
 
 ---
 
