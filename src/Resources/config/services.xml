@@ -117,6 +117,17 @@
             </call>
         </service>
 
+        <!-- Re-renders the cards a stored conversation referred to. `GET /assistant/history` returns
+             ids only, so without this route a re-hydrated conversation shows prose describing a card
+             that is not there. Facts come from the catalogue now, never from the transcript. -->
+        <service id="Swag\AssistantStarterKit\Controller\AssistantCardController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+        </service>
+
         <!-- Console: verifies the gateway against the real catalogue and dumps a trace. The first
              thing in this project that executes a DAL query, and the first trace reader. -->
         <service id="Swag\AssistantStarterKit\Command\TraceDumper"/>

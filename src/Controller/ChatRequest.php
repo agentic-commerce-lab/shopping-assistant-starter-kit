@@ -72,7 +72,7 @@ final readonly class ChatRequest
 
         $token = trim($value);
 
-        return preg_match('/^[0-9a-f]{32}$/', $token) === 1 ? $token : null;
+        return preg_match(CardIdList::ID_PATTERN, $token) === 1 ? $token : null;
     }
 
     /**

@@ -1,0 +1,84 @@
+/*
+Assistant widget — messages
+==============================================
+One contrast carries the whole hierarchy: the shopper is contained, the assistant is not.
+*/
+
+.swag-assistant-message {
+    margin-bottom: 20px;
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+        transform 240ms $swag-assistant-ease,
+        opacity 240ms $swag-assistant-ease;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    // Applied for one frame on a genuinely new message, then removed. Re-hydrated history never
+    // gets it, so nothing ever sits at opacity 0 at rest.
+    &.is-entering {
+        transform: translateY(4px);
+        opacity: 0;
+    }
+}
+
+// The assistant: unbounded, full width, no container. The shop speaking.
+.swag-assistant-message--assistant {
+    .swag-assistant-message__body p {
+        margin: 0 0 8px;
+        font-size: $swag-assistant-font-body;
+        line-height: 1.55;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}
+
+// The shopper: contained, right-aligned.
+.swag-assistant-message--user {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+
+    .swag-assistant-message__body {
+        max-width: 85%;
+        padding: 10px 12px;
+        background: $swag-assistant-bubble;
+        // The one chat affordance kept: an asymmetric corner. A uniformly-radiused rectangle stops
+        // reading as speech.
+        border-radius: $swag-assistant-radius-panel $swag-assistant-radius-panel 4px $swag-assistant-radius-panel;
+    }
+
+    .swag-assistant-message__body p {
+        margin: 0;
+        font-size: $swag-assistant-font-body;
+        line-height: 1.45;
+    }
+
+    .swag-assistant-message__time {
+        text-align: right;
+    }
+}
+
+.swag-assistant-message__time {
+    display: block;
+    margin-top: 6px;
+    color: $swag-assistant-meta;
+    font-size: $swag-assistant-font-meta;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .swag-assistant-message {
+        transition: none;
+
+        &.is-entering {
+            transform: none;
+            opacity: 1;
+        }
+    }
+}

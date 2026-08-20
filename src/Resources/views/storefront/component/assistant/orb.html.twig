@@ -6,6 +6,7 @@
          data-swag-assistant-root
          data-chat-url="{{ path('frontend.assistant.chat') }}"
          data-history-url="{{ path('frontend.assistant.history') }}"
+         data-cards-url="{{ path('frontend.assistant.cards') }}"
          data-cart-url="{{ path('frontend.checkout.line-item.add') }}"
          data-locale="{{ app.request.locale|default('en-GB')|replace({'_': '-'}) }}"
          data-assistant-name="{{ swag_assistant_widget_name(context.salesChannelId) }}"

@@ -10,7 +10,12 @@ prevent.
 // alarming and why warnings and errors both use Orange.
 $swag-assistant-surface: #ffffff;
 $swag-assistant-text: #00153e;          // Night Blue
-$swag-assistant-meta: #a3a6b5;          // Light Gray
+// Light Gray (#a3a6b5) is the palette's secondary-text colour, but it measures **2.42:1** on white
+// — a timestamp nobody with reduced vision can read. Derived instead as a 65% tint of Night Blue:
+// 5.70:1 on the panel and 4.69:1 on the hairline fill, both clear of the 4.5:1 floor, and still
+// visibly secondary. A tint of an approved brand colour, not an invented one.
+$swag-assistant-meta: mix(#00153e, #ffffff, 65%);
+$swag-assistant-meta-quiet: #a3a6b5;    // Light Gray — decoration only, never text
 $swag-assistant-accent: #0870ff;        // SW 500 — the one accent colour in the widget
 $swag-assistant-accent-light: #4a8fff;  // SW 400 — orb highlight only
 $swag-assistant-accent-dark: #005cd7;   // SW 600

@@ -26,6 +26,34 @@
             </header>
         {% endblock %}
 
+        {# Snippets are a server-side concern, so the strings the browser needs travel through the
+           DOM as JSON rather than being duplicated in JavaScript. One element, parsed once. #}
+        {% block swag_assistant_translations %}
+            <script type="application/json" data-swag-assistant-translations>
+                {{- {
+                    view: 'swagAssistant.card.view'|trans,
+                    add: 'swagAssistant.card.add'|trans,
+                    noImage: 'swagAssistant.card.noImage'|trans,
+                    inStock: 'swagAssistant.card.inStock'|trans,
+                    lowStock: 'swagAssistant.card.lowStock'|trans,
+                    outOfStock: 'swagAssistant.card.outOfStock'|trans,
+                    outOfStockReason: 'swagAssistant.card.outOfStockReason'|trans,
+                    parentStock: 'swagAssistant.card.parentStock'|trans,
+                    delivery: 'swagAssistant.card.delivery'|trans,
+                    thinkingStart: 'swagAssistant.thinking.start'|trans,
+                    thinkingWaiting: 'swagAssistant.thinking.waiting'|trans,
+                    thinkingPatient: 'swagAssistant.thinking.patient'|trans,
+                    warningAvailability: 'swagAssistant.warning.availability'|trans,
+                    warningPrice: 'swagAssistant.warning.price'|trans,
+                    errorNetwork: 'swagAssistant.error.network'|trans,
+                    errorRetry: 'swagAssistant.error.retry'|trans,
+                    errorUnavailable: 'swagAssistant.error.unavailable'|trans,
+                    errorTooLong: 'swagAssistant.error.tooLong'|trans,
+                    errorCartFailed: 'swagAssistant.error.cartFailed'|trans
+                }|json_encode|raw -}}
+            </script>
+        {% endblock %}
+
         {% block swag_assistant_panel_log %}
             {# role="log" with aria-relevant="additions": a screen reader announces new messages, not
                the whole transcript again every time one arrives. #}

@@ -96,12 +96,21 @@ correct the instant it is unhidden.
 }
 
 .swag-assistant-log {
+    display: flex;
+    flex-direction: column;
     flex: 1 1 auto;
     padding: 16px;
     // Vertical only. A card row scrolls inside its own container; the panel never scrolls sideways.
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+}
+
+// Pushes a short conversation to the bottom of a 640px panel instead of leaving it stranded at the
+// top under a field of white. `margin-top: auto` rather than `justify-content: flex-end`, which
+// clips the first message once the log actually overflows.
+.swag-assistant-log > :first-child {
+    margin-top: auto;
 }
 
 .swag-assistant-composer {
@@ -139,8 +148,11 @@ correct the instant it is unhidden.
     }
 
     &:focus-visible {
-        outline: 2px solid $swag-assistant-accent;
-        outline-offset: 1px;
+        // 1px outline over a 1px accent border reads as a single 2px edge. A 2px outline on top of
+        // the border totalled 3px of blue and dominated the panel's whole bottom edge.
+        border-color: $swag-assistant-accent;
+        outline: 1px solid $swag-assistant-accent;
+        outline-offset: 0;
     }
 }
 
@@ -163,7 +175,8 @@ correct the instant it is unhidden.
 
     &:disabled {
         background: $swag-assistant-hairline;
-        color: $swag-assistant-out-of-stock;
+        // Same reason as the card's disabled Add: 3.07:1 was unreadable.
+        color: $swag-assistant-meta;
         cursor: not-allowed;
     }
 

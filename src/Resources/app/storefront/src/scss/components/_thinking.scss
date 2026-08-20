@@ -1,0 +1,217 @@
+/*
+Assistant widget — the thinking indicator
+==============================================
+A real turn takes ~19s. Each phase gives the orb something different to do, so a shopper sees state
+changing rather than one loop repeating. `[data-phase]` is set from JS on elapsed time.
+*/
+
+.swag-assistant-thinking {
+    position: relative;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    color: $swag-assistant-meta;
+    font-size: $swag-assistant-font-meta;
+    font-weight: 500;
+}
+
+.swag-assistant-thinking__orb {
+    position: relative;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    background: radial-gradient(
+        circle at 32% 28%,
+        $swag-assistant-accent-light 0%,
+        $swag-assistant-accent 45%,
+        $swag-assistant-accent-dark 100%
+    );
+    border-radius: 50%;
+}
+
+.swag-assistant-thinking__face {
+    position: absolute;
+    inset: 0;
+}
+
+.swag-assistant-thinking__eye {
+    position: absolute;
+    top: 36%;
+    width: 4px;
+    height: 9px;
+    background: $swag-assistant-surface;
+    border-radius: 2px;
+    transition: height 200ms $swag-assistant-ease;
+
+    &:first-of-type {
+        left: 27%;
+    }
+
+    &:last-of-type {
+        right: 27%;
+    }
+}
+
+// The shelf the orb appears to scan during the search phase.
+.swag-assistant-thinking__sweep {
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 32px;
+    height: 2px;
+    background: #c8ddff; // SW 100
+    border-radius: 1px;
+    opacity: 0;
+}
+
+/* Phase 1 — wake: arrives, blinks twice. */
+[data-phase='wake'] {
+    .swag-assistant-thinking__orb {
+        animation: swag-assistant-think-wake 700ms $swag-assistant-ease both;
+    }
+
+    .swag-assistant-thinking__eye {
+        animation: swag-assistant-think-blink 1400ms steps(1, end) 2;
+    }
+}
+
+/* Phase 2 — search: tilts, eyes track a sweep beneath it. */
+[data-phase='search'] {
+    .swag-assistant-thinking__orb {
+        animation: swag-assistant-think-tilt 2400ms ease-in-out infinite;
+    }
+
+    .swag-assistant-thinking__eye {
+        animation: swag-assistant-think-scan 2400ms ease-in-out infinite;
+    }
+
+    .swag-assistant-thinking__sweep {
+        animation: swag-assistant-think-sweep 2400ms ease-in-out infinite;
+    }
+}
+
+/* Phase 3 — still working: slow bob, one eye squints. */
+[data-phase='waiting'] {
+    .swag-assistant-thinking__orb {
+        animation: swag-assistant-think-bob 3200ms ease-in-out infinite;
+    }
+
+    .swag-assistant-thinking__eye:last-of-type {
+        height: 4px;
+    }
+}
+
+/* Phase 4 — patience: slow pulse, eyes half closed. */
+[data-phase='patient'] {
+    .swag-assistant-thinking__orb {
+        animation: swag-assistant-think-pulse 2800ms ease-in-out infinite;
+    }
+
+    .swag-assistant-thinking__eye {
+        height: 3px;
+    }
+}
+
+@keyframes swag-assistant-think-wake {
+    0% {
+        transform: scale(0.6);
+        opacity: 0;
+    }
+
+    60% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes swag-assistant-think-blink {
+    0%,
+    88%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    92% {
+        transform: scaleY(0.1);
+    }
+}
+
+@keyframes swag-assistant-think-tilt {
+    0%,
+    100% {
+        transform: rotate(-7deg);
+    }
+
+    50% {
+        transform: rotate(7deg);
+    }
+}
+
+@keyframes swag-assistant-think-scan {
+    0%,
+    100% {
+        transform: translateX(-1px);
+    }
+
+    50% {
+        transform: translateX(1px);
+    }
+}
+
+@keyframes swag-assistant-think-sweep {
+    0%,
+    100% {
+        opacity: 0.25;
+        transform: scaleX(0.4) translateX(-12px);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scaleX(1) translateX(6px);
+    }
+}
+
+@keyframes swag-assistant-think-bob {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes swag-assistant-think-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.85;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+}
+
+// Motion is optional; the reassurance is not. Every phase still swaps the copy, and the eye-shape
+// changes for the later phases are kept because they are state, not decoration.
+@media (prefers-reduced-motion: reduce) {
+    .swag-assistant-thinking__orb,
+    .swag-assistant-thinking__eye,
+    .swag-assistant-thinking__sweep {
+        animation: none !important;
+        transition: none;
+    }
+
+    .swag-assistant-thinking__sweep {
+        opacity: 0;
+    }
+}
