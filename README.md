@@ -40,6 +40,70 @@ understood, which products it retrieved, which facts it rendered, and what it re
 - An OpenAI-compatible chat-completions endpoint (`base_url` + `model` + `api_key`)
 - English-language catalog and storefront (v0 is English-only)
 
+## Installing it into a shop
+
+**Install via a Composer path repository, not a `custom/plugins` symlink.** For a plugin Shopware
+does not manage through Composer it registers only the plugin's *own* PSR-4 namespaces — not its
+dependencies — so `symfony/ai-agent` would be missing and the first turn would fatal inside a shopper
+request. Verified in `Framework/Plugin/KernelPluginLoader/KernelPluginLoader.php`.
+
+From the shop's project root:
+
+```fish
+composer config repositories.assistant '{"type":"path","url":"../shopping-assistant-starter-kit","options":{"symlink":true}}'
+composer require "swag/assistant-starter-kit:*@dev"
+bin/console plugin:refresh
+bin/console plugin:install --activate SwagAssistantStarterKit
+bin/console cache:clear
+```
+
+> **One manual step, and skipping it leaves a dead shop.** `composer require` pulls
+> `symfony/ai-generic-platform`, and in a Symfony Flex project — which `shopware/production` is —
+> Flex applies that package's recipe and writes `config/packages/ai_generic_platform.yaml` containing
+> an `ai:` root key. Nothing registers `symfony/ai-bundle` (this plugin builds its platform itself,
+> see `docs/adr/0001-symfony-ai-as-agent-runtime.md`), so the next `bin/console` call dies with
+> *"There is no extension able to load the configuration for 'ai'"* — and the storefront with it.
+>
+> **Delete that file after installing:**
+>
+> ```fish
+> rm config/packages/ai_generic_platform.yaml
+> bin/console cache:clear
+> ```
+>
+> It is not fixable from inside the plugin: the recipe belongs to a dependency and is applied by the
+> *shop's* Flex.
+
+Then configure a model — in the Administration under the plugin's settings, or as environment
+variables, which take precedence:
+
+```fish
+bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://openrouter.ai/api"
+bin/console system:config:set SwagAssistantStarterKit.config.llmModel "anthropic/claude-sonnet-5"
+bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey "…"
+```
+
+Environment variables win over stored values on purpose: Shopware's system config has no real secret
+storage, so a key entered in the admin form is readable by anyone with config access and travels in
+every database backup. Until all three are set, the chat endpoint answers **503** rather than failing
+mid-turn.
+
+## Checking it against the real catalogue
+
+`swag:assistant:probe` runs the commerce gateway against the shop's own products and prints what
+comes back — no widget, no model needed for the first three modes:
+
+```fish
+bin/console swag:assistant:probe --search="Trail Jersey"      # cards with stock and stockSource
+bin/console swag:assistant:probe --facets                     # the vocabulary the model is offered
+bin/console swag:assistant:probe --variant=<parentId> --option=Blue --option=M
+bin/console swag:assistant:probe --ask="do you have it in M?" # one full turn, then its trace
+```
+
+`--variant` with an under-specified selection prints `null` — resolution refuses to guess, which is
+the guarantee, not a failure. `--ask` needs the three `ASSISTANT_LLM_*` variables and is the only mode
+that spends money.
+
 ## Running the eval suite
 
 `composer run test` (the default suite) never talks to a real LLM: `tests/Eval/JourneyEvalTest.php`
