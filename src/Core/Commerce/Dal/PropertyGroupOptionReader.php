@@ -9,13 +9,10 @@ use Shopware\Core\Content\Property\Aggregate\PropertyGroupOption\PropertyGroupOp
 /**
  * Reads a Shopware property-option collection into group-keyed arrays.
  *
- * Split out of {@see DalProductCardMapper} (cyclomatic-complexity) rather than suppressed, and the
- * two methods share one rule worth stating once:
- *
- * **An option whose group is not resolved is dropped, never keyed by a guess.** An unloaded
- * `options.group` association yields a null group, and inventing a key there would hand
- * `VariantResolver` a group name this catalogue does not have — a fabricated key is worse than a
- * missing one, because the constraint would then appear to have been applied.
+ * Split out of {@see DalProductCardMapper} (cyclomatic-complexity) rather than suppressed.
+ * Reading each option's group and name, and putting them in the catalogue's own order, is
+ * {@see PropertyGroupOptionOrder}'s job for the same reason — including the rule that an
+ * option with no resolved group is dropped rather than keyed by a guess.
  */
 final readonly class PropertyGroupOptionReader
 {
@@ -28,7 +25,7 @@ final readonly class PropertyGroupOptionReader
     {
         $mapped = [];
 
-        foreach ($this->named($options) as [$group, $name]) {
+        foreach (PropertyGroupOptionOrder::pairs($options) as [$group, $name]) {
             $mapped[$group] = $name;
         }
 
@@ -44,27 +41,10 @@ final readonly class PropertyGroupOptionReader
     {
         $mapped = [];
 
-        foreach ($this->named($properties) as [$group, $name]) {
+        foreach (PropertyGroupOptionOrder::pairs($properties) as [$group, $name]) {
             $mapped[$group][] = $name;
         }
 
         return $mapped;
-    }
-
-    /**
-     * @return \Generator<int, array{0: string, 1: string}>
-     */
-    private function named(?PropertyGroupOptionCollection $options): \Generator
-    {
-        foreach ($options ?? [] as $option) {
-            $group = $option->getGroup()?->getTranslation('name') ?? $option->getGroup()?->getName();
-            $name = $option->getTranslation('name') ?? $option->getName();
-
-            if (!\is_string($group) || !\is_string($name) || $group === '' || $name === '') {
-                continue;
-            }
-
-            yield [$group, $name];
-        }
     }
 }

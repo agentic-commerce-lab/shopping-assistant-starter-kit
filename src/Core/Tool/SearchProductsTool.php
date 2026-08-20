@@ -13,6 +13,7 @@ use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\ShopperIntent;
+use Swag\AssistantStarterKit\Core\Retrieval\UnmatchedOptionRetry;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
@@ -33,6 +34,9 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'same call via "options". Doing so resolves the exact variant in one step and returns '
     . 'its own stock and price; leaving them out returns the whole product family instead, '
     . 'and identifying the right member afterwards wastes the turn\'s tool-call budget. '
+    . 'Each "options" entry is a [group, option] pair in that order, for example '
+    . '"options": [["Colour", "Blue"], ["Size", "M"]]. A bare option value on its own — '
+    . '"options": ["Blue", "M"] — also works when you do not know its group. '
     . 'Option group names, when given, must match this catalogue\'s own spelling '
     . 'exactly (for example "Colour", not "colour") — a group name that does not '
     . 'match a group this catalogue actually has is dropped rather than guessed at. '
@@ -82,10 +86,7 @@ final class SearchProductsTool
      * @param ?float  $priceMax Maximum price, inclusive, in the shop's currency.
      * @param ?float  $priceMin Minimum price, inclusive, in the shop's currency.
      * @param ?string $brand   Brand name to filter by.
-     * @param ?array<int, array{option: string, group?: string}> $options Option
-     *     selections to narrow to a specific variant, e.g. [{"option": "Blue"},
-     *     {"option": "M", "group": "Size"}]. Use this catalogue's own spelling for
-     *     "group" exactly — it is matched case-sensitively.
+     * @param ?array<array-key, array<array-key, string>|string> $options Option selections narrowing to one variant, each a [group, option] pair such as [["Colour", "Blue"], ["Size", "M"]]. Group names use this catalogue's own spelling; a bare option value on its own also works.
      * @param int $limit Maximum number of products to return (1-20).
      *
      * @return array{
@@ -193,6 +194,25 @@ final class SearchProductsTool
             'candidateLimit' => $candidateLimit,
         ]);
 
+        // An applied option filter that eliminated everything is the "your products are
+        // missing attribute X" case, not the "we do not sell it" case. See
+        // UnmatchedOptionRetry for the measurement and for why silence was the wrong answer.
+        $optionNote = null;
+        if ($cards === []) {
+            $withoutOptions = UnmatchedOptionRetry::search(
+                $this->gateway,
+                $query,
+                $buildResult->selectionFilters,
+                $scope,
+                $this->trace,
+            );
+
+            if ($withoutOptions !== null && $withoutOptions !== []) {
+                $cards = $withoutOptions;
+                $optionNote = UnmatchedOptionRetry::NOTE;
+            }
+        }
+
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
         // each one against the catalog's own spelling — see
         // VariantSelectionFilterResolver's docblock (Finding I1). Handing VariantResolver
@@ -241,6 +261,8 @@ final class SearchProductsTool
 
         if ($returned === []) {
             $result['note'] = 'No matching products in this shop.';
+        } elseif ($optionNote !== null) {
+            $result['note'] = $optionNote;
         }
 
         return $result;

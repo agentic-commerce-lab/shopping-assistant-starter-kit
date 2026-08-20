@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\BoundedToolbox;
+use Swag\AssistantStarterKit\Core\Tool\ToolArgumentException;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Agent\Toolbox\Exception\ToolExecutionException;
@@ -104,6 +105,51 @@ final class BoundedToolboxArgumentRejectionTest extends TestCase
         self::assertCount(1, $rejectedEvents);
         self::assertSame('search_products', $rejectedEvents[0]->payload['name'] ?? null);
         self::assertSame('Expected int, string given.', $rejectedEvents[0]->payload['reason'] ?? null);
+    }
+
+    /**
+     * A guard rejection is traceable too — the branch that used to be the silent one.
+     *
+     * `ToolArgumentException` was the only one of the three recognised shapes that
+     * returned its note without recording anything, and that asymmetry cost a day: a
+     * turn that ended `tool_limit_exceeded` showed six `tool.call` dispatches and no
+     * retrieval at all, with nothing in the trace saying why. The rejections were
+     * invisible, so two separate handoffs recorded the symptom as phrasing-sensitivity
+     * instead. A rejection the trace cannot show is a call out of the turn's budget
+     * that nobody can account for.
+     */
+    public function testRecordsAGuardRejectionInTheTraceInsteadOfSwallowingItSilently(): void
+    {
+        $trace = new TraceRecorder();
+        $inner = new class implements ToolboxInterface {
+            public function getTools(): array
+            {
+                return [];
+            }
+
+            public function execute(ToolCall $toolCall): ToolResult
+            {
+                throw ToolExecutionException::executionFailed(
+                    $toolCall,
+                    new ToolArgumentException('Argument "options" entries need an "option" string.'),
+                );
+            }
+        };
+
+        $toolbox = new BoundedToolbox($inner, 5, $trace);
+
+        $result = $toolbox->execute(new ToolCall('call-1', 'search_products', ['options' => [['Colour', 'Black']]]));
+
+        $payload = $result->getResult();
+        self::assertIsArray($payload);
+        self::assertArrayHasKey('note', $payload);
+
+        $rejectedEvents = array_values(array_filter(
+            $trace->events(),
+            static fn($event): bool => 'tool.arguments.rejected' === $event->stage,
+        ));
+        self::assertCount(1, $rejectedEvents);
+        self::assertSame('search_products', $rejectedEvents[0]->payload['name'] ?? null);
     }
 
     /**

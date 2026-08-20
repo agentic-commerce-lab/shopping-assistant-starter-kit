@@ -32,6 +32,7 @@ final class QueryBuilder
         $filters = [];
         $dropped = [];
         $canonicalSelections = [];
+        $selectionFilters = [];
 
         $this->collect(PriceFilterResolver::resolve($intent, $facets), $filters, $dropped);
         $this->collect(BrandFilterResolver::resolve($intent, $facets), $filters, $dropped);
@@ -40,12 +41,17 @@ final class QueryBuilder
             $resolution = VariantSelectionFilterResolver::resolve($selection, $facets);
             $this->collect($resolution->filter, $filters, $dropped);
             $canonicalSelections[] = $resolution->canonical;
+
+            if ($resolution->filter->filter !== null) {
+                $selectionFilters[] = $resolution->filter->filter;
+            }
         }
 
         return new QueryBuildResult(
             new ProductQuery(term: $intent->term, filters: $filters),
             $dropped,
             $canonicalSelections,
+            $selectionFilters,
         );
     }
 

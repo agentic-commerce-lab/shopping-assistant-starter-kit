@@ -49,10 +49,7 @@ final class FixtureQueryFilter
 
         $term = $query->term;
         if ($term !== null && $term !== '') {
-            $units = array_values(array_filter($units, static fn(ProductCard $unit): bool => self::matchesTerm(
-                $unit,
-                $term,
-            )));
+            $units = FixtureTermMatcher::filter($units, $term);
         }
 
         usort($units, static function (ProductCard $a, ProductCard $b): int {
@@ -65,15 +62,5 @@ final class FixtureQueryFilter
         // anything it drops cannot be recovered downstream. `limit` is what the caller
         // narrows to afterwards. See ProductQuery::retrievalLimit().
         return \array_slice($units, offset: 0, length: $query->retrievalLimit());
-    }
-
-    private static function matchesTerm(ProductCard $unit, string $term): bool
-    {
-        $needle = strtolower($term);
-
-        return (
-            str_contains(strtolower($unit->name), $needle)
-            || str_contains(strtolower($unit->description ?? ''), $needle)
-        );
     }
 }

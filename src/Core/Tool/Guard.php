@@ -27,7 +27,16 @@ final class Guard
         return $value;
     }
 
-    /** @param array<int, mixed>|null $value */
+    /**
+     * Keys are `array-key`, not `int`: the `options` argument arrives with string keys in
+     * the `{"Colour":"Black"}` shape the published tool schema permits — see
+     * {@see VariantSelectionShape}. Only the entry COUNT is bounded here, which is
+     * key-agnostic.
+     *
+     * @param array<array-key, mixed>|null $value
+     *
+     * @return array<array-key, mixed>|null
+     */
     public static function boundedArray(?array $value, int $max, string $name): ?array
     {
         if ($value !== null && \count($value) > $max) {

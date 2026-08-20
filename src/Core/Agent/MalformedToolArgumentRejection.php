@@ -42,6 +42,11 @@ final class MalformedToolArgumentRejection
         $previous = $e->getPrevious();
 
         if ($previous instanceof ToolArgumentException) {
+            $trace->record('tool.arguments.rejected', [
+                'name' => $toolCall->getName(),
+                'reason' => $previous->getMessage(),
+            ]);
+
             return new ToolResult($toolCall, ['note' => $previous->getMessage()]);
         }
 

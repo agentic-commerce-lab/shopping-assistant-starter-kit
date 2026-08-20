@@ -15,22 +15,33 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
 final class VariantSelectionGuard
 {
     /**
-     * @param array<int, mixed>|null $raw
+     * Entry shapes are normalised by {@see VariantSelectionShape} before the bounds
+     * below apply, because the shape the tool schema documents is not the shape a live
+     * model sends — see that class for the measurement and for why widening it is not
+     * the coercion {@see Guard} refuses to do.
+     *
+     * @param array<array-key, mixed>|null $raw
      *
      * @return list<VariantSelection>
      */
     public static function fromRaw(?array $raw, string $name): array
     {
         $selections = [];
-        foreach (Guard::boundedArray($raw, 10, $name) ?? [] as $entry) {
-            if (!\is_array($entry) || !\is_string($entry['option'] ?? null)) {
-                throw new ToolArgumentException(sprintf('Argument "%s" entries need an "option" string.', $name));
+        foreach (Guard::boundedArray($raw, 10, $name) ?? [] as $key => $entry) {
+            $normalised = VariantSelectionShape::normalise($key, $entry);
+            if ($normalised === null) {
+                throw new ToolArgumentException(sprintf(
+                    'Argument "%s" entries need an "option" string, a "group": "option" pair, or a bare '
+                    . 'option value.',
+                    $name,
+                ));
             }
 
-            $group = $entry['group'] ?? null;
             $selections[] = new VariantSelection(
-                Guard::boundedString($entry['option'], 120, $name . '.option') ?? '',
-                \is_string($group) ? Guard::boundedString($group, 120, $name . '.group') : null,
+                Guard::boundedString($normalised['option'], 120, $name . '.option') ?? '',
+                $normalised['group'] !== null
+                    ? Guard::boundedString($normalised['group'], 120, $name . '.group')
+                    : null,
             );
         }
 
