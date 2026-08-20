@@ -50,64 +50,63 @@ the seam is broken.
 
 ## Directory layout
 
+> **Corrected 2026-08-20** to what the tree actually contains after Plan 2. Two differences from the
+> original are decisions rather than drift: `Core/Commerce/Dal/` did not exist when this was written,
+> and the storefront widget (`Resources/views/`, `Resources/app/`) is **not here** — the UI is owned
+> separately, and this plugin's shopper-facing surface is the JSON endpoint.
+
 ```
 src/
-├── SwagAssistantStarterKit.php
-├── Resources/
-│   ├── config/
-│   │   ├── config.xml                 merchant settings form
-│   │   └── services.xml               DI, tool tags
-│   ├── views/storefront/
-│   │   ├── base.html.twig             mounts the widget
-│   │   └── component/assistant/       widget markup
-│   ├── app/storefront/src/
-│   │   ├── assistant-plugin.js        widget behaviour
-│   │   └── scss/assistant.scss
-│   └── snippet/en_GB/
+├── SwagAssistantStarterKit.php     plugin base class (deliberately empty)
+├── Resources/config/
+│   ├── config.xml                  merchant settings form
+│   ├── routes.xml                  attribute-route import
+│   └── services.xml                DI wiring
 ├── Controller/
-│   └── AssistantController.php        POST /assistant/chat
+│   ├── AssistantController.php     POST /assistant/chat, GET /assistant/history
+│   ├── ChatRequest.php             untrusted-input parsing for a PUBLIC endpoint
+│   └── CardPayload.php             card serialisation — where D3 reaches the wire
+├── Command/
+│   ├── ProbeCommand.php            --search / --facets / --variant / --ask
+│   ├── ProbeRequest.php            ProbeRenderer.php  ProbeTurnRunner.php
+│   ├── TraceDumper.php             the first and only trace reader
+│   └── TraceValueRenderer.php      never abbreviates the four fields that matter
 ├── Core/
 │   ├── Commerce/
-│   │   ├── CommerceGatewayInterface.php
-│   │   ├── DalCommerceGateway.php
-│   │   ├── FixtureCommerceGateway.php
-│   │   └── Dto/                       ProductCard, ProductQuery, FacetSet, …
-│   ├── Retrieval/
-│   │   ├── FacetProbe.php
-│   │   └── QueryBuilder.php
-│   ├── Grounding/
-│   │   ├── VariantResolver.php
-│   │   └── FactRenderer.php           ← the critical class
-│   ├── Policy/
-│   │   ├── BlocklistFilter.php
-│   │   └── GuardCheck.php             kill switch, request cap
+│   │   ├── CommerceGatewayInterface.php   the one seam
+│   │   ├── FixtureCommerceGateway.php     evals, no shop, no database
+│   │   ├── VariantSelectionMatcher.php    ONE matcher, shared by both gateways
+│   │   ├── Dal/                           the Shopware half — nine classes
+│   │   │   ├── DalCommerceGateway.php     composes the rest
+│   │   │   ├── DalCriteriaBuilder.php     DalFilterTranslator.php  DalRangeBounds.php
+│   │   │   ├── DalProductCardMapper.php   PropertyGroupOptionReader.php
+│   │   │   ├── DalFacetReader.php         DalGroupedFacetReader.php  DalBucketKeys.php
+│   │   │   ├── DalVariantFinder.php       the method D4 exists for
+│   │   │   ├── DalCartAdapter.php         DalCartSummariser.php
+│   │   │   ├── ProductUrlResolver.php     RouterProductUrlResolver.php
+│   │   │   └── SalesChannelContextProvider.php  the ONLY place reaching for the context
+│   │   ├── Dto/                           ProductCard, ProductQuery, FacetSet, …
+│   │   └── Fixture/                       fixture-gateway collaborators
+│   ├── Config/                     SystemConfigAssistantConfig, SystemConfigLlmSettings
+│   ├── Retrieval/  Grounding/  Policy/  Llm/  Prompt/  Tool/
 │   ├── Agent/
-│   │   ├── AssistantAgentFactory.php  builds a per-request Agent
-│   │   ├── AssistantRunner.php        guard, then $agent->call()
-│   │   ├── BoundedToolbox.php         the real maxToolCallsPerTurn bound; unwraps ToolArgumentException
-│   │   ├── GroundingOutputProcessor.php
-│   │   └── SlidingWindowInputProcessor.php
-│   ├── Tool/                      #[AsTool] classes, ids-only returns
-│   │   ├── SearchProductsTool.php
-│   │   ├── GetProductTool.php
-│   │   ├── AddToCartTool.php
-│   │   ├── EscalateTool.php
-│   │   └── Guard.php              bounds #[AsTool] cannot express
-│   ├── Llm/
-│   │   ├── PlatformFactory.php    Generic bridge + guarded HttpClient
-│   │   └── Egress/                SSRF validation
+│   │   ├── AssistantAgentFactory.php  AssistantRunner.php  BoundedToolbox.php
+│   │   ├── ChatTurnRunnerInterface.php  ShopwareChatTurnRunner.php  TurnResult.php
+│   │   └── GroundingOutputProcessor.php  SlidingWindowInputProcessor.php
 │   └── Trace/
-│       ├── TraceRecorder.php
-│       └── TraceEvent.php
+│       ├── TraceRecorder.php  TraceEvent.php
+│       ├── ConversationStore.php  DalConversationStore.php  ConversationTurn.php
+│       └── TranscriptCodec.php  JsonShape.php
 ├── Entity/
-│   ├── Conversation/                  swag_assistant_conversation
-│   └── TraceEvent/                    swag_assistant_trace_event
-└── Migration/
+│   ├── Conversation/               swag_assistant_conversation
+│   └── TraceEvent/                 swag_assistant_trace_event
+└── Migration/                      creates both tables
 tests/
-├── Fixtures/catalog.json              12 fixture products
-├── Journeys/                          6 journey definitions
-└── Eval/                              PHPUnit, group="eval"
+├── Fixtures/catalog.json           12 fixture products
+├── Journeys/                       6 journey definitions
+└── Eval/                           PHPUnit, group="eval"
 ```
+
 
 ## Gateway interface
 
