@@ -76,7 +76,11 @@
                           id="swag-assistant-input"
                           data-swag-assistant-input
                           rows="1"
-                          maxlength="2000"
+                          {# Deliberately no `maxlength`. The browser enforces it by silently
+                             truncating, so a shopper pasting a long question loses the tail without
+                             being told — and it made the over-limit state unreachable, i.e. dead
+                             code. The composer refuses visibly instead: the border turns and Send
+                             disables, before any request goes out. #}
                           autocomplete="off"
                           placeholder="{{ 'swagAssistant.panel.inputPlaceholder'|trans }}"></textarea>
 

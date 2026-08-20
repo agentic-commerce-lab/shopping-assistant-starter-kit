@@ -88,6 +88,66 @@ storage, so a key entered in the admin form is readable by anyone with config ac
 every database backup. Until all three are set, the chat endpoint answers **503** rather than failing
 mid-turn.
 
+## The storefront widget
+
+The widget ships **compiled**, so a merchant needs no Node toolchain. After installing and
+configuring a model, one command makes it appear:
+
+```fish
+bin/console theme:compile
+```
+
+Styles are compiled by Shopware's own PHP SCSS pipeline, and the JavaScript is committed under
+`src/Resources/app/storefront/dist` — the same thing SwagPayPal ships, and the reason the plugin works
+on install rather than after a build.
+
+**The entry point renders only on a shop that can answer.** No orb appears when no model is
+configured, when the kill switch is on, or when `widgetEnabled` is off. That is deliberate: an orb
+that opens a panel which answers 503 invites a shopper to ask a question nothing can answer. The chat
+endpoint stays reachable in every one of those cases, so a custom interface built against it keeps
+working.
+
+Three settings under **Storefront widget**: `widgetEnabled`, `assistantName`, `greeting`. A blank
+greeting falls back to a translated snippet, so an unconfigured German shop still greets in German.
+
+### Changing it
+
+```fish
+composer run build:storefront   # rebuilds src/ into dist/
+bin/console theme:compile       # in the shop
+```
+
+CI fails if the storefront source changed without a matching `dist` rebuild. It does **not** diff the
+two byte-for-byte, and cannot: the build is deterministic at a given path but path-dependent across
+paths, because webpack derives module ids from the absolute path. Identical source built in two
+directories produces identical chunk bodies under different names, so a rebuild-and-diff job would
+fail on every CI run while proving nothing.
+
+### Extension points
+
+Override any of these Twig blocks from a theme or plugin:
+
+| Block | Changes |
+|---|---|
+| `swag_assistant_orb` | the entry point's markup |
+| `swag_assistant_orb_signet` | the Shopware signet on the orb — replace it with your own mark, or drop it |
+| `swag_assistant_panel_header` | the panel's heading row |
+| `swag_assistant_panel_composer` | the input and send button |
+
+The widget renders on every storefront page from `base_body_inner`. To exclude some — checkout, for
+instance — wrap the include in `src/Resources/views/storefront/base.html.twig` in your own condition.
+That call is the merchant's, not ours.
+
+### Accessibility
+
+The orb is a real `<button>` with an accessible name; the panel is a `role="dialog"` that is honestly
+**not** `aria-modal` on desktop, because the storefront behind it stays usable; the message list is a
+`role="log"` with `aria-live="polite"`; `Escape` closes and returns focus to the orb; and `Tab` stays
+inside the panel while it is open.
+
+`prefers-reduced-motion` removes every animation **but keeps the copy changes** during the wait, so
+the reassurance survives without the motion.
+
 ## Checking it against the real catalogue
 
 `swag:assistant:probe` runs the commerce gateway against the shop's own products and prints what

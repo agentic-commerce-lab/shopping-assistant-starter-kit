@@ -193,6 +193,15 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         const token = window.sessionStorage.getItem(TOKEN_KEY);
         const { messages } = await this.transport.history(token);
 
+        await this._renderHistory(messages);
+    }
+
+    /**
+     * @param {Array<object>} messages
+     */
+    async _renderHistory(messages) {
+        this.log.replaceChildren();
+
         if (!Array.isArray(messages) || messages.length === 0) {
             this._renderGreeting();
             return;
@@ -344,15 +353,38 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         retry.className = 'swag-assistant-failure__retry';
         retry.textContent = this.translations.errorRetry ?? '';
 
-        retry.addEventListener('click', () => {
-            // Remove the failed exchange rather than stacking a second copy of the question under it.
-            notice.remove();
-            sentMessage.remove();
-            this.input.value = originalText;
-            this._submit();
-        });
+        retry.addEventListener('click', () => this._retry(notice, sentMessage, originalText));
 
         return retry;
+    }
+
+    /**
+     * Asks the server what happened before asking it again.
+     *
+     * **Measured against the live shop: the server finishes a turn even when the client is gone.** A
+     * request aborted at 3 seconds still landed both turns about twelve seconds later. So a failed
+     * request usually means the answer exists and only the *response* was lost — and blindly
+     * re-sending would record the shopper's question a second time, so a reload would show them
+     * asking twice.
+     *
+     * Re-hydrating first is also the better outcome when it works: the shopper gets the answer they
+     * already paid for instead of waiting another nineteen seconds for a duplicate of it.
+     */
+    async _retry(notice, sentMessage, originalText) {
+        notice.remove();
+        sentMessage.remove();
+
+        const { messages } = await this.transport.history(window.sessionStorage.getItem(TOKEN_KEY));
+        const last = Array.isArray(messages) ? messages[messages.length - 1] : undefined;
+
+        // An assistant turn at the end means the server got there without us.
+        if (last?.role === 'assistant') {
+            await this._renderHistory(messages);
+            return;
+        }
+
+        this.input.value = originalText;
+        this._submit();
     }
 
     /**

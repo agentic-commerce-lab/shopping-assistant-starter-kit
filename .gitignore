@@ -12,3 +12,7 @@ var/
 
 # Playwright MCP scratch output (screenshots, page snapshots)
 /.playwright-mcp/
+
+# Playwright run output (dev-only e2e)
+/test-results/
+/playwright-report/

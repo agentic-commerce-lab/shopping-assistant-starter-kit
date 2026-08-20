@@ -50,10 +50,17 @@ the seam is broken.
 
 ## Directory layout
 
-> **Corrected 2026-08-20** to what the tree actually contains after Plan 2. Two differences from the
-> original are decisions rather than drift: `Core/Commerce/Dal/` did not exist when this was written,
-> and the storefront widget (`Resources/views/`, `Resources/app/`) is **not here** — the UI is owned
-> separately, and this plugin's shopper-facing surface is the JSON endpoint.
+> **Corrected 2026-08-20** to what the tree actually contains after Plan 2, then corrected again the
+> same day: `Core/Commerce/Dal/` did not exist when this was written, and the storefront widget —
+> earlier recorded here as *"not here, the UI is owned separately"* — **is now here**, under
+> `Resources/views/storefront/` and `Resources/app/storefront/`. The JSON endpoint is still the
+> contract; the widget is one client of it, and a merchant may replace it by switching `widgetEnabled`
+> off while the endpoint keeps serving.
+>
+> The widget added one route the original design did not anticipate: **`GET /assistant/cards`**.
+> `GET /assistant/history` returns card ids only, deliberately, so a re-hydrated conversation had
+> prose describing a card that was not there. The ids are resolved against the catalogue on read, so
+> a figure is never replayed from the transcript.
 
 ```
 src/
@@ -473,7 +480,7 @@ is never instantiated, so the model never sees it.
 | Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — the seam already exists |
 | Swap the LLM provider | another Symfony AI platform bridge | **yes** — 35+ bridges shipped |
 | Change the agent voice | `config.xml` field, no code | **yes** |
-| Storefront widget markup | Twig template override | **yes** |
+| Storefront widget markup | Twig template override — `swag_assistant_orb`, `swag_assistant_orb_signet`, `swag_assistant_panel_header`, `swag_assistant_panel_composer` | **yes, shipped** |
 | Context compression strategy | another `InputProcessorInterface` | **yes** |
 | Conversation persistence | `Symfony\AI\Chat\MessageStoreInterface` (2 methods) | Plan 2 |
 | Ranking rules | `RankingRuleInterface`, tagged, priority-ordered | later |
@@ -555,7 +562,7 @@ v0 code is shaped to accept them, not built now.
 | Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — the seam already exists |
 | Swap the LLM provider | decorate/replace `LlmClientInterface` | **yes** |
 | Change the agent voice | `config.xml` field, no code | **yes** |
-| Storefront widget markup | Twig template override, standard Shopware | **yes** |
+| Storefront widget markup | Twig template override, standard Shopware — four named blocks, see README | **yes, shipped** |
 | System prompt | decorate `PromptProviderInterface` | interface only |
 | Ranking rules | `RankingRuleInterface`, tag `swag_assistant.ranking_rule`, priority-ordered | later |
 | Retrieval strategy (Tier 1/2) | decorate `RetrievalStrategyInterface` | later |
