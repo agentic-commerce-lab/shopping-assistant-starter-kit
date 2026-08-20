@@ -73,19 +73,32 @@ jobs:
 
   # The storefront's compiled JS is committed so the plugin works on install without a Node
   # toolchain in the merchant's shop — the same reason SwagPayPal ships its dist. That makes it an
-  # artefact which can silently disagree with its source, which is the failure shape docs/HANDOFF.md
-  # records as "a command's own success output is not evidence that it did what was intended".
-  # So: rebuild it here and require the diff to be empty.
+  # artefact which can silently disagree with its source, which is the failure shape
+  # docs/HANDOFF.md records as "a command's own success output is not evidence that it did what was
+  # intended".
   #
-  # This is not ecosystem practice. It is this repo's own standard applied to a new artefact type.
+  # **A byte-for-byte diff cannot be the check.** Measured: the build is deterministic at a given
+  # path but path-dependent across paths — webpack derives module ids from the absolute path, so the
+  # same source built at /Users/... and at /tmp/... yields identical chunk bodies under different
+  # names (c9d005/a1be41 vs 887a43/631d22). A rebuild-and-diff job would therefore fail on every
+  # run in CI regardless of whether dist actually matches src, which is worse than no check.
+  #
+  # So this job asserts the two things that are actually assertable:
+  #   1. the source still compiles;
+  #   2. nobody changed src without rebuilding dist.
+  #
+  # Honest limit: (2) is satisfied by any dist change, so it catches the forgotten rebuild — the
+  # real mistake — and not a deliberately falsified one.
   storefront-dist:
-    name: Storefront dist matches src
+    name: Storefront dist keeps up with src
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -97,14 +110,23 @@ jobs:
       - name: Setup shopware-cli
         uses: shopware/shopware-cli-action@v3
 
-      - name: Rebuild storefront assets
+      - name: Storefront source compiles
         run: composer run build:storefront
 
-      - name: Fail on drift
+      - name: Fail when src changed without a dist rebuild
         run: |
-          if ! git diff --exit-code -- src/Resources/app/storefront/dist; then
-            echo "::error::The committed storefront dist does not match src. Run 'composer run build:storefront' and commit the result."
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ]; then base="$(git rev-parse HEAD^)"; fi
+
+          changed_src="$(git diff --name-only "$base" HEAD -- src/Resources/app/storefront/src | wc -l | tr -d ' ')"
+          changed_dist="$(git diff --name-only "$base" HEAD -- src/Resources/app/storefront/dist | wc -l | tr -d ' ')"
+
+          echo "storefront src files changed:  $changed_src"
+          echo "storefront dist files changed: $changed_dist"
+
+          if [ "$changed_src" -gt 0 ] && [ "$changed_dist" -eq 0 ]; then
+            echo "::error::Storefront source changed but the committed dist did not. Run 'composer run build:storefront' and commit the result, or the shop will keep serving the previous JavaScript."
             exit 1
           fi
-          echo "Committed dist matches src."
 
+          echo "Committed dist keeps up with src."
