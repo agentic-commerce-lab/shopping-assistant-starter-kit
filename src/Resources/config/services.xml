@@ -59,6 +59,34 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
         </service>
 
+        <!-- Conversation and trace persistence. This lands before the widget because of
+             RE-HYDRATION, not the trace: without it "add that to my cart" cannot resolve after a
+             page reload, and ARCHITECTURE.md calls that not optional.
+
+             Written EntityDefinitions plus a migration rather than entities.xml custom entities
+             (ruling R78): custom entities are registered only by AppManager, so they are an App
+             feature and D1 chose a plugin. -->
+        <service id="Swag\AssistantStarterKit\Entity\Conversation\ConversationDefinition">
+            <tag name="shopware.entity.definition"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventDefinition">
+            <tag name="shopware.entity.definition"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Trace\JsonShape"/>
+        <service id="Swag\AssistantStarterKit\Core\Trace\TranscriptCodec"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Trace\DalConversationStore">
+            <argument type="service" id="swag_assistant_conversation.repository"/>
+            <argument type="service" id="swag_assistant_trace_event.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\TranscriptCodec"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\JsonShape"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Trace\ConversationStore"
+                 alias="Swag\AssistantStarterKit\Core\Trace\DalConversationStore"/>
+
         <!-- Merchant configuration. Until these exist, config.xml is a form that changes nothing —
              including the kill switch, which is a security control rather than an ops nicety. -->
         <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig">

@@ -60,6 +60,16 @@ ignore = [
   # against the installed tree. Keeping `includes = ["vendor"]` and scoping this one code is
   # the stricter of the two options. Added 2026-08-19, ruling R64.
   { code = "missing-constructor", in = "src/SwagAssistantStarterKit.php" },
+  # Same finding, same structural cause, one directory instead of one file: `src/Entity/` holds
+  # nothing but DAL entities. Shopware's DAL instantiates an entity with NO arguments and populates
+  # it through its own hydrator, so a constructor is impossible there too — every Shopware core
+  # entity is written exactly this way. The alternative would be nullable fields with getters that
+  # lie about initialization, which trades a framework-shaped class for a hidden bug.
+  #
+  # This widens ruling R64 from one file to one directory, and only for this code. `src/Entity/`
+  # exists solely for entities; if anything else is ever put there, this ignore is wrong and the
+  # directory is the thing to fix. Added 2026-08-20, ruling R79.
+  { code = "missing-constructor", in = "src/Entity/" },
   # BoundedToolbox's job is to catch a `\TypeError` that PHP raises when a
   # model-supplied argument does not match a tool's declared parameter type, and to
   # tell that apart from a `\TypeError` raised inside a tool's own body. Testing that

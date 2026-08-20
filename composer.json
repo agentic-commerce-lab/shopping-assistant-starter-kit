@@ -5,6 +5,7 @@
   "license": "MIT",
   "require": {
     "php": "^8.2",
+    "doctrine/dbal": "^4.0",
     "ext-filter": "*",
     "ext-mbstring": "*",
     "shopware/core": "~6.7.0",
