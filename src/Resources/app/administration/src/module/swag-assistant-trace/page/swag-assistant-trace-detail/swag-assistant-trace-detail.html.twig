@@ -1,0 +1,65 @@
+{% block swag_assistant_trace_detail %}
+<sw-page class="swag-assistant-trace-detail">
+
+    {% block swag_assistant_trace_detail_smart_bar_header %}
+    <template #smart-bar-header>
+        <h2>{{ $tc('swag-assistant-trace.detail.title') }}</h2>
+    </template>
+    {% endblock %}
+
+    {% block swag_assistant_trace_detail_content %}
+    <template #content>
+        <sw-card-view>
+
+            <sw-loader v-if="isLoading" />
+
+            {% block swag_assistant_trace_detail_summary %}
+            <sw-card v-if="!isLoading && conversation" :title="$tc('swag-assistant-trace.detail.title')">
+                <sw-description-list>
+                    <dt>{{ $tc('swag-assistant-trace.list.columnOutcome') }}</dt>
+                    <dd>{{ conversation.outcome }}</dd>
+
+                    <dt>{{ $tc('swag-assistant-trace.list.columnTurnCount') }}</dt>
+                    <dd>{{ conversation.turnCount }}</dd>
+
+                    <dt>{{ $tc('swag-assistant-trace.list.columnTotalMs') }}</dt>
+                    <dd>{{ conversation.totalMs }}ms</dd>
+
+                    <dt>{{ $tc('swag-assistant-trace.list.columnSalesChannel') }}</dt>
+                    <dd>{{ conversation.salesChannelId }}</dd>
+                </sw-description-list>
+            </sw-card>
+            {% endblock %}
+
+            {% block swag_assistant_trace_detail_timeline %}
+            <sw-card v-if="!isLoading && events" :title="$tc('swag-assistant-trace.detail.stage')">
+                <div
+                    v-for="event in events"
+                    :key="event.id"
+                    class="swag-assistant-trace-detail__event"
+                >
+                    <div class="swag-assistant-trace-detail__row">
+                        <span class="swag-assistant-trace-detail__elapsed">{{ elapsedLabel(event) }}</span>
+                        <span class="swag-assistant-trace-detail__stage">{{ event.stage }}</span>
+                    </div>
+
+                    <sw-description-list v-if="highlights(event).length">
+                        <template v-for="item in highlights(event)">
+                            <dt :key="`${item.key}-key`">{{ item.key }}</dt>
+                            <dd :key="`${item.key}-value`">{{ item.value }}</dd>
+                        </template>
+                    </sw-description-list>
+
+                    <sw-collapse :title="$tc('swag-assistant-trace.detail.payload')">
+                        <pre class="swag-assistant-trace-detail__payload">{{ payloadJson(event) }}</pre>
+                    </sw-collapse>
+                </div>
+            </sw-card>
+            {% endblock %}
+
+        </sw-card-view>
+    </template>
+    {% endblock %}
+
+</sw-page>
+{% endblock %}

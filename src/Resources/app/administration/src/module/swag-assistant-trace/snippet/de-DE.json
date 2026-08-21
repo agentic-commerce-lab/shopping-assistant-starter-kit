@@ -1,0 +1,23 @@
+{
+    "swag-assistant-trace": {
+        "general": {
+            "mainMenuItemGeneral": "Assistent-Konversationen",
+            "description": "Was der Einkaufsassistent verstanden, gefunden, ausgegeben und abgelehnt hat"
+        },
+        "list": {
+            "columnCreatedAt": "Gestartet",
+            "columnSalesChannel": "Verkaufskanal",
+            "columnTurnCount": "Züge",
+            "columnOutcome": "Ergebnis",
+            "columnTotalMs": "Dauer",
+            "filterOutcome": "Nach Ergebnis filtern",
+            "filterOutcomeAll": "Alle Ergebnisse"
+        },
+        "detail": {
+            "title": "Konversation",
+            "stage": "Ablauf",
+            "payload": "Daten",
+            "noOffset": "—"
+        }
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "swag-assistant-trace": {
+        "general": {
+            "mainMenuItemGeneral": "Assistant conversations",
+            "description": "What the shopping assistant understood, retrieved, rendered and refused"
+        },
+        "list": {
+            "columnCreatedAt": "Started",
+            "columnSalesChannel": "Sales channel",
+            "columnTurnCount": "Turns",
+            "columnOutcome": "Outcome",
+            "columnTotalMs": "Duration",
+            "filterOutcome": "Filter by outcome",
+            "filterOutcomeAll": "Any outcome"
+        },
+        "detail": {
+            "title": "Conversation",
+            "stage": "Pipeline",
+            "payload": "Payload",
+            "noOffset": "—"
+        }
+    }
+}

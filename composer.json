@@ -90,6 +90,6 @@
     "quality:deps": "composer outdated --direct",
     "quality:maintainability": "phpcca analyse src",
     "quality:hotspots": "phpcca churn src",
-    "build:storefront": "shopware-cli extension build ."
+    "build": "shopware-cli extension build ."
   }
 }

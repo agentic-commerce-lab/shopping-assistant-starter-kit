@@ -1,0 +1,45 @@
+{% block swag_assistant_trace_list %}
+<sw-page class="swag-assistant-trace-list">
+
+    {% block swag_assistant_trace_list_smart_bar_header %}
+    <template #smart-bar-header>
+        <h2>{{ $tc('swag-assistant-trace.general.mainMenuItemGeneral') }}</h2>
+    </template>
+    {% endblock %}
+
+    {% block swag_assistant_trace_list_content %}
+    <template #content>
+        <div class="swag-assistant-trace-list__content">
+
+            {% block swag_assistant_trace_list_filter %}
+            <sw-card :title="$tc('swag-assistant-trace.list.filterOutcome')">
+                <sw-single-select
+                    :options="outcomeOptions"
+                    :value="outcomeFilter"
+                    :placeholder="$tc('swag-assistant-trace.list.filterOutcomeAll')"
+                    show-clearable-button
+                    @change="onOutcomeFilterChange"
+                />
+            </sw-card>
+            {% endblock %}
+
+            {% block swag_assistant_trace_list_grid %}
+            <sw-entity-listing
+                v-if="conversations"
+                :items="conversations"
+                :repository="repository"
+                :columns="columns"
+                :isLoading="isLoading"
+                :showSelection="false"
+                :allowEdit="false"
+                :allowDelete="false"
+                detailRoute="swag.assistant.trace.detail"
+            />
+            {% endblock %}
+
+        </div>
+    </template>
+    {% endblock %}
+
+</sw-page>
+{% endblock %}
