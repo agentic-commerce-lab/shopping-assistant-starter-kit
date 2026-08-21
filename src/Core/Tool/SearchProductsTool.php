@@ -13,6 +13,7 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
+use Swag\AssistantStarterKit\Core\Retrieval\RelaxedTermRetry;
 use Swag\AssistantStarterKit\Core\Retrieval\ShopperIntent;
 use Swag\AssistantStarterKit\Core\Retrieval\UnmatchedOptionRetry;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -65,6 +66,23 @@ final class SearchProductsTool
     private const MIN_CANDIDATES = 20;
 
     private const MAX_CANDIDATES = 50;
+
+    /**
+     * What the model is told when nothing matched, and it is deliberately not "the shop does not
+     * sell this."
+     *
+     * A search that matched nothing has established one thing — these words found no products — and
+     * the model used to read it as proof of absence: asked for "gloves", it answered "this shop
+     * doesn't carry gloves" about a shop that sells the Commuter Glove. Absence of evidence stated
+     * as evidence of absence is the same class of claim D4 exists to prevent.
+     *
+     * A constant so a test can assert the intent without pinning the prose, the same way
+     * {@see UnmatchedOptionRetry::NOTE} and {@see RelaxedTermRetry::NOTE} are.
+     */
+    public const NO_MATCH_NOTE =
+        'This search matched nothing. That means these words found no '
+            . 'products, NOT that the shop has none of this kind — say the search came up empty and '
+            . 'offer to try different words. Do not tell the shopper the shop does not sell it.';
 
     // @mago-expect lint:excessive-parameter-list
     // Every parameter is one collaborator this method orchestrates without reimplementing;
@@ -214,6 +232,19 @@ final class SearchProductsTool
             }
         }
 
+        // Second, and after the option retry because that one is the more specific diagnosis: the
+        // words themselves may simply not be in the shop's keyword index. "gloves" found nothing in
+        // a shop that sells the Commuter Glove — the storefront's own search box has the same gap —
+        // and the model then told a shopper the shop carries no gloves. See RelaxedTermRetry.
+        if ($cards === []) {
+            $relaxed = RelaxedTermRetry::search($this->gateway, $query, $scope, $this->trace);
+
+            if ($relaxed !== null && $relaxed !== []) {
+                $cards = $relaxed;
+                $optionNote = RelaxedTermRetry::NOTE;
+            }
+        }
+
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
         // each one against the catalog's own spelling — see
         // VariantSelectionFilterResolver's docblock (Finding I1). Handing VariantResolver
@@ -273,7 +304,7 @@ final class SearchProductsTool
         ];
 
         if ($returned === []) {
-            $result['note'] = 'No matching products in this shop.';
+            $result['note'] = self::NO_MATCH_NOTE;
         } elseif ($optionNote !== null) {
             $result['note'] = $optionNote;
         }

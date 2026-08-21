@@ -88,7 +88,7 @@ final class SearchProductsToolUnmatchedOptionTest extends TestCase
         $result = $this->tool()(term: 'bottle cage', priceMax: 5.0, options: [['Colour', 'Blue']]);
 
         self::assertSame([], self::ids($result));
-        self::assertSame('No matching products in this shop.', $result['note'] ?? null);
+        self::assertSame(SearchProductsTool::NO_MATCH_NOTE, $result['note'] ?? null);
     }
 
     /**
@@ -132,7 +132,7 @@ final class SearchProductsToolUnmatchedOptionTest extends TestCase
         $result = $this->tool()(term: 'nonexistent gizmo');
 
         self::assertSame([], self::ids($result));
-        self::assertSame('No matching products in this shop.', $result['note'] ?? null);
+        self::assertSame(SearchProductsTool::NO_MATCH_NOTE, $result['note'] ?? null);
     }
 
     /**
