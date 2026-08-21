@@ -45,7 +45,6 @@ final class AssistantRunner
     public function __construct(
         private readonly AssistantConfig $config,
         private readonly Bundle $bundle,
-        private readonly int $requestsToday = 0,
         private readonly TurnOutcomeResolver $outcomeResolver = new TurnOutcomeResolver(),
         private readonly TurnToolCallCounter $activityCounter = new TurnToolCallCounter(),
     ) {}
@@ -59,7 +58,7 @@ final class AssistantRunner
      */
     public function run(string $message, MessageBag $history): AssistantTurn
     {
-        $decision = (new GuardCheck())->check($this->config, $this->requestsToday);
+        $decision = (new GuardCheck())->check($this->config);
 
         if ($decision->isBlocked()) {
             $this->bundle->trace->record('guard.check', [

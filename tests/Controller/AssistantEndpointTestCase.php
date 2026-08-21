@@ -7,11 +7,14 @@ namespace Swag\AssistantStarterKit\Tests\Controller;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Swag\AssistantStarterKit\Controller\AssistantController;
+use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
+use Swag\AssistantStarterKit\Core\Policy\RequestBudget;
 use Swag\AssistantStarterKit\Tests\Core\Config\FakeSystemConfigService;
 use Swag\AssistantStarterKit\Tests\Core\Trace\InMemoryConversationStore;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
 /**
  * Shared fixture for the endpoint tests.
@@ -28,6 +31,17 @@ abstract class AssistantEndpointTestCase extends TestCase
     protected const BLUE_M_ID = 'a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2';
 
     protected const PREFIX = 'SwagAssistantStarterKit.config.';
+
+    /**
+     * A shop with a model configured and every other setting left at its default.
+     *
+     * @var array<string, string|int|float|bool|null>
+     */
+    protected const CONFIGURED = [
+        self::PREFIX . 'llmBaseUrl' => 'https://openrouter.ai/api',
+        self::PREFIX . 'llmModel' => 'anthropic/claude-sonnet-5',
+        self::PREFIX . 'llmApiKey' => 'sk-test',
+    ];
 
     /** @var list<string> */
     private const ENV_NAMES = ['ASSISTANT_LLM_BASE_URL', 'ASSISTANT_LLM_MODEL', 'ASSISTANT_LLM_API_KEY'];
@@ -71,20 +85,34 @@ abstract class AssistantEndpointTestCase extends TestCase
     /**
      * @param array<string, string|int|float|bool|null> $config
      */
-    protected function controller(array $config = [
-        self::PREFIX . 'llmBaseUrl' => 'https://openrouter.ai/api',
-        self::PREFIX . 'llmModel' => 'anthropic/claude-sonnet-5',
-        self::PREFIX . 'llmApiKey' => 'sk-test',
-    ]): AssistantController
+    protected function controller(array $config = self::CONFIGURED): AssistantController
     {
         $this->runner = new RecordingTurnRunner();
         $this->store = new InMemoryConversationStore();
 
+        $systemConfig = new FakeSystemConfigService($config);
+
         return new AssistantController(
             $this->runner,
             $this->store,
-            new SystemConfigLlmSettings(new FakeSystemConfigService($config)),
+            new SystemConfigLlmSettings($systemConfig),
+            new SystemConfigAssistantConfig($systemConfig),
+            // In-memory rather than a cache pool: one budget per controller, so a test's windows
+            // start empty and cannot leak into the next test.
+            new RequestBudget(new InMemoryStorage()),
         );
+    }
+
+    /**
+     * A configured shop with some settings overridden.
+     *
+     * @param array<string, string|int|float|bool|null> $overrides
+     *
+     * @return array<string, string|int|float|bool|null>
+     */
+    protected function configuredWith(array $overrides): array
+    {
+        return array_merge(self::CONFIGURED, $overrides);
     }
 
     protected function context(): SalesChannelContext
@@ -98,10 +126,16 @@ abstract class AssistantEndpointTestCase extends TestCase
 
     /**
      * @param array<string, mixed> $body
+     * @param string               $ip   the caller the per-client window is counted against
      */
-    protected function post(array $body): Request
+    protected function post(array $body, string $ip = '127.0.0.1'): Request
     {
-        return Request::create('/assistant/chat', 'POST', content: json_encode($body) ?: '{}');
+        return Request::create(
+            '/assistant/chat',
+            'POST',
+            server: ['REMOTE_ADDR' => $ip],
+            content: json_encode($body) ?: '{}',
+        );
     }
 
     /**

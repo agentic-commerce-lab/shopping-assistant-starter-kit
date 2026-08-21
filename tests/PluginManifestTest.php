@@ -85,6 +85,7 @@ final class PluginManifestTest extends TestCase
             'killSwitch',
             'dailyRequestCap',
             'maxToolCallsPerTurn',
+            'requestsPerMinute',
         ];
 
         foreach ($required as $key) {

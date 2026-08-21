@@ -22,5 +22,6 @@ final readonly class AssistantConfig
         public bool $killSwitch = false,
         public int $dailyRequestCap = 500,
         public int $maxToolCallsPerTurn = 5,
+        public int $requestsPerMinute = 12,
     ) {}
 }

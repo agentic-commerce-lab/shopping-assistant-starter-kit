@@ -35,9 +35,19 @@ final class InMemoryConversationStore implements ConversationStore
 
     private int $tokenCounter = 0;
 
+    /**
+     * How many conversations were opened.
+     *
+     * Not on {@see ConversationStore}: it exists so a test can assert that a *refused* request wrote
+     * nothing at all. A throttle that stores a row before rejecting is an amplifier rather than a
+     * defence, and no assertion about the response body can catch that.
+     */
+    public int $startedConversations = 0;
+
     public function start(string $salesChannelId, string $locale): string
     {
         $this->tokenCounter++;
+        $this->startedConversations++;
         $token = \sprintf('%032x', $this->tokenCounter);
 
         $this->turns[$token] = [];

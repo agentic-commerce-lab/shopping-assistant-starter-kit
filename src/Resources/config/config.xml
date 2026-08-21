@@ -93,20 +93,38 @@
                 gracefully with whatever was already grounded, never with an error.</helpText>
         </input-field>
 
-        <input-field type="int">
-            <name>dailyRequestCap</name>
-            <label>Daily request cap</label>
-            <defaultValue>500</defaultValue>
-            <helpText>The chat endpoint is public, so this is a security control rather than an
-                operational nicety.</helpText>
-        </input-field>
-
         <input-field type="bool">
             <name>killSwitch</name>
             <label>Kill switch — stop the assistant</label>
             <defaultValue>false</defaultValue>
-            <helpText>Rejects every turn before any model spend. Takes precedence over the daily
-                cap, so the trace records why it stopped.</helpText>
+            <helpText>Rejects every turn before any model spend, and is reported ahead of the
+                daily cap so the trace records that the assistant was switched off rather than out
+                of budget. The per-shopper limit still applies: switching off stops model spend, not
+                the traffic arriving at the endpoint.</helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Request limits</title>
+
+        <input-field type="int">
+            <name>requestsPerMinute</name>
+            <label>Messages per minute, per shopper</label>
+            <defaultValue>12</defaultValue>
+            <helpText>The chat endpoint is public and every call spends model tokens, so this is the
+                control that stops a scripted loop. Counted per caller address in a sliding window;
+                a caller past it is refused before the shop reads or writes anything. 0 refuses
+                every request.</helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>dailyRequestCap</name>
+            <label>Requests per day, whole sales channel</label>
+            <defaultValue>500</defaultValue>
+            <helpText>A spend ceiling, not an abuse defence: it is the per-shopper limit above that
+                stops one caller exhausting this. Counted in a 24-hour window that opens on the
+                first request rather than at midnight, and reset by clearing the shop's cache. 0
+                refuses every request.</helpText>
         </input-field>
     </card>
 

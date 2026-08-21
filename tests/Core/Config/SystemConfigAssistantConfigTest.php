@@ -29,6 +29,7 @@ final class SystemConfigAssistantConfigTest extends TestCase
             self::PREFIX . 'killSwitch' => true,
             self::PREFIX . 'dailyRequestCap' => 50,
             self::PREFIX . 'maxToolCallsPerTurn' => 3,
+            self::PREFIX . 'requestsPerMinute' => 2,
         ]));
 
         $config = $factory->forSalesChannel(self::CHANNEL);
@@ -40,6 +41,7 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertTrue($config->killSwitch);
         self::assertSame(50, $config->dailyRequestCap);
         self::assertSame(3, $config->maxToolCallsPerTurn);
+        self::assertSame(2, $config->requestsPerMinute);
     }
 
     public function testAnUnsetSettingFallsBackToTheDefaultRatherThanToZero(): void
@@ -54,6 +56,8 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertSame(1000.0, $config->maxCartValue);
         self::assertSame(500, $config->dailyRequestCap);
         self::assertSame(5, $config->maxToolCallsPerTurn);
+        // Zero here would refuse every shopper's very first message.
+        self::assertSame(12, $config->requestsPerMinute);
     }
 
     public function testAddToCartDefaultsToOnAndTheKillSwitchToOff(): void

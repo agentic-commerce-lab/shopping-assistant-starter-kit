@@ -97,6 +97,19 @@
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
         </service>
 
+        <!-- The two limits in front of the public chat endpoint. Storage is the shop's own cache
+             pool rather than the database: counting rows would mean a query per request on a public
+             route, and the retention task deletes those rows daily, so the count would be wrong by
+             design. Clearing the cache resets both windows, which is acceptable for a throttle. -->
+        <service id="swag_assistant.rate_limiter_storage"
+                 class="Symfony\Component\RateLimiter\Storage\CacheStorage">
+            <argument type="service" id="cache.app"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Policy\RequestBudget">
+            <argument type="service" id="swag_assistant.rate_limiter_storage"/>
+        </service>
+
         <!-- The shopper-facing HTTP surface. The widget UI is out of this plan's scope (Robin's
              separate work); this endpoint is the contract it builds against. -->
         <service id="Swag\AssistantStarterKit\Core\Agent\ShopwareChatTurnRunner">
@@ -112,6 +125,8 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\ConversationStore"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Policy\RequestBudget"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>

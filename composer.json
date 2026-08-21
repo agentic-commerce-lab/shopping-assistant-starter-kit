@@ -19,6 +19,7 @@
     "symfony/http-foundation": "~7.4.0",
     "symfony/http-client-contracts": "^3.0",
     "symfony/messenger": "~7.4.0",
+    "symfony/rate-limiter": "~7.4.0",
     "symfony/routing": "~7.4.0",
     "symfony/serializer": "~7.4.0",
     "twig/twig": "^3.26"
@@ -90,6 +91,7 @@
     "quality:deps": "composer outdated --direct",
     "quality:maintainability": "phpcca analyse src",
     "quality:hotspots": "phpcca churn src",
-    "build": "shopware-cli extension build ."
+    "build": "shopware-cli extension build .",
+    "build:storefront": "shopware-cli extension build ."
   }
 }

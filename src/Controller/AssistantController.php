@@ -8,7 +8,10 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
+use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
+use Swag\AssistantStarterKit\Core\Policy\BudgetVerdict;
+use Swag\AssistantStarterKit\Core\Policy\RequestBudget;
 use Swag\AssistantStarterKit\Core\Trace\ConversationStore;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -25,8 +28,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * running inside Shopware rather than as an external service.
  *
  * **The order of operations in `chat()` is the design, not incidental:**
- * validate → check configuration → run (the guard fires inside `AssistantRunner`, before any spend)
- * → read the rendered cards → persist → build JSON **from the cards**.
+ * validate → check configuration → spend the request budget (`RequestBudget`, before the first
+ * database call) → run (the guard fires inside `AssistantRunner`, before any model spend) → read the
+ * rendered cards → persist → build JSON **from the cards**.
  *
  * Every figure in the response comes from a rendered `ProductCard`. Nothing is parsed out of the
  * model's prose, which is D3 arriving at the wire: the model supplies words, the shop supplies
@@ -37,10 +41,20 @@ class AssistantController extends StorefrontController
 {
     private const MAX_HISTORY_TURNS = 20;
 
+    // @mago-expect lint:excessive-parameter-list
+    // A dependency-injected constructor, not a call signature: each entry is one collaborator the
+    // container supplies once, and grouping them behind a holder object would hide what this
+    // controller depends on without reducing it.
     public function __construct(
         private readonly ChatTurnRunnerInterface $turnRunner,
         private readonly ConversationStore $conversations,
         private readonly SystemConfigLlmSettings $llmSettings,
+        private readonly SystemConfigAssistantConfig $assistantConfig,
+        // Required, not defaulted. Every other collaborator here could sensibly fall back to a
+        // stock instance; a rate limiter cannot, because the fallback would be "no limit" on a
+        // public endpoint that spends money — and a control that quietly does nothing is the exact
+        // defect {@see RequestBudget} was written to fix.
+        private readonly RequestBudget $budget,
         private readonly CardPayload $cardPayload = new CardPayload(),
     ) {}
 
@@ -69,6 +83,26 @@ class AssistantController extends StorefrontController
             return new JsonResponse([
                 'error' => 'The assistant is not configured in this shop.',
             ], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+
+        $config = $this->assistantConfig->forSalesChannel($salesChannelId);
+
+        // **Before the first database call, and in every branch below it.** This is the abuse
+        // defence: a throttle that first writes a row is an amplifier rather than a defence, and a
+        // branch that skips it is an unthrottled path.
+        $refusal = $this->budget->consumeClientWindow($config, ClientKey::of($request, $salesChannelId));
+
+        // The daily budget is the merchant's spend ceiling, and it is consumed only when a turn
+        // could actually spend. A switched-off assistant is reported by `GuardCheck` inside the
+        // runner, which records `kill_switch` in the trace as that setting's help text promises;
+        // consuming the budget here first would answer "out of budget" to a shop that is simply off
+        // — the wrong reason, and one no trace would ever show.
+        if ($refusal->accepted && !$config->killSwitch) {
+            $refusal = $this->budget->consumeDailyBudget($config, $salesChannelId);
+        }
+
+        if (!$refusal->accepted) {
+            return $this->refuse($refusal);
         }
 
         $token = $chat->token ?? $this->conversations->start($salesChannelId, $context->getLanguageId());
@@ -120,6 +154,28 @@ class AssistantController extends StorefrontController
             // them is not, so the interface can annotate it, de-emphasise it, or drop it.
             'warnings' => self::warnings($turn),
         ]);
+    }
+
+    /**
+     * A request refused by {@see RequestBudget}: 429, nothing written, nothing spent.
+     *
+     * `Retry-After` is the point of answering rather than dropping the connection — without it a
+     * client has nothing to back off by, and the widget's own retry button becomes a way to hammer
+     * the endpoint that just refused it. The reason code is included because a merchant debugging a
+     * quiet assistant needs to tell "this shopper is too fast" from "the shop's daily budget is
+     * gone"; neither tells an abuser anything they cannot already see from the status code.
+     */
+    private function refuse(BudgetVerdict $refusal): JsonResponse
+    {
+        $message = $refusal->reasonCode === RequestBudget::REASON_DAILY_CAP
+            ? 'The assistant has reached this shop\'s request limit for now.'
+            : 'Too many messages in a short time. Please wait a moment and try again.';
+
+        return new JsonResponse(
+            ['error' => $message, 'reason' => $refusal->reasonCode],
+            Response::HTTP_TOO_MANY_REQUESTS,
+            ['Retry-After' => (string) $refusal->retryAfterSeconds],
+        );
     }
 
     /**

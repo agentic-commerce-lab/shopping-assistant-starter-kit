@@ -18,9 +18,10 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
  * return zero values rather than null:
  *
  * - `getInt()` returns `0`, and 0 is a *valid but catastrophic* value here. `maxToolCallsPerTurn: 0`
- *   means no tool may ever run; `dailyRequestCap: 0` refuses every request. A shop that never opened
- *   the config form must get the documented defaults, not a silently disabled assistant — so ints
- *   are read through {@see self::intOr()}, which distinguishes absent from stored.
+ *   means no tool may ever run; `dailyRequestCap: 0` and `requestsPerMinute: 0` refuse every
+ *   request. A shop that never opened the config form must get the documented defaults, not a
+ *   silently disabled assistant — so ints are read through {@see self::intOr()}, which distinguishes
+ *   absent from stored.
  * - `getBool()` returns `false` for an absent key *and* for a stored `false`. For `killSwitch` that
  *   is harmless: both mean off, which is the safe direction. For `enableAddToCart` it is not — the
  *   default is **on**, so an absent key must not read as "the merchant switched it off", and a
@@ -47,6 +48,7 @@ final readonly class SystemConfigAssistantConfig
             killSwitch: $this->boolOr('killSwitch', false, $salesChannelId),
             dailyRequestCap: $this->intOr('dailyRequestCap', 500, $salesChannelId),
             maxToolCallsPerTurn: $this->intOr('maxToolCallsPerTurn', 5, $salesChannelId),
+            requestsPerMinute: $this->intOr('requestsPerMinute', 12, $salesChannelId),
         );
     }
 
