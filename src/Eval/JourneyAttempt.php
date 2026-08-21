@@ -8,10 +8,8 @@ use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 use Swag\AssistantStarterKit\Core\Agent\AssistantRunner;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Agent\BoundedToolbox;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
-use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -72,7 +70,7 @@ final class JourneyAttempt
     public function run(Journey $journey, ?string $archetypePhrase): array
     {
         $gateway = FixtureCommerceGateway::fromFile($this->catalogFixturePath);
-        $config = $this->buildConfig($journey);
+        $config = JourneyConfig::of($journey);
 
         // cartAvailable is always true: a real storefront always has a shopper cart, and
         // AssistantConfig::$enableAddToCart (defaulted on) is what actually gates whether
@@ -122,13 +120,5 @@ final class JourneyAttempt
         }
 
         return $phrase;
-    }
-
-    private function buildConfig(Journey $journey): AssistantConfig
-    {
-        /** @var list<string> $blockedProductIds */
-        $blockedProductIds = $journey->config['blockedProductIds'] ?? [];
-
-        return new AssistantConfig(scope: new CatalogScope(blockedProductIds: $blockedProductIds));
     }
 }

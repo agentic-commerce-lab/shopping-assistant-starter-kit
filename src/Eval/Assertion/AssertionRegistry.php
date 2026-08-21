@@ -25,6 +25,7 @@ final class AssertionRegistry
             'cart_contains' => new CartContains(),
             'rendered_ids_exactly' => new RenderedIdsExactly(),
             'no_absence_claim_in_prose' => new NoAbsenceClaimInProse(),
+            'escalated_with_handoff' => new EscalatedWithHandoff(),
             default => throw new \InvalidArgumentException(\sprintf(
                 'Journey "%s" declares unknown assertion "%s".',
                 $journeyId,
