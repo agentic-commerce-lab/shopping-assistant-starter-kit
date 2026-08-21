@@ -23,6 +23,9 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
 {
     public int $calls = 0;
 
+    /** Overridden by tests that need a turn the controller treats as an escalation. */
+    public string $outcome = 'product_shown';
+
     /** @var list<ConversationTurn> */
     public array $lastHistory = [];
 
@@ -50,6 +53,6 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
             options: ['Colour' => 'Blue', 'Size' => 'M'],
         );
 
-        return new TurnResult(new AssistantTurn('The Trail Jersey in Blue / M.', [$card], 'product_shown'), $trace);
+        return new TurnResult(new AssistantTurn('The Trail Jersey in Blue / M.', [$card], $this->outcome), $trace);
     }
 }

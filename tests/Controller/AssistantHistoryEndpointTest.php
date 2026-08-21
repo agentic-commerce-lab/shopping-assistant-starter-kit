@@ -32,7 +32,10 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
             new TraceRecorder(),
         );
 
-        $payload = $this->decode($controller->history(Request::create('/assistant/history?token=' . $token)));
+        $payload = $this->decode($controller->history(
+            Request::create('/assistant/history?token=' . $token),
+            $this->context(),
+        ));
 
         $messages = $payload['messages'];
         self::assertIsArray($messages);
@@ -61,7 +64,10 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
             new TraceRecorder(),
         );
 
-        $payload = $this->decode($controller->history(Request::create('/assistant/history?token=' . $token)));
+        $payload = $this->decode($controller->history(
+            Request::create('/assistant/history?token=' . $token),
+            $this->context(),
+        ));
         $messages = $payload['messages'];
         self::assertIsArray($messages);
         $message = $messages[0];
@@ -83,7 +89,10 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
             new TraceRecorder(),
         );
 
-        $payload = $this->decode($controller->history(Request::create('/assistant/history?token=' . $token)));
+        $payload = $this->decode($controller->history(
+            Request::create('/assistant/history?token=' . $token),
+            $this->context(),
+        ));
         $messages = $payload['messages'];
         self::assertIsArray($messages);
         $message = $messages[0];
@@ -96,14 +105,17 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
     public function testHistoryWithNoTokenIsAnEmptyConversationRatherThanAnError(): void
     {
         // The first page load of a shopper who has never spoken to the assistant.
-        $payload = $this->decode($this->controller()->history(Request::create('/assistant/history')));
+        $payload = $this->decode($this->controller()->history(Request::create('/assistant/history'), $this->context()));
 
         self::assertSame([], $payload['messages']);
     }
 
     public function testAMalformedTokenIsIgnoredRatherThanReachingARepositoryLookup(): void
     {
-        $payload = $this->decode($this->controller()->history(Request::create('/assistant/history?token=not-a-token')));
+        $payload = $this->decode($this->controller()->history(
+            Request::create('/assistant/history?token=not-a-token'),
+            $this->context(),
+        ));
 
         self::assertSame([], $payload['messages']);
     }

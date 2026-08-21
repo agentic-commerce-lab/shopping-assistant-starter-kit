@@ -56,6 +56,7 @@ class AssistantController extends StorefrontController
         // defect {@see RequestBudget} was written to fix.
         private readonly RequestBudget $budget,
         private readonly CardPayload $cardPayload = new CardPayload(),
+        private readonly HandoffPayload $handoff = new HandoffPayload(),
     ) {}
 
     #[Route(
@@ -147,6 +148,9 @@ class AssistantController extends StorefrontController
             'prose' => $turn->prose,
             'cards' => $this->cardPayload->of($turn->cards),
             'outcome' => $turn->outcome,
+            // Rendered from the outcome and the merchant's settings, never from the prose beside it
+            // — the model has never seen this URL, so it cannot have got it wrong.
+            'handoff' => $this->handoff->of($turn->outcome, $config),
             // Where the prose contradicts the cards, said out loud rather than logged and forgotten.
             // A client that renders the reply verbatim needs to know: a live turn told a shopper
             // "the Trail Jersey is available in Blue, size M" beside a card reporting stock 0
@@ -198,13 +202,17 @@ class AssistantController extends StorefrontController
         defaults: ['XmlHttpRequest' => true],
         methods: ['GET'],
     )]
-    public function history(Request $request): Response
+    public function history(Request $request, SalesChannelContext $context): Response
     {
         $token = ChatRequest::fromRequest($request)->token;
 
         if ($token === null) {
             return new JsonResponse(['messages' => []]);
         }
+
+        // Read once for the whole transcript rather than per turn: every turn in one conversation
+        // belongs to one sales channel, so a per-turn read would be the same answer N times.
+        $config = $this->assistantConfig->forSalesChannel($context->getSalesChannelId());
 
         $messages = [];
         foreach ($this->conversations->history($token, self::MAX_HISTORY_TURNS) as $turn) {
@@ -221,6 +229,10 @@ class AssistantController extends StorefrontController
                 'createdAt' => $turn->createdAt?->format(\DATE_ATOM),
                 // Unlike the figures, a warning does not go stale: it describes what that reply said.
                 'warnings' => $turn->warnings,
+                // Rebuilt, not replayed: if the merchant has since changed where escalation points —
+                // or switched it off — the reloaded transcript must offer what works now, not what
+                // worked then.
+                'handoff' => $this->handoff->of($turn->outcome, $config),
             ];
         }
 

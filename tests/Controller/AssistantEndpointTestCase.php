@@ -139,6 +139,14 @@ abstract class AssistantEndpointTestCase extends TestCase
     }
 
     /**
+     * @param array<string, string> $query
+     */
+    protected function get(array $query): Request
+    {
+        return Request::create('/assistant/history', 'GET', $query);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function decode(Response $response): array
