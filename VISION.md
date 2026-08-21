@@ -80,6 +80,11 @@ The goal is to turn *"your AI is bad"* into *"your products are missing attribut
 | Voice, avatar, video modalities | Separate Linear issues (ACL-119/120/121) |
 | Headless / Frontends storefronts | Twig injection does nothing there; needs its own component |
 
+Escalation means the shopper gets the merchant's configured contact route, rendered server-side. With
+none configured — or with escalation switched off entirely — the assistant declines the question
+honestly rather than implying a follow-up. Nothing is notified on the merchant's side; that is the
+next step, not this one.
+
 ## If it continues
 
 The gateway seam (see `ARCHITECTURE.md`) means the SaaS path is a swap of one class plus a

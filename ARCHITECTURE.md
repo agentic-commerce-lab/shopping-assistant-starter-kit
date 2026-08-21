@@ -693,6 +693,37 @@ variant's existing line quantity plus the requested amount — never the call's 
 isolation. Checking only the argument would let repeated small calls accumulate past either
 limit one call at a time.
 
+### Escalation
+
+`escalate` is a terminal tool: `TurnOutcomeResolver` sees its trace stage and the turn ends as
+`escalated`. The handoff block beside that reply is built by `Controller\HandoffPayload` from
+`(outcome, AssistantConfig)` — **not from anything the model produced.** The contact URL is therefore
+never in the model's context, which is what makes it unmanglable, and is the same argument as
+server-rendered prices.
+
+The URL is scheme-checked in `SystemConfigAssistantConfig::safeUrl()`: an absolute path on this shop,
+or explicit http(s). `javascript:`, `data:` and protocol-relative `//host` are dropped. Config access
+is not permission to run JavaScript in the storefront, and in a real shop those are not the same
+person.
+
+With no destination configured, `EscalateTool` returns copy that tells the model to admit it cannot
+help — not that a human is coming, because nothing is notified. A promise nothing keeps is the defect,
+not the missing feature.
+
+`enableEscalation: false` goes further and removes the tool from the toolbox entirely (D6 — capability
+control is construction, never instruction), and `SystemPrompt` swaps its "if asked, escalate" clause
+for one that tells the model to decline. **Those two must move together:** the prompt ordering a call
+the toolbox cannot serve is worse than either alone, because a model given an impossible instruction
+improvises.
+
+`HandoffPayload` checks the toggle as well as the outcome, because history re-hydrates stored turns
+through it — a transcript written while escalation was on must not keep offering the route after a
+merchant withdraws it.
+
+What escalation still does **not** do: notify anybody. No email, no ticket, no queue. The shopper gets
+a route they can take themselves, which is honest; a merchant who wants the transcript pushed to a
+support desk needs the trace sink that is still on the deferred list.
+
 ## Trace data model
 
 `swag_assistant_conversation`

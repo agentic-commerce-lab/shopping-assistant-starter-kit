@@ -126,6 +126,35 @@ window — Symfony's `getClientIp()` is what the per-caller window counts.
 > enforced in `Core\Policy\RequestBudget`, at the HTTP boundary, and covered by
 > `tests/Controller/AssistantThrottleTest.php`.
 
+## Escalation
+
+Some questions have no answer in the catalogue — order status, returns, account data. The assistant
+hands those over rather than guessing, and three settings under **Escalation** decide what "hand
+over" means:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `enableEscalation` | on | When off, the escalate tool is never constructed, so the model cannot see it or call it. The assistant declines instead |
+| `escalationUrl` | — | A path on this shop (`/contact`) or an https URL. Only http and https are accepted — this link is served to every shopper |
+| `escalationMessage` | — | Shown above the link. Left empty, a translated default is used |
+
+**With no URL configured the assistant says it cannot help and names what it can do instead.** It
+does not claim a human will follow up, because nothing would notify one.
+
+Switching `enableEscalation` off removes the capability rather than forbidding it: the tool is never
+constructed, so it never reaches the model's toolbox, and the system prompt drops its "escalate"
+instruction in the same step — an order to call a tool that is not there is how a model ends up
+improvising. This is the same guarantee `enableAddToCart` makes, for the same reason.
+
+The link is rendered server-side from the setting and is never in the model's context, so it cannot
+be paraphrased into a broken URL — the same rule that governs prices and stock. A reloaded
+transcript rebuilds it from configuration rather than replaying it, so a contact route the merchant
+has since moved or withdrawn is not still offered.
+
+> Until 2026-08-22 the escalate tool returned "Handing this over to a human." with no destination, no
+> configuration and nothing notified. Escalation is the designed answer for four of `VISION.md`'s
+> non-goals, and it was a dead end.
+
 ## The storefront widget
 
 The widget ships **compiled**, so a merchant needs no Node toolchain. After installing and
