@@ -15,7 +15,7 @@ use Shopware\Core\Framework\Migration\MigrationStep;
  *
  * Two schema decisions are load-bearing rather than habitual:
  *
- * - **`ON DELETE CASCADE` on the foreign key.** A retention task will prune conversations, and a
+ * - **`ON DELETE CASCADE` on the foreign key.** `PruneConversationsTask` prunes conversations daily, and a
  *   pruned conversation must take its trace events with it. `ARCHITECTURE.md` calls the retention
  *   task "not optional" because these rows live in the merchant's database; orphaned events would
  *   make it a task that only appears to work.

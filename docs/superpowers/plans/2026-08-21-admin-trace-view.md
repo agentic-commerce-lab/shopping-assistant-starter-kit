@@ -506,6 +506,26 @@ through the DAL.
 
 ---
 
+## Deviations found during execution
+
+Recorded as they were hit, so the plan matches what was actually done.
+
+| # | Plan said | Reality |
+|---|---|---|
+| 1 | `git add … composer.lock` in several commit steps | **`composer.lock` is gitignored in this repo.** Drop it from every commit step; run `composer update --lock` to keep it consistent locally |
+| 2 | Task 3 adds `ApiAware` to eleven fields | Backwards — fields are admin-readable by default. See the corrected Task 3 |
+| 3 | Task 4's `IdSearchResult` stub passes a list | Its `$data` is `array<string, array{primaryKey, data}>`, **keyed by primary key**. Fixed with a `searchRows()` helper |
+| 4 | Task 4's handler takes a bare `EntityRepository` | `mago analyze` requires the generic: `@param EntityRepository<ScheduledTaskCollection>` |
+| 5 | Task 4 declares no new composer deps | `PruneConversationsTaskHandler` uses `psr/log` and `symfony/messenger`; `quality:depcheck` failed on both as **shadow dependencies**. Added `psr/log: ^3.0` and `symfony/messenger: ~7.4.0` |
+| 6 | Task 5 adds `shopware/administration` | **Not required — do not add it.** `shopware-cli extension build` compiles the admin bundle from `src/Resources/app/administration/src/main.js` alone. The build log never mentions the administration build, so "storefront only" cannot be read out of it; check `src/Resources/public/administration/assets/*.js` instead. Adding the dependency also fails `quality:depcheck` as an UNUSED_DEPENDENCY. See ruling R94 |
+| 7 | Task 5 puts the outcome filter in the `#language-switch` slot | That slot is for language switching. The filter now lives in a `sw-card` above the listing |
+| 8 | Task 6 splits `payload.js` only if the file-length gate complains | Split up front — it is the part worth unit-testing if a JS harness is ever added |
+| 9 | Task 1's `intdiv()` and bare `hrtime(true)` | `mago analyze` rejected both: `hrtime(true)` is typed `int|float|false`, and `intdiv` declares `ArithmeticError`/`DivisionByZeroError`. Cast the clock, divide with `(int) ($ns / 1_000_000)` |
+
+**Verification gap carried forward:** `bin/console dal:validate` (Task 2) and `scheduled-task:list` (Task 4) were not run — they need a live shop. Tasks 5 and 6 have no automated test by design (D21); their acceptance steps are manual and outstanding.
+
+---
+
 ### Task 4: Retention
 
 **Files:**
@@ -905,25 +925,28 @@ git commit -m "feat(trace): prune conversations past the retention window"
 
 > **No automated test exists for this task or Task 6.** Spec D21: `package.json` is explicitly dev-only and outside CI, and this plan does not add Jest/Vitest. Verification is a successful build plus a manual check. Do not write a test that only asserts a file exists — it would be worse than none.
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Rename the build script only — add no dependency**
 
-In `composer.json`, add to `require` after `shopware/core`:
-
-```json
-    "shopware/administration": "~6.7.0",
-```
-
-and rename the build script, since it now builds administration too:
+In `composer.json`, rename the script, since it builds administration too:
 
 ```json
     "build": "shopware-cli extension build ."
 ```
 
-- [ ] **Step 2: Install and confirm the build still runs**
+**Do not add `shopware/administration`.** It is not needed (ruling R94) and fails `quality:depcheck`
+as an unused dependency. The plugin's PHP never imports from it.
 
-Run: `composer update shopware/administration --no-interaction`
-Then: `composer run build`
-Expected: both succeed. The administration bundle is now part of the build even though no module exists yet.
+- [x] **Step 2: Confirm the build produces an admin bundle**
+
+Run: `composer run build`
+
+**Verify by artefact, never by log.** The log prints only `Building storefront assets ended…` and
+says nothing about the administration build in either case, which is exactly what caused ruling R94:
+
+```bash
+ls src/Resources/public/administration/assets/*.js
+grep -o "swag-assistant-trace-list" src/Resources/public/administration/assets/*.js
+```
 
 - [ ] **Step 3: Write the entry point and privileges**
 
@@ -1193,7 +1216,7 @@ Expected: exit 0. `quality:filesize` walks `src`, so the new JS is in scope; `qu
 - [ ] **Step 9: Commit**
 
 ```bash
-git add composer.json composer.lock src/Resources/app/administration
+git add composer.json src/Resources/app/administration   # composer.lock is gitignored here
 git commit -m "feat(admin): list assistant conversations in the Administration"
 ```
 

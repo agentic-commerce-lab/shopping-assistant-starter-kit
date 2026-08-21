@@ -136,7 +136,7 @@ final readonly class DalConversationStore implements ConversationStore
      * One past the highest `seq` already stored for this conversation.
      *
      * Read rather than counted: a `COUNT(*)` would be wrong the moment an event was ever removed,
-     * and the retention task exists precisely to remove them.
+     * and `PruneConversationsTask` runs daily precisely to remove them.
      */
     private function nextSeq(#[\SensitiveParameter] string $token, Context $context): int
     {

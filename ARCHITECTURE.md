@@ -22,9 +22,21 @@
 │      └── DalCommerceGateway  → DAL / SalesChannel services   │
 │                                                              │
 │  Administration                                              │
-│    └── generated admin-ui over trace custom entities         │
+│    └── hand-written admin module over the trace entities     │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+**The admin module is hand-written, not generated — do not try `admin-ui.xml` again.** The AdminUi
+XML machinery lives under `Core/System/CustomEntity/Xml/Config/AdminUi/` and is applied by
+`CustomEntityEnrichmentService`: it is a **CustomEntity** feature, and custom entities are registered
+exclusively by `AppManager` (ruling R78). D1 chose a plugin, so the generated route does not exist
+here. This is R78 one layer up, and it cost a scoping round to find.
+
+A second belief was wrong in the other direction: the trace entities were assumed to be closed to the
+API because they declared no `ApiAware` flag. `Field::__construct()` adds
+`ApiAware(AdminApiSource::class)` to **every** field, so they were admin-readable all along —
+`transcript` included, despite a docblock saying that must never happen. `transcript` is now closed
+with an explicit `removeFlag(ApiAware::class)`. Nothing was ever readable over `/store-api/`.
 
 Because the pipeline runs *inside* Shopware, four problems that plague external
 integrations do not exist here: no sales-channel access key to fetch, no
@@ -667,12 +679,18 @@ limit one call at a time.
 | `seq` | int |
 | `stage` | string (see lifecycle table) |
 | `payload` | json |
-| `duration_ms` | int |
+| `elapsed_ms` | int |
 
 Four payload fields are always surfaced in the Administration and never collapsed —
 they are the four ways this class of product lies:
 
-`filters_dropped` · `invented_product_ids` · `model_claims_discarded` · `stock_source`
+`filtersDropped` · `inventedProductIds` · `modelClaimsDiscarded` · `stockSource`
+
+`elapsed_ms` is milliseconds from turn start to when the event was recorded — an offset, not a
+span. `TraceRecorder::record()` is an *entry* marker at some call sites (`BoundedToolbox::execute()`)
+and a *completion* marker at others (`SearchProductsTool`), so a gap-to-next duration would mean a
+different thing per row. The Administration renders gaps visually and claims no durations. This
+table previously listed `duration_ms`, which never existed in code (ruling R62).
 
 ### Optional dev trace sink
 
