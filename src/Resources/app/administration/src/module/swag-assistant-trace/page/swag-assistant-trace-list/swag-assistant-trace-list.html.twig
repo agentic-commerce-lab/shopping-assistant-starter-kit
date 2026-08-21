@@ -23,6 +23,10 @@
             </sw-card>
             {% endblock %}
 
+            {# `allowEdit` must stay true: sw-entity-listing only links the primary column to
+               detailRoute when it is set, so turning it off made the trace unreachable. Read-only
+               is enforced by the page having no write path and by inline/column edit being off,
+               not by hiding the link to it. #}
             {% block swag_assistant_trace_list_grid %}
             <sw-entity-listing
                 v-if="conversations"
@@ -31,10 +35,28 @@
                 :columns="columns"
                 :isLoading="isLoading"
                 :showSelection="false"
-                :allowEdit="false"
                 :allowDelete="false"
+                :allowInlineEdit="false"
+                :allowColumnEdit="false"
                 detailRoute="swag.assistant.trace.detail"
-            />
+            >
+                {# An explicit link rather than relying on `detailRoute` alone: in 6.7
+                   `sw-entity-listing` renders no anchor in the primary column from `detailRoute`,
+                   so the trace was unreachable by clicking. Verified with a browser, not assumed. #}
+                <template #column-salesChannelId="{ item }">
+                    {{ channelName(item.salesChannelId) }}
+                </template>
+
+                <template #column-totalMs="{ item }">
+                    {{ duration(item.totalMs) }}
+                </template>
+
+                <template #column-createdAt="{ item }">
+                    <router-link :to="{ name: 'swag.assistant.trace.detail', params: { id: item.id } }">
+                        {{ item.createdAt }}
+                    </router-link>
+                </template>
+            </sw-entity-listing>
             {% endblock %}
 
         </div>

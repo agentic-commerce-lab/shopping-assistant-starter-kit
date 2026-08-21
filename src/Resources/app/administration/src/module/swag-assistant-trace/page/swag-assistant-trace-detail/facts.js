@@ -1,0 +1,98 @@
+/**
+ * The one sentence worth reading per phase, pulled from the payloads the stages recorded.
+ *
+ * A merchant does not want `{"hits":7,"retainedIds":[...32 hex ids...]}`; they want "found 7,
+ * kept 6". The raw payload stays one disclosure away for whoever needs the ids.
+ */
+export function phaseFacts(row) {
+    const payload = (stage) => row.events.find((event) => event.stage === stage)?.payload ?? null;
+
+    switch (row.key) {
+        case 'understand':
+            return understandFacts(payload('understand'), payload('query.build'));
+        case 'search':
+            return searchFacts(payload('retrieve'), payload('retrieve.narrow'), payload('blocklist.filter'));
+        case 'answer':
+            return answerFacts(payload('render'), payload('validate'));
+        case 'finish':
+            return finishFacts(payload('turn.end'), row);
+        default:
+            return [];
+    }
+}
+
+function understandFacts(understand, query) {
+    const facts = [];
+
+    if (understand?.term) {
+        facts.push({ label: 'searched for', value: understand.term });
+    }
+
+    if (understand?.selectionCount) {
+        facts.push({ label: 'options given', value: String(understand.selectionCount) });
+    }
+
+    const dropped = query?.filtersDropped ?? [];
+
+    if (dropped.length) {
+        facts.push({ label: 'filters dropped', value: dropped.join(', '), alarming: true });
+    }
+
+    return facts;
+}
+
+function searchFacts(retrieve, narrow, blocklist) {
+    const facts = [];
+
+    if (typeof retrieve?.hits === 'number') {
+        facts.push({ label: 'found', value: String(retrieve.hits) });
+    }
+
+    if (typeof narrow?.survivors === 'number') {
+        facts.push({ label: 'kept', value: String(narrow.survivors) });
+    }
+
+    const removed = blocklist?.removedIds ?? [];
+
+    if (removed.length) {
+        facts.push({ label: 'blocked', value: String(removed.length) });
+    }
+
+    return facts;
+}
+
+function answerFacts(render, validate) {
+    const facts = [];
+    const rendered = render?.renderedIds ?? [];
+
+    facts.push({ label: 'cards shown', value: String(rendered.length) });
+
+    const invented = validate?.inventedProductIds ?? [];
+
+    if (invented.length) {
+        facts.push({ label: 'invented products removed', value: invented.join(', '), alarming: true });
+    }
+
+    if (validate?.droppedCount) {
+        facts.push({ label: 'claims discarded', value: String(validate.droppedCount), alarming: true });
+    }
+
+    return facts;
+}
+
+function finishFacts(end, row) {
+    if (row.events.some((event) => event.stage === 'turn.tool_limit_exceeded')) {
+        return [{ label: 'ended', value: 'tool budget exhausted', alarming: true }];
+    }
+
+    return end?.outcome ? [{ label: 'outcome', value: end.outcome }] : [];
+}
+
+/** `8183` reads as an id; `8.2 s` reads as a duration. */
+export function humanMs(ms) {
+    if (!Number.isFinite(ms)) {
+        return '—';
+    }
+
+    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+}

@@ -15,9 +15,24 @@
         },
         "detail": {
             "title": "Conversation",
-            "stage": "Pipeline",
-            "payload": "Payload",
-            "noOffset": "—"
+            "turn": "Turn",
+            "shopper": "Shopper",
+            "assistant": "Assistant",
+            "cardsShown": "Cards shown",
+            "warnings": "Worth a look",
+            "waiting": "waiting on the model",
+            "inShop": "shop",
+            "onModel": "model",
+            "rawTrace": "Raw trace",
+            "noTrace": "Nothing was recorded for this conversation."
+        },
+        "phase": {
+            "prepare": "Prepared",
+            "understand": "Understood the question",
+            "search": "Searched the catalogue",
+            "answer": "Built the answer",
+            "finish": "Finished",
+            "other": "Other"
         }
     }
 }

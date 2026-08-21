@@ -48,16 +48,28 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventDefinition;
  */
 final class TraceEventApiExposureTest extends TestCase
 {
-    public function testTheTranscriptIsNeverReadableOverAnyApi(): void
+    public function testNothingOnEitherEntityIsReadableFromTheStorefront(): void
     {
-        $field = self::field(new ConversationDefinition(), 'transcript');
+        // The invariant that actually protects a shopper. Everything else about these entities is
+        // merchant-facing by design; this is the line that must never move, and a bare
+        // `new ApiAware()` would move it silently.
+        foreach ([new ConversationDefinition(), new TraceEventDefinition()] as $definition) {
+            foreach (self::declaredFields($definition) as $field) {
+                $flag = $field->getFlag(ApiAware::class);
 
-        self::assertNotNull($field, 'transcript disappeared from ConversationDefinition');
-        self::assertNull(
-            $field->getFlag(ApiAware::class),
-            'transcript must never be ApiAware. It is closed by removeFlag(ApiAware::class); fields are '
-            . 'admin-readable by default, so deleting that call silently reopens it.',
-        );
+                if (!$flag instanceof ApiAware) {
+                    continue;
+                }
+
+                self::assertFalse(
+                    $flag->isSourceAllowed(SalesChannelApiSource::class),
+                    $definition::class
+                    . '::'
+                    . $field->getPropertyName()
+                    . ' must never be readable over /store-api/. Use new ApiAware(AdminApiSource::class), never new ApiAware().',
+                );
+            }
+        }
     }
 
     public function testTheDefaultForANewFieldIsAdminReadableSoClosingIsAlwaysExplicit(): void
@@ -85,6 +97,10 @@ final class TraceEventApiExposureTest extends TestCase
             [ConversationDefinition::class, 'outcome'],
             [ConversationDefinition::class, 'totalMs'],
             [ConversationDefinition::class, 'events'],
+            // The dialogue itself. Briefly stripped on 2026-08-21 on the strength of a docblock
+            // claiming these entities were closed; the trace view then proved the events carry no
+            // prose at all, so this is the only record of what was asked and answered.
+            [ConversationDefinition::class, 'transcript'],
             [TraceEventDefinition::class,   'conversationId'],
             [TraceEventDefinition::class,   'seq'],
             [TraceEventDefinition::class,   'stage'],
@@ -117,13 +133,21 @@ final class TraceEventApiExposureTest extends TestCase
         );
     }
 
-    private static function field(EntityDefinition $definition, string $propertyName): ?Field
+    /**
+     * @return iterable<Field>
+     */
+    private static function declaredFields(EntityDefinition $definition): iterable
     {
         $method = new \ReflectionMethod($definition, 'defineFields');
         /** @var FieldCollection $fields */
         $fields = $method->invoke($definition);
 
-        foreach ($fields as $field) {
+        yield from $fields;
+    }
+
+    private static function field(EntityDefinition $definition, string $propertyName): ?Field
+    {
+        foreach (self::declaredFields($definition) as $field) {
             if ($field->getPropertyName() === $propertyName) {
                 return $field;
             }

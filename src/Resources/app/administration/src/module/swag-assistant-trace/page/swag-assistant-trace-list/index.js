@@ -1,3 +1,4 @@
+import { humanMs } from '../swag-assistant-trace-detail/facts';
 import template from './swag-assistant-trace-list.html.twig';
 
 const { Criteria } = Shopware.Data;
@@ -10,6 +11,7 @@ Shopware.Component.register('swag-assistant-trace-list', {
     data() {
         return {
             conversations: null,
+            channelNames: {},
             isLoading: true,
             sortBy: 'createdAt',
             sortDirection: 'DESC',
@@ -51,10 +53,29 @@ Shopware.Component.register('swag-assistant-trace-list', {
     },
 
     created() {
+        this.loadChannelNames();
         this.load();
     },
 
     methods: {
+        /**
+         * Resolved client-side rather than through an association: `sales_channel_id` is a plain
+         * VARCHAR(32) of hex, not a BINARY(16) foreign key, so the DAL cannot join it. Showing a
+         * raw uuid to a merchant is not an option, and changing the column type is a migration
+         * this page does not justify.
+         */
+        async loadChannelNames() {
+            const channels = await this.repositoryFactory
+                .create('sales_channel')
+                .search(new Criteria(1, 100), Shopware.Context.api);
+
+            this.channelNames = Object.fromEntries(channels.map((channel) => [channel.id, channel.name]));
+        },
+
+        channelName(id) {
+            return this.channelNames[id] ?? id;
+        },
+
         async load() {
             this.isLoading = true;
 
@@ -67,6 +88,11 @@ Shopware.Component.register('swag-assistant-trace-list', {
 
             this.conversations = await this.repository.search(criteria, Shopware.Context.api);
             this.isLoading = false;
+        },
+
+        /** `8183` reads as an id. A duration column has to read as a duration. */
+        duration(ms) {
+            return ms ? humanMs(ms) : '—';
         },
 
         onOutcomeFilterChange(value) {

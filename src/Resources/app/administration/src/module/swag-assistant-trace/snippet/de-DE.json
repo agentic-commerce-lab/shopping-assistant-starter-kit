@@ -15,9 +15,24 @@
         },
         "detail": {
             "title": "Konversation",
-            "stage": "Ablauf",
-            "payload": "Daten",
-            "noOffset": "—"
+            "turn": "Zug",
+            "shopper": "Kunde",
+            "assistant": "Assistent",
+            "cardsShown": "Gezeigte Karten",
+            "warnings": "Genauer ansehen",
+            "waiting": "wartet auf das Modell",
+            "inShop": "Shop",
+            "onModel": "Modell",
+            "rawTrace": "Rohdaten",
+            "noTrace": "Für diese Konversation wurde nichts aufgezeichnet."
+        },
+        "phase": {
+            "prepare": "Vorbereitet",
+            "understand": "Frage verstanden",
+            "search": "Katalog durchsucht",
+            "answer": "Antwort erstellt",
+            "finish": "Abgeschlossen",
+            "other": "Sonstiges"
         }
     }
 }

@@ -2,10 +2,12 @@
   "base": "/bundles/swagassistantstarterkit/administration/",
   "entryPoints": {
     "swag-assistant-starter-kit": {
-      "css": [],
+      "css": [
+        "/bundles/swagassistantstarterkit/administration/assets/swag-assistant-starter-kit-DXfPOhzU.css"
+      ],
       "dynamic": [],
       "js": [
-        "/bundles/swagassistantstarterkit/administration/assets/swag-assistant-starter-kit-tayK_NuC.js"
+        "/bundles/swagassistantstarterkit/administration/assets/swag-assistant-starter-kit-B2KeGvbY.js"
       ],
       "legacy": false,
       "preload": []

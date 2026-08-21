@@ -1,0 +1,131 @@
+/*
+ * Colours and sizes come from the Administration's own Meteor custom properties, with fallbacks.
+ * Sass variables (`$color-gray-500` and friends) are NOT available to plugin styles under 6.7's
+ * Vite build — the build fails with "Undefined variable" — and hard-coding a parallel palette next
+ * to an existing token system is how an extension starts looking like a different product.
+ *
+ * The one structural decision: the timeline is a three-column grid so offsets and durations align
+ * down the page. A merchant scanning for "where did the time go" reads the right-hand column, and
+ * ragged numbers defeat that.
+ */
+.swag-assistant-trace-detail {
+    &__timing {
+        color: var(--color-text-primary-default, #37444f);
+        font-size: var(--font-size-xs, 12px);
+        text-align: right;
+    }
+
+    &__timing-split {
+        color: var(--color-text-secondary-default, #758ca3);
+        display: block;
+    }
+
+    &__said {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        padding: 16px 0;
+
+        &:first-of-type {
+            border-top: 0;
+            padding-top: 0;
+        }
+    }
+
+    &__who {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    &__prose {
+        color: var(--color-text-primary-default, #37444f);
+        margin: 4px 0 0;
+        max-width: 70ch;
+    }
+
+    &__cards {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+        margin: 8px 0 0;
+        overflow-wrap: anywhere;
+    }
+
+    &__timeline {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        list-style: none;
+        margin: 16px 0 0;
+        padding: 16px 0 0;
+    }
+
+    &__row {
+        align-items: baseline;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 5.5rem 1fr auto;
+        padding: 6px 0;
+    }
+
+    &__at,
+    &__took {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+    }
+
+    &__took {
+        text-align: right;
+    }
+
+    &__phase-name {
+        color: var(--color-text-primary-default, #37444f);
+        font-weight: 600;
+        margin-right: 12px;
+    }
+
+    &__fact {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-s, 14px);
+        margin-right: 12px;
+
+        &.is--alarming {
+            color: var(--color-text-critical-default, #c72d2d);
+        }
+    }
+
+    /* Italic marks an absence of recorded activity rather than a stage that ran. */
+    &__waiting {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-style: italic;
+    }
+
+    &__raw-toggle {
+        align-items: center;
+        color: var(--color-text-secondary-default, #758ca3);
+        display: inline-flex;
+        font-size: var(--font-size-s, 14px);
+        gap: 6px;
+    }
+
+    &__raw-event {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 5.5rem 10rem 1fr;
+        padding: 8px 0;
+    }
+
+    &__stage {
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+    }
+
+    &__payload {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        margin: 0;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+}

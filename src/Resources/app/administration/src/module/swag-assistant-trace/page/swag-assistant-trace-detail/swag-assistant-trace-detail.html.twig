@@ -10,53 +10,123 @@
     {% block swag_assistant_trace_detail_content %}
     <template #content>
         <sw-card-view>
-
             <sw-loader v-if="isLoading" />
 
-            {% block swag_assistant_trace_detail_summary %}
-            <sw-card v-if="!isLoading && conversation" :title="$tc('swag-assistant-trace.detail.title')">
-                <sw-description-list>
-                    <dt>{{ $tc('swag-assistant-trace.list.columnOutcome') }}</dt>
-                    <dd>{{ conversation.outcome }}</dd>
+            {# One card per turn. The turn is the unit a merchant thinks in — "it answered this
+               badly" is always about one exchange — so it is the unit the page is built from,
+               rather than a table of events that happens to contain several turns. #}
+            {% block swag_assistant_trace_detail_turns %}
+            <sw-card
+                v-for="turn in turns"
+                :key="turn.index"
+                :title="`${$tc('swag-assistant-trace.detail.turn')} ${turn.index + 1}`"
+            >
+                <template #headerRight>
+                    <span class="swag-assistant-trace-detail__timing">
+                        {{ duration(turn.totalMs) }}
+                        <span class="swag-assistant-trace-detail__timing-split">
+                            {{ $tc('swag-assistant-trace.detail.inShop') }} {{ duration(turn.shopMs) }}
+                            · {{ $tc('swag-assistant-trace.detail.onModel') }} {{ duration(turn.waitMs) }}
+                        </span>
+                    </span>
+                </template>
 
-                    <dt>{{ $tc('swag-assistant-trace.list.columnTurnCount') }}</dt>
-                    <dd>{{ conversation.turnCount }}</dd>
-
-                    <dt>{{ $tc('swag-assistant-trace.list.columnTotalMs') }}</dt>
-                    <dd>{{ conversation.totalMs }}ms</dd>
-
-                    <dt>{{ $tc('swag-assistant-trace.list.columnSalesChannel') }}</dt>
-                    <dd>{{ conversation.salesChannelId }}</dd>
-                </sw-description-list>
-            </sw-card>
-            {% endblock %}
-
-            {% block swag_assistant_trace_detail_timeline %}
-            <sw-card v-if="!isLoading && events" :title="$tc('swag-assistant-trace.detail.stage')">
-                <div
-                    v-for="event in events"
-                    :key="event.id"
-                    class="swag-assistant-trace-detail__event"
+                {# The four ways this product class lies, hoisted to the top of the turn so a clean
+                   turn is legible without reading anything and a dirty one cannot be missed. #}
+                <sw-alert
+                    v-if="turn.flags.length"
+                    variant="warning"
+                    :title="$tc('swag-assistant-trace.detail.warnings')"
                 >
-                    <div class="swag-assistant-trace-detail__row">
-                        <span class="swag-assistant-trace-detail__elapsed">{{ elapsedLabel(event) }}</span>
-                        <span class="swag-assistant-trace-detail__stage">{{ event.stage }}</span>
-                    </div>
+                    <div v-for="flag in turn.flags" :key="flag.label">{{ flag.label }}: {{ flag.value }}</div>
+                </sw-alert>
 
-                    <sw-description-list v-if="highlights(event).length">
-                        <template v-for="item in highlights(event)">
-                            <dt :key="`${item.key}-key`">{{ item.key }}</dt>
-                            <dd :key="`${item.key}-value`">{{ item.value }}</dd>
-                        </template>
-                    </sw-description-list>
-
-                    <sw-collapse :title="$tc('swag-assistant-trace.detail.payload')">
-                        <pre class="swag-assistant-trace-detail__payload">{{ payloadJson(event) }}</pre>
-                    </sw-collapse>
+                {% block swag_assistant_trace_detail_dialogue %}
+                <div v-if="turn.question" class="swag-assistant-trace-detail__said">
+                    <span class="swag-assistant-trace-detail__who">{{ $tc('swag-assistant-trace.detail.shopper') }}</span>
+                    <p class="swag-assistant-trace-detail__prose">{{ turn.question.prose }}</p>
                 </div>
+
+                <div v-if="turn.answer" class="swag-assistant-trace-detail__said">
+                    <span class="swag-assistant-trace-detail__who">{{ $tc('swag-assistant-trace.detail.assistant') }}</span>
+                    <p class="swag-assistant-trace-detail__prose">{{ turn.answer.prose }}</p>
+                    <p v-if="turn.answer.cardIds.length" class="swag-assistant-trace-detail__cards">
+                        {{ $tc('swag-assistant-trace.detail.cardsShown') }}: {{ turn.answer.cardIds.join(', ') }}
+                    </p>
+                </div>
+                {% endblock %}
+
+                {% block swag_assistant_trace_detail_timeline %}
+                <ol class="swag-assistant-trace-detail__timeline">
+                    <li
+                        v-for="(row, rowIndex) in turn.rows"
+                        :key="rowIndex"
+                        :class="`swag-assistant-trace-detail__row is--${row.type}`"
+                    >
+                        {# The gap between phases is where the model is thinking. It is the largest
+                           number on the page and appears nowhere in the raw events, because nothing
+                           is recorded while it happens. #}
+                        <template v-if="row.type === 'wait'">
+                            <span class="swag-assistant-trace-detail__at">{{ offset(row.startMs) }}</span>
+                            <span class="swag-assistant-trace-detail__waiting">
+                                {{ $tc('swag-assistant-trace.detail.waiting') }}
+                            </span>
+                            <span class="swag-assistant-trace-detail__took">{{ duration(row.durationMs) }}</span>
+                        </template>
+
+                        <template v-else>
+                            <span class="swag-assistant-trace-detail__at">{{ offset(row.startMs) }}</span>
+                            <span class="swag-assistant-trace-detail__phase">
+                                <span class="swag-assistant-trace-detail__phase-name">{{ phaseLabel(row) }}</span>
+                                <span
+                                    v-for="fact in facts(row)"
+                                    :key="fact.label"
+                                    :class="['swag-assistant-trace-detail__fact', { 'is--alarming': fact.alarming }]"
+                                >
+                                    {{ fact.label }} <strong>{{ fact.value }}</strong>
+                                </span>
+                            </span>
+                            <span class="swag-assistant-trace-detail__took">{{ duration(row.endMs - row.startMs) }}</span>
+                        </template>
+                    </li>
+                </ol>
+                {% endblock %}
+
+                {# Ground truth, one disclosure away. The derived view above is an interpretation;
+                   this is what was actually recorded, and an engineer chasing a bug needs it. #}
+                {% block swag_assistant_trace_detail_raw %}
+                {# `sw-collapse` takes #header and #content slots and has no `title` prop; passing
+                   one renders an empty header and no body, which is how this shipped invisible
+                   the first time. #}
+                <sw-collapse>
+                    <template #header="{ expanded }">
+                        <span class="swag-assistant-trace-detail__raw-toggle">
+                            <sw-icon :name="expanded ? 'regular-chevron-down-xs' : 'regular-chevron-right-xs'" size="12px" />
+                            {{ $tc('swag-assistant-trace.detail.rawTrace') }} ({{ rawEvents(turn).length }})
+                        </span>
+                    </template>
+
+                    <template #content>
+                        <div
+                            v-for="event in rawEvents(turn)"
+                            :key="event.id"
+                            class="swag-assistant-trace-detail__raw-event"
+                        >
+                            <span class="swag-assistant-trace-detail__at">{{ offset(event.elapsedMs) }}</span>
+                            <span class="swag-assistant-trace-detail__stage">{{ event.stage }}</span>
+                            <pre class="swag-assistant-trace-detail__payload">{{ payloadJson(event) }}</pre>
+                        </div>
+                    </template>
+                </sw-collapse>
+                {% endblock %}
             </sw-card>
             {% endblock %}
 
+            <sw-empty-state
+                v-if="!isLoading && !turns.length"
+                :title="$tc('swag-assistant-trace.detail.noTrace')"
+                :absolute="false"
+            />
         </sw-card-view>
     </template>
     {% endblock %}
