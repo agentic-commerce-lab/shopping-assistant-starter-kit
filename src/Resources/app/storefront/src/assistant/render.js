@@ -7,6 +7,7 @@
  * why no avatar or accent rule is added on top of it.
  */
 import { renderCards } from './card';
+import { toFragment } from './markdown';
 
 const ROLE_USER = 'user';
 
@@ -106,30 +107,26 @@ export function renderMessage(log, message) {
 }
 
 /**
- * `textContent`, never `innerHTML`.
+ * Text nodes, never `innerHTML`.
  *
- * The prose is model output. Rendering it as markup would make every reply an injection surface, and
- * a markdown parser buys nothing here — the model is instructed to answer in plain sentences, and
- * the figures a shopper needs live on the cards, not in the text.
+ * **Corrected, 2026-08-21.** This used to split on blank lines and set `textContent`, on the stated
+ * grounds that "the model is instructed to answer in plain sentences" — an instruction the system
+ * prompt did not actually contain. So the model formatted, and the shopper read the syntax:
+ * measured on the live shop, *"1. **Alloy Water Bottle 750 ml** 2. **Alloy Water Bottle 750ml**"*,
+ * asterisks visible and both list items collapsed onto one line, because a single newline was not a
+ * break here.
+ *
+ * The prompt now asks for restraint *and* {@see toFragment} reads what arrives anyway — a prompt is
+ * a request, not a guarantee, which is the same reasoning that puts a grounding audit behind every
+ * rule the prompt already states. The safety property the old comment was defending is unchanged
+ * and unconditional: no HTML is ever parsed, because the parser emits DOM nodes rather than markup.
+ * See `markdown.js`.
  */
 function buildProse(prose) {
     const body = document.createElement('div');
     body.className = 'swag-assistant-message__body';
 
-    const paragraphs = String(prose ?? '')
-        .split(/\n{2,}/)
-        .map((paragraph) => paragraph.trim())
-        .filter((paragraph) => paragraph !== '');
-
-    if (paragraphs.length === 0) {
-        return body;
-    }
-
-    paragraphs.forEach((paragraph) => {
-        const p = document.createElement('p');
-        p.textContent = paragraph;
-        body.appendChild(p);
-    });
+    body.appendChild(toFragment(prose));
 
     return body;
 }

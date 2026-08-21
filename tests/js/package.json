@@ -1,0 +1,4 @@
+{
+  "//": "Scopes ESM to this folder only. `\"type\": \"module\"` in the plugin's root package.json broke the storefront build: webpack reads it and then refuses main.js's extensionless imports as not fully specified.",
+  "type": "module"
+}

@@ -88,6 +88,54 @@ The origin is the corner the bubble belongs to, so each side's message grows out
     }
 }
 
+/*
+Lists, and the inline emphasis around them.
+
+The model formats its replies whether or not it is asked to, and the panel now reads that formatting
+instead of printing it (see `markdown.js`). Two things follow, both about restraint: a list is
+spaced as tightly as the prose it sits between — one gap, not a blank line above and below every
+item — and emphasis is a weight change only, because a chat reply is 320px wide and a second colour
+inside a sentence is noise at that size.
+*/
+.swag-assistant-message__body {
+    .swag-assistant-message__list {
+        margin: 0 0 8px;
+        // 18px, not the browser's 40px: at 320px wide a default list indent throws away a tenth of
+        // the reading width for a bullet.
+        padding-left: 18px;
+        font-size: $swag-assistant-font-body;
+        line-height: 1.6;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+
+        li + li {
+            margin-top: 2px;
+        }
+    }
+
+    strong {
+        font-weight: 600;
+    }
+
+    // `$swag-assistant-bubble`, not `$swag-assistant-tint`: the tint IS the log's ground, so a code
+    // span filled with it would be invisible. SW 50 is one step up from the ground it sits on.
+    // 0.92em because monospace runs optically larger than Inter at the same nominal size.
+    code {
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: $swag-assistant-bubble;
+        font-size: 0.92em;
+    }
+}
+
+.swag-assistant-message--user .swag-assistant-message__body code {
+    // On the accent fill the tint would vanish; a translucent white keeps the same relationship to
+    // whatever it sits on.
+    background: rgba(255, 255, 255, 0.18);
+}
+
 .swag-assistant-message__time {
     display: block;
     margin-top: 5px;

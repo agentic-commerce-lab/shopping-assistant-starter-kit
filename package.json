@@ -1,9 +1,10 @@
 {
   "name": "swag-assistant-starter-kit-e2e",
   "private": true,
-  "description": "Dev-only: the end-to-end browser checks in tests/e2e. Not part of the plugin, not part of CI, and not needed to install or run it.",
+  "description": "Dev-only: the browser checks in tests/e2e and the parser checks in tests/js. Not part of the plugin, not part of CI, and not needed to install or run it.",
   "scripts": {
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:js": "node --test \"tests/js/*.test.js\""
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0"
