@@ -91,6 +91,7 @@ final readonly class DalConversationStore implements ConversationStore
                 'seq' => $offset + $event->seq,
                 'stage' => $event->stage,
                 'payload' => $event->payload,
+                'elapsedMs' => $event->elapsedMs,
             ];
         }
 

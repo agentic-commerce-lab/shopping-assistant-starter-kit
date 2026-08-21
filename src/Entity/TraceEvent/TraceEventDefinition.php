@@ -56,6 +56,7 @@ class TraceEventDefinition extends EntityDefinition
             new IntField('seq', 'seq'),
             (new StringField('stage', 'stage'))->addFlags(new Required()),
             new JsonField('payload', 'payload'),
+            new IntField('elapsed_ms', 'elapsedMs'),
             new ManyToOneAssociationField('conversation', 'conversation_id', ConversationDefinition::class),
         ]);
     }

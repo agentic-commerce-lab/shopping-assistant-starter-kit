@@ -59,7 +59,12 @@ final class InMemoryConversationStore implements ConversationStore
         $offset = $stored === [] ? 0 : max(array_map(static fn(TraceEvent $event): int => $event->seq, $stored)) + 1;
 
         foreach ($trace->events() as $event) {
-            $this->events[$token][] = new TraceEvent($offset + $event->seq, $event->stage, $event->payload);
+            $this->events[$token][] = new TraceEvent(
+                $offset + $event->seq,
+                $event->stage,
+                $event->payload,
+                $event->elapsedMs,
+            );
         }
     }
 

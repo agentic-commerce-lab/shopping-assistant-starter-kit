@@ -191,4 +191,34 @@ final class ConversationStoreContractTest extends TestCase
         self::assertCount(4, $sequences);
         self::assertSame($sequences, array_unique($sequences), 'sequence numbers collided across turns');
     }
+
+    public function testElapsedOffsetsSurviveStorageSoTheAdminCanShowATimeline(): void
+    {
+        $store = $this->store();
+        $token = $store->start(self::CHANNEL, 'en-GB');
+
+        $now = 0;
+        $clock = static function () use (&$now): int {
+            return $now;
+        };
+
+        $trace = new TraceRecorder($clock);
+        $now = 120_000_000;
+        $trace->record('understand', ['intent' => 'discovery']);
+        $now = 2_400_000_000;
+        $trace->record('retrieve', ['hits' => 6]);
+
+        $store->append(
+            $token,
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'Found it.'),
+            $trace,
+        );
+
+        $stored = $store->traceEvents($token);
+
+        // A store that drops this silently would leave the Administration timeline reading "+0ms"
+        // on every row, which looks like data rather than an absent column.
+        self::assertSame(120, $stored[0]?->elapsedMs);
+        self::assertSame(2400, $stored[1]?->elapsedMs);
+    }
 }
