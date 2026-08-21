@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Sidepath">
+  <title>Sidepath</title>
+  <rect width="64" height="64" fill="#17191B"/>
+  <g fill="none" stroke-width="8.5" stroke-linecap="butt" stroke-linejoin="miter">
+    <path d="M17 18 L32 36 L32 52" stroke="#F2F0ED"/>
+    <path d="M32 36 L47 18" stroke="#0E8C88"/>
+  </g>
+</svg>
