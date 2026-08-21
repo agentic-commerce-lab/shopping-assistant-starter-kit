@@ -54,7 +54,8 @@ final readonly class DalConversationStore implements ConversationStore
     {
         $context = Context::createDefaultContext();
 
-        $transcript = $this->transcript($token, $context);
+        $conversation = $this->conversation($token, $context);
+        $transcript = array_values($conversation?->getTranscript() ?? []);
         $transcript[] = $this->codec->encode($turn);
 
         $this->conversationRepository->update(
@@ -65,6 +66,12 @@ final readonly class DalConversationStore implements ConversationStore
                 // The LAST turn's outcome: it answers "how did this conversation end", and one that
                 // recovered after an error did not end in an error.
                 'outcome' => $turn->outcome,
+                // Accumulated across turns. This was written as a literal 0 by `start()` and never
+                // updated, so every conversation reported 0ms while real turns took eight seconds —
+                // exactly the always-zero column ruling R62 refused to add, already in the schema.
+                // Derived from the recorder's own last offset so it cannot disagree with the
+                // timeline the Administration renders.
+                'totalMs' => ($conversation?->getTotalMs() ?? 0) + $trace->turnElapsedMs(),
             ]],
             $context,
         );
@@ -161,12 +168,13 @@ final readonly class DalConversationStore implements ConversationStore
      */
     private function transcript(#[\SensitiveParameter] string $token, Context $context): array
     {
+        return array_values($this->conversation($token, $context)?->getTranscript() ?? []);
+    }
+
+    private function conversation(#[\SensitiveParameter] string $token, Context $context): ?ConversationEntity
+    {
         $conversation = $this->conversationRepository->search(new Criteria([$token]), $context)->first();
 
-        if (!$conversation instanceof ConversationEntity) {
-            return [];
-        }
-
-        return array_values($conversation->getTranscript() ?? []);
+        return $conversation instanceof ConversationEntity ? $conversation : null;
     }
 }

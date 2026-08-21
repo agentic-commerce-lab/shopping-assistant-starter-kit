@@ -61,6 +61,20 @@ final class TraceRecorder
         $this->seq++;
     }
 
+    /**
+     * How long this turn took, in milliseconds: the offset of its last event.
+     *
+     * Derived from what was recorded rather than measured separately, so it cannot disagree with
+     * the timeline the Administration renders. An empty recorder reports 0 — the controller builds
+     * one for the shopper's own turn, which records nothing.
+     */
+    public function turnElapsedMs(): int
+    {
+        $last = $this->events[array_key_last($this->events) ?? -1] ?? null;
+
+        return $last?->elapsedMs ?? 0;
+    }
+
     private function elapsedMs(): int
     {
         $elapsedNs = ($this->clock)() - $this->startedAt;

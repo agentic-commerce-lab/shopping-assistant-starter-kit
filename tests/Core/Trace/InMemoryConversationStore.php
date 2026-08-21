@@ -30,6 +30,9 @@ final class InMemoryConversationStore implements ConversationStore
     /** @var array<string, list<TraceEvent>> */
     private array $events = [];
 
+    /** @var array<string, int> */
+    private array $totalMs = [];
+
     private int $tokenCounter = 0;
 
     public function start(string $salesChannelId, string $locale): string
@@ -51,6 +54,10 @@ final class InMemoryConversationStore implements ConversationStore
         // This is the same reasoning as the seq offset below — a double that is merely plausible
         // makes the tests above it worthless.
         $this->turns[$token][] = $this->codec->encode($turn);
+
+        // Accumulated exactly as the DAL store does. A double that skipped this would let the
+        // contract test pass while the real store reported 0ms forever — which is what it did.
+        $this->totalMs[$token] = ($this->totalMs[$token] ?? 0) + $trace->turnElapsedMs();
 
         // Offset exactly as the DAL store does: `TraceRecorder` restarts `seq` at 0 each turn, so a
         // conversation-wide ordering needs it made monotonic. A double that skipped this would let
@@ -76,5 +83,14 @@ final class InMemoryConversationStore implements ConversationStore
     public function traceEvents(#[\SensitiveParameter] string $token): array
     {
         return $this->events[$token] ?? [];
+    }
+
+    /**
+     * Not on {@see ConversationStore} — the contract test reads it to assert accumulation, and the
+     * DAL store's equivalent is the `total_ms` column.
+     */
+    public function totalMs(#[\SensitiveParameter] string $token): int
+    {
+        return $this->totalMs[$token] ?? 0;
     }
 }
