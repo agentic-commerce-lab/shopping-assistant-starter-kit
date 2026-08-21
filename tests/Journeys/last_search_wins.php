@@ -15,25 +15,23 @@ declare(strict_types=1);
 // the rule, so it is now stated in the system prompt and in the tool description — as an ordering
 // instruction, and explicitly not as something to mention to the shopper.
 //
-// That makes this journey the only thing standing behind that rule. It is a two-turn script rather
-// than a single question because the reported failure needed the earlier topic to still be in the
-// conversation: the model has to resist re-searching the tyre it was asked about a turn ago, when
-// the question in front of it is about the jersey.
-//
-// `rendered_ids_exactly` on one variant, not on the family: a shopper who names a colour and a size
-// has narrowed to one unit, and rendering its siblings beside it is the breadth this project's
-// variant resolution exists to prevent.
+// **Single-turn, deliberately, after a two-turn version failed 0/3 for the wrong reason.**
+// `TurnAggregate::of()` merges every turn's cards before assertions run, on purpose: a safety
+// assertion reading `$cards` must not miss what an earlier turn leaked. So a two-turn script made
+// `rendered_ids_exactly` see turn 1's four tyres beside turn 2's jersey and fail on cards that were
+// a correct answer to a question nobody was complaining about. The aggregation is right; the journey
+// was wrong. Both topics now live in one message, which is also what the screenshot showed.
 return [
     'id' => 'last_search_wins',
     'category' => 'grounding',
     'runs' => 3,
     'archetypes' => [
-        'expert' => null,
-        'beginner' => null,
-    ],
-    'turns' => [
-        'what gravel tyres do you have in tan?',
-        'thanks — and the Trail Jersey in black, size M, is that one available?',
+        // Both name a tyre first and ask about the jersey second, so the answered thing is the
+        // jersey and the tyre is the distraction the ordering rule has to survive.
+        'expert' => 'I will want a tan gravel tyre later, but first: Trail Jersey, black, M — available?',
+        'beginner' =>
+            'i also need a tan gravel tyre at some point, but whats up with that black trail '
+                . 'jersey in medium, can i get it?',
     ],
     'config' => [],
     'assertions' => [
