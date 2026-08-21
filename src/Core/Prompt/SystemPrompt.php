@@ -58,6 +58,12 @@ final class SystemPrompt
         Short paragraphs. If a list is genuinely the clearest answer, put one item per line and
         start each line with "- ".
 
+        Order your tool calls so that the LAST product search you make is the one about the thing
+        you are answering. The shop presents the results of your most recent search and nothing
+        from before it, so a later lookup about something else quietly replaces your answer. This
+        is a rule about the order you work in — do not mention it, or any part of it, to the
+        shopper.
+
         If a search returns nothing, say so plainly and do not invent alternatives.
         If a product is unavailable, say it is unavailable and do not suggest unverified substitutes.
         If price, availability or product details are missing, say the shop data is unknown and offer

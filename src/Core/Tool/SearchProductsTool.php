@@ -44,7 +44,10 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'match a group this catalogue actually has is dropped rather than guessed at. '
     . 'Returns each product\'s id, name and option values, so you can tell them apart. '
     . 'It returns NO prices, stock or availability: the shop renders those. '
-    . 'Never state a figure yourself.',
+    . 'Never state a figure yourself. '
+    . 'The shop shows the products from your MOST RECENT search to the shopper, as a short row '
+    . 'of cards. So search for the thing you are actually answering about last, and ask for the '
+    . 'few products that answer it rather than the maximum.',
 )]
 final class SearchProductsTool
 {
@@ -66,6 +69,29 @@ final class SearchProductsTool
     private const MIN_CANDIDATES = 20;
 
     private const MAX_CANDIDATES = 50;
+
+    /**
+     * The most products one search may return, and therefore the most cards a turn can render.
+     *
+     * **8, down from 20 on 2026-08-21.** "What do you sell?" came back with twenty cards in a
+     * horizontally scrolling row — which is not an answer, it is the catalogue handed over sideways,
+     * and `card.js` calls its own row "a shortlist". A shopper comparing twenty things is a shopper
+     * who has been given the work back.
+     *
+     * It is a rejection rather than a coercion, like every other bound the tools enforce: a model
+     * asking for more is asking for something the shop will not present, and telling it so is more
+     * useful than silently giving it less.
+     */
+    private const MAX_LIMIT = 8;
+
+    /**
+     * What a search returns when the model does not say.
+     *
+     * Below {@see self::MAX_LIMIT}, not equal to it: a default that sits on the ceiling makes the
+     * ceiling the normal case, and the normal case should be a shortlist somebody can actually read.
+     * The model can still ask for more, up to the bound.
+     */
+    private const DEFAULT_LIMIT = 5;
 
     /**
      * What the model is told when nothing matched, and it is deliberately not "the shop does not
@@ -106,7 +132,7 @@ final class SearchProductsTool
      * @param ?float  $priceMin Minimum price, inclusive, in the shop's currency.
      * @param ?string $brand   Brand name to filter by.
      * @param ?array<array-key, array<array-key, string>|string> $options Option selections narrowing to one variant, each a [group, option] pair such as [["Colour", "Blue"], ["Size", "M"]]. Group names use this catalogue's own spelling; a bare option value on its own also works.
-     * @param int $limit Maximum number of products to return (1-20).
+     * @param int $limit Maximum number of products to return (1-8, default 5). The shop renders these as a shortlist of cards, so ask for the few that answer the question rather than the maximum.
      *
      * @return array{
      *     products: list<array{id: string, name: string, options: array<string, string>}>,
@@ -125,11 +151,11 @@ final class SearchProductsTool
         ?float $priceMin = null,
         ?string $brand = null,
         ?array $options = null,
-        int $limit = 10,
+        int $limit = self::DEFAULT_LIMIT,
     ): array {
         $term = Guard::boundedString($term, 200, 'term');
         $brand = Guard::boundedString($brand, 120, 'brand');
-        $requestedLimit = Guard::boundedInt($limit, 1, 20, 'limit');
+        $requestedLimit = Guard::boundedInt($limit, 1, self::MAX_LIMIT, 'limit');
 
         // The model's `limit` is honoured exactly, and the ceiling stays a rejection: 20
         // bounds context size and cost, and a model asking for more is asking for something
