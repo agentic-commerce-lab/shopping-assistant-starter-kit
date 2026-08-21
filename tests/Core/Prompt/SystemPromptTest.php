@@ -78,4 +78,27 @@ final class SystemPromptTest extends TestCase
     {
         self::assertStringContainsStringIgnoringCase('escalate', SystemPrompt::build(new AssistantConfig()));
     }
+
+    public function testTheEscalationClauseSitsWithTheParagraphItQualifies(): void
+    {
+        // "If asked about any of those" has to be adjacent to the list of things it cannot do.
+        // Appended to the end of the prompt instead, "those" refers to nothing — measured: it landed
+        // after "Answer in English.", three lines from its own antecedent.
+        $prompt = SystemPrompt::build(new AssistantConfig());
+
+        self::assertStringContainsString(
+            "or access customer accounts.\nIf asked about any of those, escalate.",
+            $prompt,
+        );
+    }
+
+    public function testTheDeclineClauseSitsThereToo(): void
+    {
+        $prompt = SystemPrompt::build(new AssistantConfig(enableEscalation: false));
+
+        self::assertStringContainsString(
+            "or access customer accounts.\nIf asked about any of those, say plainly",
+            $prompt,
+        );
+    }
 }

@@ -83,7 +83,17 @@ final class SystemPrompt
 
         You cannot apply discounts, change prices, create orders, take payment, accept legal terms
         or access customer accounts.
+        PROMPT;
 
+    /**
+     * Everything after the escalation clause.
+     *
+     * Split from {@see self::RULES} rather than appended at the end, because the clause between them
+     * opens with "If asked about any of those" — and "those" is the paragraph {@see self::RULES} ends
+     * on. Appending it to the finished prompt instead put an unrelated instruction between the
+     * pronoun and its antecedent, which is how a rule stops being read as a rule.
+     */
+    private const CLOSING = <<<'PROMPT'
         Answer in English.
         PROMPT;
 
@@ -104,12 +114,14 @@ final class SystemPrompt
 
     public static function build(AssistantConfig $config, string $vocabulary = ''): string
     {
-        // Inside the rules block rather than after it: it qualifies the sentence directly above,
-        // and the vocabulary and merchant voice both append below.
+        // Between the rules and their closing line, not after the whole prompt: the clause qualifies
+        // the paragraph RULES ends on, and reads as a dangling pronoun anywhere else.
         $prompt =
             self::RULES
             . "\n"
-            . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE);
+            . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE)
+            . "\n\n"
+            . self::CLOSING;
 
         if ($vocabulary !== '') {
             $prompt .= "\n\n" . $vocabulary;
