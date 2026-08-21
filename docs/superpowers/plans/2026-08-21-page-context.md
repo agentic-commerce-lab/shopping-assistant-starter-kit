@@ -41,8 +41,11 @@ A category id becomes a default **query constraint**, never a `CatalogScope` mut
 
 **Created**
 - `src/Core/Prompt/ViewingContext.php` — renders the prompt line, and is the structural guarantee that no figure reaches it
+- `src/Core/Commerce/Fixture/FixtureCategoryFilter.php` — the category constraint for the fixture gateway
 - `tests/Core/Prompt/ViewingContextTest.php`
 - `tests/Core/Agent/PageContextTest.php` — resolution, scope enforcement, pre-grounding
+- `tests/Core/Commerce/CategoryConstraintTest.php` — the test that defends P8
+- `tests/Core/Tool/SearchProductsCategoryTest.php` — the constraint and its retry
 
 **Modified**
 - `src/Controller/ChatRequest.php` — parses and validates `productId`
@@ -55,7 +58,11 @@ A category id becomes a default **query constraint**, never a `CatalogScope` mut
 - `src/Core/Prompt/SystemPrompt.php` — accepts it
 - `src/Resources/views/storefront/component/assistant/orb.html.twig` — `data-product-id`
 - `src/Resources/app/storefront/src/assistant/panel.plugin.js` — reads the attribute
-- `src/Resources/app/storefront/src/assistant/transport.js` — sends the field
+- `src/Resources/app/storefront/src/assistant/transport.js` — sends the fields
+- `src/Core/Commerce/Dto/ProductQuery.php`, `src/Core/Commerce/FixtureCommerceGateway.php`, `src/Core/Commerce/Dal/DalCriteriaBuilder.php` — the category constraint
+- `src/Core/Tool/SearchProductsTool.php` — applies it, and retries without it
+- the admin trace module's `phases.js` / `facts.js` / snippets — so the new stages are legible
+- `tests/e2e/widget.spec.js`, `tests/js/trace-phases.test.js`, `tests/Controller/RecordingTurnRunner.php`
 - `ARCHITECTURE.md`, `README.md`
 
 ---
@@ -649,10 +656,15 @@ In `src/Core/Agent/AssistantAgentFactory.php`, add the parameter:
 then immediately after `$renderer = new FactRenderer($trace);`:
 
 ```php
-        // Pre-grounding, and the reason this feature removes a model round trip: registering the
-        // open product means the model may name it without `FactRenderer::validate()` counting it
-        // as invented, and `lastRetrievedBatch()` renders it when the turn calls no tool at all.
-        // A turn that *does* search overwrites the batch, which is correct — the search is newer.
+        // Pre-grounding, and the reason this feature removes a model round trip.
+        //
+        // `registerRetrieved()` does two different things, both of which this relies on and both
+        // verified against `FactRenderer`: the retrieved *index* accumulates, so the open product
+        // stays nameable for the whole turn without `validate()` counting it as invented even after
+        // a search runs; while `lastBatchIds` is *replaced*, so it is the default rendered card set
+        // only until a tool returns something newer. A turn that calls no tool therefore renders the
+        // product the shopper is already looking at, with its real price and stock, and the model
+        // never had to ask for it.
         if ($viewing !== null) {
             $renderer->registerRetrieved([$viewing]);
         }
@@ -720,7 +732,8 @@ git commit -m "feat(agent): pre-ground the product the shopper has open"
 **Files:**
 - Modify: `src/Core/Commerce/Dto/ProductQuery.php`
 - Modify: `src/Core/Commerce/Dal/DalCriteriaBuilder.php`
-- Modify: `src/Core/Commerce/Fixture/FixtureQueryFilter.php`
+- Create: `src/Core/Commerce/Fixture/FixtureCategoryFilter.php`
+- Modify: `src/Core/Commerce/FixtureCommerceGateway.php`
 - Test: `tests/Core/Commerce/CategoryConstraintTest.php` (create)
 
 **Interfaces:**
@@ -837,10 +850,65 @@ In `src/Core/Commerce/Dto/ProductQuery.php`, add to the constructor:
 
 - [ ] **Step 4: Honour it in the fixture gateway**
 
-In `src/Core/Commerce/Fixture/FixtureQueryFilter.php`, add the constraint alongside the existing
-term and filter matching — a card passes only if `$query->categoryId` is null or appears in the
-card's `categoryPath`. Read the file's existing predicate style and match it rather than bolting on
-a differently-shaped check.
+**Do not add this to `FixtureQueryFilter`.** Its docblock records that the class already sits at the
+irreducible end of the cyclomatic-complexity rule (ruling R12) and carries a `@mago-expect` for it;
+another branch in `apply()` is the one change most likely to fail `composer run quality` for a
+reason unrelated to this feature.
+
+Create `src/Core/Commerce/Fixture/FixtureCategoryFilter.php`, mirroring `FixtureScopeFilter`'s shape:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace Swag\AssistantStarterKit\Core\Commerce\Fixture;
+
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+
+/**
+ * Narrows a result set to the category the shopper is browsing.
+ *
+ * Its own class rather than a branch in {@see FixtureQueryFilter}: that class is already at the
+ * irreducible end of the complexity rule (ruling R12), and this is a different kind of predicate
+ * anyway — a constraint from where the shopper is standing, not a clause they expressed.
+ */
+final class FixtureCategoryFilter
+{
+    private function __construct() {}
+
+    /**
+     * @param list<ProductCard> $units
+     *
+     * @return list<ProductCard>
+     */
+    public static function apply(array $units, ?string $categoryId): array
+    {
+        if ($categoryId === null) {
+            return $units;
+        }
+
+        return array_values(array_filter(
+            $units,
+            static fn(ProductCard $unit): bool => \in_array($categoryId, $unit->categoryPath, strict: true),
+        ));
+    }
+}
+```
+
+Then in `src/Core/Commerce/FixtureCommerceGateway::search()`, between the two existing calls:
+
+```php
+    public function search(ProductQuery $query, CatalogScope $scope): array
+    {
+        $units = FixtureScopeFilter::apply($this->index->units(), $scope);
+        // After the scope, never before or instead of it: the shopper's location narrows what the
+        // merchant already allowed, and cannot reach past it (P8).
+        $units = FixtureCategoryFilter::apply($units, $query->categoryId);
+
+        return FixtureQueryFilter::apply($units, $query);
+    }
+```
 
 - [ ] **Step 5: Honour it in the DAL gateway**
 
@@ -1114,7 +1182,7 @@ git commit -m "feat(retrieval): search the category the shopper is browsing"
 - Consumes: `ChatRequest::$viewingProductId` (Task 3), the runner signature (Task 4)
 - Produces: `productId` in the chat request body
 
-> **No unit test.** `tests/e2e/README.md` records that the widget's rendering path is covered end to end, not by unit tests, and this is wiring rather than logic. Verification is Task 8's live run.
+> **No unit test.** `tests/e2e/README.md` records that the widget's rendering path is covered end to end, not by unit tests, and this is wiring rather than logic. Verification is Task 9's live run.
 
 - [ ] **Step 1: Emit the attribute**
 
@@ -1123,7 +1191,13 @@ In `src/Resources/views/storefront/component/assistant/orb.html.twig`, add to th
 ```twig
          {# Each is present only on the page type that has it. `page.product` does not exist on a
             listing page, `page.category` does not exist on a product page, and neither exists on a
-            CMS page — where the assistant is expected to work with no page context at all. #}
+            CMS page — where the assistant is expected to work with no page context at all.
+
+            `page.product` is whatever the shopper is actually looking at, which is the *variant*
+            once they pick one and the parent before that. Both are correct to send: the variant is
+            the case where the pre-grounded card already answers "is this in stock?" with no tool
+            call, and the parent is the case where the model still has to resolve — see Task 9's
+            three shapes. #}
          data-product-id="{{ page.product.id ?? '' }}"
          data-category-id="{{ page.category.id ?? '' }}"
 ```
@@ -1218,43 +1292,220 @@ Expected: `{"reported":true,"resolved":"<product id>","category":null}` from a p
 `{"reported":false,"resolved":null,"category":"<category id>"}` from a listing page, and
 `{"reported":false,"resolved":null,"category":null}` from the home page.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Add the one automated check the wiring can have**
+
+`tests/e2e/widget.spec.js` already drives the widget in a real browser. Add a case there that opens
+a product detail page, sends a message, and asserts the outgoing request body carries `productId`:
+
+```js
+test('the widget tells the server which product is open', async ({ page }) => {
+    const bodies = [];
+    page.on('request', (request) => {
+        if (request.url().includes('/assistant/chat')) {
+            bodies.push(JSON.parse(request.postData() ?? '{}'));
+        }
+    });
+
+    await page.goto(PRODUCT_URL);
+    // Open the panel and send a message using the same helpers the other cases in this file use.
+
+    expect(bodies[0]?.productId).toMatch(/^[0-9a-f]{32}$/);
+});
+```
+
+Read the file's existing helpers for opening the panel and sending a message, and reuse them —
+`PRODUCT_URL` needs to be a real detail page in the test shop. This suite is dev-only and not part
+of CI (`package.json`), so it is a check someone runs, not a gate.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/Resources src/Controller/AssistantController.php
-git commit -m "feat(storefront): tell the assistant which product is open"
+git add src/Resources src/Controller/AssistantController.php tests/e2e/widget.spec.js
+git commit -m "feat(storefront): tell the assistant which page it is on"
 ```
 
 ---
 
-### Task 8: Measure it, because the whole justification is a latency claim
+### Task 8: Teach the trace view the new stages
+
+**Files:**
+- Modify: `src/Resources/app/administration/src/module/swag-assistant-trace/page/swag-assistant-trace-detail/phases.js`
+- Modify: `src/Resources/app/administration/src/module/swag-assistant-trace/page/swag-assistant-trace-detail/facts.js`
+- Modify: `src/Resources/app/administration/src/module/swag-assistant-trace/snippet/{en-GB,de-DE}.json`
+- Test: `tests/js/trace-phases.test.js`
+
+**Interfaces:**
+- Consumes: trace stages `page.context` (Task 4) and `retrieve.without_category` (Task 6)
+- Produces: both stages rendered as part of a named phase rather than as `Other`
+
+> **This is a dependency of Task 9, not polish.** The measurement is read off this view, and
+> `phaseOf()` maps any stage it does not know to `other` — so without this the two new stages appear
+> as an unlabelled "Other" row and the retry is invisible in exactly the run that has to prove it.
+
+- [ ] **Step 1: Write the failing test**
+
+Append to `tests/js/trace-phases.test.js`:
+
+```js
+test('page context is part of preparing the turn, not an unlabelled Other', () => {
+    assert.equal(phaseOf('page.context'), 'prepare');
+});
+
+test('the category retry belongs to the search it retried', () => {
+    // It must not open a phase of its own: it is the same search running a second time, and a
+    // separate row would read as a second search the shopper caused.
+    assert.equal(phaseOf('retrieve.without_category'), 'search');
+
+    const rows = buildTimeline([
+        ev(0, 'retrieve'),
+        ev(4, 'retrieve.without_category'),
+        ev(9, 'render'),
+    ]);
+
+    assert.deepEqual(rows.map((row) => row.key), ['search', 'answer']);
+    assert.equal(rows[0].events.length, 2);
+});
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `npm run test:js`
+Expected: FAIL — both stages resolve to `other`.
+
+- [ ] **Step 3: Map them**
+
+In `phases.js`, extend the two phase definitions:
+
+```js
+    { key: 'prepare', stages: ['page.context', 'facet.probe', 'vocabulary.render', 'guard.check'] },
+```
+
+```js
+    { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'retrieve.without_category', 'variant.resolve', 'blocklist.filter'] },
+```
+
+`page.context` goes first in `prepare` because it is the first thing recorded in a turn that has it.
+
+- [ ] **Step 4: Surface the facts a merchant needs**
+
+In `facts.js`, add a `prepare` case to `phaseFacts()` and extend `searchFacts()`:
+
+```js
+        case 'prepare':
+            return prepareFacts(payload('page.context'));
+```
+
+```js
+/**
+ * Whether the shopper was on a product or a category page. This is the row that explains an
+ * unusually fast turn — and, when the model still called a tool anyway, the row that says the
+ * shortcut was available and went unused.
+ */
+function prepareFacts(pageContext) {
+    if (!pageContext) {
+        return [];
+    }
+
+    const facts = [];
+
+    if (pageContext.resolved) {
+        facts.push({ label: 'viewing product', value: pageContext.resolved });
+    } else if (pageContext.reported) {
+        // Reported but not resolved means the blocklist or the catalogue scope refused it, which is
+        // the trust model working and worth seeing rather than inferring from an absence.
+        facts.push({ label: 'reported product not in scope', value: 'ignored' });
+    }
+
+    if (pageContext.category) {
+        facts.push({ label: 'browsing category', value: pageContext.category });
+    }
+
+    return facts;
+}
+```
+
+and inside `searchFacts()`, after the existing entries:
+
+```js
+    const retried = row.events.find((event) => event.stage === 'retrieve.without_category');
+
+    if (retried) {
+        facts.push({ label: 'retried without the category', value: String(retried.payload?.hits ?? 0) });
+    }
+```
+
+`searchFacts()` currently receives payloads rather than the row, so give it the row (or pass the
+retry payload in as a fourth argument) — match whichever shape the file already uses rather than
+introducing a second convention.
+
+- [ ] **Step 5: Run it to verify it passes**
+
+Run: `npm run test:js`
+Expected: PASS.
+
+- [ ] **Step 6: Rebuild and eyeball one trace**
+
+```bash
+composer run build
+```
+
+Then in the shop, open a conversation started from a product page and confirm the `Prepared` row
+reads `viewing product <id>` rather than an unlabelled `Other`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/Resources/app/administration tests/js/trace-phases.test.js
+git commit -m "feat(admin): show page context and the category retry in the trace"
+```
+
+---
+
+### Task 9: Measure it, because the whole justification is a latency claim
 
 **Files:**
 - Modify: `docs/superpowers/plans/2026-08-21-page-context.md` (this file — record the numbers)
 
 **Interfaces:**
-- Consumes: Tasks 1–7, plus the Administration trace view
+- Consumes: Tasks 1–8, plus the Administration trace view
 
 > This task is not optional and not ceremony. The feature was chosen over streaming on the strength of "removes one of two model round trips". If that turns out to be false, the ranking was wrong and the next person needs to know.
 >
 > **Measure the product-page claim only.** Category context has a different success criterion (relevance, not speed) and mixing them makes both unreadable.
 
+**Measure three question shapes, not one.** The saving depends on whether the question is about the
+product *as displayed*, and reporting a single averaged number would hide that:
+
+| # | Where the shopper is | What they ask | Expected tool calls after |
+|---|---|---|---|
+| A | on the **Blue / M** variant page | *"is this in stock?"* | **zero** — the pre-grounded card already carries the figures, so the server renders them and the model never asks |
+| B | on the **Blue / M** variant page | *"do you have this in black?"* | **one** — a different variant must be resolved. Was two |
+| C | on the **parent** product page | *"in blue, size M?"* | **one** — the variant must be resolved. Was two |
+
+Shape A is the claim that justified ranking this above streaming. B and C are the honest remainder.
+
 - [ ] **Step 1: Capture the before**
 
-Against the test shop, from a **product detail page**, ask a question the page already answers — e.g. *"do you have this in blue, size M?"*. Open the conversation in **Settings → Assistant conversations** and record from the turn header:
+For each of A, B and C against the test shop, with page context **disabled** (send the request with
+`curl` and no `productId`), record from the turn header in **Settings → Assistant conversations**:
 
-- total, `shop`, and `model`
-- the number of `waiting on the model` rows in the timeline
-
-Do this **before** enabling page context by temporarily sending no `productId` (comment out Step 3 of Task 5, or use `curl` without the field).
+- total, `shop` and `model`
+- the number of `waiting on the model` rows
+- the number of `tool.call` events in the raw trace
 
 - [ ] **Step 2: Capture the after**
 
-Same question, same page, with `productId` sent. Record the same four numbers.
+The same three shapes with `productId` sent. Record the same four numbers each.
 
 - [ ] **Step 3: Write the result into this file**
 
-Add a `## Measured result` section with both readings and a one-line verdict. If the second `waiting on the model` row is gone, the claim held. If it is not, say so plainly and note what actually changed — the model may still choose to call `search_products` even when the product is in its prompt, and if it does, the fix is prompt wording, not architecture.
+Add a `## Measured result` section with all six readings and a one-line verdict per shape.
+
+**Shape A is the one that decides whether the ranking was right.** If its `tool.call` count is zero
+and one `waiting on the model` row has gone, the claim held. If the model still calls a tool with the
+product sitting in its prompt, say so plainly — the fix is `ViewingContext`'s wording, not
+architecture, and the honest next step is to try the wording once and then re-rank against streaming
+rather than keep going.
 
 - [ ] **Step 4: Commit**
 
@@ -1265,7 +1516,7 @@ git commit -m "docs: record the measured effect of page context"
 
 ---
 
-### Task 9: Documentation and the rulings
+### Task 10: Documentation and the rulings
 
 **Files:**
 - Modify: `ARCHITECTURE.md`, `README.md`
@@ -1334,7 +1585,8 @@ git commit -m "docs: document page context and its trust model"
 | P7 `page.context` trace stage | 4, 6, 9 |
 | P8 category is a query constraint, never a scope include | 5 (both gateways + the test that defends it) |
 | P9 retry when the constraint empties the result | 6 |
-| The latency claim itself | 6 |
+| The new stages are readable in the trace view | 8 |
+| The latency claim itself, measured in three shapes | 9 |
 
 ## Known risks
 
@@ -1342,7 +1594,9 @@ git commit -m "docs: document page context and its trust model"
 |---|---|---|
 | The model calls `search_products` anyway, and the round trip is not saved | **high** — it is the entire justification | Task 6 measures it rather than assuming. If it happens, the fix is prompt wording (`ViewingContext`'s line), not architecture |
 | Someone later passes the `ProductCard` into the prompt directly | high | `testNeverCarriesAFigure()` |
-| `page.product` is not in scope in `base_body_inner` on some page types | medium | `?? ''` makes it absent rather than an error; Task 5 Step 5 verifies both cases |
+| `page.product` / `page.category` are not in scope in `base_body_inner` on some page types | medium | `?? ''` makes them absent rather than an error; Task 7 Step 5 verifies product, listing and home |
+| Adding a branch to `FixtureQueryFilter` trips its cyclomatic-complexity ceiling and fails the quality gate for an unrelated reason | medium | Task 5 puts the constraint in its own `FixtureCategoryFilter` and says why |
+| The new trace stages render as an unlabelled `Other`, hiding the retry in the run that must prove the feature | medium | Task 8, which is sequenced before the measurement for exactly this reason |
 | A shopper navigates mid-conversation and "this" becomes ambiguous | low | Context is per request, so it follows the shopper. History carries the older antecedent in prose, which is what already resolves "that" today |
 | Someone later moves the page category into `CatalogScope::$includeCategoryIds` because it "belongs with the other category ids" | **high** — it is a policy bypass, and it looks like a tidy-up | `CategoryConstraintTest::testTheConstraintNarrowsWithinTheMerchantScopeRatherThanEscapingIt()` fails; the reason is in P8, in the `DalCriteriaBuilder` comment, and in ruling R96 |
 | The category constraint makes the assistant useless for off-topic questions | medium | P9's retry, traced as `retrieve.without_category` so it is visible rather than guessed at |
