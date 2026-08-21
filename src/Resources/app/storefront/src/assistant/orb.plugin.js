@@ -19,6 +19,15 @@ const OBSTRUCTION_SELECTORS = [
 const OBSTRUCTION_GAP = 8;
 
 /**
+ * How far above the bottom edge still counts as "fixed to the bottom".
+ *
+ * Was 4px, which a horizontal scrollbar alone exceeds — see `_obstructionHeight()`. Wide enough to
+ * survive a scrollbar and a theme's own bottom inset, narrow enough that a notice sitting halfway up
+ * the page is still correctly ignored.
+ */
+const OBSTRUCTION_BOTTOM_TOLERANCE = 40;
+
+/**
  * The orb.
  *
  * This chunk loads on every storefront page, so it does as little as possible: the resting bubble —
@@ -146,6 +155,22 @@ export default class SwagAssistantOrb extends PluginBaseClass {
         return null;
     }
 
+    /**
+     * How far something fixed to the bottom edge reaches up into the corner the widget sits in.
+     *
+     * **Corrected, 2026-08-21, measured on the deployed shop.** This returned 0 while the consent bar
+     * covered 37 of the orb's 60 pixels — the exact defect the offset was written to prevent, back
+     * again. Two mistakes, both about which "bottom" is being talked about:
+     *
+     * - The test was `rect.bottom >= window.innerHeight - 4`. `window.innerHeight` **includes** the
+     *   horizontal scrollbar; an element fixed to `bottom: 0` sits above it. Live numbers: the bar's
+     *   bottom was 905 and `innerHeight` was 920, so a bar flush against the bottom edge failed a
+     *   test asking whether it was flush against the bottom edge. `documentElement.clientHeight` is
+     *   the layout viewport that `position: fixed` actually resolves against, and it read 905.
+     * - The offset was the bar's own height. That is only the right number when the bar is flush;
+     *   a bar with any gap beneath it needs the distance from the viewport's bottom up to its top,
+     *   which is what is measured now and reduces to the height in the flush case.
+     */
     _obstructionHeight() {
         const bar = this._findObstruction();
 
@@ -159,11 +184,19 @@ export default class SwagAssistantOrb extends PluginBaseClass {
             return 0;
         }
 
-        // Only count something that actually sits along the bottom edge. A consent notice rendered
-        // inline higher up the page is not in our way.
-        const sitsAtTheBottom = rect.bottom >= window.innerHeight - 4;
+        // The viewport `position: fixed` resolves against — scrollbars excluded.
+        const viewportBottom = document.documentElement.clientHeight;
 
-        return sitsAtTheBottom ? Math.round(rect.height) + OBSTRUCTION_GAP : 0;
+        // Only count something that actually reaches the bottom edge. A consent notice rendered
+        // inline higher up the page is not in our way. The tolerance is generous on purpose: the
+        // tight one is what let a fifteen-pixel scrollbar disable this entirely.
+        if (rect.bottom < viewportBottom - OBSTRUCTION_BOTTOM_TOLERANCE) {
+            return 0;
+        }
+
+        // How high the bar reaches, not how tall it is. Identical for a flush bar, correct for one
+        // with a gap beneath it.
+        return Math.round(Math.max(0, viewportBottom - rect.top)) + OBSTRUCTION_GAP;
     }
 
     /**

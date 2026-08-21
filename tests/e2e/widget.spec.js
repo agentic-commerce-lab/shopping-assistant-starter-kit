@@ -63,26 +63,46 @@ test.describe('assistant widget', () => {
         await expect(orb).toHaveAttribute('aria-expanded', 'true');
     });
 
+    /**
+     * The consent bar is fixed at z-index 1100 — above the widget's 1035 — so wherever they overlap
+     * the bar wins, and the orb is what a shopper has to click.
+     *
+     * **This test used to be able to pass without testing anything.** It returned `false` for
+     * "no bar found", which is the same value as "no overlap", so a run where the consent bar never
+     * appeared was indistinguishable from a run where the offset worked. It did not appear: measured
+     * on the deployed shop the bar covered 37 of the orb's 60 pixels while this was green. The
+     * assertions below fail if the bar is missing, because a green result then means nothing.
+     */
     test('the orb clears whatever else occupies the corner', async ({ page }) => {
+        // A consent decision persists, and a decided bar is never rendered. Clear it first, or this
+        // test measures an empty corner.
+        await page.context().clearCookies();
         await page.goto(SHOP);
 
-        // The cookie-consent bar is fixed at z-index 1100 and covered 38px of the 60px orb before
-        // orb.plugin.js began measuring it.
-        const overlap = await page.evaluate(() => {
+        const geometry = await page.evaluate(() => {
             const bar = document.querySelector('.cookie-permission-container');
             const orb = document.querySelector('.swag-assistant-orb');
+            const root = document.querySelector('.swag-assistant');
 
-            if (!bar || !orb) {
-                return false;
+            if (!bar || !orb || !root) {
+                return { barPresent: false };
             }
 
             const a = bar.getBoundingClientRect();
             const b = orb.getBoundingClientRect();
 
-            return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+            return {
+                barPresent: a.height > 0,
+                offset: getComputedStyle(root).getPropertyValue('--swag-assistant-obstruction').trim(),
+                overlap: !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom),
+            };
         });
 
-        expect(overlap).toBe(false);
+        // The precondition, asserted rather than assumed.
+        expect(geometry.barPresent).toBe(true);
+        // The offset is the mechanism, and a measured zero is the shape the live bug took.
+        expect(geometry.offset).not.toBe('0px');
+        expect(geometry.overlap).toBe(false);
     });
 
     test('escape closes the panel and returns focus to the orb', async ({ page }) => {

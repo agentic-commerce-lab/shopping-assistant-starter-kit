@@ -117,10 +117,33 @@ export function createComposer({ form, input, button, maxLength, tooLongTemplate
      *
      * The 120px ceiling is in the stylesheet, not here: past it `max-height` clamps and the field
      * scrolls, which is the behaviour a long paste should get.
+     *
+     * **The borders have to be added back.** `scrollHeight` is content plus padding; the field is
+     * `box-sizing: border-box`, so writing that number as `height` makes the border eat two pixels
+     * of it. Measured on the live shop: the moment the first keystroke ran this, `scrollHeight`
+     * stayed 42 while `clientHeight` dropped to 40 — a permanent two-pixel overflow, which is a
+     * scrollbar sitting in an empty single-line field at every size it ever takes.
      */
     function grow() {
         input.style.height = 'auto';
-        input.style.height = `${input.scrollHeight}px`;
+        input.style.height = `${input.scrollHeight + borderHeight()}px`;
+    }
+
+    /**
+     * Read from the computed style rather than hardcoded, because the border width is the
+     * stylesheet's decision and a `1px` that becomes `2px` there must not silently reintroduce the
+     * overflow. Cached: this runs on every keystroke, and `getComputedStyle` forces layout.
+     */
+    let cachedBorderHeight = null;
+
+    function borderHeight() {
+        if (cachedBorderHeight === null) {
+            const style = window.getComputedStyle(input);
+            cachedBorderHeight = (parseFloat(style.borderTopWidth) || 0)
+                + (parseFloat(style.borderBottomWidth) || 0);
+        }
+
+        return cachedBorderHeight;
     }
 
     function setBusy(next) {
@@ -151,12 +174,26 @@ export function createComposer({ form, input, button, maxLength, tooLongTemplate
         reflect();
     }
 
-    /** Used when the shop reports it cannot answer at all: 503 and 429 close the composer for good. */
+    /**
+     * Used when the shop reports it cannot answer at all — a model the merchant has not configured.
+     *
+     * **Reversible, which it was not.** This disabled the textarea and nothing ever re-enabled it:
+     * `clear()` runs `reflect()`, which re-arms the *button* and never touches `input.disabled`, so
+     * "start a new conversation" produced a fresh greeting above a field nobody could type in. One
+     * transient failure and the widget was dead for the rest of that page's life. Reported from the
+     * deployed shop, 2026-08-21.
+     */
     function close() {
         input.disabled = true;
         button.disabled = true;
         button.classList.remove('is-armed');
     }
 
-    return { setBusy, clear, fill, close, focus: () => input?.focus() };
+    /** The other half of `close()`. Anything that starts over has to be able to undo it. */
+    function open() {
+        input.disabled = false;
+        reflect();
+    }
+
+    return { setBusy, clear, fill, close, open, focus: () => input?.focus() };
 }

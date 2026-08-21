@@ -304,7 +304,9 @@ export default class SwagAssistantPanel extends PluginBaseClass {
             animate: false,
         }));
 
-        scrollToLatest(this.log);
+        // The last message, not the end of the log: a restored conversation ending in a long reply
+        // has the same problem a live one does.
+        scrollToLatest(this.log, this.log.lastElementChild ?? undefined);
     }
 
     _renderGreeting() {
@@ -376,6 +378,10 @@ export default class SwagAssistantPanel extends PluginBaseClass {
     _reset() {
         window.sessionStorage.removeItem(TOKEN_KEY);
         this.thinking.stop();
+        // Before `clear()`, because a composer closed by an earlier failure has a disabled textarea
+        // that `clear()` alone never re-enables — "start a new conversation" produced a fresh
+        // greeting above a field nobody could type in.
+        this.composer.open();
         this.composer.clear();
         this.log.replaceChildren();
         this.chips = null;
@@ -466,13 +472,24 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         const text = document.createElement('span');
         notice.appendChild(text);
 
-        if (error.status === 503 || error.status === 429) {
-            // The shop has no model, or the kill switch / daily cap stopped it. Retrying cannot help,
-            // so no retry is offered and the composer closes.
+        if (error.status === 400) {
+            // The message was rejected on its way in. Retrying the same text cannot help.
+            text.textContent = this.translations.errorTooLong ?? '';
+        } else if (error.status === 503 && error.serverError !== null) {
+            // **The one genuinely permanent failure.** A JSON `error` body means this application
+            // answered, and 503 is the single thing it answers that way: the merchant configured no
+            // model. Retrying cannot fix a missing API key, so the composer closes.
             text.textContent = this.translations.errorUnavailable ?? '';
             this.composer.close();
-        } else if (error.status === 400) {
-            text.textContent = this.translations.errorTooLong ?? '';
+        } else if (error.status === 503 || error.status === 429) {
+            // **Corrected, 2026-08-21.** These used to be treated as permanent too, and it cost a
+            // group of colleagues the whole widget: a 503 from Apache or a saturated worker pool
+            // reads identically here, so one transient hiccup printed "the assistant is
+            // unavailable", disabled the composer for good, and offered nothing to click. Nothing in
+            // this application returns 429 at all, which is the clearest possible sign that both of
+            // these can arrive from in front of it.
+            text.textContent = this.translations.errorBusy ?? '';
+            notice.appendChild(this._buildRetry(notice, sentMessage, originalText));
         } else {
             text.textContent = this.translations.errorNetwork ?? '';
             notice.appendChild(this._buildRetry(notice, sentMessage, originalText));

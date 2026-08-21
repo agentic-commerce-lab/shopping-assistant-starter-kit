@@ -97,7 +97,7 @@ export function renderMessage(log, message) {
     }
 
     log.appendChild(wrapper);
-    scrollToLatest(log);
+    scrollToLatest(log, wrapper);
 
     if (animate) {
         window.requestAnimationFrame(() => wrapper.classList.remove('is-entering'));
@@ -200,8 +200,32 @@ function buildTime(createdAt, locale) {
     return time;
 }
 
-export function scrollToLatest(log) {
-    log.scrollTop = log.scrollHeight;
+/**
+ * Puts the newest message where it can actually be read.
+ *
+ * Scrolling to the bottom is right for a short reply and wrong for a long one: it parks the *end* of
+ * the message at the bottom of the view, so a reply taller than the panel opens with its own answer
+ * already above the fold. Reported from the deployed shop with a screenshot — a reply listing jerseys
+ * and tyres had "the text about jerseys pushed so far up it isn't visible", and what the shopper
+ * landed on was the card row underneath it.
+ *
+ * So a message taller than the viewport is aligned to its **start**, and everything else still goes
+ * to the bottom. Reading a long answer from its first line is not a preference; reading it from the
+ * middle is a bug.
+ *
+ * @param {HTMLElement} log
+ * @param {HTMLElement} [target] the message to bring into view; defaults to the end of the log
+ */
+export function scrollToLatest(log, target) {
+    if (!target || target.offsetHeight <= log.clientHeight) {
+        log.scrollTop = log.scrollHeight;
+
+        return;
+    }
+
+    // Delta between the two rects rather than `offsetTop`, which is relative to whichever ancestor
+    // happens to be positioned and silently wrong the moment that changes.
+    log.scrollTop += target.getBoundingClientRect().top - log.getBoundingClientRect().top;
 }
 /**
  * Suggestion chips, under the greeting, on first open only.

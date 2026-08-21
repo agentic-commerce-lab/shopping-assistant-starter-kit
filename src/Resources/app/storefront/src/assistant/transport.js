@@ -34,10 +34,37 @@ export function createTransport({ chatUrl, historyUrl, cardsUrl, cartUrl }) {
         });
 
         if (!response.ok) {
-            throw statusError(`The assistant responded ${response.status}`, response.status);
+            throw statusError(
+                `The assistant responded ${response.status}`,
+                response.status,
+                await readServerError(response),
+            );
         }
 
         return response.json();
+    }
+
+    /**
+     * Whether the status came from *this application* or from something in front of it.
+     *
+     * The distinction decides whether a failure is permanent, and the status code alone cannot make
+     * it. `AssistantController` answers 503 for exactly one reason — the merchant configured no
+     * model — and it says so in a JSON `error`. A 503 from Apache, a saturated PHP-FPM pool or a WAF
+     * carries an HTML error page instead, and means "try again in a second".
+     *
+     * Treating those two the same is what bricked the widget for a group of colleagues: one
+     * transient upstream 503 produced "the assistant is unavailable", disabled the composer for
+     * good, and offered no retry. Reading the body is the cheapest way to stop guessing.
+     */
+    async function readServerError(response) {
+        try {
+            const payload = await response.json();
+
+            return typeof payload?.error === 'string' ? payload.error : null;
+        } catch {
+            // Not JSON: nothing in this application produced it.
+            return null;
+        }
     }
 
     /**
@@ -153,9 +180,11 @@ export function createTransport({ chatUrl, historyUrl, cardsUrl, cartUrl }) {
     return { send, history, cards, addToCart };
 }
 
-function statusError(message, status) {
+function statusError(message, status, serverError = null) {
     const error = new Error(message);
     error.status = status;
+    // Non-null only when this application answered. See `readServerError`.
+    error.serverError = serverError;
 
     return error;
 }

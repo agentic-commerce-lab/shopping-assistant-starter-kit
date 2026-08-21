@@ -42,6 +42,7 @@
       "network": "That didn't get through. Try again?",
       "retry": "Try again",
       "unavailable": "The assistant is unavailable right now.",
+        "busy": "The shop was busy for a moment. Try again?",
       "tooLong": "That message is too long. Please shorten it.",
       "cartFailed": "Could not add this to the cart."
     }

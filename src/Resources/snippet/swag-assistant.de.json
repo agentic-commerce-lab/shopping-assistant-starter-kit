@@ -42,6 +42,7 @@
       "network": "Das kam nicht durch. Nochmal versuchen?",
       "retry": "Nochmal versuchen",
       "unavailable": "Der Assistent ist gerade nicht verfügbar.",
+        "busy": "Der Shop war kurz überlastet. Nochmal versuchen?",
       "tooLong": "Diese Nachricht ist zu lang. Bitte kürzen.",
       "cartFailed": "Konnte nicht in den Warenkorb gelegt werden."
     }
