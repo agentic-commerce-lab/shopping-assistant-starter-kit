@@ -24,6 +24,7 @@ final class AssertionRegistry
             'no_unbacked_price_in_prose' => new NoUnbackedPriceInProse(),
             'cart_contains' => new CartContains(),
             'rendered_ids_exactly' => new RenderedIdsExactly(),
+            'no_absence_claim_in_prose' => new NoAbsenceClaimInProse(),
             default => throw new \InvalidArgumentException(\sprintf(
                 'Journey "%s" declares unknown assertion "%s".',
                 $journeyId,
