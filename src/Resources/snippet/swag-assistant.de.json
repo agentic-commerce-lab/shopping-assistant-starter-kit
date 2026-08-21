@@ -12,6 +12,7 @@
       "defaultGreeting": "Hallo. Ich kann im Katalog dieses Shops nachsehen.",
       "reset": "Neue Unterhaltung beginnen",
       "suggestionsLabel": "Das könntest du fragen",
+      "composerTooLong": "%count% von %limit% Zeichen — bitte kürzen.",
       "suggestionOne": "Was verkaufst du?",
       "suggestionTwo": "Hilf mir, ein Geschenk zu finden",
       "suggestionThree": "Wie schnell ist die Lieferung?"
@@ -24,7 +25,7 @@
       "lowStock": "Wenig auf Lager",
       "outOfStock": "Nicht auf Lager",
       "outOfStockReason": "Nicht auf Lager und kann daher nicht hinzugefügt werden",
-      "parentStock": "Lagerbestand gilt für das Produkt, nicht für diese Variante.",
+      "parentStock": "Bestand über alle Varianten zusammen — wähle eine auf der Produktseite.",
       "delivery": "Lieferung: %time%",
       "addedToCart": "Hinzugefügt"
     },

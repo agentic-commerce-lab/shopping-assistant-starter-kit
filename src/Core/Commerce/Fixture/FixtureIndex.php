@@ -12,9 +12,14 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *
  * A sellable unit is either a variant (its own price, stock and options, with
  * {@see StockSource::Variant}) or, for a product carrying no variants, the product
- * itself ({@see StockSource::Parent}). A variant inherits `name`, `description`,
+ * itself ({@see StockSource::Product}). A variant inherits `name`, `description`,
  * `categoryPath` and `properties` from its parent and overrides `price`, `stock`,
  * `options` and `url`.
+ *
+ * **This index never emits {@see StockSource::Parent}**, because a family parent is not a sellable
+ * unit: a product with variants contributes its variants and nothing else. The DAL gateway does
+ * emit it — Shopware's search returns family parents alongside their children — which is why the
+ * two must be different cases rather than one.
  *
  * @phpstan-type FixtureVariant array{
  *     id: string,
@@ -62,7 +67,7 @@ final class FixtureIndex
     private static function buildUnitsForProduct(array $product): array
     {
         if ($product['variants'] === []) {
-            return [self::buildParentUnit($product)];
+            return [self::buildStandaloneUnit($product)];
         }
 
         return array_map(static fn(array $variant): ProductCard => self::buildVariantUnit(
@@ -72,7 +77,7 @@ final class FixtureIndex
     }
 
     /** @param FixtureProduct $product */
-    private static function buildParentUnit(array $product): ProductCard
+    private static function buildStandaloneUnit(array $product): ProductCard
     {
         return new ProductCard(
             id: $product['id'],
@@ -82,7 +87,7 @@ final class FixtureIndex
             price: (float) $product['price'],
             currency: 'EUR',
             stock: $product['stock'],
-            stockSource: StockSource::Parent,
+            stockSource: StockSource::Product,
             deliveryTime: null,
             url: $product['url'],
             imageUrl: null,

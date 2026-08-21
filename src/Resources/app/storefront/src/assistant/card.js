@@ -11,6 +11,15 @@ import { formatPrice } from './render';
 /** Below this, "in stock" is true but reassuring a shopper with a bare "In stock" overstates it. */
 const STOCK_LOW_THRESHOLD = 5;
 
+/**
+ * `StockSource::Parent` — the card stands for a product family, not for a unit anyone can buy.
+ *
+ * The server also sends `variant` and `product`, and **both are directly buyable**: a variant's
+ * figure is its own, and a product with no variants has nothing to resolve. Only this one value
+ * means the shopper still has a choice to make.
+ */
+const STOCK_SOURCE_FAMILY = 'parent';
+
 /** Beyond this, staggering the entrance stops reading as choreography and starts reading as lag. */
 const MAX_STAGGER_STEPS = 6;
 
@@ -70,10 +79,15 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
         ));
     }
 
-    // `stockSource` says whether the stock figure belongs to the variant the shopper asked about or
-    // to its parent. A client cannot infer it, and a shopper who is quoted the parent's number is
-    // the shopper whose order gets cancelled. Nothing else in this product says this out loud.
-    if (card.stockSource === 'parent' && translations.parentStock) {
+    // `stockSource` says whose stock figure this is. A client cannot infer it, and a shopper quoted
+    // a product family's aggregate is the shopper whose order gets cancelled. Nothing else in this
+    // product says this out loud.
+    //
+    // **Only `parent`**, which now means one thing: a family standing in for variants nobody has
+    // picked from. Until 2026-08-21 it also meant "a product with no variants", so every simple
+    // product in the catalogue carried this note — measured live, three cards in one reply saying
+    // "Stock shown for the product, not this variant" about products that have no variants.
+    if (card.stockSource === STOCK_SOURCE_FAMILY && translations.parentStock) {
         info.appendChild(text('p', 'swag-assistant-card__note', translations.parentStock));
     }
 
@@ -177,7 +191,7 @@ function buildActions(card, { addToCartEnabled, translations }) {
         return actions;
     }
 
-    // **No add button on a card whose stock belongs to the parent.**
+    // **No add button on a card that stands for a product family.**
     //
     // `stockSource: 'parent'` means the server could not tell which variant this is about — it is the
     // state the parent-stock note exists to disclose. Offering one-click purchase there would let a
@@ -188,7 +202,11 @@ function buildActions(card, { addToCartEnabled, translations }) {
     //
     // Measured: a live turn for "black, size M" returned the parent at 79.90 with 35 in stock while
     // Black/M is 69.90 with 3.
-    if (card.stockSource === 'parent') {
+    //
+    // **What this must not do is refuse a product that has no variants.** It did, for as long as
+    // `parent` meant both things: asking for a 750ml bottle returned three simple products, all in
+    // stock, none of them addable — a broken widget rather than a careful one.
+    if (card.stockSource === STOCK_SOURCE_FAMILY) {
         return actions;
     }
 

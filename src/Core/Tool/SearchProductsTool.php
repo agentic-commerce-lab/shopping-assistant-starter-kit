@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Core\Tool;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\RedundantParentFilter;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
@@ -228,7 +229,18 @@ final class SearchProductsTool
             'removedIds' => $filtered['removed'],
         ]);
 
-        $survivors = $filtered['cards'];
+        // **After the blocklist, deliberately, not before it.** The blocklist must see everything
+        // retrieval and resolution produced, because `BlocklistSurvivors` diffs `retrieve`'s
+        // retained ids against this stage's removals: a card taken out upstream would still count
+        // as retained, never appear as removed, and so read as a survivor that leaked. A redundancy
+        // narrowing must not be able to forge that.
+        //
+        // Shopware's search returns a family parent alongside its children, so "what bib shorts do
+        // you sell?" came back as Black/L, Black/M and then the parent again — an unbuyable
+        // aggregate and its disclosure, beside the two rows that had already answered the question.
+        // See RedundantParentFilter for why only a superseded parent goes.
+        $survivors = RedundantParentFilter::apply($filtered['cards']);
+        $supersededParents = \count($filtered['cards']) - \count($survivors);
 
         // Narrowing happens HERE, not in retrieval. Everything above needed the full
         // candidate window to be correct — VariantResolver cannot disambiguate a set of
@@ -243,6 +255,7 @@ final class SearchProductsTool
             'candidateLimit' => $candidateLimit,
             'returnLimit' => $requestedLimit,
             'survivors' => \count($survivors),
+            'supersededParents' => $supersededParents,
             'truncated' => \count($survivors) - \count($returned),
             'returnedIds' => array_map(static fn($card) => $card->id, $returned),
         ]);

@@ -153,10 +153,15 @@ final readonly class DalCommerceGateway implements CommerceGatewayInterface
     /**
      * Maps every retrieved row, deciding the stock source per row rather than per query.
      *
-     * **That conditional is the whole of D4 at this layer.** A row with a parent is a variant and
-     * may report its own stock; a row without one is a parent product and must say so, because a
-     * parent's aggregate stock presented as a variant's is the claim that cancels orders. It is
-     * decided here, from the row, rather than passed in by a caller who might be wrong.
+     * **That classification is the whole of D4 at this layer**, and it is decided here, from the
+     * row, rather than passed in by a caller who might be wrong. A parent's aggregate stock
+     * presented as a variant's is the claim that cancels orders.
+     *
+     * `childCount` is read as well as `parentId`, because two facts are needed rather than one:
+     * without it a plain product with no variants was indistinguishable from a family parent, and
+     * the storefront disclosed *"Stock shown for the product, not this variant"* — plus withheld
+     * one-click purchase — for products that have no variants at all. See
+     * {@see StockSource::forProductRow()} for the measurement.
      *
      * @param array<mixed> $entities
      *
@@ -173,7 +178,7 @@ final readonly class DalCommerceGateway implements CommerceGatewayInterface
 
             $cards[] = $this->mapper->map(
                 $entity,
-                $entity->getParentId() !== null ? StockSource::Variant : StockSource::Parent,
+                StockSource::forProductRow($entity->getParentId(), $entity->getChildCount()),
                 $currency,
             );
         }

@@ -48,18 +48,24 @@ final class VariantStockCheck
         int $expectedStock,
         mixed $scope,
     ): AssertionResult {
-        // Checked before the plain stock comparison below: a card whose figure came
-        // from the parent aggregate is the specific failure this assertion exists to
-        // catch, and deserves that diagnosis even when the aggregate number happens to
-        // coincide with the expected variant figure.
+        // Checked before the plain stock comparison below: a card whose figure did not come from
+        // the variant itself is the specific failure this assertion exists to catch, and deserves
+        // that diagnosis even when the number happens to coincide with the expected figure.
+        //
+        // The actual `stockSource` is named rather than assumed to be the aggregate, because there
+        // are two ways to fail this and they are different mistakes: `parent` is the family
+        // aggregate leaking through, and `product` is a variant question answered with a product
+        // that has no variants at all.
         if ('variant' === $scope && StockSource::Variant !== $card->stockSource) {
             return new AssertionResult(
                 $assertionName,
                 false,
                 \sprintf(
-                    'card %s stock %d came from the parent aggregate; expected %s stock %d with stockSource=variant',
+                    'card %s stock %d has stockSource=%s, not the variant\'s own; '
+                    . 'expected %s stock %d with stockSource=variant',
                     $card->id,
                     $card->stock,
+                    $card->stockSource->value,
                     $expectedId,
                     $expectedStock,
                 ),

@@ -12,6 +12,7 @@
       "defaultGreeting": "Hi. I can look things up in this shop's catalogue.",
       "reset": "Start a new conversation",
       "suggestionsLabel": "Things you could ask",
+      "composerTooLong": "%count% of %limit% characters — please shorten this.",
       "suggestionOne": "What do you sell?",
       "suggestionTwo": "Help me find a gift",
       "suggestionThree": "How fast is delivery?"
@@ -24,7 +25,7 @@
       "lowStock": "Low stock",
       "outOfStock": "Out of stock",
       "outOfStockReason": "Out of stock, so it cannot be added to the cart",
-      "parentStock": "Stock shown for the product, not this variant.",
+      "parentStock": "Total across all variants — choose one on the product page.",
       "delivery": "Delivery: %time%",
       "addedToCart": "Added"
     },
