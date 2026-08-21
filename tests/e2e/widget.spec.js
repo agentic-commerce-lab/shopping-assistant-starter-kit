@@ -359,6 +359,54 @@ test.describe('reading what the server actually sends', () => {
      * The cap is correct — the endpoint is public and does a catalogue lookup per id — so the client
      * batches instead of asking past it.
      */
+    /**
+     * **A known, unfixed defect.** A reply taller than the panel opens at its own end, so the answer
+     * is above the fold and what the shopper lands on is the card row. Reported from the deployed
+     * shop with a screenshot: "the text about jerseys is pushed so far up it isn't visible".
+     *
+     * `test.fixme` rather than deleted, because five attempts at placing the message failed and the
+     * measurements are worth keeping: `scrollTop` adjustments, absolute `scrollTo` on `offsetTop`,
+     * the same deferred a frame, and `scrollIntoView({block: 'start'})` all landed between 52 and
+     * 112 pixels too high, and instrumenting every scroll on the log proved nothing moves it
+     * afterwards. See `scrollToLatest()` in render.js for the table and the conclusion: the
+     * message's offset is not stable at append time, because the log's first child carries
+     * `margin-top: auto` and the panel is still resolving its height, so free space decides the
+     * transcript's position while free space is still changing.
+     *
+     * Fixing it means anchoring the transcript to the top of the log, which changes how a
+     * one-message conversation looks. That is a design decision, so it is not taken here.
+     */
+    test.fixme('a reply taller than the panel opens at its first line', async ({ page }) => {
+        await openPanel(page);
+
+        const opening = 'Here is what is actually available:';
+        await stubTurn(page, {
+            prose: `${opening}\n\n${Array.from({ length: 14 }, (_, i) => `- line number ${i} of a reply that does not fit`).join('\n')}`,
+            cards: [card({ id: 'c'.repeat(32), stockSource: 'product' })],
+        });
+        await ask(page, 'which should I get?');
+
+        const reply = page.locator('.swag-assistant-message--assistant').last();
+        await expect(reply).toContainText(opening);
+
+        // Measured after the opening transition, because rects are transform-affected while the
+        // panel is still scaling up from its `bottom right` origin.
+        await page.waitForTimeout(700);
+
+        const geometry = await reply.evaluate((el) => {
+            const log = el.closest('[data-swag-assistant-log]');
+
+            return {
+                tallerThanLog: el.offsetHeight > log.clientHeight,
+                offsetFromTop: Math.round(el.getBoundingClientRect().top - log.getBoundingClientRect().top),
+            };
+        });
+
+        expect(geometry.tallerThanLog).toBe(true);
+        expect(geometry.offsetFromTop).toBeGreaterThanOrEqual(-2);
+        expect(geometry.offsetFromTop).toBeLessThan(4);
+    });
+
     test('a transcript with more cards than one request allows re-hydrates whole', async ({ page }) => {
         const ids = Array.from({ length: 15 }, (_, i) => String(i).padStart(32, 'a'));
 

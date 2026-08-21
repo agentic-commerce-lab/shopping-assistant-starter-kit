@@ -201,32 +201,44 @@ function buildTime(createdAt, locale) {
 }
 
 /**
- * Puts the newest message where it can actually be read.
+ * Scrolls the log to its end.
  *
- * Scrolling to the bottom is right for a short reply and wrong for a long one: it parks the *end* of
- * the message at the bottom of the view, so a reply taller than the panel opens with its own answer
- * already above the fold. Reported from the deployed shop with a screenshot — a reply listing jerseys
- * and tyres had "the text about jerseys pushed so far up it isn't visible", and what the shopper
- * landed on was the card row underneath it.
+ * **A known defect lives here, and five attempts failed to fix it.** For a reply taller than the
+ * panel this parks the *end* of the message at the bottom of the view, so the answer opens already
+ * above the fold. Reported from the deployed shop with a screenshot: a reply listing jerseys and
+ * tyres had "the text about jerseys pushed so far up it isn't visible", and what the shopper landed
+ * on was the card row underneath it.
  *
- * So a message taller than the viewport is aligned to its **start**, and everything else still goes
- * to the bottom. Reading a long answer from its first line is not a preference; reading it from the
- * middle is a bug.
+ * What was tried, and what each measurement said:
+ *
+ * | Attempt | Result |
+ * |---|---|
+ * | `scrollTop += rect(msg).top - rect(log).top` | first line 88px too high — the log has `scroll-behavior: smooth`, so the offset was read mid-animation |
+ * | `scrollTo({top: msg.offsetTop})` | 63px too high |
+ * | the same, repeated on the next animation frame | 52px too high — one frame is not enough |
+ * | `msg.scrollIntoView({block: 'start'})` | 112px too high |
+ * | all of the above, measured after a 700ms settle | unchanged |
+ *
+ * Instrumenting every scroll on the log proved nothing else moves it afterwards: the last scroll in
+ * the sequence is this function's own. So the offset being written is simply not the offset the
+ * message ends up at — the message's position inside this scroller is **not stable at append
+ * time**, because the log is a column flex container whose first child carries `margin-top: auto`,
+ * and the panel is simultaneously resolving its own height between `min-height` and `max-height`.
+ * Free space decides the transcript's position, and free space is still changing.
+ *
+ * **That makes it a layout problem, not a scrolling one.** The fix is to stop the offset depending
+ * on free space — anchor the transcript to the top of the log instead of letting a short one settle
+ * at the bottom. That changes how a one-message conversation looks, which is a design decision
+ * rather than a bug fix, so it is written down here instead of taken unilaterally. See the
+ * `test.fixme` in the end-to-end suite.
  *
  * @param {HTMLElement} log
- * @param {HTMLElement} [target] the message to bring into view; defaults to the end of the log
+ * @param {HTMLElement} [target] accepted and currently unused — see above
  */
 export function scrollToLatest(log, target) {
-    if (!target || target.offsetHeight <= log.clientHeight) {
-        log.scrollTop = log.scrollHeight;
-
-        return;
-    }
-
-    // Delta between the two rects rather than `offsetTop`, which is relative to whichever ancestor
-    // happens to be positioned and silently wrong the moment that changes.
-    log.scrollTop += target.getBoundingClientRect().top - log.getBoundingClientRect().top;
+    log.scrollTop = log.scrollHeight;
 }
+
 /**
  * Suggestion chips, under the greeting, on first open only.
  *

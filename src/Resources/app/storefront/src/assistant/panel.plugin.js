@@ -414,6 +414,20 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         try {
             const reply = await this.transport.send(message, window.sessionStorage.getItem(TOKEN_KEY));
 
+            /*
+             * **Before rendering, not in `finally`.**
+             *
+             * The waiting indicator is an element in the log, so it takes vertical space. Removing it
+             * after the reply had been appended *and positioned* moved everything above the reply up
+             * by the indicator's height, which undid the scroll that had just placed the reply's
+             * first line at the top of the view. Measured in the end-to-end run: the first line
+             * ended up 101 pixels above the top, and the number moved around between runs because it
+             * depended on how tall the indicator happened to be at that moment.
+             *
+             * `stop()` is idempotent, so the `finally` below still covers the failure paths.
+             */
+            this.thinking.stop();
+
             if (reply.token) {
                 window.sessionStorage.setItem(TOKEN_KEY, reply.token);
             }
