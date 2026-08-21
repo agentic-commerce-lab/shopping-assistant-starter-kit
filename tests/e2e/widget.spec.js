@@ -470,6 +470,39 @@ test.describe('reading what the server actually sends', () => {
         await expect(handoff.locator('a')).not.toContainText('/contact');
     });
 
+    test('a reloaded transcript still offers the handoff it was given', async ({ page }) => {
+        // The second render path. `renderMessage` is shared, but the *caller* is not: the live reply
+        // passes `reply.handoff` and re-hydration passes `message.handoff`, in two different files at
+        // two different call sites. Wiring one and not the other loses a shopper's only route to a
+        // human the moment they reload.
+        await page.route('**/assistant/history*', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                messages: [
+                    { role: 'user', prose: 'where is my order?', cardIds: [], createdAt: null, warnings: {}, handoff: null },
+                    {
+                        role: 'assistant',
+                        prose: 'I cannot look up orders, but the shop team can.',
+                        cardIds: [],
+                        createdAt: null,
+                        warnings: {},
+                        handoff: { message: 'Our team can help with orders.', url: '/contact' },
+                    },
+                ],
+            }),
+        }));
+
+        // sessionStorage must hold a token, or the panel never asks for a history at all.
+        await page.goto(SHOP);
+        await page.evaluate(() => window.sessionStorage.setItem('swagAssistantToken', 'b'.repeat(32)));
+        await page.locator('[data-swag-assistant-orb]').click();
+
+        const handoff = page.locator('.swag-assistant-handoff');
+        await expect(handoff).toBeVisible();
+        await expect(handoff.locator('a')).toHaveAttribute('href', '/contact');
+    });
+
     test('an ordinary reply offers no handoff', async ({ page }) => {
         await openPanel(page);
         await stubTurn(page, { prose: 'Here is what I found.', outcome: 'product_shown' });
