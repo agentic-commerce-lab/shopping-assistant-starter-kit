@@ -257,6 +257,7 @@ test.describe('reading what the server actually sends', () => {
                 cards: [],
                 outcome: 'product_shown',
                 warnings: { unbackedPrices: [], unbackedAvailabilityClaims: [] },
+                handoff: null,
                 ...body,
             }),
         }));
@@ -446,6 +447,36 @@ test.describe('reading what the server actually sends', () => {
         await expect(page.locator('.swag-assistant-card')).toHaveCount(15);
         // Batched, not asked past: no single request may exceed the server's own cap.
         expect(Math.max(...requestedCounts)).toBeLessThanOrEqual(12);
+    });
+
+    test('an escalated reply offers a way to reach a human', async ({ page }) => {
+        // The shape the endpoint sends when `escalate` ran and the merchant configured a contact
+        // route. Stubbed rather than prompted for: whether a model chooses to escalate is the eval
+        // suite's job (`tests/Journeys/order_status_escalates.php`), and what the browser does with
+        // the answer is this layer's.
+        await openPanel(page);
+        await stubTurn(page, {
+            prose: 'I cannot look up orders, but the shop team can.',
+            outcome: 'escalated',
+            handoff: { message: 'Our team can help with orders.', url: '/contact' },
+        });
+        await ask(page, 'where is my order?');
+
+        const handoff = page.locator('.swag-assistant-handoff');
+        await expect(handoff).toBeVisible();
+        await expect(handoff).toContainText('Our team can help with orders.');
+        await expect(handoff.locator('a')).toHaveAttribute('href', '/contact');
+        // A shopper reads a label, not a URL.
+        await expect(handoff.locator('a')).not.toContainText('/contact');
+    });
+
+    test('an ordinary reply offers no handoff', async ({ page }) => {
+        await openPanel(page);
+        await stubTurn(page, { prose: 'Here is what I found.', outcome: 'product_shown' });
+        await ask(page, 'a water bottle please');
+
+        await expect(page.locator('.swag-assistant-message--assistant').last()).toBeVisible();
+        await expect(page.locator('.swag-assistant-handoff')).toHaveCount(0);
     });
 });
 

@@ -60,6 +60,7 @@ export function renderMessage(log, message) {
         prose,
         cards,
         warnings,
+        handoff,
         createdAt,
         locale,
         translations = {},
@@ -85,6 +86,13 @@ export function renderMessage(log, message) {
     const warning = buildWarning(warnings, translations);
     if (warning) {
         wrapper.appendChild(warning);
+    }
+
+    // After the correction, before the evidence: an escalated reply carries no cards, so in practice
+    // this is the last thing in the message — but the order holds if that ever changes.
+    const contact = buildHandoff(handoff, translations);
+    if (contact) {
+        wrapper.appendChild(contact);
     }
 
     if (Array.isArray(cards) && cards.length > 0) {
@@ -174,6 +182,48 @@ function buildWarning(warnings, translations) {
     el.textContent = availability.length > 0
         ? (translations.warningAvailability ?? '')
         : (translations.warningPrice ?? '');
+
+    return el;
+}
+
+/**
+ * The contact block for an escalated reply, or null.
+ *
+ * Null covers both "not an escalation" and "no destination configured" — the server collapses those
+ * into one absent value on purpose, because a contact notice with no link is exactly the empty
+ * promise this feature exists to remove.
+ *
+ * The link text is a snippet, never the URL: a raw href shown to a shopper reads as debug output, and
+ * `handoff.url` may be an absolute address on another host.
+ */
+function buildHandoff(handoff, translations) {
+    if (!handoff || typeof handoff.url !== 'string' || handoff.url === '') {
+        return null;
+    }
+
+    const el = document.createElement('div');
+    el.className = 'swag-assistant-handoff';
+    // "note", matching the warning: it accompanies a reply already on screen rather than interrupting
+    // it, and an assertive region would talk over the reply itself.
+    el.setAttribute('role', 'note');
+
+    const text = document.createElement('p');
+    text.className = 'swag-assistant-handoff__text';
+    // The merchant's own words when they wrote any, the translated default when they did not — the
+    // same fallback `greeting` uses, so an unconfigured German shop still reads as German.
+    text.textContent = typeof handoff.message === 'string' && handoff.message !== ''
+        ? handoff.message
+        : (translations.handoffMessage ?? '');
+    el.appendChild(text);
+
+    const link = document.createElement('a');
+    link.className = 'swag-assistant-handoff__action';
+    link.href = handoff.url;
+    link.textContent = translations.handoffAction ?? '';
+    // The href is scheme-checked server-side (SystemConfigAssistantConfig::safeUrl). This is the
+    // second half of that: an external destination must not get a handle on the shop's window.
+    link.rel = 'noopener noreferrer';
+    el.appendChild(link);
 
     return el;
 }

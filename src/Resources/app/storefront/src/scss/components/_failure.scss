@@ -101,6 +101,37 @@ carry it.
     }
 }
 
+/*
+The escalation handoff: shown when the assistant hands the conversation to the shop team.
+
+Deliberately *not* styled like the warning above it. That one is a correction — orange, icon,
+something went slightly wrong. This one is the answer to the question, so it reads as a normal offer
+rather than an alarm.
+*/
+.swag-assistant-handoff {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(24, 158, 233, 0.08);
+    color: $swag-assistant-text;
+    font-size: 12px;
+    line-height: 1.4;
+
+    &__text {
+        margin: 0;
+        font-weight: 500;
+    }
+
+    &__action {
+        font-weight: 600;
+        text-decoration: underline;
+    }
+}
+
 @keyframes swag-assistant-failure-in {
     from {
         transform: translateY(6px);

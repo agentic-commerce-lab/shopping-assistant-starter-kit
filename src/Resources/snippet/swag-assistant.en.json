@@ -34,6 +34,10 @@
       "waiting": "Still looking. Give me a sec.",
       "patient": "This one's taking a moment."
     },
+    "handoff": {
+      "message": "The shop team can help with this.",
+      "action": "Contact the team"
+    },
     "warning": {
       "availability": "This is currently out of stock. The card below is correct.",
       "price": "The prices on the cards are the ones that apply."

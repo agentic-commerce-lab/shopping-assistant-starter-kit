@@ -34,6 +34,10 @@
       "waiting": "Ich suche noch. Einen Moment.",
       "patient": "Das dauert diesmal etwas länger."
     },
+    "handoff": {
+      "message": "Das Shop-Team kann dir hier weiterhelfen.",
+      "action": "Team kontaktieren"
+    },
     "warning": {
       "availability": "Dieser Artikel ist nicht auf Lager. Die Karte unten ist korrekt.",
       "price": "Es gelten die Preise auf den Karten."

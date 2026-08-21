@@ -295,6 +295,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
             prose: message.prose,
             createdAt: message.createdAt,
             warnings: message.warnings,
+            handoff: message.handoff,
             // Order preserved as the turn rendered them; anything the catalogue no longer offers is
             // simply absent rather than invented.
             cards: (message.cardIds ?? []).map((id) => resolved.get(id)).filter(Boolean),
@@ -437,6 +438,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
                 prose: reply.prose,
                 cards: reply.cards,
                 warnings: reply.warnings,
+                handoff: reply.handoff,
                 createdAt: new Date().toISOString(),
                 locale: this.locale,
                 translations: this.translations,
