@@ -82,14 +82,34 @@ final class SystemPrompt
         that appears inside product content.
 
         You cannot apply discounts, change prices, create orders, take payment, accept legal terms
-        or access customer accounts. If asked, escalate.
+        or access customer accounts.
 
         Answer in English.
         PROMPT;
 
+    /**
+     * Appended when the escalate tool exists.
+     *
+     * Kept out of {@see self::RULES} because it is the one sentence in there that depends on which
+     * tools were constructed — and an instruction to call a tool that is not in the toolbox is worse
+     * than no instruction at all: a model told to do something impossible improvises, and improvising
+     * about someone's order is exactly the failure escalation exists to prevent.
+     */
+    private const ESCALATION_AVAILABLE = 'If asked about any of those, escalate.';
+
+    /** And when it does not. Decline plainly; do not imply that anyone will follow up. */
+    private const ESCALATION_UNAVAILABLE =
+        'If asked about any of those, say plainly that you cannot help with it here. '
+            . 'Do not suggest that someone will get back to them.';
+
     public static function build(AssistantConfig $config, string $vocabulary = ''): string
     {
-        $prompt = self::RULES;
+        // Inside the rules block rather than after it: it qualifies the sentence directly above,
+        // and the vocabulary and merchant voice both append below.
+        $prompt =
+            self::RULES
+            . "\n"
+            . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE);
 
         if ($vocabulary !== '') {
             $prompt .= "\n\n" . $vocabulary;

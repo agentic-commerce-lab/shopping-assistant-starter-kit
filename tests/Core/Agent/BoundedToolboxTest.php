@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\BoundedToolbox;
+use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Tool\EscalateTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Exception\MaxIterationsExceededException;
@@ -25,7 +26,14 @@ final class BoundedToolboxTest extends TestCase
 {
     private function toolbox(TraceRecorder $trace, int $max): BoundedToolbox
     {
-        return new BoundedToolbox(new Toolbox([new EscalateTool($trace)]), $max, $trace);
+        // A destination is configured so the tool reports a handover: this fixture is about the
+        // toolbox's call budget, not about escalation, and a tool that declines would make the
+        // assertions below read as if the budget had stopped it.
+        return new BoundedToolbox(
+            new Toolbox([new EscalateTool($trace, new AssistantConfig(escalationUrl: '/contact'))]),
+            $max,
+            $trace,
+        );
     }
 
     public function testDelegatesToolMetadataToTheInnerToolbox(): void

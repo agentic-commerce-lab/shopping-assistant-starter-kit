@@ -76,4 +76,29 @@ final class AssistantAgentFactoryTest extends TestCase
         self::assertSame('allowed', $first->payload['policyReasonCode']);
         self::assertSame('cart_limit', $second->payload['policyReasonCode']);
     }
+
+    public function testEscalationSwitchedOffMeansTheToolIsNeverInTheToolbox(): void
+    {
+        // The guarantee `enableEscalation`'s help text makes, asserted the way `enableAddToCart`'s
+        // is: not "the model was told not to", but "there is nothing there to call". A prompt-level
+        // switch would be a request; this is an absence.
+        $bundle = $this->bundle(new AssistantConfig(enableEscalation: false), cartAvailable: false);
+
+        self::assertNotContains('escalate', self::toolNames($bundle));
+    }
+
+    public function testEscalationIsInTheToolboxByDefault(): void
+    {
+        $bundle = $this->bundle(new AssistantConfig(), cartAvailable: false);
+
+        self::assertContains('escalate', self::toolNames($bundle));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function toolNames(AssistantAgentFactory\Bundle $bundle): array
+    {
+        return array_map(static fn($tool): string => $tool->getName(), [...$bundle->toolbox->getTools()]);
+    }
 }

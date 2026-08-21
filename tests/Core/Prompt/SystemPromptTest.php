@@ -62,4 +62,20 @@ final class SystemPromptTest extends TestCase
         self::assertGreaterThan($rulesEnd, $vocabularyStart);
         self::assertGreaterThan($vocabularyStart, $voiceStart);
     }
+
+    public function testThePromptStopsOrderingEscalationWhenTheToolIsGone(): void
+    {
+        // "If asked, escalate" with no escalate tool in the toolbox is an instruction to call
+        // something the model cannot see. A model given an impossible instruction improvises, and
+        // improvising about someone's order is the failure escalation exists to prevent.
+        $prompt = SystemPrompt::build(new AssistantConfig(enableEscalation: false));
+
+        self::assertStringNotContainsStringIgnoringCase('escalate', $prompt);
+        self::assertStringContainsStringIgnoringCase('cannot help', $prompt);
+    }
+
+    public function testThePromptStillOrdersEscalationWhenTheToolIsThere(): void
+    {
+        self::assertStringContainsStringIgnoringCase('escalate', SystemPrompt::build(new AssistantConfig()));
+    }
 }

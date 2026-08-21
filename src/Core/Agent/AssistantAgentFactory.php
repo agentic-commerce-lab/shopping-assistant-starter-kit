@@ -95,13 +95,21 @@ final class AssistantAgentFactory
                 $config,
             ),
             new GetProductTool($gateway, $variantResolver, $blocklist, $renderer, $trace, $config),
-            new EscalateTool($trace),
         ];
 
         // An unavailable tool is never constructed, so the model never sees it in the
         // toolbox's schema — that is what keeps capability control out of the prompt.
         if ($config->enableAddToCart && $cartAvailable) {
             $tools[] = new AddToCartTool($gateway, $blocklist, $renderer, $trace, $config);
+        }
+
+        // Same rule for escalation, and the same reason it is not a prompt instruction. Note the
+        // asymmetry with add-to-cart: there is no `cartAvailable` equivalent here, because escalation
+        // needs nothing from the request beyond configuration — the probe command and the eval suite
+        // get it too. `SystemPrompt` drops its "escalate" clause in step with this, because ordering
+        // a call the toolbox cannot serve is worse than not mentioning it.
+        if ($config->enableEscalation) {
+            $tools[] = new EscalateTool($trace, $config);
         }
 
         // AgentProcessor's own maxToolCalls argument is provably inert — see
