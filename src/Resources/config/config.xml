@@ -129,6 +129,35 @@
     </card>
 
     <card>
+        <title>Escalation</title>
+
+        <input-field type="bool">
+            <name>enableEscalation</name>
+            <label>Let the assistant hand a conversation to a human</label>
+            <defaultValue>true</defaultValue>
+            <helpText>When off, the escalate tool is never constructed, so the model cannot see it
+                and cannot call it — the same guarantee as the add-to-cart switch. The assistant then
+                declines questions it cannot answer from shop data instead of offering a handoff.</helpText>
+        </input-field>
+
+        <input-field type="text">
+            <name>escalationUrl</name>
+            <label>Where shoppers reach a human</label>
+            <helpText>A path on this shop (/contact) or an https URL. Left empty, the assistant says
+                it cannot help with the question instead of offering a link — it never claims a human
+                will follow up when there is nowhere to send them. Only http and https are accepted;
+                anything else is ignored, because this link is served to every shopper.</helpText>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>escalationMessage</name>
+            <label>Escalation message</label>
+            <helpText>Shown above the link when the assistant hands off. Say what the team can help
+                with. Left empty, a translated default is used.</helpText>
+        </input-field>
+    </card>
+
+    <card>
         <title>Storefront widget</title>
 
         <input-field type="bool">

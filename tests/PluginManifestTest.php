@@ -86,6 +86,9 @@ final class PluginManifestTest extends TestCase
             'dailyRequestCap',
             'maxToolCallsPerTurn',
             'requestsPerMinute',
+            'enableEscalation',
+            'escalationUrl',
+            'escalationMessage',
         ];
 
         foreach ($required as $key) {

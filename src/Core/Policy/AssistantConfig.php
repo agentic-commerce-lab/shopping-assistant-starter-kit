@@ -23,5 +23,8 @@ final readonly class AssistantConfig
         public int $dailyRequestCap = 500,
         public int $maxToolCallsPerTurn = 5,
         public int $requestsPerMinute = 12,
+        public bool $enableEscalation = true,
+        public string $escalationUrl = '',
+        public string $escalationMessage = '',
     ) {}
 }

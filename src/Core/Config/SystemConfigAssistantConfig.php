@@ -49,6 +49,12 @@ final readonly class SystemConfigAssistantConfig
             dailyRequestCap: $this->intOr('dailyRequestCap', 500, $salesChannelId),
             maxToolCallsPerTurn: $this->intOr('maxToolCallsPerTurn', 5, $salesChannelId),
             requestsPerMinute: $this->intOr('requestsPerMinute', 12, $salesChannelId),
+            enableEscalation: $this->boolOr('enableEscalation', true, $salesChannelId),
+            escalationUrl: $this->safeUrl('escalationUrl', $salesChannelId),
+            escalationMessage: trim($this->systemConfig->getString(
+                self::PREFIX . 'escalationMessage',
+                $salesChannelId,
+            )),
         );
     }
 
@@ -85,6 +91,39 @@ final readonly class SystemConfigAssistantConfig
         $trimmed = array_map(static fn(string $line): string => trim($line), $lines);
 
         return array_values(array_filter($trimmed, static fn(string $line): bool => $line !== ''));
+    }
+
+    /**
+     * A merchant-entered URL, or `''` when it is not one this shop may render.
+     *
+     * This value ends up in an `href` served to every shopper, so an allowlist rather than a
+     * blocklist: an absolute path on this shop, or an explicit http(s) URL. Everything else is
+     * dropped, including `javascript:` and `data:` — config access is not permission to run
+     * JavaScript in the storefront, and in a real shop those are not the same person.
+     *
+     * `//host/path` is rejected with them: it *looks* like a path and is a protocol-relative URL
+     * that leaves the shop entirely, which is the one hostile case a naive `str_starts_with('/')`
+     * check waves through.
+     */
+    private function safeUrl(string $key, string $salesChannelId): string
+    {
+        $raw = trim($this->systemConfig->getString(self::PREFIX . $key, $salesChannelId));
+
+        if ($raw === '') {
+            return '';
+        }
+
+        if (str_starts_with($raw, '//')) {
+            return '';
+        }
+
+        if (str_starts_with($raw, '/')) {
+            return $raw;
+        }
+
+        $scheme = strtolower((string) parse_url($raw, \PHP_URL_SCHEME));
+
+        return \in_array($scheme, ['http', 'https'], strict: true) ? $raw : '';
     }
 
     private function intOr(string $key, int $default, string $salesChannelId): int
