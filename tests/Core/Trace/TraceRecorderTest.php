@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Core\Trace;
 
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Trace\TraceEvent;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 final class TraceRecorderTest extends TestCase
@@ -52,5 +53,62 @@ final class TraceRecorderTest extends TestCase
 
         // payload() returns the last payload for 'retrieve'
         self::assertSame(['hits' => 9], $recorder->payload('retrieve'));
+    }
+
+    public function testStampsEachEventWithMillisecondsSinceConstruction(): void
+    {
+        $now = 0;
+        $clock = static function () use (&$now): int {
+            return $now;
+        };
+
+        $recorder = new TraceRecorder($clock);
+
+        $now = 120_000_000; // +120ms
+        $recorder->record('understand', ['intent' => 'discovery']);
+
+        $now = 2_400_000_000; // +2400ms
+        $recorder->record('retrieve', ['hits' => 6]);
+
+        $events = $recorder->events();
+
+        self::assertSame(120, $events[0]?->elapsedMs);
+        self::assertSame(2400, $events[1]?->elapsedMs);
+    }
+
+    public function testElapsedIsRelativeToTheRecorderSoEachTurnRestartsAtZero(): void
+    {
+        // `TraceRecorder` is built fresh per turn (AssistantAgentFactory, AssistantController),
+        // which is what makes "since construction" mean "since turn start". A recorder built at
+        // an arbitrary clock value must still report offsets, never absolute time.
+        $now = 9_000_000_000;
+        $clock = static function () use (&$now): int {
+            return $now;
+        };
+
+        $recorder = new TraceRecorder($clock);
+        $now = 9_050_000_000;
+        $recorder->record('understand', []);
+
+        self::assertSame(50, $recorder->events()[0]?->elapsedMs);
+    }
+
+    public function testElapsedNeverGoesBackwardsWithinATurn(): void
+    {
+        $now = 0;
+        $clock = static function () use (&$now): int {
+            return $now;
+        };
+
+        $recorder = new TraceRecorder($clock);
+
+        foreach ([10, 400, 15_800] as $ms) {
+            $now = $ms * 1_000_000;
+            $recorder->record('stage', []);
+        }
+
+        $elapsed = array_map(static fn(TraceEvent $event): int => $event->elapsedMs, $recorder->events());
+
+        self::assertSame([10, 400, 15_800], $elapsed);
     }
 }
