@@ -108,14 +108,14 @@ final class AddToCartToolTest extends TestCase
         $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2);
 
         self::assertSame(2, $result['cart']['itemCount']);
-        self::assertSame('allowed', $this->trace->payload('tool.call')['policyReasonCode']);
+        self::assertSame('allowed', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
     }
 
     public function testBlocksAQuantityAboveMaxItemQuantity(): void
     {
         $result = $this->tool(new AssistantConfig(maxItemQuantity: 5))(variantId: 'fx-026-blue-l', quantity: 99);
 
-        self::assertSame('cart_limit', $this->trace->payload('tool.call')['policyReasonCode']);
+        self::assertSame('cart_limit', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
         self::assertArrayNotHasKey('cart', $result);
         self::assertStringContainsString('at most 5', $result['note']);
     }
@@ -138,7 +138,7 @@ final class AddToCartToolTest extends TestCase
         $second = $tool(variantId: 'fx-026-blue-l', quantity: 5);
 
         self::assertArrayNotHasKey('cart', $second);
-        self::assertSame('cart_limit', $this->trace->payload('tool.call')['policyReasonCode']);
+        self::assertSame('cart_limit', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
         self::assertStringContainsString('at most 5', $second['note']);
     }
 
@@ -146,7 +146,7 @@ final class AddToCartToolTest extends TestCase
     {
         $result = $this->tool(new AssistantConfig(maxCartValue: 100.0))(variantId: 'fx-026-blue-l', quantity: 5);
 
-        self::assertSame('cart_limit', $this->trace->payload('tool.call')['policyReasonCode']);
+        self::assertSame('cart_limit', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
         self::assertArrayNotHasKey('cart', $result);
     }
 
@@ -173,7 +173,7 @@ final class AddToCartToolTest extends TestCase
         $result = $tool(variantId: 'fx-014', quantity: 1);
 
         self::assertArrayNotHasKey('cart', $result);
-        self::assertSame('blocked_product', $this->trace->payload('tool.call')['policyReasonCode']);
+        self::assertSame('blocked_product', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
         self::assertSame(0, $gateway->cart()->itemCount, 'a blocked product must never mutate the cart');
     }
 

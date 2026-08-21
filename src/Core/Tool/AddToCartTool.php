@@ -61,6 +61,25 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 )]
 final class AddToCartTool
 {
+    /**
+     * What this tool did, as its own stage rather than a second `tool.call`.
+     *
+     * **Renamed from `tool.call` on 2026-08-21.** `BoundedToolbox` records `tool.call` when the model
+     * asks for a tool; this class recorded `tool.call` again when the tool decided and acted. Two
+     * different facts under one name, distinguishable only by their payload keys — read off a live
+     * trace:
+     *
+     * ```
+     * 15  tool.call  {"stage":"dispatch","name":"add_to_cart"}
+     * 16  tool.call  {"name":"add_to_cart","policyVerdict":"allow","variantId":"a2a2…","quantity":1}
+     * ```
+     *
+     * A merchant reading that sees the same label twice and cannot tell whether it is a duplicate.
+     * Worse, the admin trace view maps `tool.call` to its "Understood the question" phase, so the one
+     * action in this product that changes anything was filed under understanding it.
+     */
+    public const TRACE_STAGE = 'cart.add';
+
     public function __construct(
         private readonly CommerceGatewayInterface $gateway,
         private readonly BlocklistFilter $blocklist,
@@ -97,7 +116,7 @@ final class AddToCartTool
 
         $card = $this->gateway->product($variantId, $this->config->scope);
         if ($card === null) {
-            $this->trace->record('tool.call', [
+            $this->trace->record(self::TRACE_STAGE, [
                 'name' => 'add_to_cart',
                 'policyVerdict' => 'block',
                 'policyReasonCode' => 'not_found',
@@ -140,7 +159,7 @@ final class AddToCartTool
         // registers the survivor rather than the pre-check lookup.
         $this->renderer->registerRetrieved($filtered['cards']);
 
-        $this->trace->record('tool.call', [
+        $this->trace->record(self::TRACE_STAGE, [
             'name' => 'add_to_cart',
             'policyVerdict' => 'allow',
             'policyReasonCode' => 'allowed',
@@ -173,7 +192,7 @@ final class AddToCartTool
     /** @return array{note: string} */
     private function blocked(PolicyDecision $decision): array
     {
-        $this->trace->record('tool.call', [
+        $this->trace->record(self::TRACE_STAGE, [
             'name' => 'add_to_cart',
             'policyVerdict' => 'block',
             'policyReasonCode' => $decision->reasonCode,

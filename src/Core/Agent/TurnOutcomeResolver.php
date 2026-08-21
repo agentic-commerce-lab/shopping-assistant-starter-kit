@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
@@ -17,7 +18,7 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * the guard, the agent call and the message bag — from growing past a single
  * responsibility; mago's cyclomatic-complexity check flagged the combined
  * class. Tool-call counting is a separate, unrelated concern, split further
- * into {@see TurnRetrievalAndToolCallCounter} for the same reason.
+ * into {@see TurnToolCallCounter} for the same reason.
  *
  * This is also where the full outcome vocabulary lives, even the values
  * {@see self::outcome()} itself never returns. `error` (the pre-flight guard
@@ -62,7 +63,7 @@ final class TurnOutcomeResolver
     private function hasAllowedCartAdd(TraceRecorder $trace): bool
     {
         foreach ($trace->events() as $event) {
-            if ('tool.call' !== $event->stage) {
+            if (AddToCartTool::TRACE_STAGE !== $event->stage) {
                 continue;
             }
 

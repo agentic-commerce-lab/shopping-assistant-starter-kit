@@ -19,7 +19,16 @@
 const PHASES = [
     { key: 'prepare', stages: ['facet.probe', 'vocabulary.render', 'guard.check'] },
     { key: 'understand', stages: ['tool.call', 'understand', 'query.build', 'tool.arguments.rejected'] },
-    { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'variant.resolve', 'blocklist.filter'] },
+    { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'retrieve.relaxTerm', 'variant.resolve', 'blocklist.filter'] },
+    /*
+     * The one phase where something changed.
+     *
+     * `cart.add` used to be a second `tool.call` and therefore landed in `understand` — so the only
+     * action in this product that alters the shop's state was filed under working out the question.
+     * A merchant scanning for "did it actually put something in a cart" had to read the payloads to
+     * find out.
+     */
+    { key: 'act', stages: ['cart.add'] },
     { key: 'answer', stages: ['validate', 'grounding.select', 'render', 'claims.audit'] },
     { key: 'finish', stages: ['turn.end', 'turn.tool_limit_exceeded', 'escalate'] },
 ];

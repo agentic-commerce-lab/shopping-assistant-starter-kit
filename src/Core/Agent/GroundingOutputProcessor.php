@@ -56,6 +56,29 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
      */
     private const CANDIDATE_ID_PATTERN = '/\bfx-[a-z0-9-]+\b|\b[0-9a-f]{32}\b/i';
 
+    /**
+     * Whether this turn's result has already been grounded.
+     *
+     * **The framework offers the same final result several times.**
+     * `Toolbox\AgentProcessor::handleToolCallsCallback()` resolves a tool round by calling
+     * `Agent::call()` recursively, and every nested call runs the whole output-processor chain again.
+     * This processor sits after the toolbox's, so at each nesting level it is handed the text the
+     * innermost call already produced. Read off a live trace of one turn with three tool calls: the
+     * `validate` / `grounding.select` / `render` triple appeared four times, with identical payloads,
+     * in the same millisecond — nine of that turn's thirty rows, in the one view a merchant reads to
+     * find out what happened.
+     *
+     * Nothing was corrupted by it, because the audits assign rather than append and the last write
+     * won. What it cost was three redundant prose audits and a trace nobody could read.
+     *
+     * A grounding decision belongs to a turn, so it is made once per turn — keyed on
+     * {@see FactRenderer::turnSequence()}, which the runner advances once per turn on every path
+     * that reaches the model. Keying on the turn rather than holding a boolean means no caller has
+     * to remember to reset anything: the eval harness drives several turns through one bundle and
+     * needs no special case, and a future caller that does the same cannot get it wrong.
+     */
+    private ?int $groundedTurn = null;
+
     public function __construct(
         private readonly FactRenderer $renderer,
         private readonly TraceRecorder $trace,
@@ -63,6 +86,12 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
 
     public function processOutput(Output $output): void
     {
+        $turn = $this->renderer->turnSequence();
+
+        if ($turn === $this->groundedTurn) {
+            return;
+        }
+
         $result = $output->getResult();
 
         if (!$result instanceof TextResult) {
@@ -81,6 +110,11 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
             'source' => $fromProse ? 'prose' : 'last_tool_batch',
             'selectedIds' => $toRender,
         ]);
+
+        // Set before the work, not after: `render()` and the audits below are the work this guard
+        // exists to do exactly once, and an exception in one of them must not invite three retries
+        // that would each record the same failure.
+        $this->groundedTurn = $turn;
 
         $this->renderer->render($toRender);
         $this->renderer->unbackedPricesInProse($text);

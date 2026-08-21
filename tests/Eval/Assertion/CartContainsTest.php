@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Eval\Assertion;
 
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Swag\AssistantStarterKit\Eval\Assertion\CartContains;
 use Swag\AssistantStarterKit\Tests\Support\BuildsEvalCards;
 
 /**
- * Reads `turn.end.outcome` and `add_to_cart` `tool.call` events — never the prose.
+ * Reads `turn.end.outcome` and `add_to_cart` `cart.add` events — never the prose.
  */
 final class CartContainsTest extends TestCase
 {
@@ -19,7 +20,7 @@ final class CartContainsTest extends TestCase
     public function testFailsWhenTheOutcomeIsNotCartAdded(): void
     {
         $trace = new TraceRecorder();
-        $trace->record('turn.end', ['outcome' => 'product_shown', 'cards' => [], 'retrievalStagesAndToolCalls' => 1]);
+        $trace->record('turn.end', ['outcome' => 'product_shown', 'cards' => [], 'toolCalls' => 1]);
 
         $result = (new CartContains())->evaluate($this->turnWithCard('fx-017'), $trace, [
             'variantId' => 'fx-026-blue-l',
@@ -31,14 +32,14 @@ final class CartContainsTest extends TestCase
     public function testFailsWhenTheAddedVariantDiffersFromExpected(): void
     {
         $trace = new TraceRecorder();
-        $trace->record('tool.call', [
+        $trace->record(AddToCartTool::TRACE_STAGE, [
             'name' => 'add_to_cart',
             'policyVerdict' => 'allow',
             'policyReasonCode' => 'allowed',
             'variantId' => 'fx-026-blue-m',
             'quantity' => 1,
         ]);
-        $trace->record('turn.end', ['outcome' => 'cart_added', 'cards' => [], 'retrievalStagesAndToolCalls' => 1]);
+        $trace->record('turn.end', ['outcome' => 'cart_added', 'cards' => [], 'toolCalls' => 1]);
 
         $result = (new CartContains())->evaluate($this->turnWithCard('fx-017'), $trace, [
             'variantId' => 'fx-026-blue-l',
@@ -50,14 +51,14 @@ final class CartContainsTest extends TestCase
     public function testPassesWhenTheExpectedVariantWasAdded(): void
     {
         $trace = new TraceRecorder();
-        $trace->record('tool.call', [
+        $trace->record(AddToCartTool::TRACE_STAGE, [
             'name' => 'add_to_cart',
             'policyVerdict' => 'allow',
             'policyReasonCode' => 'allowed',
             'variantId' => 'fx-026-blue-l',
             'quantity' => 1,
         ]);
-        $trace->record('turn.end', ['outcome' => 'cart_added', 'cards' => [], 'retrievalStagesAndToolCalls' => 1]);
+        $trace->record('turn.end', ['outcome' => 'cart_added', 'cards' => [], 'toolCalls' => 1]);
 
         $result = (new CartContains())->evaluate($this->turnWithCard('fx-017'), $trace, [
             'variantId' => 'fx-026-blue-l',

@@ -9,6 +9,7 @@ use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
+use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceEvent;
 use Swag\AssistantStarterKit\Tests\Support\UsesCatalogFixture;
 use Symfony\AI\Platform\Result\ToolCall;
@@ -56,17 +57,13 @@ final class AssistantAgentFactoryTest extends TestCase
             'quantity' => 1,
         ]));
 
-        // 'tool.call' now fires twice per call: once from BoundedToolbox at dispatch
-        // (a 'stage' => 'dispatch' marker, no policy verdict) and once from
-        // AddToCartTool itself with the policy verdict this test actually cares
-        // about — filter to the latter by the key only AddToCartTool's own event
-        // carries.
+        // This used to need a payload-key filter: dispatch and outcome both recorded `tool.call`,
+        // so the only way to tell them apart was that one of them carried `policyReasonCode`. The
+        // outcome has its own stage now, which is the point of the rename — the filter that used to
+        // be necessary here is what proved the two facts were indistinguishable.
         $toolCallEvents = array_values(array_filter(
             $bundle->trace->events(),
-            static fn(TraceEvent $event): bool => (
-                'tool.call' === $event->stage
-                && \array_key_exists('policyReasonCode', $event->payload)
-            ),
+            static fn(TraceEvent $event): bool => AddToCartTool::TRACE_STAGE === $event->stage,
         ));
 
         self::assertCount(2, $toolCallEvents);

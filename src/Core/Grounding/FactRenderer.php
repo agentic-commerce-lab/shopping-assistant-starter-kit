@@ -66,6 +66,9 @@ final class FactRenderer
      */
     private string $shopperMessage = '';
 
+    /** Incremented by {@see self::registerShopperMessage()}. See {@see self::turnSequence()}. */
+    private int $turnSequence = 0;
+
     public function __construct(
         private readonly TraceRecorder $trace,
         private readonly ProseAudit $proseAudit = new ProseAudit(),
@@ -190,10 +193,29 @@ final class FactRenderer
      *
      * Request-scoped like everything else on this class: one renderer per turn, so there is no way
      * for one shopper's message to reach another's audit.
+     *
+     * **This is also the turn boundary**, and the only one that exists on the read side.
+     * {@see \Swag\AssistantStarterKit\Core\Agent\AssistantRunner::run()} calls it once per turn,
+     * on every path that reaches the model, in production and in the eval harness alike — so
+     * anything needing to act once per turn can key on {@see self::turnSequence()} rather than being
+     * handed a reset from outside and hoping every caller remembers.
      */
     public function registerShopperMessage(string $message): void
     {
         $this->shopperMessage = $message;
+        ++$this->turnSequence;
+    }
+
+    /**
+     * Which turn this renderer is on, counting from 1 at the first
+     * {@see self::registerShopperMessage()}.
+     *
+     * Exists so a collaborator can tell "same turn" from "next turn" without a lifecycle callback.
+     * The number itself is meaningless outside that comparison and is deliberately not traced.
+     */
+    public function turnSequence(): int
+    {
+        return $this->turnSequence;
     }
 
     public function unbackedPricesInProse(string $prose): array

@@ -19,7 +19,7 @@ use Symfony\AI\Platform\Result\TextResult;
  * before any spend, the system prompt, the framework's own tool-calling loop
  * (via the {@see Bundle}'s agent), and reading back what the grounding
  * pipeline produced. Outcome/activity bookkeeping is delegated to
- * {@see TurnOutcomeResolver} and {@see TurnRetrievalAndToolCallCounter}.
+ * {@see TurnOutcomeResolver} and {@see TurnToolCallCounter}.
  *
  * {@see BoundedToolbox}'s tool-call cap throws {@see MaxIterationsExceededException}
  * once a turn's model keeps requesting tool calls past `maxToolCallsPerTurn` — a
@@ -47,7 +47,7 @@ final class AssistantRunner
         private readonly Bundle $bundle,
         private readonly int $requestsToday = 0,
         private readonly TurnOutcomeResolver $outcomeResolver = new TurnOutcomeResolver(),
-        private readonly TurnRetrievalAndToolCallCounter $activityCounter = new TurnRetrievalAndToolCallCounter(),
+        private readonly TurnToolCallCounter $activityCounter = new TurnToolCallCounter(),
     ) {}
 
     /**
@@ -136,7 +136,7 @@ final class AssistantRunner
         $this->bundle->trace->record('turn.end', [
             'outcome' => $outcome,
             'cards' => array_map(static fn(ProductCard $card): string => $card->id, $cards),
-            'retrievalStagesAndToolCalls' => $this->activityCounter->count($this->bundle->trace),
+            'toolCalls' => $this->activityCounter->count($this->bundle->trace),
         ]);
     }
 

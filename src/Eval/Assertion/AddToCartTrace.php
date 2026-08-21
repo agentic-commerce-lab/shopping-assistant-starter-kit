@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Eval\Assertion;
 
+use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
- * Reads the `add_to_cart` `tool.call` events a
+ * Reads the `add_to_cart` {@see AddToCartTool::TRACE_STAGE} events a
  * {@see \Swag\AssistantStarterKit\Eval\JourneyAttempt} run recorded. Split out of
  * {@see CartContains} (and further split from {@see TurnEndOutcome}) to keep this
  * project's per-class cyclomatic-complexity total under its threshold.
@@ -33,7 +34,7 @@ final class AddToCartTrace
     /** @param array<string, mixed> $payload */
     private static function matchesAllowedAdd(string $stage, array $payload, string $variantId): bool
     {
-        if ('tool.call' !== $stage || 'add_to_cart' !== ($payload['name'] ?? null)) {
+        if (AddToCartTool::TRACE_STAGE !== $stage || 'add_to_cart' !== ($payload['name'] ?? null)) {
             return false;
         }
 

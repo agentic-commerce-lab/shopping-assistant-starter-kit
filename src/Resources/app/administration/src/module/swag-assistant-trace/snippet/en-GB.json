@@ -30,6 +30,7 @@
             "prepare": "Prepared",
             "understand": "Understood the question",
             "search": "Searched the catalogue",
+            "act": "Added to the cart",
             "answer": "Built the answer",
             "finish": "Finished",
             "other": "Other"
