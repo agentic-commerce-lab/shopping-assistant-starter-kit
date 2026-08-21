@@ -154,5 +154,27 @@
              `twig.extension` tag comes from autoconfigure. -->
         <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings"/>
         <service id="Swag\AssistantStarterKit\Storefront\AssistantWidgetExtension"/>
+
+        <!-- Retention. Not optional: this table accumulates what shoppers typed, and the
+             Administration trace view makes it prominent. -->
+        <service id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionSettings">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner">
+            <argument type="service" id="swag_assistant_conversation.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionSettings"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Trace\Retention\PruneConversationsTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Trace\Retention\PruneConversationsTaskHandler">
+            <argument type="service" id="scheduled_task.repository"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner"/>
+            <tag name="messenger.message_handler"/>
+        </service>
     </services>
 </container>

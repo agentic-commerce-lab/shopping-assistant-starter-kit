@@ -137,4 +137,18 @@
         </input-field>
     </card>
 
+    <card>
+        <title>Data retention</title>
+
+        <input-field type="int">
+            <name>traceRetentionDays</name>
+            <label>Keep conversations for (days)</label>
+            <defaultValue>30</defaultValue>
+            <helpText>Conversations older than this are deleted daily, together with their traces.
+                There is no "keep forever": an empty or zero value falls back to 30 days. These rows
+                hold what shoppers typed, so an unbounded table is a data-protection problem rather
+                than a convenience.</helpText>
+        </input-field>
+    </card>
+
 </config>
