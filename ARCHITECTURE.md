@@ -275,7 +275,8 @@ One turn, stage by stage. Each stage emits a trace event.
 
 | # | Stage | Class | Note |
 |---|---|---|---|
-| 1 | Guard | `Policy\GuardCheck` | kill switch, daily cap. Rejects before any cost |
+| 0 | Budget | `Policy\RequestBudget` | per-caller window then per-channel daily budget, **before the first database call**. A refusal is a 429 with `Retry-After`, and writes nothing |
+| 1 | Guard | `Policy\GuardCheck` | kill switch. Rejects before any model cost |
 | 2 | Session load | `AssistantController` | history + inferred shopper profile |
 | 3 | Understand | *(no separate step)* | With tool calling the model's tool arguments **are** the extracted intent. `SearchProductsTool` records the `understand` stage from its own validated arguments. The guarantee that matters — the model never supplies a field name — is enforced in `QueryBuilder`, not here. Saves one LLM round trip per turn |
 | 4 | Facet probe | `Retrieval\FacetProbe` | cached per (salesChannel, scope); TTL 1h |
@@ -486,27 +487,53 @@ is never instantiated, so the model never sees it.
 
 ## Extension points
 
+> **Corrected, 2026-08-21.** This table claimed six extension points that do not exist in the
+> code. `LlmClientInterface`, `PromptProviderInterface`, `ToolInterface`, `RankingRuleInterface`,
+> `RetrievalStrategyInterface` and `KnowledgeSourceInterface` appear nowhere in `src/`, and there is
+> no `swag_assistant.tool` DI tag. A second, contradicting copy of this section further down the
+> document listed them as shipped or as "interface only"; it has been deleted rather than reconciled.
+>
+> This matters more than a stale doc usually would: Linear's acceptance signal for this project is
+> that *two agencies can build merchant-specific demos in a week each without forking*, and the first
+> thing such a reader does is grep for the interface this table names. Being caught overstating the
+> seams costs more than admitting there are three of them.
+
+**What is genuinely extensible in v0**, verified against `src/`:
+
 | Extend | How | v0 |
 |---|---|---|
-| Add a tool | `#[AsTool]` class, register as a service | **yes** |
-| Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — the seam already exists |
-| Swap the LLM provider | another Symfony AI platform bridge | **yes** — 35+ bridges shipped |
+| Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — aliased in `services.xml`, and `FixtureCommerceGateway` is the proof it swaps |
+| Swap conversation persistence | decorate/replace `ConversationStore` | **yes** — aliased; `InMemoryConversationStore` in the suite is a second implementation |
+| Replace the whole turn | decorate/replace `ChatTurnRunnerInterface` | **yes** — aliased; this is the widest seam there is |
 | Change the agent voice | `config.xml` field, no code | **yes** |
-| Storefront widget markup | Twig template override — `swag_assistant_orb`, `swag_assistant_orb_signet`, `swag_assistant_panel_header`, `swag_assistant_panel_composer` | **yes, shipped** |
-| Context compression strategy | another `InputProcessorInterface` | **yes** |
-| Conversation persistence | `Symfony\AI\Chat\MessageStoreInterface` (2 methods) | Plan 2 |
-| Ranking rules | `RankingRuleInterface`, tagged, priority-ordered | later |
-| Semantic retrieval | `symfony/ai-store` | later, only if measured |
-| Expose tools over MCP | `symfony/mcp-bundle` | later |
+| Point at another model | `llmBaseUrl` / `llmModel`, no code | **yes** — any OpenAI-compatible endpoint |
+| Storefront widget markup | Twig block override — five named blocks, see README | **yes, shipped** |
+| Storefront widget behaviour | own JS against `POST /assistant/chat`; the endpoint stays reachable with the widget off | **yes** |
+
+**What requires editing this plugin**, and is therefore not an extension point yet:
+
+| Wanted | Why it is not a seam | What it needs |
+|---|---|---|
+| Add or remove a tool | `AssistantAgentFactory::create()` builds a fixed array | a `ToolFactoryInterface`: tools are constructed **per request** around one gateway, one trace and one renderer (R32), so a DI tag of stateless services does not fit |
+| Change the system prompt | `Core\Prompt\SystemPrompt` is concrete; `agentVoice` is the only configurable part | a provider interface, once there is a second caller |
+| Use a non-OpenAI-compatible provider | `PlatformFactory::create()` is static and pins the generic bridge | make it a service; Symfony AI ships bridges, we just do not reach them |
+| Change context compression | `SlidingWindowInputProcessor` is instantiated inline | same fix as tools — it is the same array |
+| Ranking rules, knowledge sources, semantic retrieval, trace sinks, MCP surfaces | not started | named in Linear's v0 list; none exist |
 
 ### API stability
 
-Our own `@api` surface is small on purpose: `CommerceGatewayInterface` and the DTOs it
-exchanges, plus `FactRenderer`. Everything else is internal.
+Our own `@api` surface is small on purpose: `CommerceGatewayInterface`, `ConversationStore`,
+`ChatTurnRunnerInterface` and the DTOs they exchange, plus `FactRenderer`. Everything else is
+internal and will move without notice.
 
 **The tool contract is not ours** — it is `#[AsTool]`, from a 0.x package. That is a conscious
 trade recorded in ADR 0001: better DX for Symfony developers, at the price of inheriting
 someone else's breaking changes. Acceptable for a research preview, revisit before any release.
+Note what that does *not* mean today: the attribute describes a tool to Symfony AI, it does not
+register one with this plugin. `AssistantAgentFactory` decides which tools exist.
+
+This is a research preview — **no stability guarantees yet.** The annotations record intent, so that
+when guarantees are given, the surface is already the small one.
 
 ## Reuse from existing lab plugins
 
@@ -563,34 +590,6 @@ It also shows a genuinely different UI concept worth remembering: its "actions"
 rather than returning chat content — closer to Page Agent than to a chat panel. Out of
 scope here, but a real option for later.
 
-## Extension points
-
-Ordered by what v0 actually delivers. The interfaces marked *later* are named here so the
-v0 code is shaped to accept them, not built now.
-
-| Extend | How | v0 |
-|---|---|---|
-| Add a tool | implement `ToolInterface`, DI tag `swag_assistant.tool` | **yes** |
-| Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — the seam already exists |
-| Swap the LLM provider | decorate/replace `LlmClientInterface` | **yes** |
-| Change the agent voice | `config.xml` field, no code | **yes** |
-| Storefront widget markup | Twig template override, standard Shopware — four named blocks, see README | **yes, shipped** |
-| System prompt | decorate `PromptProviderInterface` | interface only |
-| Ranking rules | `RankingRuleInterface`, tag `swag_assistant.ranking_rule`, priority-ordered | later |
-| Retrieval strategy (Tier 1/2) | decorate `RetrievalStrategyInterface` | later |
-| Knowledge sources | `KnowledgeSourceInterface`, tag | later |
-| Trace sink (analytics) | listen to the trace event | later |
-| Contribute eval journeys | `Resources/assistant/journeys/*.yaml`, discovered across plugins | later |
-
-### API stability
-
-`@api`-annotated classes are the intended public surface: `ToolInterface`, `ToolResult`,
-`ToolContext`, `ToolAuthority`, `CommerceGatewayInterface` and the DTOs it exchanges.
-Everything else is internal and will move without notice.
-
-This is a research preview — **no stability guarantees yet.** The annotations record intent,
-so that when guarantees are given, the surface is already the small one.
-
 ## Conversation memory
 
 A shopper must not start over. Three levels, and only the first two are in scope:
@@ -634,7 +633,7 @@ final readonly class PolicyDecision
         public PolicyVerdict $verdict,   // Allow | Block
         public string $reasonCode,       // 'blocked_product' | 'blocked_category'
                                          // 'capability_disabled' | 'not_implemented'
-                                         // 'kill_switch' | 'daily_cap' | 'cart_limit'
+                                         // 'kill_switch' | 'cart_limit'
         public string $message,          // for the trace and, when safe, the shopper
     ) {}
 }
@@ -642,6 +641,44 @@ final readonly class PolicyDecision
 
 Reason codes are machine-readable so traces can be filtered and counted. A trace full of
 `blocked_category` tells the merchant something; a trace full of free text does not.
+
+### Request limits are not policy decisions
+
+`POST /assistant/chat` is public and spends model tokens per call, so two windows sit in front of
+it — and neither produces a `PolicyDecision`, because neither describes a turn the assistant chose
+not to take:
+
+| Window | Setting | Policy | Counted per | Purpose |
+|---|---|---|---|---|
+| Caller | `requestsPerMinute` (12) | sliding | `sha256(salesChannelId + client IP)` | the abuse defence: the only thing that stops a scripted loop |
+| Channel | `dailyRequestCap` (500) | fixed, 24h | sales channel | the merchant's spend ceiling |
+
+Both are consumed in `AssistantController::chat()` **before the conversation row is written** — a
+throttle that stores something first is an amplifier, not a defence — and a refusal answers 429 with
+`Retry-After` rather than a traced turn. The caller window is consumed unconditionally, including for
+a shop whose kill switch is on, so no branch is an unthrottled path. The daily budget is consumed
+only when a turn could actually spend, so a switched-off shop is reported as `kill_switch` by
+`GuardCheck` rather than as "out of budget".
+
+The daily cap alone would be a denial-of-service vector: one script could burn a day's budget in
+seconds and leave real shoppers with a dead assistant until it reset. The caller window raises the
+cost of that from seconds to **about 40 minutes** at the default settings — which is a mitigation,
+not a fix. A caller that is patient enough can still exhaust a whole sales channel's budget on its
+own, and every other shopper then gets 429 until the window rolls over.
+
+Closing that properly needs a third window: a per-caller *daily* limit, so one address cannot hold
+more than a fraction of the channel's budget. It is deliberately not in v0 — it is a third number for
+a merchant to get wrong, and the two windows here are what turn an unlimited public endpoint into a
+bounded one. **Do not read `dailyRequestCap` as protection against a determined caller.**
+
+Counters live in the shop's cache pool (`cache.app`), not the database: counting rows would mean a
+query per request on a public route, and `PruneConversationsTask` deletes those rows daily, so the
+count would be wrong by design. Clearing the cache resets both windows.
+
+**A shop behind a proxy or CDN must have `framework.trusted_proxies` set**, or every request arrives
+from one address and shares one caller window. Trusting `X-Forwarded-For` unconditionally would be
+worse — a caller could then pick its own bucket per request — so this is the shop's configuration to
+get right, not something the plugin can decide.
 
 ### Cart guardrails
 
@@ -713,7 +750,8 @@ the merchant's database.
 `llmBaseUrl` · `llmModel` · `llmApiKey` (env var preferred; `config.xml` is the fallback —
 Shopware system config has no real secret storage) · `agentVoice` · `excludedCategories` ·
 `blockedProducts` · `blockedCategories` · `enableAddToCart` · `maxItemQuantity` ·
-`maxCartValue` · `killSwitch` · `dailyRequestCap`
+`maxCartValue` · `killSwitch` · `maxToolCallsPerTurn` · `requestsPerMinute` ·
+`dailyRequestCap` · `traceRetentionDays`
 
 ## Eval slice (v0)
 
@@ -759,4 +797,4 @@ of it.
 | Search is keyword-based, not semantic | v0 is facet-grounded retrieval (Tier 0) only. Query expansion is deferred |
 | No native compatibility concept in Shopware | No mapping configured means the capability is absent, not guessed |
 | Trace volume in the merchant DB | Retention task from day one |
-| Public `POST /assistant/chat` | Rate limit plus daily cap. The cap is a security control, not an ops nicety |
+| Public `POST /assistant/chat` | Two windows in `RequestBudget`, consumed before the first database call: a per-caller sliding window (`requestsPerMinute`) as the abuse defence, and a per-channel daily budget (`dailyRequestCap`) as the spend ceiling. **This row described the design for months while `dailyRequestCap` was enforced nowhere** — `GuardCheck` compared it against a count no caller ever supplied. A control named in a document and absent from the request path is worse than one that was never promised |

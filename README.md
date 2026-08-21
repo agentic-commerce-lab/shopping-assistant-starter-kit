@@ -97,6 +97,35 @@ storage, so a key entered in the admin form is readable by anyone with config ac
 every database backup. Until all three are set, the chat endpoint answers **503** rather than failing
 mid-turn.
 
+## Request limits
+
+`POST /assistant/chat` is public and every call spends model tokens, so two limits sit in front of
+it. Both are in the Administration under **Request limits**:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `requestsPerMinute` | 12 | Per caller, sliding window. The control that stops a scripted loop |
+| `dailyRequestCap` | 500 | Per sales channel, 24h. A spend ceiling, not an abuse defence |
+
+A refused request answers **429** with a `Retry-After` header and writes nothing — no conversation
+row, no trace, no model call. The widget already treats 429 as transient and offers a retry button.
+
+The order matters and is deliberate: the per-caller window is consumed first and in every branch, so
+switching the assistant off does not create an unthrottled path; the daily budget is consumed only
+when a turn could actually spend, so a shop with the kill switch on is told it is switched off rather
+than out of budget.
+
+`0` in either field refuses every request, matching how the other integer settings read a stored zero.
+
+Counters live in the shop's cache, not the database, so **clearing the cache resets both windows**.
+Behind a proxy or CDN, `framework.trusted_proxies` has to be right or every shopper shares one
+window — Symfony's `getClientIp()` is what the per-caller window counts.
+
+> `dailyRequestCap` shipped for months enforced by nothing: the comparison existed in `GuardCheck`
+> but the storefront never supplied it a count, so it could only ever trip when set to 0. It is now
+> enforced in `Core\Policy\RequestBudget`, at the HTTP boundary, and covered by
+> `tests/Controller/AssistantThrottleTest.php`.
+
 ## The storefront widget
 
 The widget ships **compiled**, so a merchant needs no Node toolchain. After installing and
