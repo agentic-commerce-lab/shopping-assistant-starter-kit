@@ -33,21 +33,34 @@
                 <span class="swag-assistant-panel__actions">
                     {# Icon controls, so `aria-label` is the accessible name rather than a decorative
                        glyph being read out. Both glyphs come from the Meteor Icon Kit through
-                       `mask-image`, which is why they take the button's own colour in every state. #}
+                       `mask-image`, which is why they take the button's own colour in every state.
+
+                       **The label is rendered, not left to `title`.** A bare reset glyph is the one
+                       control in this panel whose meaning nobody can guess, and it is destructive
+                       enough that guessing is expensive — but the native tooltip waits about a
+                       second, appears at the cursor rather than at the control, and never shows for
+                       a keyboard user at all. The span below is `aria-hidden` because the button's
+                       `aria-label` is already its accessible name; announcing both would read the
+                       same words twice. `title` is dropped for the same reason: two tooltips for one
+                       control is worse than either. #}
                     <button class="swag-assistant-panel__action swag-assistant-panel__action--reset"
                             type="button"
                             data-swag-assistant-reset
-                            aria-label="{{ 'swagAssistant.panel.reset'|trans }}"
-                            title="{{ 'swagAssistant.panel.reset'|trans }}">
+                            aria-label="{{ 'swagAssistant.panel.reset'|trans }}">
                         <span class="swag-assistant-icon swag-assistant-icon--reset" aria-hidden="true"></span>
+                        <span class="swag-assistant-tooltip" aria-hidden="true">
+                            {{- 'swagAssistant.panel.reset'|trans -}}
+                        </span>
                     </button>
 
                     <button class="swag-assistant-panel__action"
                             type="button"
                             data-swag-assistant-close
-                            aria-label="{{ 'swagAssistant.panel.close'|trans }}"
-                            title="{{ 'swagAssistant.panel.close'|trans }}">
+                            aria-label="{{ 'swagAssistant.panel.close'|trans }}">
                         <span class="swag-assistant-icon swag-assistant-icon--times" aria-hidden="true"></span>
+                        <span class="swag-assistant-tooltip" aria-hidden="true">
+                            {{- 'swagAssistant.panel.close'|trans -}}
+                        </span>
                     </button>
                 </span>
             </header>
@@ -69,6 +82,7 @@
                     parentStock: 'swagAssistant.card.parentStock'|trans,
                     delivery: 'swagAssistant.card.delivery'|trans,
                     suggestionsLabel: 'swagAssistant.panel.suggestionsLabel'|trans,
+                    composerTooLong: 'swagAssistant.panel.composerTooLong'|trans,
                     suggestionOne: 'swagAssistant.panel.suggestionOne'|trans,
                     suggestionTwo: 'swagAssistant.panel.suggestionTwo'|trans,
                     suggestionThree: 'swagAssistant.panel.suggestionThree'|trans,

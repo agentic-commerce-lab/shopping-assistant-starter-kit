@@ -7,6 +7,19 @@
  */
 
 /**
+ * `CardIdList::MAX_IDS`. The server caps one request at this many ids and **drops the rest
+ * silently** — it returns 12 cards for 15 ids with no indication that three are missing.
+ *
+ * That cap is right: `/assistant/cards` is public and does one catalogue lookup per id, so an
+ * unbounded list is an unbounded query. What was wrong was asking past it. A transcript is capped at
+ * 20 turns, and a turn can render a shortlist, so the union across a real conversation goes past 12
+ * routinely — measured live: 10 turns, 15 distinct cards, and the three newest simply vanished from
+ * the panel on the next page load. Batching respects the server's per-request bound instead of
+ * raising it.
+ */
+const MAX_IDS_PER_REQUEST = 12;
+
+/**
  * @param {{chatUrl: string, historyUrl: string, cardsUrl: string, cartUrl: string}} urls
  */
 export function createTransport({ chatUrl, historyUrl, cardsUrl, cartUrl }) {
@@ -59,27 +72,50 @@ export function createTransport({ chatUrl, historyUrl, cardsUrl, cartUrl }) {
      * that were true when they were written. So the cards are asked for fresh, and the response may
      * legitimately be **shorter** than the request — a product blocked or deleted since that turn is
      * omitted rather than faked.
+     *
+     * **Asked for in batches**, because the endpoint's cap is a silent truncation rather than an
+     * error: one request for 15 ids returns the first 12 and says nothing about the other three. See
+     * `MAX_IDS_PER_REQUEST`. Batches go out together — they are independent reads, and serialising
+     * them would make a long transcript's panel open one round trip at a time.
+     *
+     * A batch that fails contributes nothing rather than failing the whole re-hydration: some cards
+     * beat none, and the caller already renders only what it receives.
      */
     async function cards(ids) {
         if (!Array.isArray(ids) || ids.length === 0) {
             return new Map();
         }
 
+        const batches = [];
+        for (let offset = 0; offset < ids.length; offset += MAX_IDS_PER_REQUEST) {
+            batches.push(ids.slice(offset, offset + MAX_IDS_PER_REQUEST));
+        }
+
+        const results = await Promise.all(batches.map(fetchCardBatch));
+
+        return new Map(results.flat().map((card) => [card.id, card]));
+    }
+
+    /**
+     * @param {Array<string>} batch
+     * @returns {Promise<Array<object>>} the cards this batch resolved, or none if it failed
+     */
+    async function fetchCardBatch(batch) {
         try {
-            const response = await fetch(`${cardsUrl}?ids=${encodeURIComponent(ids.join(','))}`, {
+            const response = await fetch(`${cardsUrl}?ids=${encodeURIComponent(batch.join(','))}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
 
             if (!response.ok) {
-                return new Map();
+                return [];
             }
 
             const payload = await response.json();
 
-            return new Map((payload.cards ?? []).map((card) => [card.id, card]));
+            return payload.cards ?? [];
         } catch {
             // Re-hydration is a convenience; failing it must not stop the panel from opening.
-            return new Map();
+            return [];
         }
     }
 

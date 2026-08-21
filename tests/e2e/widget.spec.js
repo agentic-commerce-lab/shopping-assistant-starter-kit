@@ -25,6 +25,15 @@ const SHOP = process.env.SHOP_URL ?? 'http://127.0.0.1:8000';
 const TURN_TIMEOUT = 90_000;
 
 /**
+ * `ChatRequest::MAX_MESSAGE_LENGTH`, mirrored in `panel.plugin.js`. Lowered from 2000 on
+ * 2026-08-21: a stored turn is re-sent on every later turn while it stays in the history window, so
+ * a long message is paid for up to eleven times rather than once.
+ */
+const LIMIT = 500;
+
+const OVER_LIMIT = LIMIT + 1;
+
+/**
  * **Required, not a preference.** Playwright refuses to click the orb while its `breathe` animation
  * runs — the element is never "stable" — so without this every click here fails on a timeout. It
  * works because the widget's `prefers-reduced-motion` support is real: the same media query that
@@ -136,7 +145,7 @@ test.describe('assistant widget', () => {
         await expect(stamped).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}T/);
     });
 
-    test('an over-long message is refused before any request goes out', async ({ page }) => {
+    test('an over-long message is refused before any request goes out, and says why', async ({ page }) => {
         await openPanel(page);
 
         const requests = [];
@@ -146,14 +155,46 @@ test.describe('assistant widget', () => {
             }
         });
 
-        // 2001 characters really arrive: the composer has no `maxlength`, deliberately, because the
-        // browser enforces that by silently truncating.
-        await page.locator('[data-swag-assistant-input]').fill('x'.repeat(2001));
-        await expect(page.locator('[data-swag-assistant-input]')).toHaveValue(/^x{2001}$/);
+        const input = page.locator('[data-swag-assistant-input]');
+
+        // One over the limit. All 501 characters really arrive: the composer has no `maxlength`,
+        // deliberately, because the browser enforces that by silently truncating.
+        await input.fill('x'.repeat(OVER_LIMIT));
+        await expect(input).toHaveValue(new RegExp(`^x{${OVER_LIMIT}}$`));
 
         await expect(page.locator('[data-swag-assistant-send]')).toBeDisabled();
-        await expect(page.locator('[data-swag-assistant-input]')).toHaveClass(/is-too-long/);
+        await expect(input).toHaveClass(/is-too-long/);
+        // An orange border and a dead Send button say something is wrong and nothing about what.
+        // The count is what makes the state actionable rather than mysterious.
+        await expect(page.locator('.swag-assistant-composer__notice'))
+            .toContainText(String(OVER_LIMIT));
         expect(requests).toHaveLength(0);
+
+        // Exactly at the limit is fine, and the explanation goes away with the problem.
+        await input.fill('x'.repeat(LIMIT));
+        await expect(page.locator('[data-swag-assistant-send]')).toBeEnabled();
+        await expect(page.locator('.swag-assistant-composer__notice')).toHaveCount(0);
+    });
+
+    /**
+     * The client measures what it sends the way the server measures what it receives. It used not to:
+     * `.length` counts UTF-16 units where `mb_strlen` counts characters, and trailing whitespace was
+     * counted here but trimmed there — so a field of emoji, or a message with three spaces after it,
+     * was refused locally even though the endpoint would have taken it.
+     */
+    test('emoji and trailing whitespace are counted the way the server counts them', async ({ page }) => {
+        await openPanel(page);
+
+        const input = page.locator('[data-swag-assistant-input]');
+        const send = page.locator('[data-swag-assistant-send]');
+
+        // `.length` sees 2 per emoji, so this is 1000 UTF-16 units — twice the limit — but 500
+        // characters, which is exactly the limit.
+        await input.fill('\u{1F600}'.repeat(LIMIT));
+        await expect(send).toBeEnabled();
+
+        await input.fill(`${'x'.repeat(LIMIT)}   `);
+        await expect(send).toBeEnabled();
     });
 
     test('a card can be added to the cart', async ({ page }) => {
@@ -171,4 +212,226 @@ test.describe('assistant widget', () => {
         await page.goto(`${SHOP}/checkout/cart`);
         await expect(page.locator('body')).toContainText('Trail Jersey');
     });
+});
+
+/*
+ * The three defects a shopper reported on the deployed shop, 2026-08-21.
+ *
+ * These stub `POST /assistant/chat` instead of spending a live turn, and that is the point rather
+ * than a shortcut: each one is about how the widget reads a *particular response shape*, and asking
+ * a model nicely for markdown or for a `cart_added` verdict is exactly the kind of "usually works"
+ * setup that makes a regression test flake. The shapes below are copied from responses the live
+ * endpoint actually produced.
+ */
+test.describe('reading what the server actually sends', () => {
+    const CHAT = '**/assistant/chat';
+
+    /** @param {import('@playwright/test').Page} page */
+    async function stubTurn(page, body) {
+        await page.route(CHAT, (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                token: 'e2e-stub',
+                prose: '',
+                cards: [],
+                outcome: 'product_shown',
+                warnings: { unbackedPrices: [], unbackedAvailabilityClaims: [] },
+                ...body,
+            }),
+        }));
+    }
+
+    /** @param {import('@playwright/test').Page} page */
+    async function ask(page, text) {
+        await page.locator('[data-swag-assistant-input]').fill(text);
+        await page.locator('[data-swag-assistant-send]').click();
+    }
+
+    const card = (overrides) => ({
+        id: 'e2ee2ee2ee2ee2ee2ee2ee2ee2ee2ee2',
+        name: 'Alloy Water Bottle 750ml',
+        description: 'Insulated alloy bottle.',
+        price: 19.9,
+        currency: 'EUR',
+        stock: 12,
+        inStock: true,
+        deliveryTime: '1-3 days',
+        url: '/detail/e2e',
+        imageUrl: null,
+        options: [],
+        ...overrides,
+    });
+
+    test('a formatted reply is rendered, never printed as syntax', async ({ page }) => {
+        await openPanel(page);
+        // Measured on the live shop: asterisks visible, and both list items on one line because a
+        // single newline used to carry no meaning here.
+        await stubTurn(page, {
+            prose: 'I found two listings:\n1. **Alloy Water Bottle 750 ml**\n2. **Alloy Water Bottle 750ml**'
+                + '\n\nSee [the offer](https://example.invalid/x). 2 * 3 = 6.',
+        });
+        await ask(page, 'do you have a 750ml bottle?');
+
+        const body = page.locator('.swag-assistant-message--assistant .swag-assistant-message__body').last();
+        await expect(body).toBeVisible();
+
+        await expect(body).not.toContainText('**');
+        await expect(body.locator('ol li')).toHaveCount(2);
+        await expect(body.locator('strong').first()).toHaveText('Alloy Water Bottle 750 ml');
+        // A URL in the prose is one the shop did not supply — the system prompt forbids the model
+        // from stating one — so its words survive and its link does not.
+        await expect(body).toContainText('the offer');
+        await expect(body.locator('a')).toHaveCount(0);
+        // An unmatched marker is arithmetic, not emphasis.
+        await expect(body).toContainText('2 * 3 = 6');
+    });
+
+    test('the header cart count follows a cart the assistant filled itself', async ({ page }) => {
+        await openPanel(page);
+
+        // The shop's own cart-widget endpoint. Counting requests to it is how "the header was told"
+        // becomes observable without asserting on a rendered number.
+        const refreshes = [];
+        page.on('request', (request) => {
+            if (request.url().includes('/widgets/checkout/info')) {
+                refreshes.push(request.url());
+            }
+        });
+
+        const before = refreshes.length;
+        await stubTurn(page, { prose: 'Added it.', outcome: 'cart_added' });
+        await ask(page, 'add the bottle cage');
+
+        await expect(page.locator('.swag-assistant-message--assistant').last()).toContainText('Added it.');
+        await expect.poll(() => refreshes.length).toBeGreaterThan(before);
+    });
+
+    test('a product with no variants is addable; a product family is not', async ({ page }) => {
+        await openPanel(page);
+        await stubTurn(page, {
+            prose: 'Here they are.',
+            cards: [
+                // `product`: a plain product. Its stock is its own and there is nothing to choose.
+                card({ id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', stockSource: 'product' }),
+                // `parent`: a family standing in for variants nobody has picked from.
+                card({ id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', stockSource: 'parent', name: 'Trail Jersey' }),
+            ],
+        });
+        await ask(page, 'what have you got');
+
+        const cards = page.locator('.swag-assistant-card');
+        await expect(cards).toHaveCount(2);
+
+        // Both are in stock. Only the family withholds one-click purchase, and only the family
+        // explains why — this is the defect that cost every simple product its button.
+        await expect(cards.nth(0).locator('.swag-assistant-card__add')).toHaveCount(1);
+        await expect(cards.nth(0).locator('.swag-assistant-card__note')).toHaveCount(0);
+        await expect(cards.nth(1).locator('.swag-assistant-card__add')).toHaveCount(0);
+        await expect(cards.nth(1).locator('.swag-assistant-card__note')).toHaveCount(1);
+    });
+
+    /**
+     * `CardIdList::MAX_IDS` caps ONE request at 12 ids and drops the rest without saying so.
+     *
+     * Measured live: ten turns produced 15 distinct cards, `GET /assistant/cards` answered with 12,
+     * and the three newest silently never came back after a page load. Twenty-two turns produced 21.
+     * The cap is correct — the endpoint is public and does a catalogue lookup per id — so the client
+     * batches instead of asking past it.
+     */
+    test('a transcript with more cards than one request allows re-hydrates whole', async ({ page }) => {
+        const ids = Array.from({ length: 15 }, (_, i) => String(i).padStart(32, 'a'));
+
+        await page.route('**/assistant/history*', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                messages: [
+                    { role: 'user', prose: 'show me everything', cardIds: [], createdAt: null, warnings: {} },
+                    { role: 'assistant', prose: 'Here they are.', cardIds: ids, createdAt: null, warnings: {} },
+                ],
+            }),
+        }));
+
+        // Stands in for the real endpoint, cap included: it answers with the first 12 ids it was
+        // given and nothing else. A client that asks for all 15 at once therefore loses three — the
+        // exact failure, reproduced without needing a 15-card conversation.
+        const requestedCounts = [];
+        await page.route('**/assistant/cards*', (route) => {
+            const asked = new URL(route.request().url()).searchParams.get('ids').split(',');
+            requestedCounts.push(asked.length);
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    cards: asked.slice(0, 12).map((id) => card({ id, stockSource: 'product' })),
+                }),
+            });
+        });
+
+        // sessionStorage must hold a token, or the panel never asks for a history at all.
+        await page.goto(SHOP);
+        await page.evaluate(() => window.sessionStorage.setItem('swagAssistantToken', 'a'.repeat(32)));
+        await page.locator('[data-swag-assistant-orb]').click();
+
+        await expect(page.locator('.swag-assistant-card')).toHaveCount(15);
+        // Batched, not asked past: no single request may exceed the server's own cap.
+        expect(Math.max(...requestedCounts)).toBeLessThanOrEqual(12);
+    });
+});
+
+/*
+The reset button is the one control here whose glyph nobody can guess, and it throws the
+conversation away. It used to rely on the native `title`: about a second of delay, positioned at the
+cursor rather than at the button, and absent entirely for anyone who arrived with Tab.
+*/
+test.describe('the header controls say what they do', () => {
+    test('a label appears on hover and on keyboard focus, and does not eat the click',
+        async ({ page }) => {
+            await openPanel(page);
+
+            const reset = page.locator('[data-swag-assistant-reset]');
+            const tooltip = reset.locator('.swag-assistant-tooltip');
+
+            // Present in the DOM but not visible, so it is never announced as content and never
+            // occupies space.
+            await expect(tooltip).toHaveCSS('opacity', '0');
+
+            await reset.hover();
+            await expect(tooltip).toHaveCSS('opacity', '1');
+            await expect(tooltip).not.toBeEmpty();
+
+            // Two tooltips for one control is worse than either, so the native one is gone.
+            await expect(reset).not.toHaveAttribute('title', /./);
+            // The accessible name still carries the same words.
+            await expect(reset).toHaveAttribute('aria-label', /./);
+
+            // Keyboard reaches it too — the whole reason the native tooltip was not enough. Tabbed
+            // to rather than focused programmatically, because `:focus-visible` is exactly the
+            // distinction between "arrived by keyboard" and "arrived by click", and only the real
+            // keypress makes it true.
+            await page.locator('[data-swag-assistant-input]').focus();
+            await page.mouse.move(0, 0);
+
+            for (let step = 0; step < 12; step += 1) {
+                await page.keyboard.press('Tab');
+
+                const onReset = await page.evaluate(
+                    () => document.activeElement?.hasAttribute('data-swag-assistant-reset') === true,
+                );
+
+                if (onReset) {
+                    break;
+                }
+            }
+
+            await expect(page.locator('[data-swag-assistant-reset]')).toBeFocused();
+            await expect(tooltip).toHaveCSS('opacity', '1');
+
+            // `pointer-events: none`: the label sits under the cursor, and the click must still land
+            // on the button beneath it.
+            await reset.click();
+            await expect(page.locator('.swag-assistant-message--user')).toHaveCount(0);
+        });
 });

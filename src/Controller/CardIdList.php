@@ -27,8 +27,22 @@ final readonly class CardIdList
     public const ID_PATTERN = '/^[0-9a-f]{32}$/';
 
     /**
-     * A turn renders at most a shortlist, so a request for more ids than this did not come from one
-     * of our own transcripts. Bounds catalogue lookups on a public endpoint.
+     * How many ids one request may carry. Bounds catalogue lookups on a public endpoint, which
+     * {@see AssistantCardController} performs one per id.
+     *
+     * **Correction, 2026-08-21.** This used to be justified as *"a turn renders at most a shortlist,
+     * so a request for more ids than this did not come from one of our own transcripts"* — which was
+     * simply wrong, and the widget paid for it. A transcript holds up to
+     * {@see AssistantController::MAX_HISTORY_TURNS} turns, re-hydration needs the *union* of their
+     * cards, and measured live that was 15 distinct products after ten turns. The excess was
+     * truncated here, silently, and the three newest cards vanished from the panel on the next page
+     * load while the older ones stayed.
+     *
+     * The cap itself was never the defect — asking past it was. `transport.js` now batches its
+     * request at exactly this number, so the bound still holds per request and nothing is dropped.
+     * **The two constants must stay equal.** Raising this one without raising the client's is
+     * harmless; lowering it silently loses cards again, which is why the end-to-end suite asserts a
+     * 15-card transcript re-hydrates whole.
      */
     public const MAX_IDS = 12;
 

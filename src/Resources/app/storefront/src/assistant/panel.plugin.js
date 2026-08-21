@@ -9,8 +9,15 @@ const { PluginBaseClass } = window;
 
 const TOKEN_KEY = 'swagAssistantToken';
 
-/** `ChatRequest::MAX_MESSAGE_LENGTH`. The server rejects rather than truncates, so refuse earlier. */
-const MAX_MESSAGE_LENGTH = 2000;
+/**
+ * `ChatRequest::MAX_MESSAGE_LENGTH`. The server rejects rather than truncates, so refuse earlier.
+ *
+ * Must equal the server's constant — see its docblock for why the number is 500 and not 2000.
+ */
+const MAX_MESSAGE_LENGTH = 500;
+
+/** `TurnOutcomeResolver`'s verdict for a turn whose `add_to_cart` call the policy allowed. */
+const OUTCOME_CART_ADDED = 'cart_added';
 
 const FOCUSABLE = [
     'button:not([disabled])',
@@ -51,6 +58,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
             input: this.el.querySelector('[data-swag-assistant-input]'),
             button: this.el.querySelector('[data-swag-assistant-send]'),
             maxLength: MAX_MESSAGE_LENGTH,
+            tooLongTemplate: this.translations.composerTooLong ?? '',
             onSubmit: (message) => this._submit(message),
         });
 
@@ -149,12 +157,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         try {
             await this.transport.addToCart(button.dataset.swagAssistantAdd);
 
-            // Re-render the header's cart count through the theme's own plugin. `fetch()` is
-            // CartWidgetPlugin's public method — verified against the installed 6.7 storefront rather
-            // than guessed, because an invented event name fails silently and leaves a stale count.
-            window.PluginManager.getPluginInstances('CartWidget')
-                ?.forEach((instance) => instance.fetch?.());
-
+            this._refreshCartWidget();
             markAdded(button, this.translations.addedToCart ?? '');
 
             // The one unambiguous success in the whole widget, and the only place the creature laughs.
@@ -173,6 +176,33 @@ export default class SwagAssistantPanel extends PluginBaseClass {
             message.setAttribute('role', 'alert');
             message.textContent = this.translations.errorCartFailed ?? '';
             card?.querySelector('.swag-assistant-card__info')?.appendChild(message);
+        }
+    }
+
+    /**
+     * Re-renders the header's cart count through the theme's own plugin.
+     *
+     * `fetch()` is CartWidgetPlugin's public method — verified against the installed 6.7 storefront
+     * rather than guessed, because an invented event name fails silently and leaves a stale count.
+     *
+     * **Called from two places, and the second one is the bug this method was extracted for.** A
+     * shopper can reach the cart by clicking a card's button *or* by asking — "add the bottle cage
+     * to my cart" runs the `add_to_cart` tool server-side, and nothing in the browser knew it had
+     * happened. Measured live: the shop's own `/widgets/checkout/info` reported 1 item at €12.90
+     * while the header still read €0.00, until the next full page load.
+     *
+     * Wrapped, because `PluginManager.getPluginInstances()` returns null for a name it does not
+     * know and the caller then dereferences it. On the button path that throw landed in the add's
+     * own `catch`, which told the shopper "could not add this to the cart" about an item that was
+     * already in it — the worst available lie, since the two states differ by a refund.
+     */
+    _refreshCartWidget() {
+        try {
+            window.PluginManager?.getPluginInstances('CartWidget')
+                ?.forEach((instance) => instance.fetch?.());
+        } catch {
+            // A stale count is a cosmetic defect. It must never be reported as a failed add, and
+            // must never take the reply down with it.
         }
     }
 
@@ -392,6 +422,14 @@ export default class SwagAssistantPanel extends PluginBaseClass {
                 translations: this.translations,
                 addToCartEnabled: this.addToCartEnabled,
             });
+
+            // The turn changed the shop's cart, not just the transcript. `outcome` is the server's
+            // own machine-readable verdict on the turn — `TurnOutcomeResolver` sets `cart_added`
+            // only for an `add_to_cart` call the policy actually allowed — so this reads a fact
+            // rather than sniffing the prose for the word "added".
+            if (reply.outcome === OUTCOME_CART_ADDED) {
+                this._refreshCartWidget();
+            }
 
             // An answer arrived. Brief, and it is the only reaction to a reply — a nineteen-second wait
             // ending in a celebration would be the wrong size of gesture for something that is simply

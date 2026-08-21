@@ -12,6 +12,9 @@ seeing a message pass beneath it is what tells you the transcript continues belo
 .swag-assistant-composer {
     position: relative;
     display: flex;
+    // Wraps so the over-length count can take a full second line under the field rather than
+    // squeezing in beside the send button.
+    flex-wrap: wrap;
     gap: 8px;
     align-items: flex-end;
     flex: 0 0 auto;
@@ -248,7 +251,14 @@ They are removed the moment the conversation starts. A first-run affordance that
     }
 }
 
-// Past the server's 2000-character limit. The border is the signal; the disabled Send is the rule.
+/*
+Past `ChatRequest::MAX_MESSAGE_LENGTH`. The border is the signal, the disabled Send is the rule, and
+the line below is the reason.
+
+Orange, not red — the palette has none, and this is not an error anyway: nothing has gone wrong, the
+shopper is simply mid-sentence past a bound. Same colour the low-stock dot uses, for the same
+register.
+*/
 .swag-assistant-composer__input.is-too-long {
     border-color: $swag-assistant-low-stock;
 
@@ -260,6 +270,36 @@ They are removed the moment the conversation starts. A first-run affordance that
     &:focus-visible {
         outline-color: $swag-assistant-low-stock;
     }
+}
+
+/*
+The count, under the field.
+
+The composer is a flex row, so this takes the full width of a second line — `order` is not needed
+because it is appended last, but the wrap is: without `flex-basis: 100%` it would try to sit beside
+the send button.
+
+Left-aligned with the field's own text rather than under the button, because it is about what was
+typed. `font-variant-numeric` for the same reason the timestamp uses it: a count that shifts width as
+it climbs reads as unstable.
+*/
+.swag-assistant-composer__notice {
+    flex: 0 0 100%;
+    // No top margin: the composer's own 8px gap already separates it from the field.
+    margin: 0;
+    padding: 0 14px;
+    // **Not orange.** `$swag-assistant-low-stock` measures about 2.6:1 on white, well under the
+    // 4.5:1 text floor — the same trap `$swag-assistant-meta` exists because of. Orange stays on the
+    // field's border, which is decoration carrying state; the words that have to be read are
+    // Night Blue. This is exactly what `.swag-assistant-warning` already does: tint and icon in
+    // orange, text in `$swag-assistant-text`.
+    color: $swag-assistant-text;
+    font-size: $swag-assistant-font-micro;
+    font-weight: 600;
+    // A count that changes width as it climbs reads as unstable, the same reason the timestamp uses
+    // tabular figures.
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
 }
 
 @media (prefers-reduced-motion: reduce) {

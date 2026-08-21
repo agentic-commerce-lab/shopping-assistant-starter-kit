@@ -15,8 +15,28 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final readonly class ChatRequest
 {
-    /** Bounded so a public endpoint cannot be used to push arbitrary text into a paid model. */
-    public const MAX_MESSAGE_LENGTH = 2000;
+    /**
+     * Bounded so a public endpoint cannot be used to push arbitrary text into a paid model.
+     *
+     * **500, not 2000, since 2026-08-21.** The old bound was set as an abuse ceiling and priced as
+     * one — as if a long message were paid for once. It is not: a stored turn is re-sent on every
+     * subsequent turn for as long as it stays inside
+     * {@see AssistantController::MAX_HISTORY_TURNS}, so one 2000-character message costs its ~500
+     * tokens up to eleven times over, and ten of them put ~5000 tokens of shopper prose in front of
+     * the model on the last turn alone. Measured against the rest of a turn — the rules block is
+     * ~549 tokens and the catalogue vocabulary is capped at ~375 — a single shopper message was
+     * allowed to outweigh every instruction the assistant has.
+     *
+     * 500 characters is still two and a half times the longest realistic product question ("I want a
+     * long-sleeve gravel jersey for autumn, I take M at one brand and L at another, budget around
+     * 80, and it has to work under a hydration pack" is 205), so this trades nothing a shopper
+     * actually needs. What it does cut off is a pasted specification sheet, which this assistant
+     * cannot answer from anyway — it answers from tools, not from text the shopper supplies.
+     *
+     * The client mirrors this in `panel.plugin.js` to refuse before spending a round trip. **The two
+     * must stay equal.**
+     */
+    public const MAX_MESSAGE_LENGTH = 500;
 
     private function __construct(
         public ?string $message,

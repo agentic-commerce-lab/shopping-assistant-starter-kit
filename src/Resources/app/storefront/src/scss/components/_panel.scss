@@ -174,6 +174,8 @@ is what makes a bare icon read as a control rather than as an ornament.
 .swag-assistant-panel__action {
     --swag-assistant-icon: 15px;
 
+    // The anchor for the tooltip below, which is why this is positioned at all.
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -198,6 +200,47 @@ is what makes a bare icon read as a control rather than as an ornament.
         outline: 2px solid $swag-assistant-accent;
         outline-offset: 1px;
     }
+
+    // Keyboard included, deliberately: the native tooltip this replaces never appeared for
+    // anyone who reached the button with Tab.
+    &:hover .swag-assistant-tooltip,
+    &:focus-visible .swag-assistant-tooltip {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/*
+The label a bare glyph cannot carry.
+
+Below the control, not above it: the header is the top edge of the panel, so upward is off-panel.
+Right-aligned to the button rather than centred on it, because a centred tooltip on the last button
+in the row hangs over the panel's own edge.
+
+`pointer-events: none` is load-bearing — a tooltip that appears under the cursor and then eats the
+click would make the reset button feel broken in exactly the moment it finally explained itself.
+*/
+.swag-assistant-tooltip {
+    position: absolute;
+    // Just clear of the 34px button, so the gap reads as a relationship rather than a coincidence.
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 1;
+    padding: 5px 8px;
+    border-radius: $swag-assistant-radius-control;
+    background: $swag-assistant-text;
+    color: $swag-assistant-surface;
+    font-size: $swag-assistant-font-micro;
+    font-weight: 500;
+    line-height: 1.3;
+    // A label that wraps is a paragraph. These are two or three words.
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateY(-3px);
+    opacity: 0;
+    transition:
+        opacity 120ms $swag-assistant-ease,
+        transform 120ms $swag-assistant-ease;
 }
 
 .swag-assistant-log {
@@ -294,6 +337,13 @@ is what makes a bare icon read as a control rather than as an ornament.
         transition: none;
         transform: none;
         filter: none;
+    }
+
+    // The tooltip still appears and disappears — it carries information, so it is not decoration
+    // that can be switched off. Only the slide and the fade go.
+    .swag-assistant-tooltip {
+        transition: none;
+        transform: none;
     }
 
     .swag-assistant-panel__avatar {
