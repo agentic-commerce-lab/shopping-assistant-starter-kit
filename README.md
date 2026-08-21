@@ -271,6 +271,15 @@ cp .env.example .env
 composer run test:eval
 ```
 
+**Budget the time and the spend.** Eight journeys, each up to three runs per archetype, every run a
+real turn: the whole suite is well over five minutes and costs real tokens. That is also why
+`composer.json` sets `process-timeout: 1800` — Composer's 300-second default killed the run partway
+through, which reads as a failure rather than as a timeout. To spend less, filter to one journey:
+
+```fish
+vendor/bin/phpunit --group eval --filter order_status_escalates
+```
+
 `.env` is git-ignored — never commit a real key. `tests/bootstrap.php` loads it only if
 the file exists, via `symfony/dotenv`, so the deterministic suite keeps working with no
 `.env` present at all. A real, already-exported environment variable always wins over a

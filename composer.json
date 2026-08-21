@@ -60,6 +60,7 @@
     }
   },
   "config": {
+    "process-timeout": 1800,
     "allow-plugins": {
       "captainhook/hook-installer": true,
       "php-http/discovery": true,
