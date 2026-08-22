@@ -22,13 +22,26 @@ final class EscalateTool
     /**
      * What the model is told when the merchant configured somewhere to send the shopper.
      *
+     * **The prohibition is explicit because inference failed.** The previous wording — "this needs
+     * the shop team, and a contact link follows" — was rendered by a live model as "I've flagged this
+     * to the team", "I've escalated this to…" and "I've flagged your order #10023 to…", in **six of
+     * six** runs of `order_status_escalates` on 2026-08-22. Nothing is sent anywhere, so each of
+     * those is a false statement about the merchant's operations, made to a customer.
+     *
+     * The decline leads and the link follows, in that order, because the model paraphrases the first
+     * instruction it is given: a handover in that slot produced a handover in the reply.
+     *
      * It says a link *follows* rather than carrying one: the URL is rendered server-side by
      * {@see \Swag\AssistantStarterKit\Controller\HandoffPayload} from the same configuration, so the
      * model never has a URL it could retype wrongly (D3).
+     * {@see \Swag\AssistantStarterKit\Eval\Assertion\NoHandoffClaimInProse} is what measures whether
+     * this wording holds — the wording is a request, the assertion is the guarantee.
      */
     private const NOTE_WITH_DESTINATION =
-        'Tell the shopper this needs the shop team, and that a contact link follows your message. '
-            . 'Do not write a URL yourself.';
+        'Say that you cannot help with this yourself, and that a contact link follows your message. '
+            . 'Nothing has been sent to anyone: do not say you have passed this on, flagged it, '
+            . 'escalated it, forwarded it or notified anybody, and do not say that someone will '
+            . 'follow up, reach out or get back to them. Do not write a URL yourself.';
 
     /**
      * And when they did not.

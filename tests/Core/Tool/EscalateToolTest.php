@@ -64,4 +64,34 @@ final class EscalateToolTest extends TestCase
 
         self::assertSame(['reason' => 'why', 'hasDestination' => false], $trace->payload('escalate'));
     }
+
+    public function testTheNoteForbidsClaimingContactWasMade(): void
+    {
+        // The note is read by the model and paraphrased. "This needs the shop team" was rendered as
+        // "I've flagged this to the team" in six of six live runs (2026-08-22), so the instruction
+        // now rules that out explicitly instead of leaving it to inference.
+        $tool = new EscalateTool(new TraceRecorder(), new AssistantConfig(escalationUrl: '/contact'));
+
+        $note = $tool(reason: 'order status question')['note'];
+
+        self::assertStringContainsStringIgnoringCase('do not say', $note);
+        self::assertStringContainsStringIgnoringCase('nothing has been sent', $note);
+    }
+
+    public function testTheNoteOpensWithADeclineRatherThanAHandover(): void
+    {
+        // The model paraphrases the *first* thing it is told to do. "This needs the shop team" put a
+        // handover in that slot, and the model wrote one. A decline goes there instead; the link is
+        // the second clause.
+        $tool = new EscalateTool(new TraceRecorder(), new AssistantConfig(escalationUrl: '/contact'));
+
+        $note = $tool(reason: 'order status question')['note'];
+
+        self::assertStringContainsStringIgnoringCase('cannot help', $note);
+        self::assertLessThan(
+            mb_stripos($note, 'link'),
+            mb_stripos($note, 'cannot help'),
+            'the decline has to come before the link, not after it',
+        );
+    }
 }
