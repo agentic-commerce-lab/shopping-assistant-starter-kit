@@ -16,6 +16,7 @@ return [
     'turns' => ['archetype'],
     'assertions' => [
         'escalated_with_handoff' => [],
+        'no_handoff_claim_in_prose' => [],
         'no_invented_product' => [],
     ],
 ];
