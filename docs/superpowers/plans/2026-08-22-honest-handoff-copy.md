@@ -409,21 +409,27 @@ Add to `tests/Core/Tool/EscalateToolTest.php`:
         self::assertStringContainsStringIgnoringCase('nothing has been sent', $note);
     }
 
-    public function testNeitherNoteTellsTheModelAnyoneWasContacted(): void
+    public function testTheNoteOpensWithADeclineRatherThanAHandover(): void
     {
-        // Both branches, one rule. The rule was written down for the no-destination branch and never
-        // applied to the other, which is how the claim got in.
-        $notes = [
-            (new EscalateTool(new TraceRecorder(), new AssistantConfig(escalationUrl: '/contact')))(reason: 'x')['note'],
-            (new EscalateTool(new TraceRecorder(), new AssistantConfig()))(reason: 'x')['note'],
-        ];
+        // The model paraphrases the *first* thing it is told to do. "This needs the shop team" put a
+        // handover in that slot, and the model wrote one. A decline goes there instead; the link is
+        // the second clause.
+        $tool = new EscalateTool(new TraceRecorder(), new AssistantConfig(escalationUrl: '/contact'));
 
-        foreach ($notes as $note) {
-            self::assertStringNotContainsStringIgnoringCase('passed', $note);
-            self::assertStringNotContainsStringIgnoringCase('forwarded', $note);
-            self::assertStringNotContainsStringIgnoringCase('notified', $note);
-        }
+        $note = $tool(reason: 'order status question')['note'];
+
+        self::assertStringContainsStringIgnoringCase('cannot help', $note);
+        self::assertLessThan(
+            mb_stripos($note, 'link'),
+            mb_stripos($note, 'cannot help'),
+            'the decline has to come before the link, not after it',
+        );
     }
+
+    // NOTE, corrected during execution: an earlier draft of this task asserted that neither note
+    // contains the words "passed", "forwarded" or "notified". That is unsatisfiable — forbidding a
+    // phrasing requires naming it, so the fix would have failed the test written to verify it. The
+    // property worth pinning is that the prohibition is explicit (above) and that the decline leads.
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
