@@ -724,6 +724,28 @@ What escalation still does **not** do: notify anybody. No email, no ticket, no q
 a route they can take themselves, which is honest; a merchant who wants the transcript pushed to a
 support desk needs the trace sink that is still on the deferred list.
 
+**The copy is an audited rule, not a trusted one.** `EscalateTool`'s note tells the model not to claim
+it contacted anyone, and `Eval\Assertion\NoHandoffClaimInProse` measures whether that held. The
+assertion exists because the first, milder wording failed completely: told the question "needs the
+shop team", a live model wrote "I've flagged this to the team", "I've escalated this to…" and "I've
+flagged your order #10023 to…" — **6 of 6 runs**, with the correct handoff payload rendered beside it,
+using verbs the note never contained. One reword took it to 6 of 6 passing. A prompt is a request; the
+assertion is the guarantee.
+
+Two things that reword taught, both now load-bearing in the note: the prohibition has to **enumerate**
+the phrasings rather than imply them, and the **decline has to lead** — the model paraphrases the first
+instruction it is given, so a handover in that slot produced a handover in the reply.
+
+It is an eval assertion rather than a runtime `warning` on purpose. Price and availability warnings
+exist because the prose contradicts a **rendered card**, and the client needs telling which to trust.
+A handoff claim contradicts nothing in the response — it is false because of how the plugin is built —
+so there is no card to prefer, and a warning reading "the assistant said it contacted the team; it did
+not" serves that shopper worse than the sentence never being written.
+
+The switched-off branch is pinned the same way, by `order_status_declines`: with no tool in the
+toolbox, declining is prompt-only, and this branch passing first run is a measurement rather than an
+assumption.
+
 ## Trace data model
 
 `swag_assistant_conversation`

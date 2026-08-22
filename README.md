@@ -139,7 +139,15 @@ over" means:
 | `escalationMessage` | — | Shown above the link. Left empty, a translated default is used |
 
 **With no URL configured the assistant says it cannot help and names what it can do instead.** It
-does not claim a human will follow up, because nothing would notify one.
+does not claim a human will follow up, because nothing would notify one — and that is enforced by
+measurement rather than by instruction. `EscalateTool`'s note forbids claiming contact in so many
+words, and the `no_handoff_claim_in_prose` eval assertion is what says whether the model obeyed. The
+first, milder wording lost 6 of 6 live runs: told the question "needs the shop team", the model wrote
+"I've flagged this to the team" using verbs the note never mentioned.
+
+**Nothing is notified on the merchant's side.** No mail, no ticket, no queue. Escalation gives the
+shopper a route they take themselves. A merchant who wants the transcript pushed to a support desk
+needs the trace sink that is still on the deferred list.
 
 Switching `enableEscalation` off removes the capability rather than forbidding it: the tool is never
 constructed, so it never reaches the model's toolbox, and the system prompt drops its "escalate"
