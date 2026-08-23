@@ -487,44 +487,70 @@ is never instantiated, so the model never sees it.
 
 ## Extension points
 
-> **Corrected, 2026-08-21.** This table claimed six extension points that do not exist in the
-> code. `LlmClientInterface`, `PromptProviderInterface`, `ToolInterface`, `RankingRuleInterface`,
-> `RetrievalStrategyInterface` and `KnowledgeSourceInterface` appear nowhere in `src/`, and there is
-> no `swag_assistant.tool` DI tag. A second, contradicting copy of this section further down the
-> document listed them as shipped or as "interface only"; it has been deleted rather than reconciled.
+> **History, kept deliberately.** On 2026-08-21 this table claimed six extension points that did not
+> exist: `LlmClientInterface`, `PromptProviderInterface`, `ToolInterface`, `RankingRuleInterface`,
+> `RetrievalStrategyInterface` and `KnowledgeSourceInterface` appeared nowhere in `src/`, and there was
+> no `swag_assistant.tool` DI tag. A second, contradicting copy of this section listed them as shipped;
+> it was deleted rather than reconciled.
 >
-> This matters more than a stale doc usually would: Linear's acceptance signal for this project is
-> that *two agencies can build merchant-specific demos in a week each without forking*, and the first
-> thing such a reader does is grep for the interface this table names. Being caught overstating the
-> seams costs more than admitting there are three of them.
+> Four of them now exist, built on 2026-08-23. **The note stays because it is the reason for the rule
+> that governs this section: every interface named here ships with a consumer in this repository.** An
+> interface with no caller is a guess, and we would owe stability on it. Three of the seven Linear names
+> are still absent, and they are listed as absent below.
 
-**What is genuinely extensible in v0**, verified against `src/`:
+**What is genuinely extensible**, verified against `src/`. See `docs/extending.md` for a worked
+example of each:
 
-| Extend | How | v0 |
+| Extend | How | Shipped consumer that proves it |
 |---|---|---|
-| Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | **yes** — aliased in `services.xml`, and `FixtureCommerceGateway` is the proof it swaps |
-| Swap conversation persistence | decorate/replace `ConversationStore` | **yes** — aliased; `InMemoryConversationStore` in the suite is a second implementation |
-| Replace the whole turn | decorate/replace `ChatTurnRunnerInterface` | **yes** — aliased; this is the widest seam there is |
-| Change the agent voice | `config.xml` field, no code | **yes** |
-| Point at another model | `llmBaseUrl` / `llmModel`, no code | **yes** — any OpenAI-compatible endpoint |
-| Storefront widget markup | Twig block override — five named blocks, see README | **yes, shipped** |
-| Storefront widget behaviour | own JS against `POST /assistant/chat`; the endpoint stays reachable with the widget off | **yes** |
+| Add a tool (own data) | implement `ToolFactoryInterface`, tag `swag_assistant.tool_factory` | `EscalateToolFactory` — needs no catalogue at all |
+| Add a tool (catalogue) | implement `GroundedToolFactoryInterface`, tag `swag_assistant.grounded_tool_factory` | `SearchProductsToolFactory`, `GetProductToolFactory`, `AddToCartToolFactory` |
+| Change the system prompt | decorate `PromptProviderInterface` | `SystemPromptProvider` |
+| Use another model provider | decorate `LlmPlatformInterface` | `SymfonyAiPlatform` |
+| Send turns to analytics | implement `TraceSinkInterface`, tag `swag_assistant.trace_sink` | `LoggerTraceSink`, off unless `logTraces` |
+| Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | `FixtureCommerceGateway` |
+| Swap conversation persistence | decorate/replace `ConversationStore` | `InMemoryConversationStore` in the suite |
+| Replace the whole turn | decorate/replace `ChatTurnRunnerInterface` | the widest seam there is |
+| Change the agent voice | `config.xml`, no code | — |
+| Point at another OpenAI-compatible endpoint | `llmBaseUrl` / `llmModel`, no code | — |
+| Storefront widget markup | Twig block override — five named blocks, see README | — |
+| Storefront widget behaviour | own JS against `POST /assistant/chat` | the endpoint stays reachable with the widget off |
 
-**What requires editing this plugin**, and is therefore not an extension point yet:
+### Two tiers of tool authority
+
+A contributed tool is unprivileged by default: `ToolContext` carries the trace and the merchant's
+config, and **nothing else**. It cannot obtain a `ProductCard`, so it cannot put a price in front of
+the model — which is what keeps this document's claim that the model is *structurally* incapable of
+inventing one from decaying into "by convention".
+
+A tool that genuinely answers from the catalogue implements `GroundedToolFactoryInterface` and
+receives the gateway, the renderer, the blocklist and the variant resolver. The separate name is the
+warning: it inherits the duty to render facts through `FactRenderer` rather than returning them.
+
+**The two context classes share no parent**, so an unprivileged factory cannot cast its way up.
+`ToolAuthorityTest` asserts both that and `ToolContext`'s exact property list, because widening it is
+how the guarantee would end without anyone deciding to end it.
+
+Tools are contributed as **factories** rather than services because a turn's tools share one gateway,
+one trace and one renderer, and must share the same *instances* (R32). `ContributedToolTest` pins
+that across contributed factories — and it is falsifiable: a cloned gateway per factory fails it while
+**passing** the older cart-limit guard, which only covers repeated calls through a single tool.
+
+**What still requires editing this plugin:**
 
 | Wanted | Why it is not a seam | What it needs |
 |---|---|---|
-| Add or remove a tool | `AssistantAgentFactory::create()` builds a fixed array | a `ToolFactoryInterface`: tools are constructed **per request** around one gateway, one trace and one renderer (R32), so a DI tag of stateless services does not fit |
-| Change the system prompt | `Core\Prompt\SystemPrompt` is concrete; `agentVoice` is the only configurable part | a provider interface, once there is a second caller |
-| Use a non-OpenAI-compatible provider | `PlatformFactory::create()` is static and pins the generic bridge | make it a service; Symfony AI ships bridges, we just do not reach them |
-| Change context compression | `SlidingWindowInputProcessor` is instantiated inline | same fix as tools — it is the same array |
-| Ranking rules, knowledge sources, semantic retrieval, trace sinks, MCP surfaces | not started | named in Linear's v0 list; none exist |
+| Product ranking rules | ranking runs inside the gateway's `search()`, applied together with the limit | extracting it into a pipeline the gateway consults |
+| Knowledge sources (FAQ, manuals, CMS) | there is no retrieval architecture to hang them on | its own design; a grounded tool is the workaround today |
+| Context compression | `SlidingWindowInputProcessor` is constructed inline in `AssistantAgentFactory` | the same treatment the tool array got |
+| MCP / WebMCP / UCP surfaces | different quadrant | out of scope by design — see `VISION.md` |
 
 ### API stability
 
 Our own `@api` surface is small on purpose: `CommerceGatewayInterface`, `ConversationStore`,
-`ChatTurnRunnerInterface` and the DTOs they exchange, plus `FactRenderer`. Everything else is
-internal and will move without notice.
+`ChatTurnRunnerInterface`, `ToolFactoryInterface`, `GroundedToolFactoryInterface`, their two context
+classes, `PromptProviderInterface`, `LlmPlatformInterface`, `TraceSinkInterface`, and the DTOs they
+exchange, plus `FactRenderer`. Everything else is internal and will move without notice.
 
 **The tool contract is not ours** — it is `#[AsTool]`, from a 0.x package. That is a conscious
 trade recorded in ADR 0001: better DX for Symfony developers, at the price of inheriting

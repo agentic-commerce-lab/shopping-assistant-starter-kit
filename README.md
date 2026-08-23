@@ -200,7 +200,21 @@ fail on every CI run while proving nothing.
 
 ### Extension points
 
-Override any of these Twig blocks from a theme or plugin:
+**[docs/extending.md](docs/extending.md) has a worked example of each seam.** In short:
+
+| I want to… | How |
+|---|---|
+| Add a tool answering from my own data | `ToolFactoryInterface`, tag `swag_assistant.tool_factory` |
+| Add a tool answering from the catalogue | `GroundedToolFactoryInterface`, tag `swag_assistant.grounded_tool_factory` |
+| Change the system prompt | decorate `PromptProviderInterface` |
+| Use a different model provider | decorate `LlmPlatformInterface` |
+| Send turns to my analytics | `TraceSinkInterface`, tag `swag_assistant.trace_sink` |
+| Swap the catalogue backend | decorate `CommerceGatewayInterface` |
+
+Ranking rules, knowledge sources and MCP surfaces are **not** seams yet; `docs/extending.md` says so
+plainly rather than leaving you to grep for them.
+
+For the widget's markup, override any of these Twig blocks from a theme or plugin:
 
 | Block | Changes |
 |---|---|
