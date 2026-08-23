@@ -32,13 +32,16 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
         private CommerceGatewayInterface $gateway,
         private SystemConfigAssistantConfig $configFactory,
         private SystemConfigLlmSettings $llmFactory,
+        // Injected rather than built here, which is the whole point of the change: this is where a
+        // shop's contributed tool factories arrive, having been collected by the container.
+        private AssistantAgentFactory $agentFactory,
     ) {}
 
     public function run(string $message, string $salesChannelId, array $history): TurnResult
     {
         $config = $this->configFactory->forSalesChannel($salesChannelId);
 
-        $bundle = AssistantAgentFactory::create(
+        $bundle = $this->agentFactory->create(
             $this->gateway,
             $config,
             cartAvailable: true,

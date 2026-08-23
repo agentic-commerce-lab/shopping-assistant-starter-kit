@@ -67,7 +67,7 @@ final readonly class ProbeTurnRunner
             throw new LlmException(\sprintf('Not configured: %s.', implode(', ', $missing)));
         }
 
-        $bundle = AssistantAgentFactory::create(
+        $bundle = AssistantAgentFactory::withCoreToolsOnly()->create(
             $this->gateway,
             $config,
             // The cart exists: this runs inside a Shopware kernel with a real sales-channel

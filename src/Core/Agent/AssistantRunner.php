@@ -8,7 +8,6 @@ use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory\Bundle;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\GuardCheck;
-use Swag\AssistantStarterKit\Core\Prompt\SystemPrompt;
 use Symfony\AI\Agent\Exception\MaxIterationsExceededException;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -141,7 +140,10 @@ final class AssistantRunner
 
     private function buildMessageBag(string $message, MessageBag $history): MessageBag
     {
-        $bag = new MessageBag(Message::forSystem(SystemPrompt::build($this->config, $this->bundle->vocabulary)));
+        $bag = new MessageBag(Message::forSystem($this->bundle->prompt->system(
+            $this->config,
+            $this->bundle->vocabulary,
+        )));
 
         foreach ($history->getMessages() as $historyMessage) {
             $bag->add($historyMessage);

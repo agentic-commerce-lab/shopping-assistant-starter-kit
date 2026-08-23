@@ -110,12 +110,54 @@
             <argument type="service" id="swag_assistant.rate_limiter_storage"/>
         </service>
 
+        <!-- The extension seams. Tools are contributed as *factories* rather than services because a
+             turn's tools are built around one shared gateway, trace and renderer (R32) — a stateless
+             tagged service could not hold them, and one that held them across requests would leak one
+             shopper's retrieved set into another's turn. The two tags are two authority tiers: a
+             plain tool factory receives a ToolContext (trace + config, no catalogue), a grounded one
+             receives the gateway and the renderer and owes them its facts. See docs/extending.md. -->
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\EscalateToolFactory">
+            <tag name="swag_assistant.tool_factory"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\SearchProductsToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\GetProductToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface"
+                 alias="Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Llm\SymfonyAiPlatform"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface"
+                 alias="Swag\AssistantStarterKit\Core\Llm\SymfonyAiPlatform"/>
+
+        <!-- Aliased to the interfaces above, the same way CommerceGatewayInterface and
+             ConversationStore already are: the alias is what makes `decorates` work for an extender. -->
+        <service id="Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory">
+            <argument type="tagged_iterator" tag="swag_assistant.tool_factory"/>
+            <argument type="tagged_iterator" tag="swag_assistant.grounded_tool_factory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface"/>
+        </service>
+
         <!-- The shopper-facing HTTP surface. The widget UI is out of this plan's scope (Robin's
              separate work); this endpoint is the contract it builds against. -->
         <service id="Swag\AssistantStarterKit\Core\Agent\ShopwareChatTurnRunner">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface"

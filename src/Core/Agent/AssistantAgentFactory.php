@@ -8,17 +8,24 @@ use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory\Bundle;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
+use Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
-use Swag\AssistantStarterKit\Core\Llm\PlatformFactory;
+use Swag\AssistantStarterKit\Core\Llm\SymfonyAiPlatform;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary;
+use Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface;
+use Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
-use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
-use Swag\AssistantStarterKit\Core\Tool\EscalateTool;
-use Swag\AssistantStarterKit\Core\Tool\GetProductTool;
-use Swag\AssistantStarterKit\Core\Tool\SearchProductsTool;
+use Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\EscalateToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\GetProductToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolContext;
+use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolFactoryInterface;
+use Swag\AssistantStarterKit\Core\Tool\Factory\SearchProductsToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\ToolContext;
+use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\Toolbox\AgentProcessor;
@@ -52,14 +59,75 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * comes to exist, only that exactly one instance backs the whole request
  * (Ruling R32).
  */
-final class AssistantAgentFactory
+final readonly class AssistantAgentFactory
 {
-    public static function create(
+    /**
+     * @param iterable<ToolFactoryInterface>         $toolFactories
+     * @param iterable<GroundedToolFactoryInterface> $groundedToolFactories
+     */
+    public function __construct(
+        private iterable $toolFactories,
+        private iterable $groundedToolFactories,
+        private PromptProviderInterface $prompt,
+        private LlmPlatformInterface $platform,
+    ) {}
+
+    /**
+     * The shipped assistant, with no container involved.
+     *
+     * {@see \Swag\AssistantStarterKit\Eval\JourneyAttempt}, the probe command and the unit tests all
+     * build this pipeline without Symfony, and that is deliberate rather than incidental: the eval
+     * suite's selling point is that it needs no Shopware and no database and runs in seconds. This
+     * keeps that true, while the storefront gets the container's tagged factories instead.
+     */
+    public static function withCoreToolsOnly(?HttpClientInterface $http = null): self
+    {
+        return new self(
+            [new EscalateToolFactory()],
+            [new SearchProductsToolFactory(), new GetProductToolFactory(), new AddToCartToolFactory()],
+            new SystemPromptProvider(),
+            new SymfonyAiPlatform($http),
+        );
+    }
+
+    /**
+     * The same pipeline plus contributed factories, for tests that need to act like a shop with a
+     * third-party tool installed.
+     *
+     * @param list<ToolFactoryInterface>         $toolFactories
+     * @param list<GroundedToolFactoryInterface> $groundedToolFactories
+     */
+    public function withAdditionalFactories(array $toolFactories, array $groundedToolFactories): self
+    {
+        return new self(
+            [...self::listOf($this->toolFactories), ...$toolFactories],
+            [...self::listOf($this->groundedToolFactories), ...$groundedToolFactories],
+            $this->prompt,
+            $this->platform,
+        );
+    }
+
+    /**
+     * A tagged iterator is a `Traversable` with string keys, and neither spreads. Normalised here so
+     * {@see self::withAdditionalFactories()} can concatenate container-provided factories with
+     * test-provided ones without caring which it was handed.
+     *
+     * @template T of object
+     *
+     * @param iterable<T> $factories
+     *
+     * @return list<T>
+     */
+    private static function listOf(iterable $factories): array
+    {
+        return \is_array($factories) ? array_values($factories) : iterator_to_array($factories, false);
+    }
+
+    public function create(
         CommerceGatewayInterface $gateway,
         AssistantConfig $config,
         bool $cartAvailable,
         LlmSettings $llm,
-        ?HttpClientInterface $http = null,
     ): Bundle {
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
@@ -83,34 +151,36 @@ final class AssistantAgentFactory
         $variantResolver = new VariantResolver($gateway, $trace);
         $blocklist = new BlocklistFilter();
 
-        $tools = [
-            new SearchProductsTool(
-                $gateway,
-                $facetProbe,
-                $queryBuilder,
-                $variantResolver,
-                $blocklist,
-                $renderer,
-                $trace,
-                $config,
-            ),
-            new GetProductTool($gateway, $variantResolver, $blocklist, $renderer, $trace, $config),
-        ];
+        // Grounded factories first, so the shipped tool order — search, get, cart, then escalate — is
+        // exactly what it was before this became a service. A reordered toolbox changes which tool a
+        // model reaches for first, and that is not a change to make accidentally inside a refactor.
+        $groundedContext = new GroundedToolContext(
+            gateway: $gateway,
+            trace: $trace,
+            config: $config,
+            renderer: $renderer,
+            facetProbe: $facetProbe,
+            blocklist: $blocklist,
+            variantResolver: $variantResolver,
+            queryBuilder: $queryBuilder,
+            cartAvailable: $cartAvailable,
+        );
+        $context = new ToolContext($trace, $config);
 
-        // An unavailable tool is never constructed, so the model never sees it in the
-        // toolbox's schema — that is what keeps capability control out of the prompt.
-        if ($config->enableAddToCart && $cartAvailable) {
-            $tools[] = new AddToCartTool($gateway, $blocklist, $renderer, $trace, $config);
+        $tools = [];
+
+        foreach ($this->groundedToolFactories as $factory) {
+            $tools[] = $factory->create($groundedContext);
         }
 
-        // Same rule for escalation, and the same reason it is not a prompt instruction. Note the
-        // asymmetry with add-to-cart: there is no `cartAvailable` equivalent here, because escalation
-        // needs nothing from the request beyond configuration — the probe command and the eval suite
-        // get it too. `SystemPrompt` drops its "escalate" clause in step with this, because ordering
-        // a call the toolbox cannot serve is worse than not mentioning it.
-        if ($config->enableEscalation) {
-            $tools[] = new EscalateTool($trace, $config);
+        foreach ($this->toolFactories as $factory) {
+            $tools[] = $factory->create($context);
         }
+
+        // A factory returning null contributed nothing: that is how enableAddToCart and
+        // enableEscalation are enforced, and array_filter is where "never constructed" becomes
+        // "never in the toolbox the model sees".
+        $tools = array_values(array_filter($tools));
 
         // AgentProcessor's own maxToolCalls argument is provably inert — see
         // BoundedToolbox's docblock — so it is not what enforces the bound. It is
@@ -127,12 +197,12 @@ final class AssistantAgentFactory
         // a real TextResult, in either order — see OutputProcessorOrderTest, which is kept as
         // the regression check for that finding, not as proof this order is currently required.
         $agent = new Agent(
-            PlatformFactory::create($llm, $http),
+            $this->platform->of($llm),
             $llm->model,
             inputProcessors: [new SlidingWindowInputProcessor(), $toolProcessor],
             outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace)],
         );
 
-        return new Bundle($agent, $renderer, $trace, $toolbox, $vocabularyStats['text']);
+        return new Bundle($agent, $renderer, $trace, $toolbox, $this->prompt, $vocabularyStats['text']);
     }
 }

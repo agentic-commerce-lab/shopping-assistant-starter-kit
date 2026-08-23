@@ -30,14 +30,13 @@ final class AssistantAgentFactoryTest extends TestCase
 
     private function bundle(AssistantConfig $config, bool $cartAvailable = true): AssistantAgentFactory\Bundle
     {
-        return AssistantAgentFactory::create(
+        return AssistantAgentFactory::withCoreToolsOnly(new MockHttpClient(static function (): never {
+            throw new \RuntimeException('The platform must not be called by this test.');
+        }))->create(
             FixtureCommerceGateway::fromFile(self::catalogFixturePath()),
             $config,
             $cartAvailable,
             new LlmSettings('https://example.invalid', 'test-key', 'gpt-x'),
-            new MockHttpClient(static function (): never {
-                throw new \RuntimeException('The platform must not be called by this test.');
-            }),
         );
     }
 

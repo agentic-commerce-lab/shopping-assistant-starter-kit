@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
@@ -27,6 +28,10 @@ use Symfony\AI\Agent\Toolbox\ToolboxInterface;
  * catalog itself — it only needs the string to hand to
  * {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt::build()}.
  */
+// @mago-expect lint:excessive-parameter-list
+// One property per per-request collaborator the turn needs, which is the point of the class: these
+// are the instances ruling R32 says must be shared, travelling together so a caller cannot pick up
+// four of the five. Grouping them behind a sub-object would hide exactly that.
 final readonly class Bundle
 {
     public function __construct(
@@ -34,6 +39,9 @@ final readonly class Bundle
         public FactRenderer $renderer,
         public TraceRecorder $trace,
         public ToolboxInterface $toolbox,
+        // Carried on the bundle rather than read statically by AssistantRunner: a provider the
+        // container decorated has to reach the turn, and a static call would silently ignore it.
+        public PromptProviderInterface $prompt,
         public string $vocabulary = '',
     ) {}
 }

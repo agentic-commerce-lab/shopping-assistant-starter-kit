@@ -54,12 +54,13 @@ final class AssistantVocabularyWiringTest extends TestCase
             return self::textResponse('Sure — how can I help?');
         });
 
-        $bundle = AssistantAgentFactory::create(
+        // The capturing client goes to the platform: this test reads the system message off the wire,
+        // so the platform must actually be called.
+        $bundle = AssistantAgentFactory::withCoreToolsOnly($http)->create(
             FixtureCommerceGateway::fromFile(self::catalogFixturePath()),
             $config,
             cartAvailable: false,
             llm: new LlmSettings('https://1.1.1.1', 'test-key', 'gpt-x'),
-            http: $http,
         );
 
         (new AssistantRunner($config, $bundle))->run('hello', new MessageBag());

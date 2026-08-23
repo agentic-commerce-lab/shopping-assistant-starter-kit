@@ -27,12 +27,13 @@ final class AssistantRunnerTest extends TestCase
         bool $cartAvailable,
         ?HttpClientInterface $http = null,
     ): AssistantAgentFactory\Bundle {
-        return AssistantAgentFactory::create(
+        // The client now belongs to the platform rather than to create(): same default as before,
+        // a client that throws if anything reaches the network.
+        return AssistantAgentFactory::withCoreToolsOnly($http ?? self::forbiddenHttpClient())->create(
             FixtureCommerceGateway::fromFile(self::catalogFixturePath()),
             $config,
             $cartAvailable,
             new LlmSettings('https://example.invalid', 'test-key', 'gpt-x'),
-            $http ?? self::forbiddenHttpClient(),
         );
     }
 
@@ -133,7 +134,9 @@ final class AssistantRunnerTest extends TestCase
         ]);
 
         $config = new AssistantConfig(maxToolCallsPerTurn: 2);
-        $bundle = AssistantAgentFactory::create(
+        // The transcript client goes to the platform, which is where the HTTP client now lives —
+        // unlike bundle()'s refusing client, this test's whole point is that the platform IS called.
+        $bundle = AssistantAgentFactory::withCoreToolsOnly($http)->create(
             FixtureCommerceGateway::fromFile(self::catalogFixturePath()),
             $config,
             cartAvailable: false,
@@ -142,7 +145,6 @@ final class AssistantRunnerTest extends TestCase
             // clear ValidatingHttpClient's SSRF guard; same host JourneyAttemptMultiTurnTest
             // uses for the same reason.
             llm: new LlmSettings('https://1.1.1.1', 'test-key', 'gpt-x'),
-            http: $http,
         );
         $runner = new AssistantRunner($config, $bundle);
 

@@ -75,7 +75,7 @@ final class JourneyAttempt
         // cartAvailable is always true: a real storefront always has a shopper cart, and
         // AssistantConfig::$enableAddToCart (defaulted on) is what actually gates whether
         // add_to_cart is ever constructed, per Ruling R32/R34 in AssistantAgentFactory.
-        $bundle = AssistantAgentFactory::create($gateway, $config, true, $this->llm, $this->http);
+        $bundle = AssistantAgentFactory::withCoreToolsOnly($this->http)->create($gateway, $config, true, $this->llm);
         $runner = new AssistantRunner($config, $bundle);
 
         $history = new MessageBag();
