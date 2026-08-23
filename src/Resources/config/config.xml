@@ -185,6 +185,21 @@
     </card>
 
     <card>
+        <title>Analytics</title>
+
+        <input-field type="bool">
+            <name>logTraces</name>
+            <label>Write one log line per conversation turn</label>
+            <defaultValue>false</defaultValue>
+            <helpText>Logs which conversation, which sales channel, how the turn ended and how long
+                it took — and no shopper text, because a log file has neither the retention task nor
+                the access control the conversation table has. This is the shipped example of the
+                swag_assistant.trace_sink extension point rather than a full analytics integration:
+                see docs/extending.md to send turns somewhere of your own.</helpText>
+        </input-field>
+    </card>
+
+    <card>
         <title>Data retention</title>
 
         <input-field type="int">

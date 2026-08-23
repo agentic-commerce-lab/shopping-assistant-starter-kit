@@ -26,5 +26,6 @@ final readonly class AssistantConfig
         public bool $enableEscalation = true,
         public string $escalationUrl = '',
         public string $escalationMessage = '',
+        public bool $logTraces = false,
     ) {}
 }

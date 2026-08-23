@@ -89,6 +89,7 @@ final class PluginManifestTest extends TestCase
             'enableEscalation',
             'escalationUrl',
             'escalationMessage',
+            'logTraces',
         ];
 
         foreach ($required as $key) {

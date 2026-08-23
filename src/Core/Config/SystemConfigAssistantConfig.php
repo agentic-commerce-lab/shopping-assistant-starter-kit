@@ -55,6 +55,7 @@ final readonly class SystemConfigAssistantConfig
                 self::PREFIX . 'escalationMessage',
                 $salesChannelId,
             )),
+            logTraces: $this->boolOr('logTraces', false, $salesChannelId),
         );
     }
 

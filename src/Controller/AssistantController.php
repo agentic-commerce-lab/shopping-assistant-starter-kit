@@ -14,6 +14,7 @@ use Swag\AssistantStarterKit\Core\Policy\BudgetVerdict;
 use Swag\AssistantStarterKit\Core\Policy\RequestBudget;
 use Swag\AssistantStarterKit\Core\Trace\ConversationStore;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
+use Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,6 +58,9 @@ class AssistantController extends StorefrontController
         private readonly RequestBudget $budget,
         private readonly CardPayload $cardPayload = new CardPayload(),
         private readonly HandoffPayload $handoff = new HandoffPayload(),
+        // Defaulted to an empty dispatcher so a shop with no sinks configured pays nothing and
+        // needs no wiring; the container passes the tagged ones.
+        private readonly TraceSinkDispatcher $traceSinks = new TraceSinkDispatcher([]),
     ) {}
 
     #[Route(
@@ -142,6 +146,11 @@ class AssistantController extends StorefrontController
             ),
             $result->trace,
         );
+
+        // **After persistence, never before.** A sink is third-party code, and one that throws must
+        // not cost the merchant the audit row that was the point of recording the turn. The dispatcher
+        // isolates each sink; see TraceSinkDispatcher for what a failure does instead.
+        $this->traceSinks->dispatch($token, $salesChannelId, $result->trace);
 
         return new JsonResponse([
             'token' => $token,

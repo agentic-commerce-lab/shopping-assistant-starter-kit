@@ -151,6 +151,23 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface"/>
         </service>
 
+        <!-- Analytics destinations. A sink runs synchronously inside the shopper's request, after the
+             trace is persisted, and a throwing one is isolated rather than allowed to fail a
+             delivered answer. LoggerTraceSink is the shipped example, off unless `logTraces` is on. -->
+        <service id="Swag\AssistantStarterKit\Core\Trace\Sink\LoggerTraceSink">
+            <argument type="service" id="logger"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <tag name="swag_assistant.trace_sink"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher">
+            <argument type="tagged_iterator" tag="swag_assistant.trace_sink"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Controller\CardPayload"/>
+
+        <service id="Swag\AssistantStarterKit\Controller\HandoffPayload"/>
+
         <!-- The shopper-facing HTTP surface. The widget UI is out of this plan's scope (Robin's
              separate work); this endpoint is the contract it builds against. -->
         <service id="Swag\AssistantStarterKit\Core\Agent\ShopwareChatTurnRunner">
@@ -169,6 +186,9 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Policy\RequestBudget"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Controller\CardPayload"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Controller\HandoffPayload"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>
