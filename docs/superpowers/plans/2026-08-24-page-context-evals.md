@@ -53,6 +53,10 @@
 - `src/Eval/JourneyFileParser.php` — parses it
 - `src/Eval/Assertion/AssertionRegistry.php` — one arm
 - `src/Eval/JourneyAttempt.php` — resolves the id and threads both ids into the factory
+- `tests/Eval/JourneyReportSummaryTest.php`, `tests/Eval/JourneyConfigTest.php`,
+  `tests/Eval/AssertionProgressThresholdTest.php` — **found during execution**: four places build a
+  `Journey` directly with named arguments, and a required eighth field breaks all of them. Each
+  gains `page: JourneyPage::parse(null, 'test_journey')`
 - `README.md`, `ARCHITECTURE.md` — the journey format, and two stale counts
 
 ---
