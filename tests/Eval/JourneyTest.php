@@ -90,4 +90,26 @@ final class JourneyTest extends TestCase
             unlink($path);
         }
     }
+
+    /**
+     * Every committed journey must parse in the **deterministic** suite.
+     *
+     * Without this, a typo in a journey file — an unknown assertion name, a malformed page block —
+     * surfaces only when someone runs the credentialed eval suite, which is the expensive place to
+     * discover a syntax problem. `Journey::fromFile()` resolves assertion names through
+     * `AssertionRegistry`, so this also proves every name a journey declares actually exists.
+     */
+    public function testEveryCommittedJourneyParses(): void
+    {
+        $paths = glob(__DIR__ . '/../Journeys/*.php') ?: [];
+
+        self::assertNotEmpty($paths, 'the journey directory must not be empty');
+
+        foreach ($paths as $path) {
+            $journey = Journey::fromFile($path);
+
+            self::assertNotSame('', $journey->id, $path);
+            self::assertNotSame([], $journey->assertions, $path . ' declares no assertions');
+        }
+    }
 }

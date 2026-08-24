@@ -347,8 +347,10 @@ cp .env.example .env
 composer run test:eval
 ```
 
-**Budget the time and the spend.** Eight journeys, each up to three runs per archetype, every run a
-real turn: the whole suite is well over five minutes and costs real tokens. That is also why
+**Budget the time and the spend.** Fifteen journeys, each up to three runs per archetype, every run
+a real turn: the whole suite is well over five minutes and costs real tokens. **A local `.env` is
+loaded by `tests/bootstrap.php`**, so on a credentialed machine `vendor/bin/phpunit tests/Eval/`
+fires all of them — use `--exclude-group eval` when you only mean to run the deterministic ones. That is also why
 `composer.json` sets `process-timeout: 1800` — Composer's 300-second default killed the run partway
 through, which reads as a failure rather than as a timeout. To spend less, filter to one journey:
 

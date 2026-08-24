@@ -122,7 +122,7 @@ src/
 └── Migration/                      creates both tables
 tests/
 ├── Fixtures/catalog.json           12 fixture products
-├── Journeys/                       6 journey definitions
+├── Journeys/                       15 journey definitions
 └── Eval/                           PHPUnit, group="eval"
 ```
 
@@ -857,8 +857,15 @@ Shopware system config has no real secret storage) · `agentVoice` · `excludedC
 
 ## Eval slice (v0)
 
-12 fixtures, 6 journeys, 7 assertions, **all against `FixtureCommerceGateway`** — no
+12 fixtures, 15 journeys, 11 assertions, **all against `FixtureCommerceGateway`** — no
 Shopware, no database, runs in seconds.
+
+A journey may also declare a `page` block — `['productId' => …]`, `['categoryId' => …]` — putting
+the shopper on a product or category page for the run. `JourneyAttempt` resolves a product id
+through the same gateway and the same `CatalogScope` `ShopwareChatTurnRunner` uses, so a journey can
+block its own page product and assert that page context granted nothing. The `tool_calls_at_most`
+assertion bounds how many tools the model reached for across the run; it is **not** a safety
+assertion, because a turn that calls a tool and renders the right card is correct, only slower.
 
 | Assertion | Computed from | Threshold |
 |---|---|---|
