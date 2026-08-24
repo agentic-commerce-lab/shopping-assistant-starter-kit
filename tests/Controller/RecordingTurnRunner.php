@@ -29,10 +29,31 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
     /** @var list<ConversationTurn> */
     public array $lastHistory = [];
 
-    public function run(string $message, string $salesChannelId, array $history): TurnResult
+    /** The page-context hint the controller passed on, so a test can assert it survived the parse. */
+    public ?string $lastViewingProductId = null;
+
+    /**
+     * Seeds the recorded value, so a test can prove the *next* turn overwrote it with null rather
+     * than simply never having touched it.
+     *
+     * A method rather than the property assignment it wraps: assigning a literal narrows the
+     * property's type at the call site, and the analyzer then reports the `assertNull` that follows
+     * as an impossible comparison — it cannot see that the controller writes it in between.
+     */
+    public function seedViewingProductId(?string $value): void
     {
+        $this->lastViewingProductId = $value;
+    }
+
+    public function run(
+        string $message,
+        string $salesChannelId,
+        array $history,
+        ?string $viewingProductId = null,
+    ): TurnResult {
         $this->calls++;
         $this->lastHistory = $history;
+        $this->lastViewingProductId = $viewingProductId;
 
         $trace = new TraceRecorder();
         $trace->record('guard.check', ['verdict' => 'allow']);

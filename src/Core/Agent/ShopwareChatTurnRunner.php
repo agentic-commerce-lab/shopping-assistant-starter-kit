@@ -37,8 +37,12 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
         private AssistantAgentFactory $agentFactory,
     ) {}
 
-    public function run(string $message, string $salesChannelId, array $history): TurnResult
-    {
+    public function run(
+        string $message,
+        string $salesChannelId,
+        array $history,
+        ?string $viewingProductId = null,
+    ): TurnResult {
         $config = $this->configFactory->forSalesChannel($salesChannelId);
 
         $bundle = $this->agentFactory->create(

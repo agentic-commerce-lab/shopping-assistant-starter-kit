@@ -44,6 +44,9 @@ final readonly class ChatRequest
         // stack trace. Same treatment ConversationStore's $token and LlmSettings::$apiKey have.
         #[\SensitiveParameter]
         public ?string $token,
+        // Not sensitive: public catalogue ids, unlike the conversation token above. A separate
+        // object because it is a separate subject — see PageContext.
+        public PageContext $page,
     ) {}
 
     public static function fromRequest(Request $request): self
@@ -52,7 +55,11 @@ final readonly class ChatRequest
 
         $raw = $request->isMethod('GET') ? $request->query->get('token') : $payload['token'] ?? null;
 
-        return new self(message: self::message($payload['message'] ?? null), token: self::token($raw));
+        return new self(
+            message: self::message($payload['message'] ?? null),
+            token: self::token($raw),
+            page: PageContext::fromPayload($payload),
+        );
     }
 
     /**

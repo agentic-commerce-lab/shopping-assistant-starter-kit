@@ -19,7 +19,15 @@ use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 interface ChatTurnRunnerInterface
 {
     /**
-     * @param list<ConversationTurn> $history oldest first
+     * @param list<ConversationTurn> $history          oldest first
+     * @param ?string                $viewingProductId the product the storefront reports open, or null.
+     *                                                 A **hint**: the implementation resolves it through
+     *                                                 the catalogue scope and ignores what does not resolve.
      */
-    public function run(string $message, string $salesChannelId, array $history): TurnResult;
+    public function run(
+        string $message,
+        string $salesChannelId,
+        array $history,
+        ?string $viewingProductId = null,
+    ): TurnResult;
 }
