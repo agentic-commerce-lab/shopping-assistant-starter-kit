@@ -23,11 +23,15 @@ interface ChatTurnRunnerInterface
      * @param ?string                $viewingProductId the product the storefront reports open, or null.
      *                                                 A **hint**: the implementation resolves it through
      *                                                 the catalogue scope and ignores what does not resolve.
+     * @param ?string $browsingCategoryId the category the storefront reports being browsed, or null.
+     *                                    Never resolved — it only narrows a search, and narrowing is
+     *                                    safe by construction (P8).
      */
     public function run(
         string $message,
         string $salesChannelId,
         array $history,
         ?string $viewingProductId = null,
+        ?string $browsingCategoryId = null,
     ): TurnResult;
 }

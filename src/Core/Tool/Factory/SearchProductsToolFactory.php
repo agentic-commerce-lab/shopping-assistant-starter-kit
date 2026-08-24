@@ -22,6 +22,7 @@ final readonly class SearchProductsToolFactory implements GroundedToolFactoryInt
             $context->renderer,
             $context->trace,
             $context->config,
+            $context->browsingCategoryId,
         );
     }
 }

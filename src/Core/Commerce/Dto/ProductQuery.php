@@ -45,4 +45,19 @@ final readonly class ProductQuery
     {
         return max($this->limit, $this->candidateLimit ?? $this->limit);
     }
+
+    /**
+     * The same query without the shopper's location, for the retry P9 mandates: a category is a
+     * helpful default, not a cage, and asking for gloves in the jersey aisle must return gloves.
+     */
+    public function withoutCategory(): self
+    {
+        return new self(
+            term: $this->term,
+            filters: $this->filters,
+            limit: $this->limit,
+            sort: $this->sort,
+            candidateLimit: $this->candidateLimit,
+        );
+    }
 }

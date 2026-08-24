@@ -113,7 +113,13 @@ class AssistantController extends StorefrontController
         $token = $chat->token ?? $this->conversations->start($salesChannelId, $context->getLanguageId());
         $history = $this->conversations->history($token, self::MAX_HISTORY_TURNS);
 
-        $result = $this->turnRunner->run($message, $salesChannelId, $history, $chat->page->productId);
+        $result = $this->turnRunner->run(
+            $message,
+            $salesChannelId,
+            $history,
+            $chat->page->productId,
+            $chat->page->categoryId,
+        );
         $turn = $result->turn;
 
         // Both messages are stored, the shopper's included: without it the replayed conversation

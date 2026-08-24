@@ -47,5 +47,14 @@ final readonly class GroundedToolContext
         public VariantResolver $variantResolver,
         public QueryBuilder $queryBuilder,
         public bool $cartAvailable,
+        /**
+         * The category the shopper is browsing, when the storefront reported one.
+         *
+         * **A tool may use this only to narrow.** It is client-supplied and never resolved against
+         * the catalogue, so it grants nothing: as a `ProductQuery` constraint it is AND-ed with the
+         * merchant's scope and can only ever return fewer products (P8). Putting it anywhere the
+         * scope is OR-ed would turn it into a policy bypass.
+         */
+        public ?string $browsingCategoryId = null,
     ) {}
 }

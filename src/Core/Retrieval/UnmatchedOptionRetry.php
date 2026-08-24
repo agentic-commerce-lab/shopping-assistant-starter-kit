@@ -120,6 +120,11 @@ final class UnmatchedOptionRetry
                 limit: $query->limit,
                 sort: $query->sort,
                 candidateLimit: $query->candidateLimit,
+                // Carried, not dropped: this retry relaxes ONE thing, and the shopper's location is
+                // not it. Rebuilding the query without it would leave the category silently — the
+                // shopper would get products from another aisle with nothing in the trace saying
+                // the aisle was abandoned, which is what `retrieve.without_category` exists to say.
+                categoryId: $query->categoryId,
             ),
             $scope,
         );

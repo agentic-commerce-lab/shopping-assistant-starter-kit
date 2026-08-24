@@ -125,12 +125,19 @@ final readonly class AssistantAgentFactory
         return \is_array($factories) ? array_values($factories) : iterator_to_array($factories, false);
     }
 
+    // @mago-expect lint:excessive-parameter-list
+    // Three of these are the turn's world — gateway, config, LLM — and the rest are what this
+    // particular request happens to be: whether a cart exists, what the shopper has open, and
+    // where they are standing. They are already grouped everywhere it helps (AssistantConfig,
+    // GroundedToolContext); one more level would only move the list somewhere a caller cannot see
+    // it, and every parameter past the third is optional at the call site.
     public function create(
         CommerceGatewayInterface $gateway,
         AssistantConfig $config,
         bool $cartAvailable,
         LlmSettings $llm,
         ?ProductCard $viewing = null,
+        ?string $browsingCategoryId = null,
     ): Bundle {
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
@@ -180,6 +187,7 @@ final readonly class AssistantAgentFactory
             variantResolver: $variantResolver,
             queryBuilder: $queryBuilder,
             cartAvailable: $cartAvailable,
+            browsingCategoryId: $browsingCategoryId,
         );
         $context = new ToolContext($trace, $config);
 

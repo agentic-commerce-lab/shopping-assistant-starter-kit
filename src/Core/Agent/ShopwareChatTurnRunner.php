@@ -42,6 +42,7 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
         string $salesChannelId,
         array $history,
         ?string $viewingProductId = null,
+        ?string $browsingCategoryId = null,
     ): TurnResult {
         $config = $this->configFactory->forSalesChannel($salesChannelId);
 
@@ -56,11 +57,13 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
             cartAvailable: true,
             llm: $this->llmFactory->forSalesChannel($salesChannelId),
             viewing: $viewing,
+            browsingCategoryId: $browsingCategoryId,
         );
 
         $bundle->trace->record('page.context', [
             'reported' => $viewingProductId !== null,
             'resolved' => $viewing?->id,
+            'category' => $browsingCategoryId,
         ]);
 
         try {

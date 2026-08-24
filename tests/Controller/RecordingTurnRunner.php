@@ -29,8 +29,10 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
     /** @var list<ConversationTurn> */
     public array $lastHistory = [];
 
-    /** The page-context hint the controller passed on, so a test can assert it survived the parse. */
+    /** The page-context hints the controller passed on, so a test can assert they survived the parse. */
     public ?string $lastViewingProductId = null;
+
+    public ?string $lastBrowsingCategoryId = null;
 
     /**
      * Seeds the recorded value, so a test can prove the *next* turn overwrote it with null rather
@@ -50,10 +52,12 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
         string $salesChannelId,
         array $history,
         ?string $viewingProductId = null,
+        ?string $browsingCategoryId = null,
     ): TurnResult {
         $this->calls++;
         $this->lastHistory = $history;
         $this->lastViewingProductId = $viewingProductId;
+        $this->lastBrowsingCategoryId = $browsingCategoryId;
 
         $trace = new TraceRecorder();
         $trace->record('guard.check', ['verdict' => 'allow']);

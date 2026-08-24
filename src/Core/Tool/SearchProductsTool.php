@@ -111,10 +111,12 @@ final class SearchProductsTool
             . 'offer to try different words. Do not tell the shopper the shop does not sell it.';
 
     // @mago-expect lint:excessive-parameter-list
-    // Every parameter is one collaborator this method orchestrates without reimplementing;
-    // the brief dictates this exact list, and the mandated test constructs it positionally
-    // with these same eight arguments, so the list cannot shrink without either duplicating
-    // a collaborator's logic here or breaking that test.
+    // The first eight parameters are one collaborator each, orchestrated here without being
+    // reimplemented; the brief dictates that list, and the mandated tests construct it
+    // positionally, so it cannot shrink without either duplicating a collaborator's logic here or
+    // breaking those tests. The ninth is not a collaborator but per-request state — where the
+    // shopper is standing — and it goes last so those positional constructions keep meaning what
+    // they meant.
     public function __construct(
         private readonly CommerceGatewayInterface $gateway,
         private readonly FacetProbe $facetProbe,
@@ -124,6 +126,12 @@ final class SearchProductsTool
         private readonly FactRenderer $renderer,
         private readonly TraceRecorder $trace,
         private readonly AssistantConfig $config,
+        /**
+         * The category the shopper is browsing, or null. A default constraint on this turn's
+         * searches, not a bound the model chose — so it is retried away rather than enforced when
+         * it costs the shopper an answer (P9).
+         */
+        private readonly ?string $browsingCategoryId = null,
     ) {}
 
     /**
@@ -206,6 +214,7 @@ final class SearchProductsTool
             'searchTerm' => $buildResult->query->term,
             'limitRequested' => $requestedLimit,
             'candidateLimit' => $candidateLimit,
+            'categoryId' => $this->browsingCategoryId,
         ]);
 
         // QueryBuilder::build() does not carry a limit — ShopperIntent has none — so the
@@ -217,6 +226,7 @@ final class SearchProductsTool
             limit: $requestedLimit,
             sort: $buildResult->query->sort,
             candidateLimit: $candidateLimit,
+            categoryId: $this->browsingCategoryId,
         );
 
         // The full scope — including blockedProductIds/blockedCategoryIds — goes to
@@ -269,6 +279,21 @@ final class SearchProductsTool
                 $cards = $relaxed;
                 $optionNote = RelaxedTermRetry::NOTE;
             }
+        }
+
+        // Last of the three retries, and last deliberately: the two above are more specific
+        // diagnoses of the shopper's own words, and both of them search *within* the category,
+        // which is what a shopper standing in an aisle should get first. Only when neither found
+        // anything is the aisle itself the thing in the way.
+        //
+        // P9: the shopper's location is a helpful default, not a cage. Asking for gloves in the
+        // jersey aisle must return gloves. Traced so a merchant reading the trace sees both passes.
+        if ($cards === [] && $this->browsingCategoryId !== null) {
+            $cards = $this->gateway->search($query->withoutCategory(), $scope);
+            $this->trace->record('retrieve.without_category', [
+                'categoryId' => $this->browsingCategoryId,
+                'hits' => \count($cards),
+            ]);
         }
 
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
