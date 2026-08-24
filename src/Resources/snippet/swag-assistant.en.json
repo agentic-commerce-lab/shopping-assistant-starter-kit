@@ -10,6 +10,7 @@
       "inputPlaceholder": "Ask about this shop…",
       "send": "Send",
       "defaultGreeting": "Hi. I can look things up in this shop's catalogue.",
+      "resize": "Resize the assistant",
       "reset": "Start a new conversation",
       "suggestionsLabel": "Things you could ask",
       "composerTooLong": "%count% of %limit% characters — please shorten this.",

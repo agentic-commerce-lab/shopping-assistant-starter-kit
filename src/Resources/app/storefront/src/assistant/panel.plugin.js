@@ -4,10 +4,13 @@ import { createThinking } from './thinking';
 import { createComposer } from './composer';
 import { createCreature } from './creature';
 import { markAdded } from './card';
+import { attachResize, restoreSize } from './resize';
 
 const { PluginBaseClass } = window;
 
 const TOKEN_KEY = 'swagAssistantToken';
+
+const SIZE_KEY = 'swagAssistantPanelSize';
 
 /**
  * `ChatRequest::MAX_MESSAGE_LENGTH`. The server rejects rather than truncates, so refuse earlier.
@@ -222,6 +225,17 @@ export default class SwagAssistantPanel extends PluginBaseClass {
     open() {
         this.panel.hidden = false;
 
+        // Restored before the panel becomes visible, so it opens at its remembered size rather than
+        // snapping to it. Re-clamped on every open because the window may have been resized since.
+        if (window.innerWidth > SHEET_BREAKPOINT) {
+            restoreSize(this.panel, this._storedSize());
+            this._detachResize = attachResize(
+                this.panel,
+                this.el.querySelector('[data-swag-assistant-resize]'),
+                { onCommit: (size) => this._rememberSize(size) },
+            );
+        }
+
         /*
          * `aria-modal` is set here rather than in the template, because whether it is true depends on
          * the viewport. On desktop the panel is genuinely non-modal — the storefront behind it stays
@@ -245,9 +259,39 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         this.el.dispatchEvent(new CustomEvent('swag-assistant:open'));
     }
 
+    /**
+     * The remembered panel size, or null.
+     *
+     * `localStorage`, not `sessionStorage` where the conversation token lives: a token belongs to one
+     * tab, and "I like it bigger" is a preference that should outlive the tab that set it.
+     */
+    _storedSize() {
+        try {
+            return JSON.parse(window.localStorage.getItem(SIZE_KEY) ?? 'null');
+        } catch {
+            // Anyone can edit localStorage. Unparseable means "no preference", not an exception on
+            // opening the panel.
+            return null;
+        }
+    }
+
+    _rememberSize(size) {
+        try {
+            window.localStorage.setItem(SIZE_KEY, JSON.stringify(size));
+        } catch {
+            // Private browsing and full quotas both throw here. Losing the preference is the correct
+            // degradation; failing to resize is not.
+        }
+    }
+
     close() {
         this.el.classList.remove('is-open');
         this.orb?.setAttribute('aria-expanded', 'false');
+
+        // Listeners come off with the panel. Reopening attaches fresh ones, and a handle that
+        // accumulated a listener per open would resize by a multiple of the drag.
+        this._detachResize?.();
+        this._detachResize = null;
 
         // Focus goes back where it came from. Someone who closed with Escape must not be dropped at
         // the top of the document.

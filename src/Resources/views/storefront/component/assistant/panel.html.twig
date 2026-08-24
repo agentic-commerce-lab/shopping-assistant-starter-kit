@@ -11,6 +11,17 @@
              aria-label="{{ swag_assistant_widget_name(context.salesChannelId) }}"
              hidden>
 
+        {% block swag_assistant_panel_resize %}
+            {# A real button, so it is reachable by keyboard and has a name. Arrow keys resize it; a
+               pointer-only handle is one a keyboard user cannot use, and every other control here is
+               operable. Hidden on the phone sheet by the stylesheet, where resizing a full-screen
+               surface means nothing. #}
+            <button class="swag-assistant-panel__resize"
+                    type="button"
+                    data-swag-assistant-resize
+                    aria-label="{{ 'swagAssistant.panel.resize'|trans }}"></button>
+        {% endblock %}
+
         {% block swag_assistant_panel_header %}
             <header class="swag-assistant-panel__header">
                 {# The creature, docked — the same markup and the same moods as the orb, so opening the

@@ -10,6 +10,7 @@
       "inputPlaceholder": "Frage zum Shop stellen…",
       "send": "Senden",
       "defaultGreeting": "Hallo. Ich kann im Katalog dieses Shops nachsehen.",
+      "resize": "Größe des Assistenten ändern",
       "reset": "Neue Unterhaltung beginnen",
       "suggestionsLabel": "Das könntest du fragen",
       "composerTooLong": "%count% von %limit% Zeichen — bitte kürzen.",
