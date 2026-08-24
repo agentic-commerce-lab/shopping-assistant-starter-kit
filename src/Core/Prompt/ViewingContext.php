@@ -22,6 +22,23 @@ use Swag\AssistantStarterKit\Core\Tool\ToolProductSummary;
  *
  * The line is a statement of fact, not an instruction: what the assistant may *do* is decided by
  * which tools were constructed, never by prompt text (D6).
+ *
+ * ## The wording is load-bearing, and that is measured
+ *
+ * This sentence closed with *"You still have no price or stock for it here — use your tools."* on
+ * its first live run (2026-08-24, `anthropic/claude-sonnet-5`). Asked *"is this in stock?"* on the
+ * Blue/M variant page, the model did exactly as told: it called `get_product` for the product
+ * already sitting in its own prompt and already registered on the renderer. Two model round trips,
+ * **13.8 s**, for a card the shop was going to render either way.
+ *
+ * Telling it instead that the card is *already being shown* took the same question to **one** round
+ * trip, **zero** tool calls and **3.7 s** — the same architecture, the same code, one sentence. The
+ * two questions that genuinely need another variant ("in black?", "in blue, size M?" on the parent)
+ * still spend their one tool call, which is correct: the shortcut is for the product on screen, not
+ * for the catalogue.
+ *
+ * So: do not soften "do not call a tool to look this product up" into a hint, and do not reintroduce
+ * "use your tools" — that clause is what the measurement caught costing ten seconds.
  */
 final class ViewingContext
 {
@@ -49,7 +66,10 @@ final class ViewingContext
         return \sprintf(
             'The shopper is currently looking at this product: %s%s [id %s]. '
             . 'When they say "this", "it" or "that", they mean this product unless they clearly '
-            . 'name another. You still have no price or stock for it here — use your tools.',
+            . 'name another. Its card is ALREADY being shown to them alongside your answer, with '
+            . 'its real price and availability filled in by the shop — so do not call a tool to '
+            . 'look this product up. Call one only if you need a DIFFERENT product or a different '
+            . 'variant. Never state a figure yourself: the card carries them.',
             $summary['name'],
             $described,
             $summary['id'],

@@ -1609,11 +1609,6 @@ git commit -m "feat(admin): show page context and the category retry in the trac
 
 ### Task 9: Measure it, because the whole justification is a latency claim
 
-> **BLOCKED, 2026-08-24.** Every step here needs a running shop with a configured model, and nothing
-> answers on `127.0.0.1:8000` or `:8081`. Tasks 1-8 and 10 are complete and green; this one is
-> untouched. **Nothing in this plan is proven until it runs** — the feature was ranked above
-> streaming purely on the claim measured here.
-
 **Files:**
 - Modify: `docs/superpowers/plans/2026-08-21-page-context.md` (this file — record the numbers)
 
@@ -1635,7 +1630,7 @@ product *as displayed*, and reporting a single averaged number would hide that:
 
 Shape A is the claim that justified ranking this above streaming. B and C are the honest remainder.
 
-- [ ] **Step 1: Capture the before**
+- [x] **Step 1: Capture the before**
 
 For each of A, B and C against the test shop, with page context **disabled** (send the request with
 `curl` and no `productId`), record from the turn header in **Settings → Assistant conversations**:
@@ -1644,11 +1639,11 @@ For each of A, B and C against the test shop, with page context **disabled** (se
 - the number of `waiting on the model` rows
 - the number of `tool.call` events in the raw trace
 
-- [ ] **Step 2: Capture the after**
+- [x] **Step 2: Capture the after**
 
 The same three shapes with `productId` sent. Record the same four numbers each.
 
-- [ ] **Step 3: Write the result into this file**
+- [x] **Step 3: Write the result into this file**
 
 Add a `## Measured result` section with all six readings and a one-line verdict per shape.
 
@@ -1658,7 +1653,7 @@ product sitting in its prompt, say so plainly — the fix is `ViewingContext`'s 
 architecture, and the honest next step is to try the wording once and then re-rank against streaming
 rather than keep going.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-08-21-page-context.md
@@ -1729,6 +1724,75 @@ git commit -m "docs: document page context and its trust model"
 ```
 
 ---
+
+## Measured result
+
+Run 2026-08-24 against the local shop (`shopping-assistant-test`, Shopware 6.7, OpenRouter,
+`anthropic/claude-sonnet-5`), seeded Trail Jersey: parent `fafa…`, Blue/M `a2a2…` (**stock 0**,
+own price 74.90), Black/M `a5a5…` (stock 3, own price 69.90). One sample per cell, read from
+`swag_assistant_trace_event` rather than off the page — the elapsed offsets are what make a model
+gap visible. "Round trips" is the number of gaps between the `prompt` event and the next shop event.
+
+### The plan's "before" column was wrong
+
+It assumed a turn without page context costs **two** round trips and one tool call. It costs one and
+**zero** — because without an antecedent for "this" the model cannot search for anything, so it does
+not try. All three questions came back as *"which product are you asking about?"*.
+
+| Shape | Round trips | `tool.call` | Total | Outcome |
+|---|---|---|---|---|
+| A — *"is this in stock?"* | 1 | 0 | 3 607 ms | `no_result`, **no answer** |
+| B — *"do you have this in black?"* | 1 | 0 | 3 009 ms | `no_result`, **no answer** |
+| C — *"in blue, size M?"* | 1 | 0 | 5 150 ms | `no_result`, **no answer** |
+
+So page context does not *remove* a round trip from a working turn. It turns a turn that cannot
+work into one that does. That is a better feature than the one that was ranked, and a different
+claim from the one that was ranked — which is the point of measuring.
+
+### After, with the first wording — Shape A failed
+
+`ViewingContext` closed with *"You still have no price or stock for it here — use your tools."*
+
+| Shape | Round trips | `tool.call` | Total | Outcome |
+|---|---|---|---|---|
+| A | **2** | **1** (`get_product`) | **13 838 ms** | right card, Blue/M, stock 0 |
+| B | 2 | 1 | 6 870 ms | right variant, Black/M 69.90, stock 3 |
+| C | 2 | 1 | 6 474 ms | right variant, Blue/M |
+
+**Shape A's claim did not hold**, and the cause was that sentence: asked whether something is in
+stock, the model was told in its own prompt to use its tools, so it fetched the product that was
+already in its prompt and already registered on the renderer.
+
+### After, with the wording fixed — Shape A holds
+
+The plan authorised exactly one attempt at the wording. The line now says the card is *already being
+shown* with its real figures, that the model must not call a tool to look **this** product up, and
+that it should call one only for a different product or variant.
+
+| Shape | Round trips | `tool.call` | Total | Outcome |
+|---|---|---|---|---|
+| A | **1** | **0** | **3 656 ms** | right card, Blue/M, stock 0, price 74.90 |
+| B | 2 | 1 | 10 546 ms | right variant, Black/M |
+| C | 2 | 1 | 6 877 ms | right variant, Blue/M |
+
+**Verdict per shape**
+
+- **A — holds.** 13 838 → 3 656 ms, two round trips → one, one tool call → zero, and the card still
+  renders with real figures because `grounding.select` reads the pre-grounded batch (`P3`). This is
+  the shape the feature was ranked on, and after the wording fix it does what was claimed.
+- **B — one tool call, and that is correct.** A different variant genuinely has to be resolved. Its
+  10 546 ms against the earlier 6 870 ms is model latency on a single sample (the gap after `prompt`
+  was 8.3 s against 4.0 s); the *structure* is identical, so nothing is read into it.
+- **C — one tool call, correct for the same reason.** 6 877 ms, indistinguishable from the earlier
+  6 474 ms.
+
+**What this changes.** The wording of one sentence was worth ten seconds and a round trip on the
+shape that justified the feature — same architecture, same code. That is recorded in
+`ViewingContext`'s docblock so the clause cannot be softened back, and as ruling R98.
+
+**What is still unproven.** The category half (Tasks 5, 6) has no live measurement: its success
+criterion is relevance, not speed, and mixing the two makes both unreadable. It is covered by unit
+tests against the fixture and by `retrieve.without_category` in the trace, and nothing more.
 
 ## Spec coverage
 
