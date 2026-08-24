@@ -75,7 +75,7 @@
 Nothing in this task depends on Tasks 2–4, and nothing in them depends on this beyond the assertion
 name — write it first because it is the piece the whole plan exists to deliver.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Eval/Assertion/ToolCallsAtMostTest.php`:
 
@@ -152,12 +152,12 @@ final class ToolCallsAtMostTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Eval/Assertion/ToolCallsAtMostTest.php`
 Expected: FAIL — `ToolCallsAtMost` does not exist.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/Eval/Assertion/ToolCallsAtMost.php`:
 
@@ -249,7 +249,7 @@ final class ToolCallsAtMost implements Assertion
 }
 ```
 
-- [ ] **Step 4: Register it**
+- [x] **Step 4: Register it**
 
 In `src/Eval/Assertion/AssertionRegistry.php`, add one arm to the `match`, after
 `'escalated_with_handoff'`:
@@ -260,12 +260,12 @@ In `src/Eval/Assertion/AssertionRegistry.php`, add one arm to the `match`, after
 
 The `default` arm's throw stays exactly as it is — a typo in a journey file must still fail loudly.
 
-- [ ] **Step 5: Run it to verify it passes**
+- [x] **Step 5: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Eval/ --exclude-group eval && composer run quality`
 Expected: PASS, quality exit 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Eval/Assertion tests/Eval/Assertion/ToolCallsAtMostTest.php
@@ -286,7 +286,7 @@ git commit -m "feat(eval): let a journey bound how many tools the model reaches 
 - Consumes: `JourneyField` (for the existing error-message idiom), nothing from Task 1
 - Produces: `JourneyPage::parse(mixed $page, string $journeyId): self` with `public ?string $productId` and `public ?string $categoryId`; `Journey::$page` of type `JourneyPage`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Eval/JourneyPageTest.php`:
 
@@ -362,12 +362,12 @@ final class JourneyPageTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Eval/JourneyPageTest.php`
 Expected: FAIL — `JourneyPage` does not exist.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/Eval/JourneyPage.php`:
 
@@ -451,7 +451,7 @@ final readonly class JourneyPage
 }
 ```
 
-- [ ] **Step 4: Carry it on the Journey**
+- [x] **Step 4: Carry it on the Journey**
 
 In `src/Eval/Journey.php`, add an eighth constructor property, after `$assertions`:
 
@@ -469,7 +469,7 @@ The class already carries `@mago-expect lint:excessive-parameter-list` whose jus
 every field is one journey-file concept; extend that comment's list to name the page, so the
 suppression still describes what it suppresses.
 
-- [ ] **Step 5: Parse it**
+- [x] **Step 5: Parse it**
 
 In `src/Eval/JourneyFileParser.php`, add to the returned array, after `'assertions'`:
 
@@ -480,13 +480,13 @@ In `src/Eval/JourneyFileParser.php`, add to the returned array, after `'assertio
 and add `page: JourneyPage` to **both** the `@phpstan-type ParsedJourney` line and the `@return`
 docblock on `parse()` — they are written out twice in that file and must not drift.
 
-- [ ] **Step 6: Run it to verify it passes**
+- [x] **Step 6: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Eval/ --exclude-group eval && composer run quality`
 Expected: PASS. Every existing journey file still parses — none of them declares `page`, and
 `parse(null, …)` yields the empty one.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/Eval tests/Eval/JourneyPageTest.php
@@ -509,7 +509,7 @@ git commit -m "feat(eval): let a journey put the shopper on a page"
 **This is the task the plan turns on.** A journey is a claim about the shop; if the harness assembles
 the bundle differently from `ShopwareChatTurnRunner`, the claim is about a shop nobody ships.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Eval/JourneyAttemptPageContextTest.php`:
 
@@ -634,12 +634,12 @@ final class JourneyAttemptPageContextTest extends TestCase
 `run()` returns `[AssistantTurn, TraceRecorder]`, so `[, $trace]` takes the second. `Journey`'s
 constructor is public and takes named arguments — that is how `Journey::fromFile()` calls it.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Eval/JourneyAttemptPageContextTest.php`
 Expected: FAIL — no `page.context` event exists, so `payload()` returns null.
 
-- [ ] **Step 3: Resolve and thread, mirroring the runner**
+- [x] **Step 3: Resolve and thread, mirroring the runner**
 
 In `src/Eval/JourneyAttempt.php`, replace the single `create()` call:
 
@@ -682,18 +682,18 @@ harness deliberately mirrors production and a reader needs to know it was not ac
  * context granted nothing — the trust model checked by an eval rather than only by a unit test.
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Eval/JourneyAttemptPageContextTest.php`
 Expected: PASS, all four cases.
 
-- [ ] **Step 5: Verify nothing else moved**
+- [x] **Step 5: Verify nothing else moved**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 Expected: green, exit 0. The twelve existing journeys resolve `page` to the empty one, so their
 `page.context` payload is all-null and no assertion they declare reads it.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Eval/JourneyAttempt.php tests/Eval/JourneyAttemptPageContextTest.php
@@ -727,7 +727,7 @@ because every expectation below is derived from them:
 `fx-004-black` is the catalogue's **only** glove, which is what makes the third journey's exact
 expectation safe — `plural_finds_singular` already relies on the same fact.
 
-- [ ] **Step 1: Write the first journey**
+- [x] **Step 1: Write the first journey**
 
 Create `tests/Journeys/page_context_no_lookup.php`:
 
@@ -768,7 +768,7 @@ return [
 ];
 ```
 
-- [ ] **Step 2: Write the second journey**
+- [x] **Step 2: Write the second journey**
 
 Create `tests/Journeys/page_context_other_variant.php`:
 
@@ -814,7 +814,7 @@ return [
 before running** — `variant_price.php` is the journey that already uses it, and its block is the
 one to copy if the shape above differs.
 
-- [ ] **Step 3: Write the third journey**
+- [x] **Step 3: Write the third journey**
 
 Create `tests/Journeys/page_context_not_a_cage.php`:
 
@@ -854,7 +854,7 @@ return [
 ];
 ```
 
-- [ ] **Step 4: Verify they parse without spending a token**
+- [x] **Step 4: Verify they parse without spending a token**
 
 The eval suite skips without credentials, so parsing is checked separately:
 
@@ -881,7 +881,7 @@ journey file with a typo must fail in the default suite, not only when someone h
     }
 ```
 
-- [ ] **Step 5: Run the three journeys against a real model**
+- [x] **Step 5: Run the three journeys against a real model**
 
 This spends tokens. Three journeys × two archetypes × three runs = **18 model turns**.
 
@@ -897,14 +897,14 @@ number is the finding, and a journey that is honestly red is worth more than one
 took zero tool calls against the real shop. If it is red, the wording regressed or the model changed,
 and either is exactly what this journey was built to report.
 
-- [ ] **Step 6: Update the two stale counts**
+- [x] **Step 6: Update the two stale counts**
 
 `README.md`'s eval section says *"Eight journeys"* and `ARCHITECTURE.md` says *"12 fixtures, 6
 journeys, 7 assertions"*. Both were already wrong before this plan — there are 12 journeys and 10
 assertions today, and 15 and 11 after it. Correct them to the real numbers, and add the `page` block
 to whatever README says about the journey file format.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests/Journeys tests/Eval README.md ARCHITECTURE.md docs/superpowers/plans/2026-08-24-page-context-evals.md
@@ -912,6 +912,51 @@ git commit -m "test(eval): notice when the model stops honouring page context"
 ```
 
 ---
+
+## First eval run
+
+`vendor/bin/phpunit --group eval --filter 'page_context'`, 2026-08-24, OpenRouter,
+`anthropic/claude-sonnet-5`. Three journeys × two archetypes × three runs = **18 live turns**,
+2 min 35 s.
+
+| Journey | expert | beginner |
+|---|---|---|
+| `page_context_no_lookup` | PASS | PASS |
+| `page_context_other_variant` | PASS | PASS |
+| `page_context_not_a_cage` | **FAIL** — `rendered_ids_exactly` 0/3 | PASS 3/3 |
+
+`page_context_no_lookup` passing is the measurement holding: with the open product in its prompt the
+model rendered the sold-out variant's real stock and called nothing. `page_context_other_variant`
+passing settles the question this plan called its most important — the wording that stops the model
+looking up the product on screen does **not** stop it resolving a different variant.
+
+### What the red one found — a real bug, in this feature, on the first run
+
+`page_context_not_a_cage · expert` asked *"do you have gloves?"* while browsing Jerseys and rendered
+nothing, three times out of three. Not a claim of absence — `no_absence_claim_in_prose` passed — just
+no products.
+
+The cause was the retry **order**, which this plan's own Task 6 predecessor argued for and got
+wrong. `UnmatchedOptionRetry` and `RelaxedTermRetry` relax the *shopper's words* inside the category
+`SearchProductsTool` imposed; the category retry removed the category but restored the unrelaxed
+words. Reaching "Commuter Glove" from "gloves" needs the relaxed term **and** no category, and no
+ordering that applies them one at a time can produce that pair. The beginner phrasing passed only
+because its wording matched without relaxation — which is exactly what made the bug look like model
+variance rather than a defect.
+
+**Fixed by giving up the category first** and *replacing* `$query`, so every later retry runs on the
+uncaged query and behaves as it does when no page context exists at all. That is a stronger property
+than the original: page context can no longer make the assistant worse than its absence. Recorded as
+ruling R99, and reproduced for free by
+`SearchProductsCategoryTest::testAShopperInTheWrongAisleStillFindsAProductThatNeedsTermRelaxation()`.
+
+Re-run after the fix — `--filter 'page_context_not_a_cage'`, 6 further turns: **PASS**.
+
+### What this cost, and what it bought
+
+24 live turns. It bought a defect that 601 deterministic tests passed over, in code written the same
+day by someone who had just measured the feature by hand and believed it worked. That is the case
+for evals in one line.
 
 ## Spec coverage
 
