@@ -10,6 +10,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureCategoryFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureFacetBuilder;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureIndex;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQueryFilter;
@@ -67,6 +68,9 @@ final class FixtureCommerceGateway implements CommerceGatewayInterface
     public function search(ProductQuery $query, CatalogScope $scope): array
     {
         $units = FixtureScopeFilter::apply($this->index->units(), $scope);
+        // After the scope, never before or instead of it: the shopper's location narrows what the
+        // merchant already allowed, and cannot reach past it (P8).
+        $units = FixtureCategoryFilter::apply($units, $query->categoryId);
 
         return FixtureQueryFilter::apply($units, $query);
     }

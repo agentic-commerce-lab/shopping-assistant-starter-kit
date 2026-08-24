@@ -51,6 +51,13 @@ final readonly class DalCriteriaBuilder
 
         $this->applyScope($criteria, $scope);
 
+        // ANDed with the scope filters above, which is the point: a page category can only narrow
+        // what the merchant already allows. Never fold this into `applyScope()` — its include list
+        // is OR-ed, and a client-supplied value there would widen merchant policy (P8).
+        if ($query->categoryId !== null) {
+            $criteria->addFilter(new EqualsAnyFilter('categoriesRo.id', [$query->categoryId]));
+        }
+
         if ($query->sort !== null && $query->sort !== '') {
             $criteria->addSorting(new FieldSorting($query->sort));
         }

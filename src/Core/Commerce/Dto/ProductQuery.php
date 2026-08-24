@@ -7,12 +7,25 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
 final readonly class ProductQuery
 {
     /** @param list<FilterClause> $filters */
+    // @mago-expect lint:excessive-parameter-list
+    // One parameter per orthogonal dimension of a catalogue query — what to match, how to filter,
+    // how many to return, how to sort, how wide to retrieve, and where the shopper is standing.
+    // Grouping any of them behind a sub-object would hide the query this class exists to be, and
+    // every one of them is independently optional at the call site.
     public function __construct(
         public ?string $term = null,
         public array $filters = [],
         public int $limit = 10,
         public ?string $sort = null,
         public ?int $candidateLimit = null,
+        /**
+         * The category the shopper is browsing, when the storefront reported one.
+         *
+         * A constraint, never a scope. {@see CatalogScope::$includeCategoryIds} is OR-ed and is the
+         * merchant's; this is AND-ed with it and is the shopper's, so it can only ever narrow what
+         * the merchant already allowed.
+         */
+        public ?string $categoryId = null,
     ) {}
 
     /**
