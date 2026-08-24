@@ -848,7 +848,7 @@ unrecognised field fails at its cause rather than as an invalid-field DAL error 
 also not a facet the shopper expressed — it is where they happen to be standing — so a first-class
 query field is the honest shape, not a synthesised filter clause.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Core/Commerce/CategoryConstraintTest.php`:
 
@@ -925,7 +925,7 @@ final class CategoryConstraintTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Commerce/CategoryConstraintTest.php`
 Expected: FAIL — `ProductQuery` has no `categoryId`.
@@ -934,7 +934,7 @@ If it fails instead on `aCategoryInTheFixture()` calling `self::fail()`, the fix
 `categoryPath` values. **Stop and say so** rather than adding categories to the fixture as a side
 effect — that is a change to shared test data and belongs in its own decision.
 
-- [ ] **Step 3: Add the field**
+- [x] **Step 3: Add the field**
 
 In `src/Core/Commerce/Dto/ProductQuery.php`, add to the constructor:
 
@@ -950,7 +950,7 @@ In `src/Core/Commerce/Dto/ProductQuery.php`, add to the constructor:
         public ?string $categoryId = null,
 ```
 
-- [ ] **Step 4: Honour it in the fixture gateway**
+- [x] **Step 4: Honour it in the fixture gateway**
 
 **Do not add this to `FixtureQueryFilter`.** Its docblock records that the class already sits at the
 irreducible end of the cyclomatic-complexity rule (ruling R12) and carries a `@mago-expect` for it;
@@ -1012,7 +1012,7 @@ Then in `src/Core/Commerce/FixtureCommerceGateway::search()`, between the two ex
     }
 ```
 
-- [ ] **Step 5: Honour it in the DAL gateway**
+- [x] **Step 5: Honour it in the DAL gateway**
 
 In `src/Core/Commerce/Dal/DalCriteriaBuilder::build()`, after `$this->applyScope($criteria, $scope);`:
 
@@ -1025,13 +1025,13 @@ In `src/Core/Commerce/Dal/DalCriteriaBuilder::build()`, after `$this->applyScope
         }
 ```
 
-- [ ] **Step 6: Run it to verify it passes**
+- [x] **Step 6: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Core/Commerce/CategoryConstraintTest.php`
 Expected: PASS. The DAL half has no automated coverage (no integration harness); Task 8 exercises it
 against the real shop.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 
@@ -1062,7 +1062,7 @@ git commit -m "feat(commerce): let a search be constrained to one category"
 - Produces: `AssistantAgentFactory::create(..., ?string $browsingCategoryId = null)`; trace stages
   `retrieve.without_category`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Core/Tool/SearchProductsCategoryTest.php`. The tool is constructed exactly as
 `SearchProductsToolLimitTest::tool()` does — eight positional collaborators — with the new
@@ -1205,12 +1205,23 @@ its `#[AsTool]` schema is derived from that signature by reflection, so `term:` 
 there. If either `self::fail()` in the helpers fires, the fixture cannot support this feature: stop
 and say so rather than editing shared test data as a side effect.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Tool/SearchProductsCategoryTest.php`
 Expected: FAIL — `SearchProductsTool::__construct()` takes eight arguments, not nine.
 
-- [ ] **Step 3: Accept the category in the tool**
+> **Deviation, 2026-08-24 (execution).** Two things the plan did not foresee:
+>
+> 1. **`UnmatchedOptionRetry` and `RelaxedTermRetry` rebuild the query field by field** and silently
+>    dropped `categoryId`. The relaxed-term retry therefore left the category and found a product
+>    from another aisle, with nothing in the trace saying so — and `retrieve.without_category` never
+>    fired. Both now carry the category forward (ruling R97).
+> 2. **The category retry goes last, after those two**, not immediately after the first search. They
+>    are more specific diagnoses of the shopper's own words and they search *within* the category,
+>    which is what someone standing in an aisle should get first. Only when neither found anything is
+>    the aisle itself the thing in the way.
+
+- [x] **Step 3: Accept the category in the tool**
 
 In `src/Core/Tool/SearchProductsTool.php`, add a constructor property:
 
@@ -1246,7 +1257,7 @@ Apply it when building the query, and record it on the existing `query.build` tr
 Add `ProductQuery::withoutCategory(): self` returning a clone with `categoryId: null`, mirroring how
 `UnmatchedOptionRetry` rebuilds a query.
 
-- [ ] **Step 4: Thread it from the factory and the runner**
+- [x] **Step 4: Thread it from the factory and the runner**
 
 Three seams, in this order (P11):
 
@@ -1277,12 +1288,12 @@ Widen `ChatTurnRunnerInterface::run()` and `RecordingTurnRunner` to match, exact
 nothing to resolve it to — it is used only as a narrowing constraint, and P8 guarantees narrowing is
 safe. Validate its *shape* in `ChatRequest` and nothing more.
 
-- [ ] **Step 5: Run it to verify it passes**
+- [x] **Step 5: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Core/Tool/SearchProductsCategoryTest.php`
 Expected: PASS.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 
@@ -1307,7 +1318,7 @@ git commit -m "feat(retrieval): search the category the shopper is browsing"
 
 > **No unit test.** `tests/e2e/README.md` records that the widget's rendering path is covered end to end, not by unit tests, and this is wiring rather than logic. Verification is Task 9's live run.
 
-- [ ] **Step 1: Emit the attribute**
+- [x] **Step 1: Emit the attribute**
 
 In `src/Resources/views/storefront/component/assistant/orb.html.twig`, add to the root element's attributes:
 
@@ -1325,7 +1336,7 @@ In `src/Resources/views/storefront/component/assistant/orb.html.twig`, add to th
          data-category-id="{{ page.category.id ?? '' }}"
 ```
 
-- [ ] **Step 2: Read it in the panel plugin**
+- [x] **Step 2: Read it in the panel plugin**
 
 In `src/Resources/app/storefront/src/assistant/panel.plugin.js`, beside the existing `this.addToCartEnabled = this.el.dataset.addToCartEnabled === 'true';`:
 
@@ -1352,7 +1363,7 @@ Change it to:
             });
 ```
 
-- [ ] **Step 3: Send it**
+- [x] **Step 3: Send it**
 
 In `src/Resources/app/storefront/src/assistant/transport.js`, change `send()`:
 
@@ -1389,7 +1400,7 @@ In `src/Resources/app/storefront/src/assistant/transport.js`, change `send()`:
 document request; dropping it while restructuring the body would be a silent regression in an area
 this feature has no business touching. Keep everything after `body:` exactly as it is.
 
-- [ ] **Step 4: Thread it through the controller**
+- [x] **Step 4: Thread it through the controller**
 
 In `src/Controller/AssistantController.php`, change the runner call:
 
@@ -1403,7 +1414,8 @@ In `src/Controller/AssistantController.php`, change the runner call:
         );
 ```
 
-- [ ] **Step 5: Build and verify the wiring**
+- [x] **Step 5: Build and verify the wiring** — *build done (`composer run build`, exit 0, the
+  bundle carries `productId`); the database check is **BLOCKED**, no shop running*
 
 Run: `composer run build`
 
@@ -1418,7 +1430,8 @@ Expected: `{"reported":true,"resolved":"<product id>","category":null}` from a p
 `{"reported":false,"resolved":null,"category":"<category id>"}` from a listing page, and
 `{"reported":false,"resolved":null,"category":null}` from the home page.
 
-- [ ] **Step 6: Add the one automated check the wiring can have**
+- [x] **Step 6: Add the one automated check the wiring can have** — *written and registered
+  (`npx playwright test --list` sees it); **never executed**, no shop running*
 
 `tests/e2e/widget.spec.js` already drives the widget in a real browser. Add a case there that opens
 a product detail page, sends a message, and asserts the outgoing request body carries `productId`:
@@ -1443,7 +1456,7 @@ Read the file's existing helpers for opening the panel and sending a message, an
 `PRODUCT_URL` needs to be a real detail page in the test shop. This suite is dev-only and not part
 of CI (`package.json`), so it is a check someone runs, not a gate.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/Resources src/Controller/AssistantController.php tests/e2e/widget.spec.js
@@ -1468,7 +1481,7 @@ git commit -m "feat(storefront): tell the assistant which page it is on"
 > `phaseOf()` maps any stage it does not know to `other` — so without this the two new stages appear
 > as an unlabelled "Other" row and the retry is invisible in exactly the run that has to prove it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/js/trace-phases.test.js`:
 
@@ -1493,12 +1506,12 @@ test('the category retry belongs to the search it retried', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test:js`
 Expected: FAIL — both stages resolve to `other`.
 
-- [ ] **Step 3: Map them**
+- [x] **Step 3: Map them**
 
 In `phases.js`, extend the two phase definitions:
 
@@ -1518,7 +1531,7 @@ can go anywhere in `prepare`. It is listed first for reading order only; in a re
 recorded *after* `facet.probe` and `vocabulary.render`, because the runner records it once the
 bundle exists.
 
-- [ ] **Step 4: Surface the facts a merchant needs**
+- [x] **Step 4: Surface the facts a merchant needs**
 
 In `facts.js`, add a `prepare` case to `phaseFacts()` and extend `searchFacts()`:
 
@@ -1570,12 +1583,13 @@ and inside `searchFacts()`, after the existing entries:
 retry payload in as a fourth argument) — match whichever shape the file already uses rather than
 introducing a second convention.
 
-- [ ] **Step 5: Run it to verify it passes**
+- [x] **Step 5: Run it to verify it passes**
 
 Run: `npm run test:js`
 Expected: PASS.
 
-- [ ] **Step 6: Rebuild and eyeball one trace**
+- [x] **Step 6: Rebuild and eyeball one trace** — *rebuilt; the eyeball is **BLOCKED**, no shop
+  running*
 
 ```bash
 composer run build
@@ -1584,7 +1598,7 @@ composer run build
 Then in the shop, open a conversation started from a product page and confirm the `Prepared` row
 reads `viewing product <id>` rather than an unlabelled `Other`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/Resources/app/administration tests/js/trace-phases.test.js
@@ -1594,6 +1608,11 @@ git commit -m "feat(admin): show page context and the category retry in the trac
 ---
 
 ### Task 9: Measure it, because the whole justification is a latency claim
+
+> **BLOCKED, 2026-08-24.** Every step here needs a running shop with a configured model, and nothing
+> answers on `127.0.0.1:8000` or `:8081`. Tasks 1-8 and 10 are complete and green; this one is
+> untouched. **Nothing in this plan is proven until it runs** — the feature was ranked above
+> streaming purely on the claim measured here.
 
 **Files:**
 - Modify: `docs/superpowers/plans/2026-08-21-page-context.md` (this file — record the numbers)
@@ -1654,26 +1673,26 @@ git commit -m "docs: record the measured effect of page context"
 - Modify: `ARCHITECTURE.md`, `README.md`
 - Modify: `.superpowers/sdd/2026-08-19-shopware-plugin/progress.md` (gitignored — local record only)
 
-- [ ] **Step 1: Document the endpoint field**
+- [x] **Step 1: Document the endpoint field**
 
 In `ARCHITECTURE.md`, wherever the chat endpoint's request shape is described, add `productId` with one line: optional, a 32-hex product id, treated as a hint and re-resolved through the catalogue scope.
 
-- [ ] **Step 2: Add the trace stage**
+- [x] **Step 2: Add the trace stage**
 
 Add `page.context` to `ARCHITECTURE.md`'s lifecycle/stage table with its payload shape `{reported: bool, resolved: ?string}`.
 
-- [ ] **Step 3: Update the README's capability list**
+- [x] **Step 3: Update the README's capability list**
 
 `README.md`'s "What it does" gains one sentence: on a product page the assistant knows which product is open, so "do you have this in blue?" needs no search.
 
-- [ ] **Step 4: Update the extension guide**
+- [x] **Step 4: Update the extension guide**
 
 `docs/extending.md` documents `PromptProviderInterface` and `GroundedToolContext` with their
 signatures. Both changed (P10, P11): the prompt provider takes a third `$viewing` argument, and the
 tool context carries `browsingCategoryId`. A guide showing the old signature is worse than no guide —
 someone follows it and gets a fatal error at boot.
 
-- [ ] **Step 5: Record the ruling**
+- [x] **Step 5: Record the ruling**
 
 ```markdown
 Ruling R95: **Page context is a hint, not an authority.** The storefront reports the open product's
@@ -1702,7 +1721,7 @@ Scope is merchant policy. Filters are shopper intent. Page context is shopper in
 trace to show it. `CategoryConstraintTest` fails if the two are ever merged.
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add ARCHITECTURE.md README.md docs/extending.md
