@@ -160,12 +160,21 @@ test.describe('assistant widget', () => {
     test('the widget tells the server which product is open', async ({ page }) => {
         await page.goto(SHOP);
 
-        const detail = page.locator('a[href*="/detail/"]').first();
+        // `.product-name` is the storefront's own product-box link. **Not** an `/detail/{id}` href:
+        // a real shop serves SEO urls (`/Trail-Jersey/TRAIL-JERSEY-BLUE-M`), so matching on
+        // `/detail/` skipped this test silently the first time it ran.
+        const detail = page.locator('.product-name').first();
         if ((await detail.count()) === 0) {
-            test.skip(true, 'this shop\'s landing page links no product detail page to open');
+            test.skip(true, 'this shop\'s landing page lists no product to open');
         }
 
+        // Navigated to rather than clicked through, mirroring `openPanel()` — the widget binds on
+        // load, and clicking the orb during a navigation races that.
         await page.goto(await detail.getAttribute('href'));
+        await expect(page.locator('[data-swag-assistant-root]')).toHaveAttribute(
+            'data-product-id',
+            /^[0-9a-f]{32}$/,
+        );
         await page.evaluate(() => window.sessionStorage.removeItem('swagAssistantToken'));
         await page.locator('[data-swag-assistant-orb]').click();
         await expect(page.locator('[data-swag-assistant-panel]')).toBeVisible();
