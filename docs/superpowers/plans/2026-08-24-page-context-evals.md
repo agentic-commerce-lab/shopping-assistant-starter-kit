@@ -12,6 +12,12 @@
 
 ## Global Constraints
 
+- **Never run `phpunit tests/Eval/` without `--exclude-group eval`.** A local `.env` is loaded by
+  `tests/bootstrap.php`, so on a credentialed machine that command silently fires every journey at a
+  real model — twelve journeys, up to six runs each. Cost this plan's own author a few dozen
+  unplanned turns on 2026-08-24. The deterministic command is
+  `vendor/bin/phpunit tests/Eval/ --exclude-group eval`
+
 - PHP **8.2+**; every new PHP file starts with `declare(strict_types=1);`
 - `composer run quality` must exit **0**; `vendor/bin/phpunit --exclude-group eval` must stay green
 - **Evals run against `FixtureCommerceGateway` only** (D10, A7). The suite must keep running with no Shopware, no database and no credentials — `JourneyEvalTest` skips cleanly when the three `ASSISTANT_LLM_*` variables are not all set, and that must stay true
@@ -252,7 +258,7 @@ The `default` arm's throw stays exactly as it is — a typo in a journey file mu
 
 - [ ] **Step 5: Run it to verify it passes**
 
-Run: `vendor/bin/phpunit tests/Eval/ && composer run quality`
+Run: `vendor/bin/phpunit tests/Eval/ --exclude-group eval && composer run quality`
 Expected: PASS, quality exit 0.
 
 - [ ] **Step 6: Commit**
@@ -472,7 +478,7 @@ docblock on `parse()` — they are written out twice in that file and must not d
 
 - [ ] **Step 6: Run it to verify it passes**
 
-Run: `vendor/bin/phpunit tests/Eval/ && composer run quality`
+Run: `vendor/bin/phpunit tests/Eval/ --exclude-group eval && composer run quality`
 Expected: PASS. Every existing journey file still parses — none of them declares `page`, and
 `parse(null, …)` yields the empty one.
 
