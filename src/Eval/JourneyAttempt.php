@@ -49,6 +49,11 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * {@see \Swag\AssistantStarterKit\Eval\Assertion\TraceEvents} for how assertions read
  * ALL of a stage's events rather than only the last.
  *
+ * **Page context is resolved here the way `ShopwareChatTurnRunner` resolves it**, through
+ * `gateway->product($id, $config->scope)`, and the resulting `page.context` event is recorded
+ * before the first turn. A journey may therefore block its own page product and assert that page
+ * context granted nothing — the trust model checked by an eval rather than only by a unit test.
+ *
  * Split out of {@see JourneyRunner} to keep that class's own cyclomatic-complexity total
  * under this project's threshold (mago sums it per class, across every method).
  */
@@ -75,7 +80,30 @@ final class JourneyAttempt
         // cartAvailable is always true: a real storefront always has a shopper cart, and
         // AssistantConfig::$enableAddToCart (defaulted on) is what actually gates whether
         // add_to_cart is ever constructed, per Ruling R32/R34 in AssistantAgentFactory.
-        $bundle = AssistantAgentFactory::withCoreToolsOnly($this->http)->create($gateway, $config, true, $this->llm);
+        // Resolved through the same gateway and the same CatalogScope a real turn uses, because that
+        // is what makes a journey a claim about the shipped pipeline: ShopwareChatTurnRunner does
+        // exactly this, and a harness that skipped it could pre-ground a card production would have
+        // refused. A blocked page product therefore resolves to null here too.
+        $viewing = $journey->page->productId === null
+            ? null
+            : $gateway->product($journey->page->productId, $config->scope);
+
+        $bundle = AssistantAgentFactory::withCoreToolsOnly($this->http)->create(
+            $gateway,
+            $config,
+            true,
+            $this->llm,
+            viewing: $viewing,
+            browsingCategoryId: $journey->page->categoryId,
+        );
+
+        // Recorded before any turn runs, as production records it, so a journey can assert on it.
+        $bundle->trace->record('page.context', [
+            'reported' => $journey->page->productId !== null,
+            'resolved' => $viewing?->id,
+            'category' => $journey->page->categoryId,
+        ]);
+
         $runner = new AssistantRunner($config, $bundle);
 
         $history = new MessageBag();
