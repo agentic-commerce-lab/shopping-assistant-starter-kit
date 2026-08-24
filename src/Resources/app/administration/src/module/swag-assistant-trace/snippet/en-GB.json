@@ -11,7 +11,14 @@
             "columnOutcome": "Outcome",
             "columnTotalMs": "Duration",
             "filterOutcome": "Filter by outcome",
-            "filterOutcomeAll": "Any outcome"
+            "filterOutcomeAll": "Any outcome",
+            "columnUser": "User",
+            "guestUser": "Guest user",
+            "exportFailed": "The export could not be created.",
+            "exportCsv": "Export as CSV",
+            "exportJson": "Export as JSON",
+            "scopeSelected": "{count} selected",
+            "scopeAll": "All {count} conversations"
         },
         "detail": {
             "title": "Conversation",

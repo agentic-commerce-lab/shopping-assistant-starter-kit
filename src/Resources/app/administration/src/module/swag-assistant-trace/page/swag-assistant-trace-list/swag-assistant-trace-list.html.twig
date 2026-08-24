@@ -12,21 +12,54 @@
         <div class="swag-assistant-trace-list__content">
 
             {% block swag_assistant_trace_list_filter %}
+            {# Filter and export share one bar, and **nothing in it appears or disappears**.
+               Ticking a row changes the button labels, never the layout: an earlier version put the
+               "export all" pair above the grid and the selection pair in the grid's bulk slot, so
+               the first checkbox made one vanish and the other appear and the whole page jumped. #}
             <sw-card :title="$tc('swag-assistant-trace.list.filterOutcome')">
-                <sw-single-select
-                    :options="outcomeOptions"
-                    :value="outcomeFilter"
-                    :placeholder="$tc('swag-assistant-trace.list.filterOutcomeAll')"
-                    show-clearable-button
-                    @change="onOutcomeFilterChange"
-                />
+                <div class="swag-assistant-trace-list__toolbar">
+                    <sw-single-select
+                        class="swag-assistant-trace-list__filter"
+                        :options="outcomeOptions"
+                        :value="outcomeFilter"
+                        :placeholder="$tc('swag-assistant-trace.list.filterOutcomeAll')"
+                        show-clearable-button
+                        @change="onOutcomeFilterChange"
+                    />
+
+                    {# The count lives in the text, never in the button labels. A label that grows
+                       from "Export 25" to "Export all 175" changes the button's width, and a
+                       right-aligned pair then slides sideways every time a checkbox is ticked. #}
+                    <span class="swag-assistant-trace-list__scope">{{ exportScope }}</span>
+
+                    <div class="swag-assistant-trace-list__export">
+                        <sw-button size="small" :disabled="!exportCount" @click="onExport('csv')">
+                            {{ $tc('swag-assistant-trace.list.exportCsv') }}
+                        </sw-button>
+                        <sw-button size="small" :disabled="!exportCount" @click="onExport('json')">
+                            {{ $tc('swag-assistant-trace.list.exportJson') }}
+                        </sw-button>
+                    </div>
+                </div>
+
+                {# Below the buttons, so showing it pushes nothing they sit on. #}
+                <sw-alert
+                    v-if="exportError"
+                    variant="error"
+                    class="swag-assistant-trace-list__export-error"
+                >
+                    {{ exportError }}
+                </sw-alert>
             </sw-card>
             {% endblock %}
 
             {# `allowEdit` must stay true: sw-entity-listing only links the primary column to
                detailRoute when it is set, so turning it off made the trace unreachable. Read-only
                is enforced by the page having no write path and by inline/column edit being off,
-               not by hiding the link to it. #}
+               not by hiding the link to it.
+
+               Selection is on for export only. `allowDelete` stays false, so a checkbox can send a
+               conversation to a file and never to a delete confirmation. #}
             {% block swag_assistant_trace_list_grid %}
             <sw-entity-listing
                 v-if="conversations"
@@ -34,7 +67,9 @@
                 :repository="repository"
                 :columns="columns"
                 :isLoading="isLoading"
-                :showSelection="false"
+                :showSelection="true"
+                ref="grid"
+                @selection-change="onSelectionChange"
                 :allowDelete="false"
                 :allowInlineEdit="false"
                 :allowColumnEdit="false"
@@ -46,6 +81,11 @@
                 <template #column-salesChannelId="{ item }">
                     {{ channelName(item.salesChannelId) }}
                 </template>
+
+                <template #column-customer.lastName="{ item }">
+                    {{ userName(item) }}
+                </template>
+
 
                 <template #column-totalMs="{ item }">
                     {{ duration(item.totalMs) }}

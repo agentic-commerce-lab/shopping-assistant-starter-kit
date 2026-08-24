@@ -1,0 +1,46 @@
+/*
+ * The toolbar exists to hold still.
+ *
+ * Filter on the left, export on the right, both always present: ticking a row changes only the
+ * button labels. An earlier version swapped one button group for another as the selection changed,
+ * and the page jumped every time the first checkbox was ticked — the layout said "something new
+ * happened" when nothing had.
+ *
+ * `min-height` on the buttons keeps the row's height fixed while a label grows from "Export 3 as
+ * CSV" to "Export all 412 as CSV", which is the same reason in miniature.
+ */
+.swag-assistant-trace-list {
+    &__toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    &__filter {
+        flex: 1 1 240px;
+        min-width: 240px;
+        max-width: 420px;
+    }
+
+    /* Grows to fill, so the buttons stay pinned right whatever the text says. */
+    &__scope {
+        flex: 1 1 auto;
+        text-align: right;
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+    }
+
+    &__export {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    &__export-error {
+        margin-top: 16px;
+        margin-bottom: 0;
+    }
+}
