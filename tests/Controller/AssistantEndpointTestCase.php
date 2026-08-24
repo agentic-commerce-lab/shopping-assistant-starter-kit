@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Controller;
 
 use PHPUnit\Framework\TestCase;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Swag\AssistantStarterKit\Controller\AssistantController;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
@@ -29,6 +30,8 @@ abstract class AssistantEndpointTestCase extends TestCase
     protected const CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
     protected const BLUE_M_ID = 'a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2';
+
+    protected const CUSTOMER = '01a01b4f9e2270a1b2c3d4e5f6a7b8c9';
 
     protected const PREFIX = 'SwagAssistantStarterKit.config.';
 
@@ -115,11 +118,19 @@ abstract class AssistantEndpointTestCase extends TestCase
         return array_merge(self::CONFIGURED, $overrides);
     }
 
-    protected function context(): SalesChannelContext
+    protected function context(?string $customerId = null): SalesChannelContext
     {
+        $customer = null;
+
+        if ($customerId !== null) {
+            $customer = new CustomerEntity();
+            $customer->setId($customerId);
+        }
+
         $context = $this->createMock(SalesChannelContext::class);
         $context->method('getSalesChannelId')->willReturn(self::CHANNEL);
         $context->method('getLanguageId')->willReturn('2fbb5fe2e29a4d70aa5854ce7ce3e20b');
+        $context->method('getCustomer')->willReturn($customer);
 
         return $context;
     }

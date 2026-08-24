@@ -110,7 +110,14 @@ class AssistantController extends StorefrontController
             return $this->refuse($refusal);
         }
 
-        $token = $chat->token ?? $this->conversations->start($salesChannelId, $context->getLanguageId());
+        $token = $chat->token ?? $this->conversations->start(
+            $salesChannelId,
+            $context->getLanguageId(),
+            // Recorded once, on the turn that opens the conversation. A conversation resumed by
+            // token never re-reads this, so logging in mid-conversation does not rewrite who it
+            // belonged to — the column answers "who produced this trace", not "who was last seen".
+            $context->getCustomer()?->getId(),
+        );
         $history = $this->conversations->history($token, self::MAX_HISTORY_TURNS);
 
         $result = $this->turnRunner->run(

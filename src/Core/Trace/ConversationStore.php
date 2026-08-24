@@ -28,8 +28,13 @@ interface ConversationStore
 {
     /**
      * Opens a conversation and returns the token the widget keeps in `sessionStorage`.
+     *
+     * `$customerId` is the shopper if they are logged in, null if they are a guest. It is recorded
+     * **once, here**: a guest who logs in mid-conversation stays a guest on it, because the column
+     * answers "who produced this trace" and re-attributing would make it answer "who was last
+     * seen" — a different, and less useful, question.
      */
-    public function start(string $salesChannelId, string $locale): string;
+    public function start(string $salesChannelId, string $locale, ?string $customerId = null): string;
 
     /**
      * Appends one turn and every event of its trace.

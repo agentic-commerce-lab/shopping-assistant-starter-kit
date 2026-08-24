@@ -33,13 +33,14 @@ final readonly class DalConversationStore implements ConversationStore
         private JsonShape $shape = new JsonShape(),
     ) {}
 
-    public function start(string $salesChannelId, string $locale): string
+    public function start(string $salesChannelId, string $locale, ?string $customerId = null): string
     {
         $id = Uuid::randomHex();
 
         $this->conversationRepository->create([[
             'id' => $id,
             'salesChannelId' => $salesChannelId,
+            'customerId' => $customerId,
             'locale' => $locale,
             'turnCount' => 0,
             'outcome' => '',

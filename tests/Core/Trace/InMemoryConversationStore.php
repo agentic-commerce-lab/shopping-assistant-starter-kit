@@ -44,8 +44,12 @@ final class InMemoryConversationStore implements ConversationStore
      */
     public int $startedConversations = 0;
 
-    public function start(string $salesChannelId, string $locale): string
+    /** The customer the last `start()` was given, so a controller test can assert what it passed. */
+    public ?string $lastCustomerId = null;
+
+    public function start(string $salesChannelId, string $locale, ?string $customerId = null): string
     {
+        $this->lastCustomerId = $customerId;
         $this->tokenCounter++;
         $this->startedConversations++;
         $token = \sprintf('%032x', $this->tokenCounter);

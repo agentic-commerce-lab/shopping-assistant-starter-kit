@@ -73,4 +73,20 @@ final class AssistantChatValidationTest extends AssistantEndpointTestCase
 
         self::assertNull($this->runner->lastViewingProductId);
     }
+
+    public function testALoggedInShopperIsRecordedOnTheConversation(): void
+    {
+        $this->controller()->chat($this->post(['message' => 'hi']), $this->context(self::CUSTOMER));
+
+        self::assertSame(self::CUSTOMER, $this->store->lastCustomerId);
+    }
+
+    public function testAGuestIsRecordedAsNoCustomerRatherThanAsAnEmptyString(): void
+    {
+        // Null, not '': the column is a foreign key, and an empty string is not "a customer who
+        // does not exist" — it is a customer id that will never resolve.
+        $this->controller()->chat($this->post(['message' => 'hi']), $this->context());
+
+        self::assertNull($this->store->lastCustomerId);
+    }
 }
