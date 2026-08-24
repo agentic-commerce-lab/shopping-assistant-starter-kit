@@ -140,10 +140,25 @@ final class AssistantRunner
 
     private function buildMessageBag(string $message, MessageBag $history): MessageBag
     {
-        $bag = new MessageBag(Message::forSystem($this->bundle->prompt->system(
-            $this->config,
-            $this->bundle->vocabulary,
-        )));
+        $prompt = $this->bundle->prompt->system($this->config, $this->bundle->vocabulary);
+
+        // **Recorded in full, every turn, and not behind a setting.** Every other stage of the turn
+        // was already traced; this was the one thing a merchant could not see when the assistant said
+        // something wrong. A switch would not help — the turn that went wrong has already happened.
+        //
+        // No shopper text is involved: the system message is built from merchant config and the
+        // catalogue's own facet vocabulary, and the shopper's words are appended below it.
+        //
+        // The hash makes "did the prompt change between these two turns" answerable without diffing
+        // three kilobytes by eye — which is a question `PromptProviderInterface` created, since the
+        // prompt can now come from another plugin entirely.
+        $this->bundle->trace->record('prompt', [
+            'text' => $prompt,
+            'sha256' => hash('sha256', $prompt),
+            'length' => mb_strlen($prompt),
+        ]);
+
+        $bag = new MessageBag(Message::forSystem($prompt));
 
         foreach ($history->getMessages() as $historyMessage) {
             $bag->add($historyMessage);
