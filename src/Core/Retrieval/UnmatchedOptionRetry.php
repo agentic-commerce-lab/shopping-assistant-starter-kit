@@ -120,10 +120,12 @@ final class UnmatchedOptionRetry
                 limit: $query->limit,
                 sort: $query->sort,
                 candidateLimit: $query->candidateLimit,
-                // Carried, not dropped: this retry relaxes ONE thing, and the shopper's location is
-                // not it. Rebuilding the query without it would leave the category silently — the
-                // shopper would get products from another aisle with nothing in the trace saying
-                // the aisle was abandoned, which is what `retrieve.without_category` exists to say.
+                // Carried, not dropped: this retry relaxes ONE thing, and the shopper's location
+                // is not it. Leaving the category out here would abandon the aisle silently, with
+                // nothing in the trace saying so — which is what `retrieve.without_category`
+                // exists to say. In the shipped order SearchProductsTool has already dropped the
+                // category before this runs, so in practice it is null; carrying it keeps this
+                // class correct on its own terms rather than relying on that ordering.
                 categoryId: $query->categoryId,
             ),
             $scope,

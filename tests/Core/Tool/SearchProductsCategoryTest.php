@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Core\Tool;
 
 use PHPUnit\Framework\TestCase;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
@@ -21,10 +18,19 @@ use Swag\AssistantStarterKit\Tests\Support\UsesCatalogFixture;
 
 /**
  * The shopper's location narrows their search — until it would leave them with nothing.
+ *
+ * The fixture facts these rest on are stated rather than searched for, the way
+ * {@see SearchProductsToolLimitTest} states its own: `Jerseys` holds exactly the three `fx-026`
+ * variants, and `fx-004-black` — the catalogue's only glove — is in `Gloves`.
  */
 final class SearchProductsCategoryTest extends TestCase
 {
     use UsesCatalogFixture;
+
+    private const CATEGORY = 'Jerseys';
+
+    /** @var list<string> */
+    private const IN_CATEGORY = ['fx-026-black-m', 'fx-026-blue-l', 'fx-026-blue-m'];
 
     private TraceRecorder $trace;
 
@@ -41,31 +47,21 @@ final class SearchProductsCategoryTest extends TestCase
 
     /**
      * Differential, not absolute: the same search without a category has to reach outside it, or
-     * this test would pass just as well against a build that ignores the constraint entirely.
+     * this would pass just as well against a build that ignores the constraint entirely.
      */
     public function testASearchIsConstrainedToTheCategoryBeingBrowsed(): void
     {
-        $category = $this->aCategoryInTheFixture();
-
         $this->tool(null)(limit: 8);
-        $outside = array_filter(
-            $this->renderer->lastRetrievedBatch(),
-            fn(string $id): bool => !\in_array($category, $this->cardById($id)->categoryPath, strict: true),
-        );
+        $unconstrained = $this->renderer->lastRetrievedBatch();
+
         self::assertNotEmpty(
-            $outside,
-            'without the constraint the same search must reach outside the category, or this asserts nothing',
+            array_diff($unconstrained, self::IN_CATEGORY),
+            'without the constraint the same search must reach outside the category',
         );
 
-        $this->tool($category)(limit: 8);
+        $this->tool(self::CATEGORY)(limit: 8);
 
-        // `lastRetrievedBatch()` carries ids, so the cards are looked back up to read their paths.
-        $retrieved = $this->renderer->lastRetrievedBatch();
-        self::assertNotEmpty($retrieved, 'the constrained search must find something, or this asserts nothing');
-
-        foreach ($retrieved as $id) {
-            self::assertContains($category, $this->cardById($id)->categoryPath);
-        }
+        self::assertEqualsCanonicalizing(self::IN_CATEGORY, $this->renderer->lastRetrievedBatch());
     }
 
     public function testAConstraintThatFindsNothingIsRetriedWithoutIt(): void
@@ -73,18 +69,32 @@ final class SearchProductsCategoryTest extends TestCase
         // A shopper standing in one aisle asking for something from another gets an answer, not
         // silence. `UnmatchedOptionRetry` is the precedent: this pipeline retries rather than
         // returning an empty set it caused itself.
-        $category = $this->aCategoryInTheFixture();
-        $absent = $this->aTermAbsentFrom($category);
+        $this->tool(self::CATEGORY)(term: 'Commuter Glove');
 
-        $this->tool($category)(term: $absent);
-
-        self::assertNotEmpty($this->renderer->lastRetrievedBatch());
+        self::assertSame(['fx-004-black'], $this->renderer->lastRetrievedBatch());
         self::assertContains('retrieve.without_category', $this->trace->stages());
+    }
+
+    /**
+     * Reproduces the eval failure of `page_context_not_a_cage · expert`, 2026-08-24, for free.
+     *
+     * "gloves" does not match "Commuter Glove" by term — that is the whole reason
+     * {@see \Swag\AssistantStarterKit\Core\Retrieval\RelaxedTermRetry} exists, and why the
+     * `plural_finds_singular` journey exists. A shopper standing in Jerseys asking for gloves needs
+     * BOTH relaxations at once: the category dropped, and the term relaxed. While the category was
+     * given up *last*, the two could never combine — the term retry relaxed the words inside the
+     * cage, and the category retry removed the cage while restoring the unrelaxed words.
+     */
+    public function testAShopperInTheWrongAisleStillFindsAProductThatNeedsTermRelaxation(): void
+    {
+        $this->tool(self::CATEGORY)(term: 'gloves');
+
+        self::assertSame(['fx-004-black'], $this->renderer->lastRetrievedBatch());
     }
 
     public function testWithNoCategoryNothingIsConstrainedAndNothingIsRetried(): void
     {
-        $this->tool(null)(term: $this->aTermInTheFixture());
+        $this->tool(null)(term: 'gloves');
 
         self::assertNotContains('retrieve.without_category', $this->trace->stages());
     }
@@ -92,6 +102,8 @@ final class SearchProductsCategoryTest extends TestCase
     private function tool(?string $browsingCategoryId): SearchProductsTool
     {
         $gateway = FixtureCommerceGateway::fromFile(self::catalogFixturePath());
+        $this->trace = new TraceRecorder();
+        $this->renderer = new FactRenderer($this->trace);
 
         return new SearchProductsTool(
             $gateway,
@@ -103,59 +115,6 @@ final class SearchProductsCategoryTest extends TestCase
             $this->trace,
             new AssistantConfig(),
             $browsingCategoryId,
-        );
-    }
-
-    private function aCategoryInTheFixture(): string
-    {
-        foreach ($this->allCards() as $card) {
-            if ($card->categoryPath !== []) {
-                return $card->categoryPath[0];
-            }
-        }
-
-        self::fail('The catalogue fixture has no categorised product; this feature cannot be tested against it.');
-    }
-
-    private function aTermInTheFixture(): string
-    {
-        foreach ($this->allCards() as $card) {
-            if ($card->categoryPath !== []) {
-                return $card->name;
-            }
-        }
-
-        self::fail('The catalogue fixture is empty.');
-    }
-
-    private function aTermAbsentFrom(string $category): string
-    {
-        foreach ($this->allCards() as $card) {
-            if (!\in_array($category, $card->categoryPath, strict: true)) {
-                return $card->name;
-            }
-        }
-
-        self::fail('Every fixture product is in one category; the retry cannot be tested against it.');
-    }
-
-    private function cardById(string $id): ProductCard
-    {
-        foreach ($this->allCards() as $card) {
-            if ($card->id === $id) {
-                return $card;
-            }
-        }
-
-        self::fail(\sprintf('The search returned id %s, which is not in the catalogue fixture.', $id));
-    }
-
-    /** @return list<ProductCard> */
-    private function allCards(): array
-    {
-        return FixtureCommerceGateway::fromFile(self::catalogFixturePath())->search(
-            new ProductQuery(limit: 50),
-            new CatalogScope(),
         );
     }
 }

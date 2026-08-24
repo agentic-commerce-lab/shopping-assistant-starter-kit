@@ -249,6 +249,29 @@ final class SearchProductsTool
             'candidateLimit' => $candidateLimit,
         ]);
 
+        // P9, and **first** among the retries, which is a correction rather than a preference.
+        //
+        // It ran last at first, reasoned as "the other two are more specific diagnoses, and they
+        // search within the category, which is what someone standing in an aisle should get". The
+        // `page_context_not_a_cage` eval falsified that on its first live run: the other two relax
+        // the SHOPPER'S WORDS inside a cage this class imposed, while this one removed the cage and
+        // restored the unrelaxed words — so a shopper in Jerseys asking for "gloves" got nothing,
+        // because matching "Commuter Glove" needs the relaxed term AND no category, and no ordering
+        // that applies them one at a time can produce it.
+        //
+        // The category is OUR constraint, not the shopper's, so it is the first thing given up.
+        // `$query` is REPLACED, not just re-searched, so the retries below run on the uncaged query
+        // and behave exactly as they do when no page context exists at all — which is the property
+        // that matters: page context must never make the assistant worse than its absence.
+        if ($cards === [] && $this->browsingCategoryId !== null) {
+            $query = $query->withoutCategory();
+            $cards = $this->gateway->search($query, $scope);
+            $this->trace->record('retrieve.without_category', [
+                'categoryId' => $this->browsingCategoryId,
+                'hits' => \count($cards),
+            ]);
+        }
+
         // An applied option filter that eliminated everything is the "your products are
         // missing attribute X" case, not the "we do not sell it" case. See
         // UnmatchedOptionRetry for the measurement and for why silence was the wrong answer.
@@ -279,21 +302,6 @@ final class SearchProductsTool
                 $cards = $relaxed;
                 $optionNote = RelaxedTermRetry::NOTE;
             }
-        }
-
-        // Last of the three retries, and last deliberately: the two above are more specific
-        // diagnoses of the shopper's own words, and both of them search *within* the category,
-        // which is what a shopper standing in an aisle should get first. Only when neither found
-        // anything is the aisle itself the thing in the way.
-        //
-        // P9: the shopper's location is a helpful default, not a cage. Asking for gloves in the
-        // jersey aisle must return gloves. Traced so a merchant reading the trace sees both passes.
-        if ($cards === [] && $this->browsingCategoryId !== null) {
-            $cards = $this->gateway->search($query->withoutCategory(), $scope);
-            $this->trace->record('retrieve.without_category', [
-                'categoryId' => $this->browsingCategoryId,
-                'hits' => \count($cards),
-            ]);
         }
 
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
