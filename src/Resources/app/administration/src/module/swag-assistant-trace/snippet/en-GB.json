@@ -30,7 +30,9 @@
             "inShop": "shop",
             "onModel": "model",
             "rawTrace": "Raw trace",
-            "noTrace": "Nothing was recorded for this conversation."
+            "noTrace": "Nothing was recorded for this conversation.",
+            "export": "Export trace",
+            "exportFailed": "The export could not be created."
         },
         "phase": {
             "prepare": "Prepared",

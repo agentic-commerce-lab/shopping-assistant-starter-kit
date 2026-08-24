@@ -30,7 +30,9 @@
             "inShop": "Shop",
             "onModel": "Modell",
             "rawTrace": "Rohdaten",
-            "noTrace": "Für diese Konversation wurde nichts aufgezeichnet."
+            "noTrace": "Für diese Konversation wurde nichts aufgezeichnet.",
+            "export": "Trace exportieren",
+            "exportFailed": "Der Export konnte nicht erstellt werden."
         },
         "phase": {
             "prepare": "Vorbereitet",

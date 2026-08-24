@@ -7,10 +7,32 @@
     </template>
     {% endblock %}
 
+    {% block swag_assistant_trace_detail_smart_bar_actions %}
+    {# One trace, one format. A single conversation is opened to work out what happened, and the
+       full record is the only thing that answers that — see the list's export for why nothing here
+       offers a table instead. #}
+    <template #smart-bar-actions>
+        <sw-button
+            variant="primary"
+            size="small"
+            :disabled="isLoading || !conversation"
+            @click="onExport"
+        >
+            {{ $tc('swag-assistant-trace.detail.export') }}
+        </sw-button>
+    </template>
+    {% endblock %}
+
     {% block swag_assistant_trace_detail_content %}
     <template #content>
         <sw-card-view>
             <sw-loader v-if="isLoading" />
+
+            {# The endpoint's refusals are sentences a merchant can act on, so they are shown rather
+               than swallowed — the same reason the list shows them beside its filter. #}
+            <sw-alert v-if="exportError" variant="error">
+                {{ exportError }}
+            </sw-alert>
 
             {# One card per turn. The turn is the unit a merchant thinks in — "it answered this
                badly" is always about one exchange — so it is the unit the page is built from,

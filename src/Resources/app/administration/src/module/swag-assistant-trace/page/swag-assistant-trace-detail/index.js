@@ -3,6 +3,7 @@ import template from './swag-assistant-trace-detail.html.twig';
 import { humanMs, phaseFacts } from './facts';
 import { alwaysVisible, prettyPayload, promptText, readTurns } from './payload';
 import { buildTimeline, shopMs, splitTurns, waitMs } from './phases';
+import { exportFileName, exportRequest, saveBlob } from '../../export';
 
 const { Criteria } = Shopware.Data;
 
@@ -16,6 +17,7 @@ Shopware.Component.register('swag-assistant-trace-detail', {
             conversation: null,
             events: null,
             isLoading: true,
+            exportError: null,
         };
     },
 
@@ -66,6 +68,29 @@ Shopware.Component.register('swag-assistant-trace-detail', {
     },
 
     methods: {
+        /**
+         * The same request the list sends, for one id.
+         *
+         * Shared rather than copied: two fetch-and-save blocks is the duplication jscpd is in the
+         * gate to catch, and the copy that drifts is always the one nobody reads.
+         */
+        async onExport() {
+            this.exportError = null;
+
+            const { url, options } = exportRequest(Shopware.Context.api, [this.$route.params.id]);
+            const response = await fetch(url, options);
+
+            if (!response.ok) {
+                const problem = await response.json().catch(() => ({}));
+
+                this.exportError = problem.error ?? this.$tc('swag-assistant-trace.detail.exportFailed');
+
+                return;
+            }
+
+            saveBlob(await response.blob(), exportFileName());
+        },
+
         async load() {
             this.isLoading = true;
 

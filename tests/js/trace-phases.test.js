@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { phaseFacts } from '../../src/Resources/app/administration/src/module/swag-assistant-trace/page/swag-assistant-trace-detail/facts.js';
 import {
     buildTimeline,
     phaseOf,
@@ -142,4 +143,35 @@ test('the category retry belongs to the search it retried', () => {
 
     assert.deepEqual(rows.map((row) => row.key), ['search', 'answer']);
     assert.equal(rows[0].events.length, 2);
+});
+
+test('the search row reports the retrieval that actually answered', () => {
+    // Two `retrieve` events since the category retry became a second pass: the first searched the
+    // shopper's category and found nothing, the second searched the shop and found six. Reading the
+    // first made the row say "found 0" about a turn that showed six products.
+    const rows = buildTimeline([
+        ev(0, 'retrieve', { hits: 0 }),
+        ev(2, 'retrieve.without_category', { categoryId: 'c1' }),
+        ev(4, 'retrieve', { hits: 6 }),
+        ev(9, 'render', { renderedIds: [] }),
+    ]);
+
+    const search = rows.find((row) => row.key === 'search');
+
+    assert.equal(phaseFacts(search).find((fact) => fact.label === 'found').value, '6');
+});
+
+test('leaving the category is reported without a count it does not have', () => {
+    // The retry is recorded before the second pass runs, so it cannot know how many it found —
+    // printing `hits` there produced a confident 0 on every turn that had one.
+    const rows = buildTimeline([
+        ev(0, 'retrieve', { hits: 0 }),
+        ev(2, 'retrieve.without_category', { categoryId: 'c1' }),
+        ev(4, 'retrieve', { hits: 6 }),
+    ]);
+
+    const fact = phaseFacts(rows[0]).find((entry) => entry.label === 'left the category');
+
+    assert.ok(fact, 'the row must say the category was abandoned');
+    assert.doesNotMatch(fact.value, /^\d+$/, 'it must not claim a number');
 });

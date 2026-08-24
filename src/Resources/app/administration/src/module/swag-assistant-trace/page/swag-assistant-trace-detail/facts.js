@@ -7,6 +7,16 @@
 export function phaseFacts(row) {
     const payload = (stage) => row.events.find((event) => event.stage === stage)?.payload ?? null;
 
+    /**
+     * The **last** event of a stage, for stages a turn can record more than once.
+     *
+     * `retrieve` is one since the category retry became a second pass: the first records the search
+     * inside the shopper's category, the second the one that ran after it was given up. Reading the
+     * first made the row say "found 0" about a turn that went on to find six.
+     */
+    const lastPayload = (stage) =>
+        row.events.filter((event) => event.stage === stage).at(-1)?.payload ?? null;
+
     switch (row.key) {
         case 'prepare':
             return prepareFacts(payload('page.context'));
@@ -14,7 +24,7 @@ export function phaseFacts(row) {
             return understandFacts(payload('understand'), payload('query.build'));
         case 'search':
             return searchFacts(
-                payload('retrieve'),
+                lastPayload('retrieve'),
                 payload('retrieve.narrow'),
                 payload('blocklist.filter'),
                 payload('retrieve.without_category'),
@@ -93,10 +103,11 @@ function searchFacts(retrieve, narrow, blocklist, withoutCategory) {
     }
 
     if (withoutCategory) {
-        facts.push({
-            label: 'retried without the category',
-            value: String(withoutCategory.hits ?? 0),
-        });
+        // No count: this row marks where the category was given up, and the `retrieve` that follows
+        // it reports what the uncaged search found. It used to print `hits`, which the retry no
+        // longer carries — it is recorded before the second pass runs — so the row read "0" on
+        // every turn that had one.
+        facts.push({ label: 'left the category', value: 'searched the whole shop' });
     }
 
     return facts;
