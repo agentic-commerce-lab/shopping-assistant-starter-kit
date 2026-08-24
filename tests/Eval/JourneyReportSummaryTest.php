@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Eval\Assertion\NoInventedProduct;
 use Swag\AssistantStarterKit\Eval\Journey;
+use Swag\AssistantStarterKit\Eval\JourneyPage;
 use Swag\AssistantStarterKit\Eval\JourneyRunner;
 use Swag\AssistantStarterKit\Tests\Support\BuildsChatResponses;
 use Swag\AssistantStarterKit\Tests\Support\UsesCatalogFixture;
@@ -36,6 +37,7 @@ final class JourneyReportSummaryTest extends TestCase
             config: [],
             turns: ['does this look free to you?'],
             assertions: ['no_invented_product' => ['assertion' => new NoInventedProduct(), 'expectations' => []]],
+            page: JourneyPage::parse(null, 'test_journey'),
         );
 
         // Every run invents the same id, so the tally and every per-run detail line are

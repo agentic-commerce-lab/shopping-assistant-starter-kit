@@ -10,14 +10,14 @@ namespace Swag\AssistantStarterKit\Eval;
  * focused validator so no single class here approaches this project's
  * cyclomatic-complexity budget.
  *
- * @phpstan-type ParsedJourney array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>}
+ * @phpstan-type ParsedJourney array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>, page: JourneyPage}
  */
 final class JourneyFileParser
 {
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>}
+     * @return array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>, page: JourneyPage}
      */
     public static function parse(array $data, string $path): array
     {
@@ -31,6 +31,7 @@ final class JourneyFileParser
             'config' => JourneyField::requireArrayOrDefault($data, 'config', $id, []),
             'turns' => JourneyTurns::parse($data['turns'] ?? null, $id),
             'assertions' => JourneyAssertions::parse($data['assertions'] ?? null, $id),
+            'page' => JourneyPage::parse($data['page'] ?? null, $id),
         ];
     }
 }

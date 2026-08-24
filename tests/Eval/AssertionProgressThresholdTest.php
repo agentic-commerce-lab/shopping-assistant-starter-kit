@@ -9,6 +9,7 @@ use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Eval\Assertion\CartContains;
 use Swag\AssistantStarterKit\Eval\Assertion\NoInventedProduct;
 use Swag\AssistantStarterKit\Eval\Journey;
+use Swag\AssistantStarterKit\Eval\JourneyPage;
 use Swag\AssistantStarterKit\Eval\JourneyRunner;
 use Swag\AssistantStarterKit\Tests\Support\BuildsChatResponses;
 use Swag\AssistantStarterKit\Tests\Support\UsesCatalogFixture;
@@ -54,6 +55,7 @@ final class AssertionProgressThresholdTest extends TestCase
             config: [],
             turns: ['what do you have under 20 euros?'],
             assertions: ['no_invented_product' => ['assertion' => new NoInventedProduct(), 'expectations' => []]],
+            page: JourneyPage::parse(null, 'test_journey'),
         );
 
         // Run 1: invents "fx-999" — nothing was ever retrieved this run, so it is
@@ -98,6 +100,7 @@ final class AssertionProgressThresholdTest extends TestCase
                     'expectations' => ['variantId' => 'fx-004-black'],
                 ],
             ],
+            page: JourneyPage::parse(null, 'test_journey'),
         );
 
         // Run 1: the model never calls add_to_cart at all — outcome cannot be

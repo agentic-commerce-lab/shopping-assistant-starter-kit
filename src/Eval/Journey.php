@@ -18,8 +18,8 @@ final readonly class Journey
 {
     // @mago-expect lint:excessive-parameter-list
     // A frozen, plan-dictated value object: one field per journey-file concept (identity,
-    // run count, per-archetype phrasing, config, turns, resolved assertions). The only
-    // call site, self::fromFile() below, uses named arguments.
+    // run count, per-archetype phrasing, config, turns, resolved assertions, and the page the
+    // shopper is standing on). The only call site, self::fromFile() below, uses named arguments.
     public function __construct(
         public string $id,
         public string $category,
@@ -32,6 +32,13 @@ final readonly class Journey
         public array $turns,
         /** @var array<string, array{assertion: Assertion, expectations: array<string, mixed>}> */
         public array $assertions,
+        /**
+         * Where the shopper is standing. Required rather than defaulted: {@see JourneyPage}'s
+         * constructor is private, so it cannot be a parameter default — and it does not need to be,
+         * because {@see JourneyFileParser} always supplies one and `JourneyPage::parse(null, …)`
+         * yields the empty page every journey written before page context existed wants.
+         */
+        public JourneyPage $page,
     ) {}
 
     public static function fromFile(string $path): self
