@@ -89,7 +89,14 @@ forced a choice rather than a translation. Snippets in the tasks below are curre
 - Consumes: `ProductCard`
 - Produces: `ViewingContext::line(?ProductCard $card): string` — empty string when there is nothing to say
 
-- [ ] **Step 1: Write the failing test**
+> **Deviation, 2026-08-24 (execution).** As written, this task could not pass itself: the
+> implementation line says *"You still have no price or stock for it here"* and the test banned the
+> substring `stock`. The prose was kept and the guard made precise — it now bans every **value** the
+> card carries (price, stock, currency, delivery time, `in stock`), derived from the card so it
+> cannot drift. Banning the word would have forbidden the instruction while still permitting `74.90`,
+> which is the failure backwards.
+
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Core/Prompt/ViewingContextTest.php`:
 
@@ -169,12 +176,12 @@ final class ViewingContextTest extends TestCase
 
 `StockSource::Variant` is the correct case (the enum is `Variant` / `Parent` / `Product`).
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Prompt/ViewingContextTest.php`
 Expected: FAIL — `ViewingContext` does not exist.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/Core/Prompt/ViewingContext.php`:
 
@@ -236,12 +243,12 @@ final class ViewingContext
 }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Core/Prompt/ViewingContextTest.php`
 Expected: PASS.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 
