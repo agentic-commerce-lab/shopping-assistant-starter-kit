@@ -1802,9 +1802,24 @@ that it should call one only for a different product or variant.
 shape that justified the feature — same architecture, same code. That is recorded in
 `ViewingContext`'s docblock so the clause cannot be softened back, and as ruling R98.
 
-**What is still unproven.** The category half (Tasks 5, 6) has no live measurement: its success
-criterion is relevance, not speed, and mixing the two makes both unreadable. It is covered by unit
-tests against the fixture and by `retrieve.without_category` in the trace, and nothing more.
+### The category half, measured separately
+
+Not a latency measurement — its success criterion is relevance, not speed — but the **DAL** filter
+had neither live nor automated coverage (the fixture tests exercise `FixtureCategoryFilter`, not
+`DalCriteriaBuilder`), so it was code that had never executed. Two turns closed that:
+
+| Browsing | Asked | `retrieve` | Retry | Result |
+|---|---|---|---|---|
+| *Tools, Outdoors & Shoes* (22 products) | *"do you have a trail jersey?"* | **0 hits** — the jersey is not in that category | `retrieve.without_category` → **7 hits** | the shopper got their jersey, and the trace says the aisle was left |
+| *Movies* (88 products) | *"do you have the Sleek Wool Clem Clogs?"* | **12 hits**, `query.build` carries `categoryId` | none — nothing to retry | sampled 4 of the 12 retrieved ids: all 4 in the Movies tree |
+
+Both halves of P8/P9 therefore hold against real Shopware DAL, not only against the fixture: the
+constraint genuinely narrows, it does not over-filter, and when it would leave a shopper with
+nothing the retry fires and is visible.
+
+**What is still unproven.** Whether the category constraint improves *answers* — relevance is not
+something two turns can settle. And `tests/e2e/widget.spec.js`'s new case is written and registered
+but has never been executed.
 
 ## Spec coverage
 
