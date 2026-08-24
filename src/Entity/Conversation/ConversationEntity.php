@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Entity\Conversation;
 
+use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Entity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
 use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventCollection;
@@ -20,6 +21,16 @@ class ConversationEntity extends Entity
     use EntityIdTrait;
 
     protected string $salesChannelId;
+
+    /**
+     * The shopper who started this conversation, or null for a guest.
+     *
+     * Null also means "was a customer, and that customer deleted their account": the foreign key is
+     * `ON DELETE SET NULL`, so the two are indistinguishable on purpose.
+     */
+    protected ?string $customerId = null;
+
+    protected ?CustomerEntity $customer = null;
 
     protected ?string $locale = null;
 
@@ -42,6 +53,26 @@ class ConversationEntity extends Entity
     public function setSalesChannelId(string $salesChannelId): void
     {
         $this->salesChannelId = $salesChannelId;
+    }
+
+    public function getCustomerId(): ?string
+    {
+        return $this->customerId;
+    }
+
+    public function setCustomerId(?string $customerId): void
+    {
+        $this->customerId = $customerId;
+    }
+
+    public function getCustomer(): ?CustomerEntity
+    {
+        return $this->customer;
+    }
+
+    public function setCustomer(?CustomerEntity $customer): void
+    {
+        $this->customer = $customer;
     }
 
     public function getLocale(): ?string

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Entity\Conversation;
 
+use Shopware\Core\Checkout\Customer\CustomerDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityDefinition;
+use Shopware\Core\Framework\DataAbstractionLayer\Field\FkField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\PrimaryKey;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\Required;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\IdField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\IntField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\JsonField;
+use Shopware\Core\Framework\DataAbstractionLayer\Field\ManyToOneAssociationField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\OneToManyAssociationField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\StringField;
 use Shopware\Core\Framework\DataAbstractionLayer\FieldCollection;
@@ -67,6 +70,14 @@ class ConversationDefinition extends EntityDefinition
         return new FieldCollection([
             (new IdField('id', 'id'))->addFlags(new PrimaryKey(), new Required()),
             (new StringField('sales_channel_id', 'salesChannelId'))->addFlags(new Required()),
+            // A real foreign key, unlike `sales_channel_id` above — that column is a plain string
+            // the DAL cannot join, which is why the Administration resolves channel names through a
+            // client-side map. This one can be joined, so the list and the export read the
+            // customer's name through the association instead.
+            //
+            // The constraint is `ON DELETE SET NULL`: a customer who deletes their account takes
+            // their link with them, and the conversation stays. See the migration.
+            new FkField('customer_id', 'customerId', CustomerDefinition::class),
             new StringField('locale', 'locale'),
             new IntField('turn_count', 'turnCount'),
             new StringField('outcome', 'outcome'),
@@ -78,6 +89,7 @@ class ConversationDefinition extends EntityDefinition
             // cut (R62).
             new IntField('total_ms', 'totalMs'),
             new JsonField('transcript', 'transcript'),
+            new ManyToOneAssociationField('customer', 'customer_id', CustomerDefinition::class, 'id', false),
             new OneToManyAssociationField('events', TraceEventDefinition::class, 'conversation_id'),
         ]);
     }
