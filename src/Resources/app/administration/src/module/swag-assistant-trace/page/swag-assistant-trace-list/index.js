@@ -134,9 +134,6 @@ Shopware.Component.register('swag-assistant-trace-list', {
 
             const criteria = new Criteria(1, 25);
             criteria.addSorting(Criteria.sort(this.sortBy, this.sortDirection));
-            // Without this the result's `total` is 0 — the DAL does not count unless asked — and
-            // the export button then offers "all 0", which is both wrong and disabled.
-            criteria.setTotalCountMode(Criteria.TOTAL_COUNT_MODE_EXACT);
             // The name comes off the association rather than a second lookup: `customer_id` is a
             // real foreign key, unlike `sales_channel_id`.
             criteria.addAssociation('customer');
@@ -146,6 +143,11 @@ Shopware.Component.register('swag-assistant-trace-list', {
             }
 
             this.conversations = await this.repository.search(criteria, Shopware.Context.api);
+            // `Criteria`'s default total-count-mode is already 1, which counts exactly. There was a
+            // `setTotalCountMode(Criteria.TOTAL_COUNT_MODE_EXACT)` here for one afternoon: that
+            // constant does not exist on the admin's Criteria, so it set `undefined` and replaced a
+            // working default with none — the export then offered "all 25", the page size, for a
+            // list of 115. Measured in the running Administration, not assumed.
             this.total = this.conversations.total ?? 0;
             this.isLoading = false;
         },
