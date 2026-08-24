@@ -49,7 +49,7 @@ final class PromptProviderDecorationTest extends TestCase
             [],
             [],
             new class implements PromptProviderInterface {
-                public function system(AssistantConfig $config, string $vocabulary = ''): string
+                public function system(AssistantConfig $config, string $vocabulary = '', string $viewing = ''): string
                 {
                     return 'A REPLACED SYSTEM PROMPT';
                 }

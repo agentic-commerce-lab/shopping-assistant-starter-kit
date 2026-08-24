@@ -140,7 +140,7 @@ final class AssistantRunner
 
     private function buildMessageBag(string $message, MessageBag $history): MessageBag
     {
-        $prompt = $this->bundle->prompt->system($this->config, $this->bundle->vocabulary);
+        $prompt = $this->bundle->prompt->system($this->config, $this->bundle->vocabulary, $this->bundle->viewing);
 
         // **Recorded in full, every turn, and not behind a setting.** Every other stage of the turn
         // was already traced; this was the one thing a merchant could not see when the assistant said

@@ -23,5 +23,14 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
  */
 interface PromptProviderInterface
 {
-    public function system(AssistantConfig $config, string $vocabulary = ''): string;
+    /**
+     * `$viewing` is the already-rendered {@see ViewingContext} line naming the product the shopper
+     * has open, or an empty string. It arrives as a parameter for the same reason `$vocabulary`
+     * does: it is per-request state this turn resolved, and a provider that went looking for it
+     * itself would have to resolve a product id it has no catalogue scope to check it against.
+     *
+     * **A provider that ignores it loses page context silently** — nothing fails, the assistant is
+     * simply no longer told what the shopper is looking at.
+     */
+    public function system(AssistantConfig $config, string $vocabulary = '', string $viewing = ''): string;
 }

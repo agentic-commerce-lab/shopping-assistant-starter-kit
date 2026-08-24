@@ -27,6 +27,11 @@ use Symfony\AI\Agent\Toolbox\ToolboxInterface;
  * {@see \Swag\AssistantStarterKit\Core\Agent\AssistantRunner} has no business probing the
  * catalog itself — it only needs the string to hand to
  * {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt::build()}.
+ *
+ * `$viewing` is the already-rendered {@see \Swag\AssistantStarterKit\Core\Prompt\ViewingContext}
+ * line — a string for the same reason `$vocabulary` is one: the runner hands it to the prompt
+ * provider and has no business holding a `ProductCard`, which carries figures it must never put in
+ * a prompt.
  */
 // @mago-expect lint:excessive-parameter-list
 // One property per per-request collaborator the turn needs, which is the point of the class: these
@@ -43,5 +48,6 @@ final readonly class Bundle
         // container decorated has to reach the turn, and a static call would silently ignore it.
         public PromptProviderInterface $prompt,
         public string $vocabulary = '',
+        public string $viewing = '',
     ) {}
 }

@@ -15,8 +15,8 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
  */
 final readonly class SystemPromptProvider implements PromptProviderInterface
 {
-    public function system(AssistantConfig $config, string $vocabulary = ''): string
+    public function system(AssistantConfig $config, string $vocabulary = '', string $viewing = ''): string
     {
-        return SystemPrompt::build($config, $vocabulary);
+        return SystemPrompt::build($config, $vocabulary, $viewing);
     }
 }

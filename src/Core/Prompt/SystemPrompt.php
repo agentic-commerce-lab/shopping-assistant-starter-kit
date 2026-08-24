@@ -112,7 +112,11 @@ final class SystemPrompt
         'If asked about any of those, say plainly that you cannot help with it here. '
             . 'Do not suggest that someone will get back to them.';
 
-    public static function build(AssistantConfig $config, string $vocabulary = ''): string
+    /**
+     * `$viewing` is appended after the rules and the vocabulary, in the same position the merchant's
+     * voice guidance occupies: it is context, and context never outranks the rules block above it.
+     */
+    public static function build(AssistantConfig $config, string $vocabulary = '', string $viewing = ''): string
     {
         // Between the rules and their closing line, not after the whole prompt: the clause qualifies
         // the paragraph RULES ends on, and reads as a dangling pronoun anywhere else.
@@ -125,6 +129,10 @@ final class SystemPrompt
 
         if ($vocabulary !== '') {
             $prompt .= "\n\n" . $vocabulary;
+        }
+
+        if ($viewing !== '') {
+            $prompt .= "\n\n" . $viewing;
         }
 
         if ($config->agentVoice !== '') {

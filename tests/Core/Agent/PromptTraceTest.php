@@ -54,7 +54,7 @@ final class PromptTraceTest extends TestCase
         // Not "a prompt-shaped string": the same string, byte for byte. A reconstruction would drift
         // from the real one exactly when it mattered.
         $provider = new class implements PromptProviderInterface {
-            public function system(AssistantConfig $config, string $vocabulary = ''): string
+            public function system(AssistantConfig $config, string $vocabulary = '', string $viewing = ''): string
             {
                 return 'EXACTLY THIS';
             }
