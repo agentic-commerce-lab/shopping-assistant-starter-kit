@@ -18,6 +18,22 @@
          data-greeting="{{ swag_assistant_greeting(context.salesChannelId) ?: 'swagAssistant.panel.defaultGreeting'|trans }}"
          data-add-to-cart-enabled="{{ swag_assistant_add_to_cart_enabled(context.salesChannelId) ? 'true' : 'false' }}"
          data-entry-point="{{ theme.entryPointStyle }}"
+         {# What the current page is about, so the assistant knows what "this" means.
+
+            Each is present only on the page type that has it: `page.product` does not exist on a
+            listing page, `page.category` does not exist on a product page, and neither exists on a
+            CMS page — where the assistant is expected to work with no page context at all. `?? ''`
+            makes a missing one absent rather than an error.
+
+            `page.product` is whatever the shopper is actually looking at, which is the *variant*
+            once they pick one and the parent before that. Both are correct to send: the variant is
+            the case where the pre-grounded card already answers "is this in stock?" with no tool
+            call, and the parent is the case where the model still has to resolve.
+
+            Neither grants anything. The server re-resolves a product id through the catalogue scope
+            and uses a category id only to narrow a search. #}
+         data-product-id="{{ page.product.id ?? '' }}"
+         data-category-id="{{ page.category.id ?? '' }}"
          style="{% if theme.primary %}--swag-assistant-primary:{{ theme.primary }};{% endif %}{% if theme.onPrimary %}--swag-assistant-on-primary:{{ theme.onPrimary }};{% endif %}{% if theme.primaryDark %}--swag-assistant-primary-dark:{{ theme.primaryDark }};{% endif %}{% if theme.primaryLight %}--swag-assistant-primary-light:{{ theme.primaryLight }};{% endif %}{% if theme.primaryAbyss %}--swag-assistant-primary-abyss:{{ theme.primaryAbyss }};{% endif %}{% if theme.secondary %}--swag-assistant-secondary:{{ theme.secondary }};{% endif %}">
 
         {% block swag_assistant_orb %}

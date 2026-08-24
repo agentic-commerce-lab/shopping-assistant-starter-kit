@@ -23,14 +23,34 @@ const MAX_IDS_PER_REQUEST = 12;
  * @param {{chatUrl: string, historyUrl: string, cardsUrl: string, cartUrl: string}} urls
  */
 export function createTransport({ chatUrl, historyUrl, cardsUrl, cartUrl }) {
-    async function send(message, token) {
+    async function send(message, token, page = {}) {
+        const payload = { message };
+
+        if (token) {
+            payload.token = token;
+        }
+
+        /*
+         * Hints about the current page. The server re-checks a product id against the catalogue
+         * scope and uses a category id only to narrow, so neither grants anything — and both are
+         * omitted rather than sent as null, so the request body stays the shape the endpoint
+         * documents.
+         */
+        if (page.productId) {
+            payload.productId = page.productId;
+        }
+
+        if (page.categoryId) {
+            payload.categoryId = page.categoryId;
+        }
+
         const response = await fetch(chatUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            body: JSON.stringify(token ? { message, token } : { message }),
+            body: JSON.stringify(payload),
         });
 
         if (!response.ok) {

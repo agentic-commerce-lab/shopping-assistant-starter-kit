@@ -146,6 +146,38 @@ test.describe('assistant widget', () => {
         await expect(card.locator('.swag-assistant-card__stock')).not.toBeEmpty();
     });
 
+    /**
+     * Page context, from the client's half.
+     *
+     * It asserts the *outgoing request*, not the answer, so it does not wait on a model round trip —
+     * the server still finishes the turn it started, as this file records elsewhere, but the test
+     * does not hold a worker for nineteen seconds to learn something the request body already says.
+     *
+     * The server's half is covered by PHPUnit: `PageContextTest` proves an id is resolved through
+     * the catalogue scope, and `AssistantChatValidationTest` proves a malformed one is dropped
+     * rather than failing the turn.
+     */
+    test('the widget tells the server which product is open', async ({ page }) => {
+        await page.goto(SHOP);
+
+        const detail = page.locator('a[href*="/detail/"]').first();
+        if ((await detail.count()) === 0) {
+            test.skip(true, 'this shop\'s landing page links no product detail page to open');
+        }
+
+        await page.goto(await detail.getAttribute('href'));
+        await page.evaluate(() => window.sessionStorage.removeItem('swagAssistantToken'));
+        await page.locator('[data-swag-assistant-orb]').click();
+        await expect(page.locator('[data-swag-assistant-panel]')).toBeVisible();
+
+        const sent = page.waitForRequest((request) => request.url().includes('/assistant/chat'));
+        await page.locator('[data-swag-assistant-input]').fill('is this in stock?');
+        await page.locator('[data-swag-assistant-send]').click();
+
+        const body = JSON.parse((await sent).postData() ?? '{}');
+        expect(body.productId).toMatch(/^[0-9a-f]{32}$/);
+    });
+
     test('the conversation and its cards survive a reload', async ({ page }) => {
         await openPanel(page);
         await page.locator('[data-swag-assistant-input]').fill('show me the trail jersey in blue, size M');

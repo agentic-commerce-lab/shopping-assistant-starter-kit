@@ -45,6 +45,9 @@ export default class SwagAssistantPanel extends PluginBaseClass {
 
         this.locale = this.el.dataset.locale || 'en-GB';
         this.addToCartEnabled = this.el.dataset.addToCartEnabled === 'true';
+        // Each is empty on every page that is not of its type.
+        this.viewingProductId = this.el.dataset.productId || null;
+        this.browsingCategoryId = this.el.dataset.categoryId || null;
         this.translations = this._readTranslations();
         this.isBusy = false;
 
@@ -457,7 +460,10 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         this.thinking.start();
 
         try {
-            const reply = await this.transport.send(message, window.sessionStorage.getItem(TOKEN_KEY));
+            const reply = await this.transport.send(message, window.sessionStorage.getItem(TOKEN_KEY), {
+                productId: this.viewingProductId,
+                categoryId: this.browsingCategoryId,
+            });
 
             /*
              * **Before rendering, not in `finally`.**
