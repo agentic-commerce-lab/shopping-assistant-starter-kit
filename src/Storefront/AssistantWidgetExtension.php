@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Storefront;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings;
+use Swag\AssistantStarterKit\Core\Config\WidgetTheme;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -49,6 +50,7 @@ final class AssistantWidgetExtension extends AbstractExtension
             new TwigFunction('swag_assistant_widget_name', $this->assistantName(...)),
             new TwigFunction('swag_assistant_greeting', $this->greeting(...)),
             new TwigFunction('swag_assistant_add_to_cart_enabled', $this->addToCartEnabled(...)),
+            new TwigFunction('swag_assistant_theme', $this->theme(...)),
         ];
     }
 
@@ -64,6 +66,11 @@ final class AssistantWidgetExtension extends AbstractExtension
         }
 
         return !$this->assistantConfig->forSalesChannel($salesChannelId)->killSwitch;
+    }
+
+    public function theme(string $salesChannelId): WidgetTheme
+    {
+        return $this->widgetSettings->theme($salesChannelId);
     }
 
     public function assistantName(string $salesChannelId): string

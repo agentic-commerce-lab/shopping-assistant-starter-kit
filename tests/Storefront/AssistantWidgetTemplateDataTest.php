@@ -58,6 +58,7 @@ final class AssistantWidgetTemplateDataTest extends AssistantWidgetTestCase
                 'swag_assistant_widget_name',
                 'swag_assistant_greeting',
                 'swag_assistant_add_to_cart_enabled',
+                'swag_assistant_theme',
             ],
             $names,
         );

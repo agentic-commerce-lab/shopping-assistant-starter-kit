@@ -129,6 +129,45 @@
     </card>
 
     <card>
+        <title>Appearance</title>
+
+        <input-field type="single-select">
+            <name>entryPointStyle</name>
+            <label>Entry point</label>
+            <defaultValue>icon</defaultValue>
+            <options>
+                <option>
+                    <id>icon</id>
+                    <name>Chat icon — neutral, takes your colours</name>
+                </option>
+                <option>
+                    <id>creature</id>
+                    <name>Character — the animated assistant face</name>
+                </option>
+            </options>
+            <helpText>The chat icon is the neutral default and the one to brand. The character has
+                expressions and reacts to the conversation; it carries more personality than a
+                merchant storefront usually wants.</helpText>
+        </input-field>
+
+        <input-field type="colorpicker">
+            <name>primaryColor</name>
+            <label>Primary colour</label>
+            <helpText>The action colour: the entry point, the send button, focus rings. Left empty,
+                the shipped blue is used. Whatever sits on top of it is chosen automatically so it
+                stays readable — a pale colour gets dark text, not white.</helpText>
+        </input-field>
+
+        <input-field type="colorpicker">
+            <name>secondaryColor</name>
+            <label>Secondary colour</label>
+            <helpText>The quiet surface behind the assistant's replies. Deliberately not a second
+                action colour: if two things on screen shout equally, a shopper cannot tell which one
+                is the button.</helpText>
+        </input-field>
+    </card>
+
+    <card>
         <title>Escalation</title>
 
         <input-field type="bool">

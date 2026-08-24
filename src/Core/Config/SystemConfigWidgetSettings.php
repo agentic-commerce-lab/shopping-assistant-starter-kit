@@ -46,6 +46,23 @@ final readonly class SystemConfigWidgetSettings
         return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
     }
 
+    /**
+     * The merchant's appearance choices, validated.
+     *
+     * Returns a value object rather than three strings because the foreground is *derived* from the
+     * primary and must not be able to travel separately from it — see {@see WidgetTheme::readableOn()}.
+     */
+    public function theme(string $salesChannelId): WidgetTheme
+    {
+        $prefix = SystemConfigAssistantConfig::PREFIX;
+
+        return WidgetTheme::of(
+            $this->systemConfig->getString($prefix . 'primaryColor', $salesChannelId),
+            $this->systemConfig->getString($prefix . 'secondaryColor', $salesChannelId),
+            $this->systemConfig->getString($prefix . 'entryPointStyle', $salesChannelId),
+        );
+    }
+
     public function assistantName(string $salesChannelId): string
     {
         $name = trim($this->systemConfig->getString(

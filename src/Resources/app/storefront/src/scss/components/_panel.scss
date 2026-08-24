@@ -192,12 +192,12 @@ is what makes a bare icon read as a control rather than as an ornament.
         color 150ms $swag-assistant-ease;
 
     &:hover {
-        background: $swag-assistant-bubble;
+        background: var(--swag-assistant-secondary, #{$swag-assistant-bubble});
         color: $swag-assistant-text;
     }
 
     &:focus-visible {
-        outline: 2px solid $swag-assistant-accent;
+        outline: 2px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
         outline-offset: 1px;
     }
 

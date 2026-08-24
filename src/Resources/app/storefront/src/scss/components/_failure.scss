@@ -41,7 +41,7 @@ The over-length composer state lives in `_composer.scss`, next to the field it b
 .swag-assistant-failure__retry {
     margin-left: auto;
     padding: 5px 11px;
-    border: 1px solid $swag-assistant-accent;
+    border: 1px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
     border-radius: $swag-assistant-radius-control;
     background: $swag-assistant-surface;
     color: $swag-assistant-accent-dark;
@@ -54,7 +54,7 @@ The over-length composer state lives in `_composer.scss`, next to the field it b
         transform 200ms $swag-assistant-ease-out;
 
     &:hover {
-        background: $swag-assistant-bubble;
+        background: var(--swag-assistant-secondary, #{$swag-assistant-bubble});
         transform: translateY(-1px);
     }
 
@@ -63,7 +63,7 @@ The over-length composer state lives in `_composer.scss`, next to the field it b
     }
 
     &:focus-visible {
-        outline: 2px solid $swag-assistant-accent;
+        outline: 2px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
         outline-offset: 2px;
     }
 }

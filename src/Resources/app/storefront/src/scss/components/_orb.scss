@@ -51,7 +51,7 @@ body:has(.swag-assistant) .scroll-up-button {
     -webkit-tap-highlight-color: transparent;
 
     &:focus-visible {
-        outline: 2px solid $swag-assistant-accent;
+        outline: 2px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
         outline-offset: 4px;
     }
 }

@@ -90,6 +90,9 @@ final class PluginManifestTest extends TestCase
             'escalationUrl',
             'escalationMessage',
             'logTraces',
+            'entryPointStyle',
+            'primaryColor',
+            'secondaryColor',
         ];
 
         foreach ($required as $key) {

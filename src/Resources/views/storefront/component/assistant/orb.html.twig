@@ -1,4 +1,9 @@
 {% block swag_assistant_root %}
+    {# Colours are per sales channel and the stylesheet is compiled once, so they cannot be SCSS
+       variables — they arrive as custom properties and every rule reads them with the shipped token as
+       its fallback. Each property is emitted only when the merchant actually set a valid one, so an
+       unset or rejected colour leaves the fallback in charge rather than writing an empty value. #}
+    {% set theme = swag_assistant_theme(context.salesChannelId) %}
     {# Every value the browser needs, passed as data attributes rather than inlined script. Route URLs
        come from path() so a shop with a prefix or a non-default domain keeps working, and the locale
        comes from the request so prices format the way the rest of the page does. #}
@@ -11,7 +16,9 @@
          data-locale="{{ app.request.locale|default('en-GB')|replace({'_': '-'}) }}"
          data-assistant-name="{{ swag_assistant_widget_name(context.salesChannelId) }}"
          data-greeting="{{ swag_assistant_greeting(context.salesChannelId) ?: 'swagAssistant.panel.defaultGreeting'|trans }}"
-         data-add-to-cart-enabled="{{ swag_assistant_add_to_cart_enabled(context.salesChannelId) ? 'true' : 'false' }}">
+         data-add-to-cart-enabled="{{ swag_assistant_add_to_cart_enabled(context.salesChannelId) ? 'true' : 'false' }}"
+         data-entry-point="{{ theme.entryPointStyle }}"
+         style="{% if theme.primary %}--swag-assistant-primary:{{ theme.primary }};{% endif %}{% if theme.onPrimary %}--swag-assistant-on-primary:{{ theme.onPrimary }};{% endif %}{% if theme.secondary %}--swag-assistant-secondary:{{ theme.secondary }};{% endif %}">
 
         {% block swag_assistant_orb %}
             {# A button, not a div: it is operated by keyboard and needs a role and a name for free.

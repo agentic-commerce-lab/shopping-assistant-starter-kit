@@ -84,7 +84,7 @@ where it stops and starts scrolling instead.
     pretending to be depth.
     */
     &:focus {
-        border-color: $swag-assistant-accent;
+        border-color: var(--swag-assistant-primary, #{$swag-assistant-accent});
         box-shadow: 0 0 0 3px rgba(8, 112, 255, 0.16);
         outline: none;
     }
@@ -92,7 +92,7 @@ where it stops and starts scrolling instead.
     // Keyboard users get the halo *and* a real outline, because a colour change alone is not a
     // focus indicator.
     &:focus-visible {
-        outline: 1px solid $swag-assistant-accent;
+        outline: 1px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
         outline-offset: 0;
     }
 }
@@ -128,7 +128,7 @@ something to send, then fills with accent: the control tells you it is armed bef
     // The fill is the whole signal. A coloured glow under it would be a second, weaker way of saying
     // the same thing.
     &.is-armed {
-        background: $swag-assistant-accent;
+        background: var(--swag-assistant-primary, #{$swag-assistant-accent});
         color: $swag-assistant-surface;
     }
 
@@ -155,7 +155,7 @@ something to send, then fills with accent: the control tells you it is armed bef
     }
 
     &:focus-visible {
-        outline: 2px solid $swag-assistant-accent;
+        outline: 2px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
         outline-offset: 2px;
     }
 
@@ -204,8 +204,8 @@ They are removed the moment the conversation starts. A first-run affordance that
     // A bordered chip takes the edge, not elevation. Both at once is a control asserting it is a
     // framed object and a floating one.
     &:hover {
-        border-color: $swag-assistant-accent;
-        background: $swag-assistant-bubble;
+        border-color: var(--swag-assistant-primary, #{$swag-assistant-accent});
+        background: var(--swag-assistant-secondary, #{$swag-assistant-bubble});
         transform: translateY(-1px);
     }
 
@@ -214,7 +214,7 @@ They are removed the moment the conversation starts. A first-run affordance that
     }
 
     &:focus-visible {
-        outline: 2px solid $swag-assistant-accent;
+        outline: 2px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
         outline-offset: 2px;
     }
 }
