@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The plugin's mark, and deliberately not a new one.
+
+  It is the storefront entry point as shipped: the disc a shopper sees in the corner of the shop,
+  in the widget's default primary (Shopware SW 500), carrying the same chat glyph at the same 42%
+  of the disc that `_orb.scss` renders it at. A merchant meets the same mark in the Extension
+  Manager that their customers meet in the shop.
+
+  The glyph path is copied verbatim from `$swag-assistant-icon-chat` in
+  `src/Resources/app/storefront/src/scss/components/_icons.scss`. If that changes, change this —
+  they are the same mark, and a drift between them is the thing this comment exists to prevent.
+
+  No Shopware signet: a plugin icon carrying the brand mark reads as a first-party product, and
+  lock-ups need Brand Design approval.
+
+  Source of `plugin.png`. Re-render with scripts/render-plugin-icon.mjs.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+    <circle cx="128" cy="128" r="123" fill="#0870ff"/>
+    <g transform="translate(128 128) scale(4.305) translate(-12 -12)">
+        <path fill="#ffffff" fill-rule="evenodd" clip-rule="evenodd" d="M6 3H18C20.2091 3 22 4.79086 22 7V13C22 15.2091 20.2091 17 18 17H10.4142L6.70711 20.7071C6.07714 21.3371 5 20.8909 5 20V16.874C3.27477 16.4299 2 14.8638 2 13V7C2 4.79086 3.79086 3 6 3ZM6 5C4.89543 5 4 5.89543 4 7V13C4 14.1046 4.89543 15 6 15C6.55228 15 7 15.4477 7 16V17.5858L8.79289 15.7929C8.98043 15.6054 9.23478 15.5 9.5 15.5H18C19.1046 15.5 20 14.6046 20 13.5V7C20 5.89543 19.1046 5 18 5H6Z"/>
+    </g>
+</svg>
