@@ -45,12 +45,23 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
     ): TurnResult {
         $config = $this->configFactory->forSalesChannel($salesChannelId);
 
+        // Resolved through the same scope as any search hit, so the blocklist and the excluded
+        // categories decide what the assistant may see. An id that does not resolve is dropped
+        // silently — the shopper still gets an answer, just without the shortcut.
+        $viewing = $viewingProductId === null ? null : $this->gateway->product($viewingProductId, $config->scope);
+
         $bundle = $this->agentFactory->create(
             $this->gateway,
             $config,
             cartAvailable: true,
             llm: $this->llmFactory->forSalesChannel($salesChannelId),
+            viewing: $viewing,
         );
+
+        $bundle->trace->record('page.context', [
+            'reported' => $viewingProductId !== null,
+            'resolved' => $viewing?->id,
+        ]);
 
         try {
             $turn = (new AssistantRunner($config, $bundle))->run($message, $this->bag($history));

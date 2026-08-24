@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory\Bundle;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface;
@@ -16,6 +17,7 @@ use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary;
 use Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface;
 use Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider;
+use Swag\AssistantStarterKit\Core\Prompt\ViewingContext;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory;
@@ -128,9 +130,23 @@ final readonly class AssistantAgentFactory
         AssistantConfig $config,
         bool $cartAvailable,
         LlmSettings $llm,
+        ?ProductCard $viewing = null,
     ): Bundle {
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
+
+        // Pre-grounding, and the reason this feature removes a model round trip.
+        //
+        // `registerRetrieved()` does two different things, both of which this relies on: the
+        // retrieved *index* accumulates, so the open product stays nameable for the whole turn
+        // without `validate()` counting it as invented even after a search runs; while
+        // `lastBatchIds` is *replaced*, so it is the default rendered card set only until a tool
+        // returns something newer. A turn that calls no tool therefore renders the product the
+        // shopper is already looking at, with its real price and stock, and the model never had to
+        // ask for it.
+        if ($viewing !== null) {
+            $renderer->registerRetrieved([$viewing]);
+        }
 
         $facetProbe = new FacetProbe($gateway, $trace);
 
@@ -203,6 +219,14 @@ final readonly class AssistantAgentFactory
             outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace)],
         );
 
-        return new Bundle($agent, $renderer, $trace, $toolbox, $this->prompt, $vocabularyStats['text']);
+        return new Bundle(
+            $agent,
+            $renderer,
+            $trace,
+            $toolbox,
+            $this->prompt,
+            $vocabularyStats['text'],
+            ViewingContext::line($viewing),
+        );
     }
 }
