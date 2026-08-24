@@ -317,45 +317,68 @@ click would make the reset button feel broken in exactly the moment it finally e
 
 // Full-screen sheet on mobile: a 400px panel on a 375px viewport is not a panel.
 /*
-The resize handle, top-left — the two edges that grow away from the orb.
+Resize grips: the left edge, the top edge, and the corner between them.
 
-A resting state on purpose: a short diagonal rule, visible without hovering. A hover-only affordance
-is decoration nobody can trigger on a touch device, and this one is hidden there anyway.
+Modelled on a desktop window frame, because that is the behaviour people expect from a panel with a
+draggable size — and the first version, a single 18px corner, was reported as "barely visible". A
+window frame solves discoverability with the **cursor** rather than with a drawn grip: an 8px strip
+along the edge, invisible at rest, and the pointer tells you it is grabbable the moment you reach it.
 
-Edge, not elevation: it is a 16px corner, and a shadow on something that small reads as dirt.
+The corner keeps a drawn mark, because it is the one that needs to say "this panel is resizable at
+all" before anyone goes looking for an edge — and because it is the keyboard's entry point.
+
+The bottom and right edges have no grips. The panel is anchored to the bottom-right by the orb it
+opens from; dragging those would move the panel rather than resize it.
 */
-.swag-assistant-panel__resize {
+.swag-assistant-panel__grip {
     position: absolute;
-    top: 0;
-    left: 0;
     z-index: 1;
-    width: 18px;
-    height: 18px;
     padding: 0;
     border: 0;
-    border-radius: $swag-assistant-radius-panel 0 0 0;
     background: transparent;
-    cursor: nwse-resize;
 
-    // The grip: two hairlines meeting at the corner, in the same colour as every other divider here.
-    &::before {
-        content: '';
-        position: absolute;
-        top: 5px;
-        left: 5px;
+    &--left {
+        top: 0;
+        bottom: 0;
+        left: 0;
         width: 8px;
+        cursor: ew-resize;
+    }
+
+    &--top {
+        top: 0;
+        right: 0;
+        left: 0;
         height: 8px;
-        border-top: 1px solid $swag-assistant-hairline;
-        border-left: 1px solid $swag-assistant-hairline;
-        border-radius: 2px 0 0 0;
+        cursor: ns-resize;
     }
 
-    &:hover::before,
-    &:focus-visible::before {
-        border-top-color: var(--swag-assistant-primary, #{$swag-assistant-accent});
-        border-left-color: var(--swag-assistant-primary, #{$swag-assistant-accent});
+    // Last, so it wins the shared 8x8 square where the two strips overlap: at a corner, a
+    // two-dimensional drag is what someone is reaching for.
+    // The attribute is carried here only for specificity: the corner is a `<button>`, and the
+    // storefront's own `button:not(:disabled) { cursor: pointer }` outranks a single class. Measured —
+    // the corner reported `pointer`, which says "click me" for a control whose affordance is "drag me".
+    &--corner[data-swag-assistant-resize] {
+        top: 0;
+        left: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: $swag-assistant-radius-panel 0 0 0;
+        cursor: nwse-resize;
     }
 
+    /*
+    No drawn mark on any of the three.
+
+    The first version put a small right-angle at the corner as a "this is resizable" hint, and it was
+    reported twice: barely visible, and not what a window does. It is not what a window does — a frame
+    has no visible grip at all, and the cursor is the entire affordance. This is desktop-only by
+    construction (all three are absent on the phone sheet), so a cursor-borne affordance is the
+    platform's convention rather than a hover-only tell nobody can trigger.
+
+    The focus ring below is the exception, and it is not decoration: it is the only way the
+    keyboard-operable corner announces itself.
+    */
     &:focus-visible {
         outline: 2px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
         outline-offset: 2px;
@@ -365,7 +388,7 @@ Edge, not elevation: it is a 16px corner, and a shadow on something that small r
 @media (max-width: 575px) {
     // The sheet is `inset: 0`. Resizing something that already fills the viewport means nothing, so
     // the handle is absent rather than present and inert.
-    .swag-assistant-panel__resize {
+    .swag-assistant-panel__grip {
         display: none;
     }
 

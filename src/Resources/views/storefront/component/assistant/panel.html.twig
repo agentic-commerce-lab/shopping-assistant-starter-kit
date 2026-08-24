@@ -12,13 +12,28 @@
              hidden>
 
         {% block swag_assistant_panel_resize %}
-            {# A real button, so it is reachable by keyboard and has a name. Arrow keys resize it; a
-               pointer-only handle is one a keyboard user cannot use, and every other control here is
-               operable. Hidden on the phone sheet by the stylesheet, where resizing a full-screen
-               surface means nothing. #}
-            <button class="swag-assistant-panel__resize"
+            {# Three grips, matching how a desktop window behaves: the two edges that can move, plus
+               the corner that moves both. The bottom and right edges are pinned — the panel is
+               anchored there by the orb it opens from, and dragging them would relocate the panel
+               rather than resize it.
+
+               The corner is a real `<button>`: it is the one a keyboard reaches, and arrow keys resize
+               from it. The edges are `<span>`s because they are pointer affordances whose signal is
+               the cursor, the way a window frame's is — duplicating them into the tab order would put
+               three stops in front of the close button for one capability.
+
+               All three are hidden on the phone sheet, where the panel already fills the screen. #}
+            <span class="swag-assistant-panel__grip swag-assistant-panel__grip--left"
+                  data-swag-assistant-resize="width"
+                  aria-hidden="true"></span>
+
+            <span class="swag-assistant-panel__grip swag-assistant-panel__grip--top"
+                  data-swag-assistant-resize="height"
+                  aria-hidden="true"></span>
+
+            <button class="swag-assistant-panel__grip swag-assistant-panel__grip--corner"
                     type="button"
-                    data-swag-assistant-resize
+                    data-swag-assistant-resize="both"
                     aria-label="{{ 'swagAssistant.panel.resize'|trans }}"></button>
         {% endblock %}
 

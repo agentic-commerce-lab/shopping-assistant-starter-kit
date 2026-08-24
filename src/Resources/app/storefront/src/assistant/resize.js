@@ -62,8 +62,10 @@ function fit(value, fallback, min, max, available) {
  *
  * Returns a teardown function.
  */
-export function attachResize(panel, handle, { onCommit } = {}) {
-    if (!panel || !handle) {
+export function attachResize(panel, handles, { onCommit } = {}) {
+    const grips = [...(handles ?? [])].filter(Boolean);
+
+    if (!panel || grips.length === 0) {
         return () => {};
     }
 
@@ -88,11 +90,22 @@ export function attachResize(panel, handle, { onCommit } = {}) {
     };
 
     const onPointerDown = (event) => {
-        const box = panel.getBoundingClientRect();
-        start = { x: event.clientX, y: event.clientY, width: box.width, height: box.height };
+        const axis = event.currentTarget.dataset.swagAssistantResize;
 
-        // Capture, so a fast drag that leaves the 16px handle keeps resizing instead of stopping dead.
-        handle.setPointerCapture(event.pointerId);
+        // `offset*`, not `getBoundingClientRect()`. The panel opens with a `scale` transform, and a
+        // rect measured mid-transition is the *scaled* size — grabbing an edge while it was still
+        // animating started the drag from a size the panel was never going to keep, and the panel
+        // jumped by the difference. Measured at 28px on a 607px panel.
+        start = {
+            x: event.clientX,
+            y: event.clientY,
+            width: panel.offsetWidth,
+            height: panel.offsetHeight,
+            axis,
+        };
+
+        // Capture, so a fast drag that leaves an 8px strip keeps resizing instead of stopping dead.
+        event.currentTarget.setPointerCapture(event.pointerId);
         event.preventDefault();
     };
 
@@ -101,9 +114,14 @@ export function attachResize(panel, handle, { onCommit } = {}) {
             return;
         }
 
+        // The axis is the grip's, so a left-edge drag cannot change the height by accident — which is
+        // what a window frame does, and what makes a one-dimensional adjustment feel deliberate.
+        const wantsWidth = start.axis === 'width' || start.axis === 'both';
+        const wantsHeight = start.axis === 'height' || start.axis === 'both';
+
         apply({
-            width: start.width + (start.x - event.clientX),
-            height: start.height + (start.y - event.clientY),
+            width: wantsWidth ? start.width + (start.x - event.clientX) : start.width,
+            height: wantsHeight ? start.height + (start.y - event.clientY) : start.height,
         });
     };
 
@@ -114,8 +132,8 @@ export function attachResize(panel, handle, { onCommit } = {}) {
 
         start = null;
 
-        if (handle.hasPointerCapture(event.pointerId)) {
-            handle.releasePointerCapture(event.pointerId);
+        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
         }
 
         onCommit?.({ width: panel.offsetWidth, height: panel.offsetHeight });
@@ -138,18 +156,18 @@ export function attachResize(panel, handle, { onCommit } = {}) {
         onCommit?.(committed);
     };
 
-    handle.addEventListener('pointerdown', onPointerDown);
-    handle.addEventListener('pointermove', onPointerMove);
-    handle.addEventListener('pointerup', onPointerUp);
-    handle.addEventListener('pointercancel', onPointerUp);
-    handle.addEventListener('keydown', onKeyDown);
+    const listeners = [
+        ['pointerdown', onPointerDown],
+        ['pointermove', onPointerMove],
+        ['pointerup', onPointerUp],
+        ['pointercancel', onPointerUp],
+        ['keydown', onKeyDown],
+    ];
+
+    grips.forEach((grip) => listeners.forEach(([type, fn]) => grip.addEventListener(type, fn)));
 
     return () => {
-        handle.removeEventListener('pointerdown', onPointerDown);
-        handle.removeEventListener('pointermove', onPointerMove);
-        handle.removeEventListener('pointerup', onPointerUp);
-        handle.removeEventListener('pointercancel', onPointerUp);
-        handle.removeEventListener('keydown', onKeyDown);
+        grips.forEach((grip) => listeners.forEach(([type, fn]) => grip.removeEventListener(type, fn)));
     };
 }
 

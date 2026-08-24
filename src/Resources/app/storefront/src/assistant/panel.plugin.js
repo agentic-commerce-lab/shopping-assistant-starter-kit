@@ -231,7 +231,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
             restoreSize(this.panel, this._storedSize());
             this._detachResize = attachResize(
                 this.panel,
-                this.el.querySelector('[data-swag-assistant-resize]'),
+                this.el.querySelectorAll('[data-swag-assistant-resize]'),
                 { onCommit: (size) => this._rememberSize(size) },
             );
         }

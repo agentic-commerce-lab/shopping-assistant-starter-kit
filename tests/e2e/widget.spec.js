@@ -514,6 +514,47 @@ test.describe('reading what the server actually sends', () => {
         expect(painted).toContain(`${r}, ${g}, ${b}`);
     });
 
+    test('each resize grip changes only its own axis', async ({ page }) => {
+        // The behaviour a window frame has, and the reason the single-corner version was replaced: a
+        // left-edge drag that also changed the height would make a one-dimensional adjustment
+        // impossible.
+        //
+        // The stored size is cleared first. Without it this test inherited whatever an earlier run had
+        // dragged the panel to, measured `before` while the restore was still settling, and failed on
+        // a 23px difference that had nothing to do with the drag.
+        await page.addInitScript(() => window.localStorage.removeItem('swagAssistantPanelSize'));
+        await openPanel(page);
+
+        // Measured with `offset*`, not `boundingBox()`, and for the same reason the implementation
+        // uses them: the panel opens with a `scale` transform, and a rect read mid-transition is the
+        // scaled size. Measuring on a different basis than the code under test made this fail on a
+        // 32px difference the drag never caused.
+        const size = () => page.evaluate(() => {
+            const el = document.querySelector('[data-swag-assistant-panel]');
+
+            return { width: el.offsetWidth, height: el.offsetHeight };
+        });
+
+        const grip = page.locator('[data-swag-assistant-resize="width"]');
+        // The listeners attach in `open()`, so a drag fired the instant the panel appears lands before
+        // anything is listening — measured: the panel did not move at all.
+        await expect(grip).toBeVisible();
+        await page.waitForTimeout(500);
+
+        const before = await size();
+        const gb = await grip.boundingBox();
+
+        await page.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(gb.x - 100, gb.y - 80, { steps: 8 });
+        await page.mouse.up();
+
+        const after = await size();
+
+        expect(after.width).toBeGreaterThan(before.width);
+        expect(after.height).toBe(before.height);
+    });
+
     test('an escalated reply offers a way to reach a human', async ({ page }) => {
         // The shape the endpoint sends when `escalate` ran and the merchant configured a contact
         // route. Stubbed rather than prompted for: whether a model chooses to escalate is the eval

@@ -234,9 +234,15 @@ does not want, and the reason the neutral one is the default.
 
 ### Resizing
 
-On desktop the panel has a handle in its top-left corner. Drag it to resize — up and to the left,
-away from the orb — or focus it and use the arrow keys, 24px a step. The size is remembered in
-`localStorage` and re-clamped on every open, so a window that shrank since does not leave a panel
+On desktop the panel resizes like a window: drag its **left edge** for width, its **top edge** for
+height, or the **top-left corner** for both at once. There is no drawn grip — the cursor is the
+affordance, the same as a window frame.
+
+The bottom and right edges are pinned. The panel is anchored there by the orb it opens from, so
+dragging those would move it rather than resize it.
+
+The corner is keyboard-operable: focus it and use the arrow keys, 24px a step. The size is remembered
+in `localStorage` and re-clamped on every open, so a window that shrank since does not leave a panel
 hanging off the screen.
 
 It is absent on phones, where the panel is already a full-screen sheet.
