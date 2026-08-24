@@ -40,8 +40,16 @@ So there are two tiers:
   reach the catalogue, which means it cannot get the above wrong. Use this unless you need catalogue
   data — a store locator, an FAQ lookup, a shipping estimate, a warranty checker.
 - **`GroundedToolFactoryInterface`** receives a `GroundedToolContext`: the gateway, the fact renderer,
-  the blocklist, the variant resolver. Use it when your tool genuinely answers from the catalogue, and
+  the blocklist, the variant resolver, and `browsingCategoryId` — the category the shopper is
+  currently browsing, or null. Use it when your tool genuinely answers from the catalogue, and
   render shopper-facing facts through `FactRenderer` rather than returning them yourself.
+
+`browsingCategoryId` is client-supplied and never resolved, so **use it only to narrow.** As a
+`ProductQuery::$categoryId` it is AND-ed with the merchant's scope and can only ever return fewer
+products; putting it anywhere the scope is OR-ed — `CatalogScope::$includeCategoryIds` — would let a
+shopper reach products the merchant excluded. The shipped `search_products` also retries without it
+when the constraint leaves the shopper with nothing, and records `retrieve.without_category` when it
+does.
 
 The two context classes deliberately share no parent, so an unprivileged factory cannot cast its way
 to the catalogue.
@@ -151,10 +159,10 @@ final readonly class AcmePromptProvider implements PromptProviderInterface
 {
     public function __construct(private PromptProviderInterface $inner) {}
 
-    public function system(AssistantConfig $config, string $vocabulary = ''): string
+    public function system(AssistantConfig $config, string $vocabulary = '', string $viewing = ''): string
     {
         // Appending keeps the shipped rules. Replacing drops them - see below.
-        return $this->inner->system($config, $vocabulary)
+        return $this->inner->system($config, $vocabulary, $viewing)
             . "\n\nAlways mention that delivery to the islands takes two extra days.";
     }
 }
@@ -166,6 +174,11 @@ final readonly class AcmePromptProvider implements PromptProviderInterface
     <argument type="service" id=".inner"/>
 </service>
 ```
+
+`$viewing` is the line naming the product the shopper currently has open, already rendered and
+already stripped of every figure. **Pass it on.** A provider that drops it compiles, passes its
+tests and silently costs the assistant its page context — nothing fails, the model is simply no
+longer told what "this" refers to.
 
 **Decorate rather than replace unless you mean it.** The shipped prompt carries the injection
 defence, the rule against claiming what the shop does not sell, and the escalation clause — and each

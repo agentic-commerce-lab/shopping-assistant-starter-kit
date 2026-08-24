@@ -278,6 +278,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 0 | Budget | `Policy\RequestBudget` | per-caller window then per-channel daily budget, **before the first database call**. A refusal is a 429 with `Retry-After`, and writes nothing |
 | 1 | Guard | `Policy\GuardCheck` | kill switch. Rejects before any model cost |
 | 2 | Session load | `AssistantController` | history + inferred shopper profile |
+| 2b | Page context | `Agent\ShopwareChatTurnRunner` | records `page.context` `{reported: bool, resolved: ?string, category: ?string}`. The reported product id is resolved through `gateway->product($id, $config->scope)` — a **hint, not an authority**: what does not resolve is ignored, so the blocklist and the excluded categories decide what the assistant may see, not the client. A resolved card is registered on the `FactRenderer` and named in the prompt by `Prompt\ViewingContext` as id, name and options — **never a figure**. A reported category id is not resolved at all; it becomes a `ProductQuery` constraint, and `retrieve.without_category` is recorded when a search that found nothing is retried without it |
 | 3 | Understand | *(no separate step)* | With tool calling the model's tool arguments **are** the extracted intent. `SearchProductsTool` records the `understand` stage from its own validated arguments. The guarantee that matters — the model never supplies a field name — is enforced in `QueryBuilder`, not here. Saves one LLM round trip per turn |
 | 4 | Facet probe | `Retrieval\FacetProbe` | cached per (salesChannel, scope); TTL 1h |
 | 5 | Build query | `Retrieval\QueryBuilder` | **drops unknown filter fields and records them** |
@@ -635,6 +636,12 @@ Two consequences:
 
 - `POST /assistant/chat` accepts a conversation token and returns one. `GET /assistant/history?token=…`
   returns the messages so the widget can re-hydrate on mount.
+- `POST /assistant/chat` also accepts two optional page hints, both 32-character hex catalogue ids
+  parsed by `Controller\PageContext`: `productId`, the product the shopper has open, and
+  `categoryId`, the category they are browsing. Anything that is not a well-formed id is **dropped,
+  not rejected** — a page template emitting something unexpected must cost a shopper an
+  optimisation, never their answer. Neither grants any capability: `productId` is re-resolved
+  through the catalogue scope, and `categoryId` only narrows a search, never widens one.
 - The conversation entity that exists for traces is also the memory store. One table, two
   readers — do not build a second one.
 

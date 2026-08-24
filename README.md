@@ -15,6 +15,10 @@ catalog data: the correct variant, its real price, its real stock, and a working
 They can say *"add that to my cart"* and it lands in their actual cart. Checkout is the
 shop's normal checkout.
 
+On a product page the assistant knows which product is open, so *"do you have this in blue?"*
+needs no search first; on a category page it searches that category before the whole shop, and says
+in the trace when it had to look outside it.
+
 The merchant sees every conversation in the Administration: what the assistant
 understood, which products it retrieved, which facts it rendered, what it refused —
 and the system prompt each turn was actually run with, which matters once a partner
