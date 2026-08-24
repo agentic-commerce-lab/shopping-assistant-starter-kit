@@ -636,6 +636,15 @@ Two consequences:
 
 - `POST /assistant/chat` accepts a conversation token and returns one. `GET /assistant/history?token=…`
   returns the messages so the widget can re-hydrate on mount.
+- `POST /api/_action/swag-assistant/trace/export` is admin-scoped and requires
+  `swag_assistant_conversation:read`. It takes `{"ids": [...]}` and answers a JSON file: one object
+  per conversation with a summary block, the transcript, and every event with its payload unchanged.
+  Bounded at **1 000 conversations**, refused with the count above it. Ids that no longer resolve are
+  skipped, and the number skipped is named in `X-Swag-Assistant-Skipped` rather than left to be
+  discovered by counting rows. **The file carries customer names, so it is personal data the moment
+  it is written** — which is why the privilege sits on the route rather than on whatever read the
+  frontend happens to perform. There is one format: a CSV export shipped briefly and was removed,
+  because a trace is nested and formvariable and CSV can only ever hold a summary of one.
 - `POST /assistant/chat` also accepts two optional page hints, both 32-character hex catalogue ids
   parsed by `Controller\PageContext`: `productId`, the product the shopper has open, and
   `categoryId`, the category they are browsing. Anything that is not a well-formed id is **dropped,
@@ -788,11 +797,24 @@ assumption.
 |---|---|
 | `id` | uuid |
 | `sales_channel_id` | uuid |
+| `customer_id` | uuid, **nullable**, `FOREIGN KEY … ON DELETE SET NULL` |
 | `locale` | string |
 | `turn_count` | int |
 | `outcome` | enum: `product_shown` \| `cart_added` \| `no_result` \| `escalated` \| `error` |
 | `first_token_ms`, `total_ms` | int |
 | `created_at` | datetime |
+
+**`customer_id` is captured once**, on the turn that opens the conversation, from the
+`SalesChannelContext`. A guest who logs in mid-conversation stays a guest on it: the column answers
+*who produced this trace*, and updating it per turn would make it answer *who was last seen*.
+
+**`ON DELETE SET NULL` is load-bearing, not housekeeping.** When a customer deletes their account the
+database severs the link itself — no erasure routine over this table for anyone to forget, and no
+pseudonymous identifier left pointing at a transcript. The conversation survives, because a trace is
+a record of what the shop did. `ON DELETE CASCADE` would destroy the merchant's own history along
+with the customer; **do not "tidy" it to that.** The accepted consequence is that a deleted
+customer's conversation is indistinguishable from a guest's — the Administration shows `Guest user`
+for both, because that is the only thing left that is true.
 
 `swag_assistant_trace_event`
 

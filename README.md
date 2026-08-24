@@ -19,6 +19,12 @@ On a product page the assistant knows which product is open, so *"do you have th
 needs no search first; on a category page it searches that category before the whole shop, and says
 in the trace when it had to look outside it.
 
+Each conversation records which customer started it, or none for a guest, and the Administration
+shows the name beside it. A merchant can export conversations as JSON — the full trace, every event
+payload intact — from the list or from a single conversation's page. **An exported file contains
+customer names**, so it is personal data once it leaves the shop and is no longer covered by the
+retention that prunes the traces themselves.
+
 The merchant sees every conversation in the Administration: what the assistant
 understood, which products it retrieved, which facts it rendered, what it refused —
 and the system prompt each turn was actually run with, which matters once a partner

@@ -63,7 +63,7 @@
 
 > **No unit test.** A DAL definition and a migration are declarations, not logic; this repo has no integration harness and `TraceEventApiExposureTest` is the only place that touches a definition, for API exposure rather than behaviour. Task 2 is where behaviour starts and where tests resume. Verification here is `composer run quality` (mago analyzes the definition) plus the live check in Step 4.
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `src/Migration/Migration1787356800AddConversationCustomerId.php`:
 
@@ -129,7 +129,7 @@ class Migration1787356800AddConversationCustomerId extends MigrationStep
 }
 ```
 
-- [ ] **Step 2: Declare the field and the association**
+- [x] **Step 2: Declare the field and the association**
 
 In `src/Entity/Conversation/ConversationDefinition.php`, add after the `sales_channel_id` line:
 
@@ -151,7 +151,7 @@ Imports: `Shopware\Core\Checkout\Customer\CustomerDefinition`,
 `Shopware\Core\Framework\DataAbstractionLayer\Field\FkField`,
 `Shopware\Core\Framework\DataAbstractionLayer\Field\ManyToOneAssociationField`.
 
-- [ ] **Step 3: Carry it on the entity**
+- [x] **Step 3: Carry it on the entity**
 
 In `src/Entity/Conversation/ConversationEntity.php`, add the properties beside `$salesChannelId`:
 
@@ -187,7 +187,7 @@ and the four accessors, in the shape the file already uses:
 
 Import `Shopware\Core\Checkout\Customer\CustomerEntity`.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 Expected: green, exit 0.
@@ -203,7 +203,7 @@ docker compose exec -T database mariadb -uroot -proot shopware -e \
 
 Expected: the column, and a `FOREIGN KEY (customer_id) REFERENCES customer (id) ON DELETE SET NULL`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/Migration src/Entity
@@ -225,7 +225,7 @@ git commit -m "feat(trace): record which customer a conversation belonged to"
 - Consumes: `ConversationEntity::$customerId` (Task 1)
 - Produces: `ConversationStore::start(string $salesChannelId, string $locale, ?string $customerId = null): string`; `InMemoryConversationStore::$lastCustomerId`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 The double must be able to record it first. In `tests/Core/Trace/InMemoryConversationStore.php`:
 
@@ -301,12 +301,12 @@ Import `Shopware\Core\Checkout\Customer\CustomerEntity`. The existing two `metho
 exactly as they are — only the customer is new, and every current caller passes no argument and
 still gets a guest.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Controller/AssistantChatValidationTest.php`
 Expected: FAIL — `lastCustomerId` stays null for the logged-in case, because nothing reads the customer yet.
 
-- [ ] **Step 3: Write it in the DAL store**
+- [x] **Step 3: Write it in the DAL store**
 
 In `src/Core/Trace/DalConversationStore.php`:
 
@@ -330,7 +330,7 @@ In `src/Core/Trace/DalConversationStore.php`:
     }
 ```
 
-- [ ] **Step 4: Read the customer in the controller**
+- [x] **Step 4: Read the customer in the controller**
 
 In `src/Controller/AssistantController.php`, replace the `start()` call:
 
@@ -345,12 +345,12 @@ In `src/Controller/AssistantController.php`, replace the `start()` call:
         );
 ```
 
-- [ ] **Step 5: Run it to verify it passes**
+- [x] **Step 5: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 Expected: PASS, exit 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Core/Trace src/Controller tests/Controller tests/Core/Trace
@@ -373,7 +373,7 @@ git commit -m "feat(trace): attribute a conversation to the shopper who started 
 split, and three derivations of one number is how the file and the screen come to disagree. It is
 also the only piece of the export with real logic, so it is the piece that gets its own test.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Core/Trace/Export/TraceExportRowTest.php`:
 
@@ -496,12 +496,12 @@ final class TraceExportRowTest extends TestCase
 **Check `TraceEventEntity`'s setters before running** — the property names are `stage`, `payload`,
 `elapsedMs`, `seq`; if `seq` is required by anything downstream, set it in `event()` too.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Trace/Export/TraceExportRowTest.php`
 Expected: FAIL — `TraceExportRow` does not exist.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/Core/Trace/Export/TraceExportRow.php`:
 
@@ -599,7 +599,7 @@ final class TraceExportRow
 }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Core/Trace/Export/TraceExportRowTest.php`
 Expected: PASS.
@@ -609,7 +609,7 @@ numbers rather than the threshold** — recompute by hand from the offsets in th
 you computed. The 250ms threshold is measured and shared with `phases.js`; changing it to make a
 test pass would silently change what the Administration means by "waiting on the model".
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/Core/Trace/Export tests/Core/Trace/Export
@@ -632,7 +632,7 @@ git commit -m "feat(trace): flatten a conversation to the numbers a merchant cou
   `TraceJsonSerialiser::serialise(array $conversations, array $salesChannelNames): string`, where
   `$conversations` is `list<ConversationEntity>` and `$salesChannelNames` is `array<string, string>`
 
-- [ ] **Step 1: Write the failing CSV test**
+- [x] **Step 1: Write the failing CSV test**
 
 Create `tests/Core/Trace/Export/TraceCsvSerialiserTest.php`:
 
@@ -732,12 +732,12 @@ final class TraceCsvSerialiserTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Trace/Export/TraceCsvSerialiserTest.php`
 Expected: FAIL — `TraceCsvSerialiser` does not exist.
 
-- [ ] **Step 3: Write the CSV serialiser**
+- [x] **Step 3: Write the CSV serialiser**
 
 Create `src/Core/Trace/Export/TraceCsvSerialiser.php`:
 
@@ -811,7 +811,7 @@ final class TraceCsvSerialiser
 order.** They are written in that order in Task 3; if you reorder either, reorder both, or the
 column headings stop describing the columns.
 
-- [ ] **Step 4: Write the failing JSON test**
+- [x] **Step 4: Write the failing JSON test**
 
 Create `tests/Core/Trace/Export/TraceJsonSerialiserTest.php`:
 
@@ -895,12 +895,12 @@ final class TraceJsonSerialiserTest extends TestCase
 }
 ```
 
-- [ ] **Step 5: Run it to verify it fails**
+- [x] **Step 5: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Trace/Export/TraceJsonSerialiserTest.php`
 Expected: FAIL — `TraceJsonSerialiser` does not exist.
 
-- [ ] **Step 6: Write the JSON serialiser**
+- [x] **Step 6: Write the JSON serialiser**
 
 Create `src/Core/Trace/Export/TraceJsonSerialiser.php`:
 
@@ -970,7 +970,7 @@ final class TraceJsonSerialiser
 **Check `TraceEventEntity::getSeq()` exists** before running; if the accessor is named differently,
 use the real one and sort by it, because the seq is what orders events within a turn.
 
-- [ ] **Step 7: Run both and commit**
+- [x] **Step 7: Run both and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 
@@ -1006,7 +1006,7 @@ git commit -m "feat(trace): serialise conversations as a table and as a full rec
 > job here is **policy**: the bound, the refusals, the file name. It should depend on "load
 > conversations for export", which is what it actually needs, rather than on a repository.
 
-- [ ] **Step 1: Write the seam and its fake**
+- [x] **Step 1: Write the seam and its fake**
 
 Create `src/Core/Trace/Export/TraceExportSource.php`:
 
@@ -1101,7 +1101,7 @@ final class FakeTraceExportSource implements TraceExportSource
 }
 ```
 
-- [ ] **Step 2: Write the failing controller test**
+- [x] **Step 2: Write the failing controller test**
 
 Create `tests/Controller/AssistantTraceExportControllerTest.php`:
 
@@ -1215,12 +1215,12 @@ final class AssistantTraceExportControllerTest extends TestCase
 }
 ```
 
-- [ ] **Step 3: Run it to verify it fails**
+- [x] **Step 3: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Controller/AssistantTraceExportControllerTest.php`
 Expected: FAIL — `AssistantTraceExportController` does not exist.
 
-- [ ] **Step 4: Write the controller**
+- [x] **Step 4: Write the controller**
 
 Create `src/Controller/AssistantTraceExportController.php`:
 
@@ -1345,7 +1345,7 @@ class AssistantTraceExportController
 }
 ```
 
-- [ ] **Step 5: Write the DAL implementation**
+- [x] **Step 5: Write the DAL implementation**
 
 Create `src/Core/Trace/Export/DalTraceExportSource.php`:
 
@@ -1427,7 +1427,7 @@ final readonly class DalTraceExportSource implements TraceExportSource
 }
 ```
 
-- [ ] **Step 6: Register both**
+- [x] **Step 6: Register both**
 
 In `src/Resources/config/services.xml`, beside the other controllers:
 
@@ -1444,7 +1444,7 @@ In `src/Resources/config/services.xml`, beside the other controllers:
         </service>
 ```
 
-- [ ] **Step 7: Run it to verify it passes**
+- [x] **Step 7: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 Expected: PASS, exit 0.
@@ -1453,7 +1453,7 @@ If the controller trips mago's per-class complexity budget, extract the payload 
 `TraceExportRequest` value object next to `ChatRequest` — that is the move this repo has already
 made twice, and `CardIdList`'s docblock records why.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/Controller src/Core/Trace/Export src/Resources/config/services.xml tests/Controller
@@ -1476,7 +1476,7 @@ git commit -m "feat(admin): let a merchant take conversations out of the Adminis
 > **No unit test.** This is wiring: a column, a checkbox flag and two buttons that post ids. The
 > derivations behind them are tested in PHP. Verification is Step 5's live check.
 
-- [ ] **Step 1: Load the association and show the column**
+- [x] **Step 1: Load the association and show the column**
 
 In `index.js`, extend `load()`:
 
@@ -1521,7 +1521,7 @@ and in the twig, beside the other column templates:
                 </template>
 ```
 
-- [ ] **Step 2: Turn on selection**
+- [x] **Step 2: Turn on selection**
 
 In the twig, change `:showSelection="false"` to `:showSelection="true"` and **amend the comment
 above the grid** rather than deleting it — it currently justifies read-only, and that justification
@@ -1537,7 +1537,7 @@ is still true:
                conversation to a file and never to a delete confirmation. #}
 ```
 
-- [ ] **Step 3: Add the two buttons**
+- [x] **Step 3: Add the two buttons**
 
 In the twig, inside the listing's bulk slot:
 
@@ -1568,7 +1568,7 @@ and above the grid, for the no-selection case (spec T8):
             </div>
 ```
 
-- [ ] **Step 4: Post the ids and save the file**
+- [x] **Step 4: Post the ids and save the file**
 
 Add to `index.js`:
 
@@ -1644,7 +1644,7 @@ Add `total` and `selectionCount` to `computed` — `total` from the search resul
 would introduce a pattern the rest of the page does not follow. The refusals this endpoint returns
 are instructions about the filter, so they belong beside it.
 
-- [ ] **Step 5: Snippets, build, and see it**
+- [x] **Step 5: Snippets, build, and see it**
 
 Add to both snippet files (`en-GB.json` shown; translate for `de-DE.json`):
 
@@ -1662,7 +1662,7 @@ Run `composer run build`, deploy to the test shop (`cache:clear`, `assets:instal
 Administration: confirm the user column reads `Guest user` for the existing rows, tick two, export
 both formats, and open the CSV in a spreadsheet.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Resources/app/administration src/Resources/app/storefront/dist
@@ -1682,7 +1682,7 @@ git commit -m "feat(admin): show who a conversation belonged to, and export from
 - Consumes: the endpoint (Task 5)
 - Produces: a single-trace JSON download
 
-- [ ] **Step 1: Add the button**
+- [x] **Step 1: Add the button**
 
 In the detail twig's smart bar:
 
@@ -1694,7 +1694,7 @@ In the detail twig's smart bar:
         </template>
 ```
 
-- [ ] **Step 2: Reuse the same request**
+- [x] **Step 2: Reuse the same request**
 
 In the detail `index.js`, add a `exportTrace()` that posts `{ids: [this.$route.params.id], format: 'json'}`
 through the same fetch shape Task 6 Step 4 introduced.
@@ -1709,13 +1709,13 @@ builds and the filename it derives.
 JSON only, with no format choice: a single trace is opened to work out what happened, and that is
 the format that answers it (spec T5).
 
-- [ ] **Step 3: Snippet, build, verify**
+- [x] **Step 3: Snippet, build, verify**
 
 Add `"export": "Export trace"` to both snippet files, run `composer run build`, deploy, and export
 one trace from its detail page. Open the file and confirm the event payloads are the ones the page
 shows under "Raw trace".
 
-- [ ] **Step 4: Run everything and commit**
+- [x] **Step 4: Run everything and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && npm run test:js && composer run quality`
 
@@ -1731,20 +1731,20 @@ git commit -m "feat(admin): export one trace from its own page"
 **Files:**
 - Modify: `ARCHITECTURE.md`, `README.md`
 
-- [ ] **Step 1: The column and its constraint**
+- [x] **Step 1: The column and its constraint**
 
 In `ARCHITECTURE.md`, wherever the conversation entity is described, add `customer_id` with the
 sentence that matters: a foreign key with `ON DELETE SET NULL`, so a customer's deletion severs the
 link without an erasure routine, and a deleted customer's conversation is indistinguishable from a
 guest's by design.
 
-- [ ] **Step 2: The endpoint**
+- [x] **Step 2: The endpoint**
 
 Add `POST /api/_action/swag-assistant/trace/export` to the same place the storefront routes are
 listed: admin-scoped, requires `swag_assistant_conversation:read`, takes ids and a format, bounded
 at 1 000 conversations.
 
-- [ ] **Step 3: The README's capability list**
+- [x] **Step 3: The README's capability list**
 
 One sentence in "What it does": the merchant sees which customer a conversation belonged to, and can
 export conversations as CSV to count or JSON to hand over.
@@ -1753,7 +1753,7 @@ export conversations as CSV to count or JSON to hand over.
 personal data once it leaves the shop. That is spec T4's accepted cost, and a README that mentions
 the feature without it is where the cost gets forgotten.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add ARCHITECTURE.md README.md
@@ -1761,6 +1761,32 @@ git commit -m "docs: document trace attribution and the export endpoint"
 ```
 
 ---
+
+## What execution changed
+
+Recorded because a plan that reads as if it were followed exactly is a plan nobody can learn from.
+
+- **Task 5's seam earned itself.** `TraceExportSource` was added during the plan's own self-review,
+  when writing the controller test hit `EntitySearchResult`'s six-argument constructor. Nine policy
+  tests now run with no database at all.
+- **Three things in the plan were wrong about Shopware.** `ApiRouteScope` lives in
+  `Framework\Routing`, not `Framework\Routing\RouteScope`. Iterating a search result yields
+  `Entity`, so `getName()` on it is a type error. `Criteria` returns `total: 0` unless
+  `setTotalCountMode()` is called — which made the export button offer "all 0".
+- **`$tc` silently dropped named values**, because its second argument is the pluralization choice.
+  The button read "Export all 175 as" with nothing after the "as". `$t` is the right call.
+- **The buttons jumped.** T8 was built as two button groups in two places, so ticking the first
+  checkbox made one vanish and the other appear. Rebuilt as one pair in a fixed position with the
+  count in adjacent text — verified by measuring the bounding box before and after selection, which
+  is now identical.
+- **The CSV export was removed after Robin opened one.** See spec T5: it could only ever carry a
+  summary row per conversation, so it promised traces and delivered metrics. The `format` parameter
+  went with it, and `TraceExportRow` was renamed `TraceExportSummary` — it was named for a CSV row
+  that no longer exists.
+- **The two-pass retrieval broke the trace view**, which this task surfaced rather than caused:
+  with two `retrieve` events per turn, `facts.js` read the first and reported "found 0" about a turn
+  that showed five products, and printed a count for `retrieve.without_category` that the event no
+  longer carries. Both are fixed and pinned by `tests/js/trace-phases.test.js`.
 
 ## Spec coverage
 
