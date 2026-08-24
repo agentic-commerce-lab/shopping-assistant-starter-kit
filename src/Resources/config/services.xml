@@ -216,6 +216,17 @@
         <!-- Re-renders the cards a stored conversation referred to. `GET /assistant/history` returns
              ids only, so without this route a re-hydrated conversation shows prose describing a card
              that is not there. Facts come from the catalogue now, never from the transcript. -->
+        <service id="Swag\AssistantStarterKit\Core\Trace\Export\DalTraceExportSource">
+            <argument type="service" id="swag_assistant_conversation.repository"/>
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <!-- Emits customer names, so its privilege is declared on the route rather than inherited
+             from whatever read the frontend happens to perform. -->
+        <service id="Swag\AssistantStarterKit\Controller\AssistantTraceExportController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Export\DalTraceExportSource"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Controller\AssistantCardController" public="true">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
