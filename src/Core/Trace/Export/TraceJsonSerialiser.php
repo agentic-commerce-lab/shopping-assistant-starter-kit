@@ -13,8 +13,8 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
  * Every event payload is carried **unchanged**. A summarised export answers the questions its author
  * thought of, and the reason anyone asks for a trace is a question nobody thought of.
  *
- * The same `summary` block the CSV rows are built from rides along, so the two formats cannot
- * disagree about a duration — see {@see TraceExportRow}.
+ * A {@see TraceExportSummary} block rides along with each conversation, so a reader has the shape
+ * of the turn — who, how long, how much of it was the model — without deriving it from the events.
  */
 final class TraceJsonSerialiser
 {
@@ -32,7 +32,7 @@ final class TraceJsonSerialiser
             $channelId = $conversation->getSalesChannelId();
 
             $out[] = [
-                'summary' => TraceExportRow::of($conversation, $salesChannelNames[$channelId] ?? $channelId),
+                'summary' => TraceExportSummary::of($conversation, $salesChannelNames[$channelId] ?? $channelId),
                 'transcript' => $conversation->getTranscript() ?? [],
                 'events' => self::events($conversation),
             ];

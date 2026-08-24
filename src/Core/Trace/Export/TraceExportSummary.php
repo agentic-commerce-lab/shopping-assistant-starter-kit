@@ -16,10 +16,10 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
  * second derivation elsewhere is how a number in a file comes to disagree with the number on the
  * screen, which is the failure this class exists to prevent.
  *
- * The key order is the CSV's column order — {@see TraceCsvSerialiser} writes `array_values()` — so
- * reordering these keys moves every column under the wrong heading. `TraceExportRowTest` pins it.
+ * It rides along in every exported trace so a reader gets the conversation's shape — who, how long,
+ * how many tool calls — without deriving it from the events themselves.
  */
-final class TraceExportRow
+final class TraceExportSummary
 {
     /**
      * Below this a gap is scheduling noise rather than a round trip — the same threshold

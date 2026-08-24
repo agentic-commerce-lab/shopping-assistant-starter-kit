@@ -18,9 +18,8 @@
  *
  * @param {{apiPath: string, authToken: {access: string}}} api Shopware.Context.api
  * @param {string[]} ids
- * @param {'csv'|'json'} format
  */
-export function exportRequest(api, ids, format) {
+export function exportRequest(api, ids) {
     return {
         url: `${api.apiPath}/_action/swag-assistant/trace/export`,
         options: {
@@ -29,14 +28,19 @@ export function exportRequest(api, ids, format) {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${api.authToken.access}`,
             },
-            body: JSON.stringify({ ids, format }),
+            body: JSON.stringify({ ids }),
         },
     };
 }
 
-/** What the browser saves the file as. The server also sends a name; this is what the anchor uses. */
-export function exportFileName(format) {
-    return `assistant-traces.${format}`;
+/**
+ * What the browser saves the file as. The server also sends a name; this is what the anchor uses.
+ *
+ * JSON is the only format. A CSV export shipped beside it briefly and was removed: it could carry a
+ * summary row per conversation but never the events, so it promised traces and delivered metrics.
+ */
+export function exportFileName() {
+    return 'assistant-traces.json';
 }
 
 /**

@@ -15,10 +15,9 @@
             "columnUser": "User",
             "guestUser": "Guest user",
             "exportFailed": "The export could not be created.",
-            "exportCsv": "Export as CSV",
-            "exportJson": "Export as JSON",
             "scopeSelected": "{count} selected",
-            "scopeAll": "All {count} conversations"
+            "scopeAll": "All {count} conversations",
+            "export": "Export traces"
         },
         "detail": {
             "title": "Conversation",

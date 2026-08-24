@@ -36,9 +36,9 @@ abstract class TraceExportTestCase extends TestCase
     }
 
     /** @param list<string> $ids */
-    protected function export(array $ids, string $format): Response
+    protected function export(array $ids): Response
     {
-        $request = new Request(content: json_encode(['ids' => $ids, 'format' => $format], \JSON_THROW_ON_ERROR));
+        $request = new Request(content: json_encode(['ids' => $ids], \JSON_THROW_ON_ERROR));
 
         return (new AssistantTraceExportController($this->source))->export($request, Context::createDefaultContext());
     }

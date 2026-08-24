@@ -22,7 +22,7 @@ Each row is a decision that was actually taken, not a summary of options.
 | T2 | **Attribution is captured once, when the conversation starts.** A guest who logs in mid-conversation stays a guest on that conversation | The column answers "who produced this trace". Updating it per turn would make it "the last identity seen", which answers nothing exactly. A shopper who logs in and keeps talking starts a conversation that is attributed correctly the moment their next one begins |
 | T3 | **Two display states:** no customer → `Guest user`; otherwise the customer's name | A third state for "was a customer, now deleted" is not available and that is the point: `ON DELETE SET NULL` removes the id itself, so a deleted customer's conversation becomes indistinguishable from a guest's. **Accepted cost:** a merchant reading an old trace sees `Guest user` where someone had been logged in. Preserving the distinction would mean keeping a marker about a person after they asked to be forgotten, which is the trade this design refuses |
 | T4 | **The export carries the resolved name**, exactly as the screen shows it | Robin's decision, made against the stated alternative of exporting ids only. **Consequence, accepted:** an exported file is personal data. Whoever forwards it forwards customer names, and it is not covered by the shop's retention pruning once it has left. Recorded here so the trade is on the record rather than discovered later |
-| T5 | **Two formats, chosen by which button was pressed** — CSV for counting, JSON for handing over | Both uses were named. A single format would serve one of them badly, and a format picker in a dialog is a click that the button label already answers |
+| T5 | ~~**Two formats, chosen by which button was pressed** — CSV for counting, JSON for handing over~~ **Reversed 2026-08-24: JSON only, and no format parameter.** | Both uses were named, so two formats looked right. Building it showed the flaw: a trace is **nested and formvariable** — N events, each with an arbitrary payload — and CSV is the one shape that cannot hold it. What the CSV actually carried was one summary row per conversation: no `page.context`, no `retrieve`, no payloads. That is a useful artefact, but it is a **metrics table, not a trace**, and a button labelled "export" beside a list of traces promises the latter. Robin asked for it to be removed after opening one. The metrics use is not served today; if it comes back it should be one row per **event**, which is the trace flattened rather than the trace summarised |
 | T6 | **One server endpoint produces both formats** | The CSV's useful columns — shop time against model time, tool calls — are derived from the events, which the list does not load. Any format needs the events, so both belong on the server. It also puts the privilege check (T4 makes it a real one) somewhere the frontend cannot skip, and gives the size bound a place to live |
 | T7 | **A hard bound of 1 000 conversations per export**, refused with the count | Retention keeps 30 days; a busy shop is well past a thousand. A synchronous download that assembles tens of thousands of event rows is not a feature, and failing loudly beats a request that times out |
 | T8 | **The two buttons act on the selection when there is one, and on every row matching the current filter when there is not.** The label carries the count either way | Robin asked for "select all or tick boxes". Shopware's grid select-all covers the current page only — 25 rows — so a literal reading would quietly under-deliver. Falling back to the filter needs no second pair of controls, and the count in the label is what stops it being a surprise |
@@ -75,6 +75,7 @@ id,createdAt,salesChannel,user,turns,outcome,totalMs,shopMs,modelMs,toolCalls
 
 | Condition | Behaviour |
 |---|---|
+| An unknown or absent `format` field | Ignored. There is one format, so there is nothing to choose and nothing to refuse |
 | More than 1 000 conversations | 400 with the count, naming the bound. Nothing is assembled |
 | Empty id list | 400. An export of nothing is a mistake, not an empty file — and it should be unreachable: with T8 an empty list means the filter matched nothing, so the buttons are disabled in that state. The check exists because "unreachable" is a claim about today's caller |
 | Unknown or malformed id | Skipped, and the response header names how many were dropped. One stale id must not cost the merchant the rest of the export |
@@ -83,7 +84,7 @@ id,createdAt,salesChannel,user,turns,outcome,totalMs,shopMs,modelMs,toolCalls
 
 ## Testing
 
-- **Serialisers**: PHPUnit against hand-built conversations. CSV quoting of a name containing a comma and a quote; the shop/model split against a known event sequence; a guest and a named customer in the same file; JSON payloads surviving verbatim.
+- **Serialiser and summary**: PHPUnit against hand-built conversations. The shop/model split against a known event sequence; a guest and a named customer; payloads surviving verbatim; events ordered by `seq`.
 - **Controller**: the bound refuses at 1 001 and passes at 1 000; an empty list is refused; an unknown id is skipped rather than fatal; the privilege is declared on the route.
 - **Attribution**: a turn from a logged-in context stores the id; a guest stores null; a resumed conversation does not overwrite it (T2).
 - **No browser test.** The format logic is pure derivation, and the download mechanics are three lines of standard admin plumbing.
@@ -93,4 +94,5 @@ id,createdAt,salesChannel,user,turns,outcome,totalMs,shopMs,modelMs,toolCalls
 - **Distinguishing one guest from another.** It would need a visitor identifier, which is the tracking this design deliberately does not introduce (T1).
 - **Scheduled or emailed exports.** Nothing asked for them.
 - **Re-attributing a conversation when a guest logs in** (T2). If it turns out merchants want it, it is a new decision, not a bug.
-- **A human-readable export** (PDF/Markdown). Considered and explicitly not chosen: the two named uses are analysis and hand-over.
+- **A human-readable export** (PDF/Markdown). Considered and explicitly not chosen: the two named uses were analysis and hand-over.
+- **A metrics export.** The CSV that served the analysis use was removed (T5). If it returns, it should be one row per event — the trace flattened — not one row per conversation, which is a summary wearing a trace's name.

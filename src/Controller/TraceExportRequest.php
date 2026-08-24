@@ -21,12 +21,10 @@ use Symfony\Component\HttpFoundation\Request;
 final readonly class TraceExportRequest
 {
     /**
-     * @param list<string> $ids    well-formed catalogue ids only; anything else was dropped
-     * @param ?string      $format `csv`, `json`, or null when the request named neither
+     * @param list<string> $ids well-formed catalogue ids only; anything else was dropped
      */
     private function __construct(
         public array $ids,
-        public ?string $format,
     ) {}
 
     public static function fromRequest(Request $request): self
@@ -34,15 +32,7 @@ final readonly class TraceExportRequest
         $decoded = json_decode((string) $request->getContent(), associative: true);
         $payload = \is_array($decoded) ? $decoded : [];
 
-        $format = $payload['format'] ?? null;
-
-        return new self(
-            ids: self::ids($payload['ids'] ?? null),
-            // Null rather than a default: handing a merchant who asked for JSON a CSV without
-            // saying so is worse than refusing, so the controller must be able to tell "asked for
-            // something impossible" from "asked for csv".
-            format: $format === 'csv' || $format === 'json' ? $format : null,
-        );
+        return new self(ids: self::ids($payload['ids'] ?? null));
     }
 
     /**

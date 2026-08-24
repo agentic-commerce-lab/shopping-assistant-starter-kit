@@ -7,7 +7,6 @@ namespace Swag\AssistantStarterKit\Controller;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Routing\ApiRouteScope;
 use Shopware\Core\PlatformRequest;
-use Swag\AssistantStarterKit\Core\Trace\Export\TraceCsvSerialiser;
 use Swag\AssistantStarterKit\Core\Trace\Export\TraceExportSource;
 use Swag\AssistantStarterKit\Core\Trace\Export\TraceJsonSerialiser;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,9 +21,14 @@ use Symfony\Component\Routing\Attribute\Route;
  * file is personal data the moment it is written, and what may produce it must not depend on the
  * frontend behaving.
  *
- * It owns policy — the bound, the refusals, the file name — and nothing else. The formats live in
- * {@see TraceCsvSerialiser} and {@see TraceJsonSerialiser}; the reading lives behind
- * {@see TraceExportSource}, so everything here is testable without a database.
+ * It owns policy — the bound, the refusals, the file name — and nothing else. The format lives in
+ * {@see TraceJsonSerialiser}; the reading lives behind {@see TraceExportSource}, so everything here
+ * is testable without a database.
+ *
+ * **One format, and no parameter to choose it.** A CSV export shipped alongside this and was removed
+ * on 2026-08-24: it could only ever carry a summary row per conversation, never the events, so it
+ * promised "the traces" and delivered a metrics table. A trace is nested and formvariable, which is
+ * the one shape CSV cannot hold.
  *
  * Not an `AbstractController`: it needs no container, no twig and no `setContainer()` call, and
  * extending one would add a dependency purely to inherit helpers this never uses.
@@ -56,10 +60,6 @@ class AssistantTraceExportController
     {
         $export = TraceExportRequest::fromRequest($request);
 
-        if ($export->format === null) {
-            return new JsonResponse(['error' => 'Set "format" to "csv" or "json".'], Response::HTTP_BAD_REQUEST);
-        }
-
         if ($export->ids === []) {
             return new JsonResponse([
                 'error' => 'Select at least one conversation to export.',
@@ -82,22 +82,20 @@ class AssistantTraceExportController
             $context,
         );
 
-        $body = $export->format === 'csv'
-            ? TraceCsvSerialiser::serialise($conversations, $names)
-            : TraceJsonSerialiser::serialise($conversations, $names);
-
-        return self::file($body, $export->format, \count($export->ids) - \count($conversations));
+        return self::file(
+            TraceJsonSerialiser::serialise($conversations, $names),
+            \count($export->ids) - \count($conversations),
+        );
     }
 
-    private static function file(string $body, string $format, int $skipped): Response
+    private static function file(string $body, int $skipped): Response
     {
         $response = new Response($body, Response::HTTP_OK);
 
-        $response->headers->set('Content-Type', $format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json');
+        $response->headers->set('Content-Type', 'application/json');
         $response->headers->set('Content-Disposition', \sprintf(
-            'attachment; filename=assistant-traces-%s.%s',
+            'attachment; filename=assistant-traces-%s.json',
             date('Y-m-d-His'),
-            $format,
         ));
 
         // Named rather than silent: an id that no longer resolves must not cost the merchant the

@@ -33,11 +33,8 @@
                     <span class="swag-assistant-trace-list__scope">{{ exportScope }}</span>
 
                     <div class="swag-assistant-trace-list__export">
-                        <sw-button size="small" :disabled="!exportCount" @click="onExport('csv')">
-                            {{ $tc('swag-assistant-trace.list.exportCsv') }}
-                        </sw-button>
-                        <sw-button size="small" :disabled="!exportCount" @click="onExport('json')">
-                            {{ $tc('swag-assistant-trace.list.exportJson') }}
+                        <sw-button size="small" :disabled="!exportCount" @click="onExport">
+                            {{ $tc('swag-assistant-trace.list.export') }}
                         </sw-button>
                     </div>
                 </div>

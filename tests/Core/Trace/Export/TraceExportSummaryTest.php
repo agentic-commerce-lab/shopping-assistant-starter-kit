@@ -6,7 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Trace\Export;
 
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
-use Swag\AssistantStarterKit\Core\Trace\Export\TraceExportRow;
+use Swag\AssistantStarterKit\Core\Trace\Export\TraceExportSummary;
 use Swag\AssistantStarterKit\Entity\Conversation\ConversationEntity;
 use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventCollection;
 use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
@@ -15,13 +15,13 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
  * The numbers in an exported file have to be the numbers on the screen. This is the one place they
  * are derived, so it is the one place that can make them disagree.
  */
-final class TraceExportRowTest extends TestCase
+final class TraceExportSummaryTest extends TestCase
 {
     public function testTheShopKeepsWhatItSpentAndTheModelTheRest(): void
     {
         // A real turn's offsets, measured 2026-08-24: the shop works up to 22ms, the model thinks
         // until 3634, the shop finishes at 3656. Model time is the gaps nothing was recorded in.
-        $row = TraceExportRow::of(self::conversation(events: [
+        $row = TraceExportSummary::of(self::conversation(events: [
             self::event(0, 'facet.probe'),
             self::event(22, 'prompt'),
             self::event(3634, 'validate'),
@@ -36,7 +36,7 @@ final class TraceExportRowTest extends TestCase
     public function testAGapTooShortToBeARoundTripIsShopTime(): void
     {
         // 249ms is below the threshold phases.js measured — scheduling noise, not a model call.
-        $row = TraceExportRow::of(self::conversation(events: [
+        $row = TraceExportSummary::of(self::conversation(events: [
             self::event(0, 'facet.probe'),
             self::event(249, 'turn.end'),
         ], totalMs: 249), 'Storefront');
@@ -47,7 +47,7 @@ final class TraceExportRowTest extends TestCase
 
     public function testToolCallsAreCounted(): void
     {
-        $row = TraceExportRow::of(self::conversation(events: [
+        $row = TraceExportSummary::of(self::conversation(events: [
             self::event(10, 'tool.call'),
             self::event(20, 'retrieve'),
             self::event(30, 'tool.call'),
@@ -58,7 +58,7 @@ final class TraceExportRowTest extends TestCase
 
     public function testALoggedInShopperIsNamed(): void
     {
-        $row = TraceExportRow::of(self::conversation(customer: self::customer('Anna', 'Schmidt')), 'Storefront');
+        $row = TraceExportSummary::of(self::conversation(customer: self::customer('Anna', 'Schmidt')), 'Storefront');
 
         self::assertSame('Anna Schmidt', $row['user']);
     }
@@ -70,14 +70,14 @@ final class TraceExportRowTest extends TestCase
      */
     public function testNoCustomerReadsAsGuest(): void
     {
-        self::assertSame('Guest user', TraceExportRow::of(self::conversation(), 'Storefront')['user']);
+        self::assertSame('Guest user', TraceExportSummary::of(self::conversation(), 'Storefront')['user']);
     }
 
     public function testAnEmptyTraceStillProducesARow(): void
     {
         // A conversation whose turn failed before any event was recorded is exactly the row a
         // merchant is looking for. It must not be the row that throws.
-        $row = TraceExportRow::of(self::conversation(events: []), 'Storefront');
+        $row = TraceExportSummary::of(self::conversation(events: []), 'Storefront');
 
         self::assertSame(0, $row['shopMs']);
         self::assertSame(0, $row['modelMs']);
@@ -103,7 +103,7 @@ final class TraceExportRowTest extends TestCase
                 'modelMs',
                 'toolCalls',
             ],
-            array_keys(TraceExportRow::of(self::conversation(), 'Storefront')),
+            array_keys(TraceExportSummary::of(self::conversation(), 'Storefront')),
         );
     }
 

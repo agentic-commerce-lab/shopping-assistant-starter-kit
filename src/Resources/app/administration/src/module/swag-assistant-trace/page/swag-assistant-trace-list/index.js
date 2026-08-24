@@ -164,14 +164,14 @@ Shopware.Component.register('swag-assistant-trace-list', {
             this.selectionCount = Object.keys(selection ?? {}).length;
         },
 
-        onExport(format) {
+        onExport() {
             if (this.selectionCount) {
-                this.download(Object.keys(this.$refs.grid?.selection ?? {}), format);
+                this.download(Object.keys(this.$refs.grid?.selection ?? {}));
 
                 return;
             }
 
-            this.exportFiltered(format);
+            this.exportFiltered();
         },
 
         /**
@@ -181,7 +181,7 @@ Shopware.Component.register('swag-assistant-trace-list', {
          * would quietly export 25 rows. `searchIds` fetches ids only, which is cheap even at the
          * bound the server enforces.
          */
-        async exportFiltered(format) {
+        async exportFiltered() {
             const criteria = new Criteria(1, EXPORT_LIMIT);
             criteria.addSorting(Criteria.sort(this.sortBy, this.sortDirection));
 
@@ -191,17 +191,17 @@ Shopware.Component.register('swag-assistant-trace-list', {
 
             const result = await this.repository.searchIds(criteria, Shopware.Context.api);
 
-            this.download(result.data, format);
+            this.download(result.data);
         },
 
         /**
          * The download goes through an authenticated request rather than `window.open`: the route
          * emits customer names and is ACL-protected, so it cannot be opened as a plain URL.
          */
-        async download(ids, format) {
+        async download(ids) {
             this.exportError = null;
 
-            const { url, options } = exportRequest(Shopware.Context.api, ids, format);
+            const { url, options } = exportRequest(Shopware.Context.api, ids);
             const response = await fetch(url, options);
 
             if (!response.ok) {
@@ -215,7 +215,7 @@ Shopware.Component.register('swag-assistant-trace-list', {
                 return;
             }
 
-            saveBlob(await response.blob(), exportFileName(format));
+            saveBlob(await response.blob(), exportFileName());
         },
     },
 });

@@ -14,21 +14,13 @@ final class AssistantTraceExportFileTest extends TraceExportTestCase
 {
     public function testTheFileIsNamedSoTwoExportsDoNotOverwriteEachOther(): void
     {
-        $response = $this->export(self::ids(1), 'csv');
+        $response = $this->export(self::ids(1));
 
         self::assertMatchesRegularExpression(
-            '/attachment; filename=assistant-traces-\d{4}-\d{2}-\d{2}-\d{6}\.csv/',
+            '/attachment; filename=assistant-traces-\d{4}-\d{2}-\d{2}-\d{6}\.json/',
             (string) $response->headers->get('Content-Disposition'),
         );
-        self::assertStringContainsString('text/csv', (string) $response->headers->get('Content-Type'));
-    }
-
-    public function testJsonIsServedAsJson(): void
-    {
-        $response = $this->export(self::ids(1), 'json');
-
         self::assertStringContainsString('application/json', (string) $response->headers->get('Content-Type'));
-        self::assertStringContainsString('.json', (string) $response->headers->get('Content-Disposition'));
     }
 
     public function testAnIdThatNoLongerResolvesIsReportedRatherThanSwallowed(): void
@@ -37,7 +29,7 @@ final class AssistantTraceExportFileTest extends TraceExportTestCase
         // missing" is not something to discover by counting lines afterwards.
         $this->source->dropCount = 2;
 
-        $response = $this->export(self::ids(5), 'csv');
+        $response = $this->export(self::ids(5));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame('2', $response->headers->get('X-Swag-Assistant-Skipped'));
@@ -45,6 +37,6 @@ final class AssistantTraceExportFileTest extends TraceExportTestCase
 
     public function testNothingIsReportedSkippedWhenEverythingResolved(): void
     {
-        self::assertNull($this->export(self::ids(3), 'csv')->headers->get('X-Swag-Assistant-Skipped'));
+        self::assertNull($this->export(self::ids(3))->headers->get('X-Swag-Assistant-Skipped'));
     }
 }
