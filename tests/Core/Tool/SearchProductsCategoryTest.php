@@ -92,6 +92,24 @@ final class SearchProductsCategoryTest extends TestCase
         self::assertSame(['fx-004-black'], $this->renderer->lastRetrievedBatch());
     }
 
+    /**
+     * The other half of the same trade, and the reason the category is given up in a second **pass**
+     * rather than at some clever point in one.
+     *
+     * Measured against the fixture on 2026-08-24: with the category dropped before the term was
+     * relaxed, "bottles" while browsing Bottles returned `fx-017` — the Alloy Bottle *Cage*, from
+     * `Cages` — ranked above the two bottles. Relaxation is blind, as `RelaxedTermRetry`'s own
+     * docblock warns, so it must be tried where the shopper is standing before it is tried
+     * shop-wide. No category is given up here at all: the aisle had the answer.
+     */
+    public function testARelaxationThatSucceedsInTheAisleDoesNotReachOutsideIt(): void
+    {
+        $this->tool('Bottles')(term: 'bottles');
+
+        self::assertSame(['fx-007', 'fx-008'], $this->renderer->lastRetrievedBatch());
+        self::assertNotContains('retrieve.without_category', $this->trace->stages());
+    }
+
     public function testWithNoCategoryNothingIsConstrainedAndNothingIsRetried(): void
     {
         $this->tool(null)(term: 'gloves');

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\RedundantParentFilter;
@@ -13,9 +15,9 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
-use Swag\AssistantStarterKit\Core\Retrieval\RelaxedTermRetry;
+use Swag\AssistantStarterKit\Core\Retrieval\QueryBuildResult;
+use Swag\AssistantStarterKit\Core\Retrieval\RetrievalPass;
 use Swag\AssistantStarterKit\Core\Retrieval\ShopperIntent;
-use Swag\AssistantStarterKit\Core\Retrieval\UnmatchedOptionRetry;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
@@ -242,66 +244,42 @@ final class SearchProductsTool
         // With FixtureCommerceGateway, whose search() already fully honours the scope,
         // this second line is expected to record zero removals in ordinary operation —
         // an unfireable safety net is not a broken one; its primary control is holding.
-        $cards = $this->gateway->search($query, $scope);
-        $this->trace->record('retrieve', [
-            'hits' => \count($cards),
-            'retainedIds' => array_map(static fn($card) => $card->id, $cards),
-            'candidateLimit' => $candidateLimit,
-        ]);
+        // The caged pass: everything the shopper asked for, inside the aisle they are standing in.
+        ['cards' => $cards, 'note' => $optionNote] = RetrievalPass::run(
+            $this->gateway,
+            $query,
+            $buildResult,
+            $scope,
+            $this->trace,
+        );
 
-        // P9, and **first** among the retries, which is a correction rather than a preference.
+        // P9 — the aisle is a helpful default, not a cage — and it is given up only after every
+        // relaxation has been tried *inside* it, which is a correction on two earlier attempts.
         //
-        // It ran last at first, reasoned as "the other two are more specific diagnoses, and they
-        // search within the category, which is what someone standing in an aisle should get". The
-        // `page_context_not_a_cage` eval falsified that on its first live run: the other two relax
-        // the SHOPPER'S WORDS inside a cage this class imposed, while this one removed the cage and
-        // restored the unrelaxed words — so a shopper in Jerseys asking for "gloves" got nothing,
-        // because matching "Commuter Glove" needs the relaxed term AND no category, and no ordering
-        // that applies them one at a time can produce it.
+        // Giving it up LAST was the first shape, and the `page_context_not_a_cage` eval falsified it
+        // live: the relaxations ran inside the cage while this pass restored the unrelaxed words, so
+        // "gloves" in Jerseys never met the pair it needs — relaxed term AND no category.
         //
-        // The category is OUR constraint, not the shopper's, so it is the first thing given up.
-        // `$query` is REPLACED, not just re-searched, so the retries below run on the uncaged query
-        // and behave exactly as they do when no page context exists at all — which is the property
-        // that matters: page context must never make the assistant worse than its absence.
+        // Giving it up FIRST fixed that and broke the opposite case, measured against the fixture:
+        // "bottles" while browsing Bottles then returned the Alloy Bottle *Cage* — from another
+        // category — ranked above the bottles, because relaxation went shop-wide before it had been
+        // tried where the shopper was standing.
+        //
+        // Neither ordering works, because this is not an ordering problem: it is two passes. The
+        // whole chain runs caged, and if that yields nothing the whole chain runs again uncaged. The
+        // shopper gets the aisle's answer when the aisle has one, and the shop's answer when it does
+        // not — and page context can still never make the assistant worse than its absence.
         if ($cards === [] && $this->browsingCategoryId !== null) {
             $query = $query->withoutCategory();
-            $cards = $this->gateway->search($query, $scope);
-            $this->trace->record('retrieve.without_category', [
-                'categoryId' => $this->browsingCategoryId,
-                'hits' => \count($cards),
-            ]);
-        }
+            $this->trace->record('retrieve.without_category', ['categoryId' => $this->browsingCategoryId]);
 
-        // An applied option filter that eliminated everything is the "your products are
-        // missing attribute X" case, not the "we do not sell it" case. See
-        // UnmatchedOptionRetry for the measurement and for why silence was the wrong answer.
-        $optionNote = null;
-        if ($cards === []) {
-            $withoutOptions = UnmatchedOptionRetry::search(
+            ['cards' => $cards, 'note' => $optionNote] = RetrievalPass::run(
                 $this->gateway,
                 $query,
-                $buildResult->selectionFilters,
+                $buildResult,
                 $scope,
                 $this->trace,
             );
-
-            if ($withoutOptions !== null && $withoutOptions !== []) {
-                $cards = $withoutOptions;
-                $optionNote = UnmatchedOptionRetry::NOTE;
-            }
-        }
-
-        // Second, and after the option retry because that one is the more specific diagnosis: the
-        // words themselves may simply not be in the shop's keyword index. "gloves" found nothing in
-        // a shop that sells the Commuter Glove — the storefront's own search box has the same gap —
-        // and the model then told a shopper the shop carries no gloves. See RelaxedTermRetry.
-        if ($cards === []) {
-            $relaxed = RelaxedTermRetry::search($this->gateway, $query, $scope, $this->trace);
-
-            if ($relaxed !== null && $relaxed !== []) {
-                $cards = $relaxed;
-                $optionNote = RelaxedTermRetry::NOTE;
-            }
         }
 
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
