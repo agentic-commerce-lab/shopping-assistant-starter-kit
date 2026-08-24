@@ -283,7 +283,12 @@ git commit -m "feat(prompt): name the product the shopper has open"
 > Patching only `SystemPrompt` would work in the tests and silently do nothing in any shop that
 > replaced the prompt.
 
-- [ ] **Step 1: Write the failing test**
+> **Deviation, 2026-08-24 (execution).** The four new tests were put in their own
+> `tests/Core/Prompt/SystemPromptViewingTest.php` instead of appended to `SystemPromptTest`, which
+> is at the `too-many-methods` ceiling the quality gate enforces — appending made `composer run
+> quality` exit 1 for a reason unrelated to this feature.
+
+- [x] **Step 1: Write the failing test**
 
 Append to the existing `tests/Core/Prompt/SystemPromptTest.php`:
 
@@ -335,12 +340,12 @@ Append to the existing `tests/Core/Prompt/SystemPromptTest.php`:
 appears in `ESCALATION_AVAILABLE`, which `build()` emits between the rules and `CLOSING` — so the
 ordering assertion has something real to compare against. Import `SystemPromptProvider`.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Prompt/SystemPromptTest.php`
 Expected: FAIL — `build()` takes two arguments.
 
-- [ ] **Step 3: Accept the line in `SystemPrompt`**
+- [x] **Step 3: Accept the line in `SystemPrompt`**
 
 **This is an insertion, not a rewrite.** `build()` gained the escalation clause and `CLOSING` after
 this plan was written; replacing the whole method with a three-line body would delete both, and the
@@ -365,7 +370,7 @@ then, between the existing `$vocabulary` block and the existing `$config->agentV
         }
 ```
 
-- [ ] **Step 4: Widen the provider seam (P10)**
+- [x] **Step 4: Widen the provider seam (P10)**
 
 In `src/Core/Prompt/PromptProviderInterface.php`:
 
@@ -395,7 +400,7 @@ Then fix the two anonymous implementations, which will otherwise fatal on the na
 `tests/Core/Agent/PromptTraceTest.php:57` and `tests/Core/Prompt/PromptProviderDecorationTest.php:52`.
 Both only need the third parameter added; neither uses it.
 
-- [ ] **Step 5: Carry it on the Bundle**
+- [x] **Step 5: Carry it on the Bundle**
 
 In `src/Core/Agent/AssistantAgentFactory/Bundle.php`, add a constructor property **after
 `$vocabulary`** (which is now last, behind `$prompt`):
@@ -413,7 +418,7 @@ and add to the class docblock:
  * a prompt.
 ```
 
-- [ ] **Step 6: Pass it through the runner**
+- [x] **Step 6: Pass it through the runner**
 
 In `src/Core/Agent/AssistantRunner.php:143`, replace:
 
@@ -426,7 +431,7 @@ prompt as a `prompt` trace event, so the viewing line is persisted and shown in 
 That is a second reason `ViewingContext` must never carry a figure — it is no longer only the model
 that reads it.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 
@@ -448,7 +453,7 @@ git commit -m "feat(prompt): thread the viewing line to the system prompt"
 - Consumes: `CardIdList::ID_PATTERN` (`/^[0-9a-f]{32}$/`)
 - Produces: `ChatRequest::$viewingProductId` and `ChatRequest::$browsingCategoryId` — `?string` each, either a well-formed id or null
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Validation is asserted through the endpoint, using the existing `AssistantEndpointTestCase::post()`
 helper and `RecordingTurnRunner` — that covers the controller threading in Task 5 as well, so there
@@ -504,7 +509,7 @@ Then append to `tests/Controller/AssistantChatValidationTest.php`:
     }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Controller/AssistantChatValidationTest.php`
 Expected: FAIL — `$lastViewingProductId` stays null because nothing parses or threads the field yet.
@@ -527,7 +532,17 @@ the interface has it. In `src/Core/Agent/ChatTurnRunnerInterface.php`:
 `ShopwareChatTurnRunner` still satisfies this without changes — the parameter is optional, and Task 4
 gives it behaviour.
 
-- [ ] **Step 3: Parse it**
+> **Deviation, 2026-08-24 (execution).** Parsing both ids inside `ChatRequest` pushed that class
+> past the `cyclomatic-complexity` gate — the same thing that happened when `CardIdList` was folded
+> in, and its docblock already records the answer. The two ids therefore live on a new
+> `src/Controller/PageContext.php` and `ChatRequest` carries `public PageContext $page`; call sites
+> read `$chat->page->productId` and `$chat->page->categoryId`, not `$chat->viewingProductId`.
+>
+> `ShopwareChatTurnRunner::run()` also had to declare the new optional parameter in *this* task
+> rather than the next one: PHP accepts a narrower implementation, `mago analyze` does not, and the
+> gate has to be green at every commit.
+
+- [x] **Step 3: Parse it**
 
 In `src/Controller/ChatRequest.php`, add the property to the constructor after `$token`:
 
@@ -576,12 +591,12 @@ and add:
     }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Controller/AssistantChatValidationTest.php`
 Expected: PASS.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 
@@ -609,7 +624,7 @@ git commit -m "feat(chat): accept the open product id on the chat endpoint"
 - Consumes: `ChatRequest::$viewingProductId`, `CommerceGatewayInterface::product()`, `ViewingContext::line()`
 - Produces: `AssistantAgentFactory::create(..., ?ProductCard $viewing = null)`; trace stage `page.context`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/Core/Agent/PageContextTest.php`:
 
@@ -717,12 +732,12 @@ Replace `self::anyId($gateway)` with `self::OPEN_PRODUCT` throughout, and build 
 `blockedProductIds` against both `id` and `parentId` — so the blocked case genuinely exercises the
 scope rather than passing vacuously.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `vendor/bin/phpunit tests/Core/Agent/PageContextTest.php`
 Expected: FAIL — `create()` has no `viewing` parameter and `Bundle` has no `$viewing`.
 
-- [ ] **Step 3: Pre-ground in the factory**
+- [x] **Step 3: Pre-ground in the factory**
 
 In `src/Core/Agent/AssistantAgentFactory.php`, add a parameter to the **instance** method
 `create()`, after `LlmSettings $llm`:
@@ -765,7 +780,7 @@ and change the return:
 `$this->prompt` is already the fifth argument today — do not drop it. Add the two imports
 (`ProductCard`, `ViewingContext`).
 
-- [ ] **Step 4: Resolve and trace in the runner**
+- [x] **Step 4: Resolve and trace in the runner**
 
 In `src/Core/Agent/ShopwareChatTurnRunner.php`, give the parameter Task 3 added to the interface its
 behaviour:
@@ -798,12 +813,12 @@ behaviour:
 
 Leave the rest of the method as it is.
 
-- [ ] **Step 5: Run it to verify it passes**
+- [x] **Step 5: Run it to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Core/Agent/PageContextTest.php`
 Expected: PASS.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run: `vendor/bin/phpunit --exclude-group eval && composer run quality`
 
