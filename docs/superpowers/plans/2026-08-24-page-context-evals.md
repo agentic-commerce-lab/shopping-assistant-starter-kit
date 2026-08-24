@@ -952,6 +952,29 @@ ruling R99, and reproduced for free by
 
 Re-run after the fix — `--filter 'page_context_not_a_cage'`, 6 further turns: **PASS**.
 
+### The fix's own side effect, measured the same day
+
+Dropping the category **first** fixed the gloves case and broke its mirror image. Probed against the
+fixture: browsing `Bottles` and asking for *"bottles"* returned `fx-017` — the Alloy Bottle **Cage**,
+from `Cages` — ranked above the two bottles, because relaxation went shop-wide before it had been
+tried where the shopper was standing. `RelaxedTermRetry`'s own docblock predicts exactly this:
+*"the relaxation is blind … some other word's shortening will one day find a neighbour."*
+
+Neither ordering works, because it is not an ordering problem: it is **two passes**. The whole
+chain — exact, then without options, then with the words shortened — runs constrained to the
+category; if that yields nothing, the whole chain runs again without it. Extracted to
+`src/Core/Retrieval/RetrievalPass.php`, which is also what kept `SearchProductsTool` under the
+400-line ceiling it had just crossed.
+
+| browsing | asked | before the two-pass fix | after |
+|---|---|---|---|
+| Bottles | "bottles" | `fx-017`, fx-007, fx-008 — a cage first | fx-007, fx-008 |
+| Jerseys | "gloves" | fx-004-black | fx-004-black |
+| Jerseys | "jerseys" | the three jerseys | the three jerseys |
+
+Both directions are pinned by `SearchProductsCategoryTest`, and the aisle-first case asserts that
+`retrieve.without_category` did **not** fire — the aisle answered.
+
 ### What this cost, and what it bought
 
 24 live turns. It bought a defect that 601 deterministic tests passed over, in code written the same
