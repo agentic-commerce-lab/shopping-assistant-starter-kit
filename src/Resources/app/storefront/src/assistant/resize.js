@@ -19,8 +19,19 @@ export const MIN_HEIGHT = 320;
 
 export const MAX_HEIGHT = 900;
 
-/** Matches `_panel.scss`: the panel never touches the viewport edges. */
-const VIEWPORT_MARGIN = 112;
+/**
+ * Breathing room above the panel, and **only** that.
+ *
+ * It was 112 and stood for the whole distance between the panel and the viewport edges, which is
+ * the bug this constant caused: the panel is not anchored to the bottom of the window but to the
+ * orb, which is itself pushed up by whatever obstructs the corner — the cookie bar, measured at
+ * runtime. On a 720px window with that bar the panel's own top landed at **-51px**, putting the
+ * header, the reset button and the close button above the screen edge with no way to reach them.
+ *
+ * The distance below the panel is now measured rather than assumed — see {@see availableHeight} —
+ * so this is what is left over at the top.
+ */
+const VIEWPORT_MARGIN = 16;
 
 const DEFAULT_WIDTH = 420;
 
@@ -44,6 +55,44 @@ export function clampSize(size, viewport) {
         width: fit(width, DEFAULT_WIDTH, MIN_WIDTH, MAX_WIDTH, viewport?.width),
         height: fit(height, DEFAULT_HEIGHT, MIN_HEIGHT, MAX_HEIGHT, viewport?.height),
     };
+}
+
+/**
+ * How much vertical room the panel actually has, given the gap beneath it.
+ *
+ * The panel is anchored above the orb, and the orb rides on `--swag-assistant-obstruction`, so that
+ * gap is not a constant anyone can write down. Exported because it is the one piece of this
+ * arithmetic that can be wrong in a way nobody sees until a control is off-screen.
+ *
+ * @param {number} innerHeight window.innerHeight
+ * @param {number} gapBelow    distance from the viewport's bottom edge to the panel's own
+ */
+export function availableHeight(innerHeight, gapBelow) {
+    const below = Number.isFinite(gapBelow) ? Math.max(0, gapBelow) : 0;
+
+    return Math.max(0, innerHeight - below);
+}
+
+/**
+ * The gap between the viewport's bottom edge and the panel's, from the two CSS offsets that produce
+ * it: the root's (the orb's inset plus whatever obstructs the corner) and the panel's own.
+ *
+ * **Read from computed style, never from `getBoundingClientRect()`.** The panel opens with a `scale`
+ * transform and `restoreSize` runs during it, so a rect read there is the *scaled* one — measured:
+ * it produced a ceiling 11px too tall, which then corrected itself mid-drag and made a width drag
+ * change the height. These two values are static lengths that no transform touches.
+ */
+export function gapBelowPanel(panel) {
+    const root = panel?.offsetParent ?? panel?.parentElement;
+
+    if (!panel || !root) {
+        return 0;
+    }
+
+    const rootBottom = Number.parseFloat(getComputedStyle(root).bottom);
+    const panelBottom = Number.parseFloat(getComputedStyle(panel).bottom);
+
+    return (Number.isFinite(rootBottom) ? rootBottom : 0) + (Number.isFinite(panelBottom) ? panelBottom : 0);
 }
 
 function fit(value, fallback, min, max, available) {
@@ -71,7 +120,13 @@ export function attachResize(panel, handles, { onCommit } = {}) {
 
     let start = null;
 
-    const viewport = () => ({ width: window.innerWidth, height: window.innerHeight });
+    // The height the panel may occupy, not the height of the window: the gap below it belongs to
+    // the orb and to whatever pushed the orb up, and counting it as usable is what put the header
+    // off-screen.
+    const viewport = () => ({
+        width: window.innerWidth,
+        height: availableHeight(window.innerHeight, gapBelowPanel(panel)),
+    });
 
     const apply = (size) => {
         const fitted = clampSize(size, viewport());
@@ -80,10 +135,10 @@ export function attachResize(panel, handles, { onCommit } = {}) {
         // cannot start one and lag the cursor.
         panel.style.width = `${fitted.width}px`;
         panel.style.height = `${fitted.height}px`;
-        // `_panel.scss` caps the panel at `max-height: min(640px, 100vh - 7rem)`, which silently won
-        // over an inline height — measured: dragging up grew nothing at all. Once a shopper has picked
-        // a height, that choice is the constraint; the viewport guarantee the cap provided is already
-        // enforced by `clampSize`, which is the better place for it.
+        // `_panel.scss` caps the panel too, and that cap silently won over an inline height —
+        // measured: dragging up grew nothing at all. Once a shopper has picked a height, that choice
+        // is the constraint; the viewport guarantee the cap provided is enforced by `clampSize`,
+        // which is the better place for it **as long as it is given the real available height**.
         panel.style.maxHeight = `${fitted.height}px`;
 
         return fitted;
@@ -177,7 +232,10 @@ export function restoreSize(panel, stored) {
         return;
     }
 
-    const size = clampSize(stored, { width: window.innerWidth, height: window.innerHeight });
+    const size = clampSize(stored, {
+        width: window.innerWidth,
+        height: availableHeight(window.innerHeight, gapBelowPanel(panel)),
+    });
     panel.style.width = `${size.width}px`;
     panel.style.height = `${size.height}px`;
     panel.style.maxHeight = `${size.height}px`;

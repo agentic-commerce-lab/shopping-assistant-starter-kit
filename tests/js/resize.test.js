@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+    availableHeight,
     MAX_WIDTH,
     MIN_HEIGHT,
     MIN_WIDTH,
@@ -57,4 +58,23 @@ test('a missing size object is handled', () => {
 
     assert.equal(Number.isFinite(size.width), true);
     assert.equal(Number.isFinite(size.height), true);
+});
+
+test('the room above the panel excludes the gap below it', () => {
+    // The panel is anchored above the orb, not to the window's bottom edge. On a 720px window the
+    // orb's inset plus the cookie bar plus the orb itself put 163px underneath it.
+    assert.equal(availableHeight(720, 163), 557);
+});
+
+test('a panel flush with the bottom keeps the whole window', () => {
+    assert.equal(availableHeight(720, 0), 720);
+});
+
+test('a gap larger than the window yields no room rather than a negative height', () => {
+    assert.equal(availableHeight(400, 900), 0);
+});
+
+test('a non-finite gap falls back to the whole window rather than to NaN', () => {
+    assert.equal(availableHeight(720, undefined), 720);
+    assert.equal(Number.isFinite(availableHeight(720, Number.NaN)), true);
 });

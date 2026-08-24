@@ -39,7 +39,26 @@ which is an illustration.
     The floor keeps a one-line conversation from reading as a tooltip.
     */
     min-height: 240px;
-    max-height: min(640px, calc(100vh - 7rem));
+    /*
+    The ceiling subtracts **everything that sits below the panel**, not a guessed constant.
+
+    `100vh - 7rem` was the old value and it was wrong whenever the corner was obstructed: the root's
+    own offset includes `--swag-assistant-obstruction`, measured at runtime by `orb.plugin.js` and
+    60px on a page with the cookie bar. At a 720px viewport that put the panel's top at **-51px** —
+    the header, with the reset and close buttons, entirely above the screen edge and unreachable by
+    mouse or keyboard. Caught by the end-to-end suite, then measured in the browser: root bottom
+    85px, panel bottom 78px, available 557px, ceiling 608px.
+
+    Every term here is one of the offsets the panel actually sits on, plus a rem of breathing room
+    at the top, so the ceiling follows the obstruction instead of being outrun by it.
+    */
+    max-height: min(
+        640px,
+        calc(
+            100vh - #{$swag-assistant-orb-inset} - var(--swag-assistant-obstruction, 0px) -
+                #{$swag-assistant-orb-size} - 18px - 1rem
+        )
+    );
     background: $swag-assistant-surface;
     border-radius: $swag-assistant-radius-panel;
     // Elevation, and no border with it. The panel floats above the storefront, so a shadow is the
