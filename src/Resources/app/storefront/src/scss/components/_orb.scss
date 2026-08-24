@@ -76,28 +76,38 @@ body:has(.swag-assistant) .scroll-up-button {
         @include swag-assistant-disc;
     }
 
+    transition: box-shadow 220ms $swag-assistant-ease;
+
     /*
-    Elevation, and nothing else.
+    Elevation and idle motion belong to the character, not to the mark.
 
     A soft blue halo used to sit on the page behind this. It went for the reason every zero-offset
     chromatic glow goes: that is not depth, it is a sticker's aura — and the bubble's own rim and
     glint already carry all the light it needs. What is left is a real drop shadow with a real
     vertical offset, plus an inset that darkens the underside so the sphere has a bottom.
+
+    The inset is the giveaway that this is creature-only: it shades a *sphere*. On a flat disc it is
+    a smudge along the bottom edge. Same for the two loops — a mark that floats and breathes is a
+    widget asking for attention rather than offering it, and a merchant who picked the neutral entry
+    point picked stillness with it.
     */
-    box-shadow:
-        0 2px 6px rgba(0, 21, 62, 0.16),
-        0 10px 26px rgba(0, 21, 62, 0.22),
-        inset 0 calc(-0.06 * var(--swag-assistant-unit)) calc(0.14 * var(--swag-assistant-unit)) rgba(0, 21, 62, 0.28);
+    [data-entry-point='creature'] & {
+        box-shadow:
+            0 2px 6px rgba(0, 21, 62, 0.16),
+            0 10px 26px rgba(0, 21, 62, 0.22),
+            inset 0 calc(-0.06 * var(--swag-assistant-unit)) calc(0.14 * var(--swag-assistant-unit))
+                rgba(0, 21, 62, 0.28);
 
-    // Two loops at different periods, so the pair never lines up into an obvious cycle.
-    animation:
-        swag-assistant-float 4.2s ease-in-out infinite,
-        swag-assistant-wobble 9s ease-in-out infinite;
-    transition: box-shadow 220ms $swag-assistant-ease;
+        // Two loops at different periods, so the pair never lines up into an obvious cycle.
+        animation:
+            swag-assistant-float 4.2s ease-in-out infinite,
+            swag-assistant-wobble 9s ease-in-out infinite;
 
-    // Promoted only while something is actually running. Left on permanently it costs a layer on
-    // every storefront page for the whole session.
-    will-change: transform, border-radius;
+        // Promoted only while something is actually running. Left on permanently it costs a layer on
+        // every storefront page for the whole session — and the neutral variant runs nothing at all,
+        // so it must not pay for a layer either.
+        will-change: transform, border-radius;
+    }
 }
 
 /*

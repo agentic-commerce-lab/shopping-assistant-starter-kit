@@ -85,8 +85,20 @@ and a shelf that tilts with it is not a shelf being scanned — it is a decorati
     opacity: 0;
 }
 
-/* Phase 1 — wake: the creature arrives. */
+/*
+Phase 1 — wake: the indicator arrives.
+
+Exponential ease-out by default; the overshoot is scoped to the creature below. Third place this rule
+had to be applied: the orb's open-shrink, the surface mixins, and here. A flat disc that springs reads
+as a mistake, and the creature earning a bounce does not transfer to the mark that replaced it.
+*/
 [data-phase='wake'] .swag-assistant-thinking__orb {
+    animation:
+        swag-assistant-think-wake 620ms $swag-assistant-ease-out both,
+        swag-assistant-wobble 9s ease-in-out infinite;
+}
+
+[data-entry-point='creature'] [data-phase='wake'] .swag-assistant-thinking__orb {
     animation:
         swag-assistant-think-wake 620ms $swag-assistant-ease-spring both,
         swag-assistant-wobble 9s ease-in-out infinite;

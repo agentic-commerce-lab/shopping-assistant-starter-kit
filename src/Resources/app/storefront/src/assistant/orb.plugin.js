@@ -1,4 +1,4 @@
-import { createCreature } from './creature';
+import { createCreature, createStillCreature } from './creature';
 
 const { PluginBaseClass } = window;
 
@@ -40,15 +40,20 @@ export default class SwagAssistantOrb extends PluginBaseClass {
         this.root = this.el.closest('[data-swag-assistant-root]');
         this.nudge = this.root?.querySelector('[data-swag-assistant-nudge]');
 
-        this.creature = createCreature(this.el, {
-            body: this.el.querySelector('[data-swag-assistant-orb-body]') ?? this.el,
-            base: 'idle',
-            // The corner orb is the only creature that follows the pointer and the only one with idle
-            // beats of its own. The avatar in the header takes its cues from the conversation, and the
-            // thinking indicator is busy.
-            track: true,
-            idle: true,
-        });
+        // A mark holds still. Only the character floats, breathes, hops and tracks the pointer — a
+        // brandable icon doing any of that reads as a widget demanding attention rather than offering
+        // it, and the merchant chose the neutral one on purpose.
+        this.creature = this.root?.dataset.entryPoint === 'creature'
+            ? createCreature(this.el, {
+                body: this.el.querySelector('[data-swag-assistant-orb-body]') ?? this.el,
+                base: 'idle',
+                // The corner orb is the only creature that follows the pointer and the only one with idle
+                // beats of its own. The avatar in the header takes its cues from the conversation, and the
+                // thinking indicator is busy.
+                track: true,
+                idle: true,
+            })
+            : createStillCreature();
 
         this._trackObstructions();
         this._scheduleNudge();

@@ -60,6 +60,36 @@ final class WidgetThemeContrastTest extends TestCase
         self::assertLessThan(self::channelSum($theme->primary), self::channelSum($theme->primaryDark));
     }
 
+    public function testAPrimaryYieldsTheFullRampTheCharacterNeeds(): void
+    {
+        // The creature's surface is a four-stop shaded sphere. Branding it means deriving the whole
+        // ramp from one colour, not dropping one flat colour into a gradient built for another.
+        $theme = WidgetTheme::of('#7a3cff', '', 'creature');
+
+        foreach ([$theme->primaryLight, $theme->primaryDark, $theme->primaryAbyss] as $tone) {
+            self::assertMatchesRegularExpression('/^#[0-9a-f]{6}$/', $tone);
+        }
+    }
+
+    public function testTheRampRunsLightToDarkInOrder(): void
+    {
+        // A sphere lit from the top-left needs its stops monotonic. Out of order it reads as a
+        // pattern rather than as a lit object.
+        $theme = WidgetTheme::of('#7a3cff', '', 'creature');
+
+        self::assertGreaterThan(self::channelSum($theme->primary), self::channelSum($theme->primaryLight));
+        self::assertLessThan(self::channelSum($theme->primary), self::channelSum($theme->primaryDark));
+        self::assertLessThan(self::channelSum($theme->primaryDark), self::channelSum($theme->primaryAbyss));
+    }
+
+    public function testNoPrimaryMeansNoRamp(): void
+    {
+        $theme = WidgetTheme::of('', '', 'creature');
+
+        self::assertSame('', $theme->primaryLight);
+        self::assertSame('', $theme->primaryAbyss);
+    }
+
     /**
      * The three channels added up — a crude brightness proxy, which is all "is it darker" needs.
      */

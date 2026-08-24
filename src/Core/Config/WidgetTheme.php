@@ -33,9 +33,16 @@ final readonly class WidgetTheme
 
     private const LIGHT_FOREGROUND = '#ffffff';
 
+    // @mago-expect lint:excessive-parameter-list
+    // A flat set of derived colours, and flat is the point: each one is a distinct CSS custom
+    // property the template emits by name. Grouping the ramp behind a sub-object would add a level of
+    // indirection to `theme.primaryLight` for no reduction in what a reader has to hold — the same
+    // argument `ProductCard` makes for its allowlist.
     private function __construct(
         public string $primary,
+        public string $primaryLight,
         public string $primaryDark,
+        public string $primaryAbyss,
         public string $secondary,
         public string $onPrimary,
         public string $entryPointStyle,
@@ -47,9 +54,14 @@ final readonly class WidgetTheme
 
         return new self(
             $safePrimary,
-            // Derived, never configured: it is the same brand colour at a different depth, and asking
-            // a merchant for both is asking them to keep two values in step.
-            $safePrimary === '' ? '' : self::darken($safePrimary),
+            // The character's surface is a four-stop shaded sphere, so branding it means deriving the
+            // whole ramp from one colour rather than dropping one flat colour into a gradient built
+            // for another. All three are derived, never configured: they are the same brand colour at
+            // different depths, and asking a merchant for four values is asking them to keep four in
+            // step.
+            $safePrimary === '' ? '' : self::mixToward($safePrimary, self::LIGHT_FOREGROUND, 0.28),
+            $safePrimary === '' ? '' : self::mixToward($safePrimary, '#000000', 0.18),
+            $safePrimary === '' ? '' : self::mixToward($safePrimary, self::DARK_FOREGROUND, 0.72),
             self::hexOrEmpty($secondary),
             // Nothing to compute against means nothing claimed: the stylesheet's own pairing applies.
             $safePrimary === '' ? '' : self::readableOn($safePrimary),
@@ -113,26 +125,32 @@ final readonly class WidgetTheme
     }
 
     /**
-     * The primary, deepened, for text on light surfaces and for hover states.
+     * One colour moved a given fraction of the way toward another.
      *
-     * `$swag-assistant-accent-dark` turns out to be dual-purpose in the stylesheet: a stop in the
-     * creature's gradient *and* the colour of suggestion-chip text, card links and pressed states.
-     * Overriding only the primary therefore left half the widget Shopware blue — visible immediately
-     * on a purple brand, and the reason this exists.
+     * Computed here rather than in CSS. `color-mix()` is not universally supported enough to be the
+     * only path to a brand's hover state, and SCSS cannot do colour maths on a custom property, so
+     * the one place that can derive these is PHP.
      *
-     * Mixed toward black rather than computed in CSS. `color-mix()` is not universally supported
-     * enough to be the only path to a brand's hover state, and SCSS cannot do colour maths on a
-     * custom property, so the one place that can compute it is here.
+     * The three fractions are chosen, not incidental: **0.18 toward black** for the pressed and
+     * text tone — enough to read as deeper than the base without turning a saturated hue muddy;
+     * **0.28 toward white** for the lit face of the sphere; and **0.72 toward Night Blue** for its
+     * shadowed edge, which is what the shipped `$swag-assistant-abyss` already is relative to the
+     * shipped accent.
+     *
+     * `$swag-assistant-accent-dark` needed this first for a reason worth keeping: it is dual-purpose
+     * in the stylesheet — a stop in the creature's gradient *and* the colour of suggestion-chip text,
+     * card links and pressed states. Overriding only the primary left half the widget Shopware blue.
      */
-    private static function darken(string $hex): string
+    private static function mixToward(string $hex, string $target, float $amount): string
     {
         $out = '#';
 
         foreach ([1, 3, 5] as $offset) {
-            $channel = (int) hexdec(substr($hex, $offset, 2));
-            // 18% toward black: enough to read as pressed against the base, not so much that a
-            // saturated brand colour turns muddy.
-            $out .= str_pad(dechex((int) round($channel * 0.82)), 2, '0', \STR_PAD_LEFT);
+            $from = (int) hexdec(substr($hex, $offset, 2));
+            $to = (int) hexdec(substr($target, $offset, 2));
+            $mixed = (int) round($from + (($to - $from) * $amount));
+
+            $out .= str_pad(dechex(max(0, min(255, $mixed))), 2, '0', \STR_PAD_LEFT);
         }
 
         return $out;

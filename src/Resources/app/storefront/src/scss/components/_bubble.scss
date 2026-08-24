@@ -55,10 +55,10 @@ fill.
     background:
         radial-gradient(
             circle at 30% 24%,
-            $swag-assistant-accent-light 0%,
-            $swag-assistant-accent 38%,
-            $swag-assistant-accent-dark 72%,
-            $swag-assistant-abyss 100%
+            var(--swag-assistant-primary-light, #{$swag-assistant-accent-light}) 0%,
+            var(--swag-assistant-primary, #{$swag-assistant-accent}) 38%,
+            var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark}) 72%,
+            var(--swag-assistant-primary-abyss, #{$swag-assistant-abyss}) 100%
         );
     // Isolated so the layers below composite against the bubble, not against whatever it floats over.
     isolation: isolate;

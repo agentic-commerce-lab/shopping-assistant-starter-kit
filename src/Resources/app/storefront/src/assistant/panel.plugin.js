@@ -68,7 +68,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         // The docked creature: the same object as the orb, so opening the panel reads as the bubble
         // coming along rather than as a static avatar appearing in a frame. No pointer tracking and no
         // idle beats — it takes every cue from the conversation.
-        this.face = this.avatar
+        this.face = this.avatar && this.el.dataset.entryPoint === 'creature'
             ? createCreature(this.avatar, { base: 'happy' })
             : null;
 

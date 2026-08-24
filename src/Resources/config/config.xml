@@ -145,11 +145,11 @@
                     <name>Character — the animated assistant face</name>
                 </option>
             </options>
-            <helpText>The chat icon is the neutral default and the one that takes your colours. The
-                character has expressions and reacts to the conversation, and it keeps its own
-                palette — its surface is a shaded sphere with a highlight, which an arbitrary brand
-                colour does not survive. Choosing the character means choosing our colours for the
-                entry point; the rest of the panel still follows yours.</helpText>
+            <helpText>Both take your colours. The chat icon is a flat mark and holds still. The
+                character is a shaded sphere with a highlight and expressions that react to the
+                conversation — it floats, blinks and reacts to the pointer, which is more personality
+                than a merchant storefront usually wants. Its shading is derived from your primary
+                colour, so it is your brand either way.</helpText>
         </input-field>
 
         <input-field type="colorpicker">

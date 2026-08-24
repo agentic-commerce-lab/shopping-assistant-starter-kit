@@ -308,3 +308,30 @@ export function createCreature(host, options = {}) {
 
     return { setMood, setBaseMood, jump, bounce, pop, shake, laugh, recentre, destroy };
 }
+
+/**
+ * The same interface, doing nothing.
+ *
+ * The neutral entry point is a mark, not a character: it does not float, breathe, hop, blink or
+ * follow the pointer. Returned instead of `createCreature` so the orb plugin keeps one collaborator
+ * with one shape — the alternative was optional-chaining fourteen call sites, which would have made
+ * every one of them read as if the creature might be missing rather than as if it is deliberately
+ * still.
+ *
+ * `recentre` and `destroy` are included because the plugin calls them on layout changes and teardown.
+ */
+export function createStillCreature() {
+    const nothing = () => {};
+
+    return {
+        setMood: nothing,
+        setBaseMood: nothing,
+        jump: nothing,
+        bounce: nothing,
+        pop: nothing,
+        shake: nothing,
+        laugh: nothing,
+        recentre: nothing,
+        destroy: nothing,
+    };
+}

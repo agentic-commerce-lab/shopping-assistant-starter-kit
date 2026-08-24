@@ -497,15 +497,9 @@ test.describe('reading what the server actually sends', () => {
 
         test.skip(primary === '', 'no primary configured on this shop, nothing to compare');
 
-        // Only the neutral icon takes the merchant's colour. The creature keeps its own palette: its
-        // surface is a four-stop glossy sphere with a specular highlight, and recolouring that to an
-        // arbitrary brand hue needs four derived tones and frequently looks wrong. Choosing the
-        // creature is choosing our palette; choosing the icon is choosing yours — and the setting's
-        // help text says so.
-        const entryPoint = await page.evaluate(
-            () => document.querySelector('[data-swag-assistant-root]').dataset.entryPoint,
-        );
-        test.skip(entryPoint !== 'icon', 'the creature keeps its own palette by design');
+        // Asserted for both variants now. The creature's four gradient stops are derived from the
+        // same primary, so the brand colour has to appear in whichever surface is painted — a flat
+        // fill for the icon, a radial gradient for the character.
 
         const painted = await page.evaluate(() => {
             const body = document.querySelector('.swag-assistant-orb__body');

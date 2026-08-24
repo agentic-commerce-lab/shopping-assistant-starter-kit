@@ -200,6 +200,47 @@ paths, because webpack derives module ids from the absolute path. Identical sour
 directories produces identical chunk bodies under different names, so a rebuild-and-diff job would
 fail on every CI run while proving nothing.
 
+### Appearance
+
+Three settings under **Appearance**:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `entryPointStyle` | `icon` | `icon` is a neutral chat bubble that takes your colours. `creature` is the animated face, with expressions that react to the conversation |
+| `primaryColor` | — | The action colour: entry point, send button, focus rings, link and chip text |
+| `secondaryColor` | — | The quiet surface behind the assistant's replies |
+
+Both colours are optional; left empty, the shipped blue applies. They reach the widget as CSS custom
+properties, because the stylesheet is compiled once and these are per-sales-channel — so one shop can
+run two storefronts in two brands.
+
+**Whatever sits on the primary is computed, not configured.** A pale brand colour gets dark text, a
+saturated one gets white, and the choice is made by comparing both contrast ratios rather than against
+a lightness threshold. Asking a merchant to pick the foreground as well is how an unreadable entry
+point ships.
+
+Only `#rrggbb` is accepted — no `rgb()`, no named colours, no shorthand. That value lands in a `style`
+attribute served to every shopper, and everything else CSS would happily parse is also a way to
+smuggle a second declaration in. A rejected value falls back to the shipped token rather than being
+corrected.
+
+**Both entry points take your colours.** The icon is a flat fill; the character is a four-stop shaded
+sphere whose whole ramp — lit face, base, shadow, shadowed edge — is derived from your primary, so it
+reads as a lit object in your brand rather than a flat colour poured into someone else's gradient.
+
+The difference between them is motion, not colour. The icon holds still. The character floats, blinks,
+follows the pointer and hops when something lands — which is personality a merchant storefront often
+does not want, and the reason the neutral one is the default.
+
+### Resizing
+
+On desktop the panel has a handle in its top-left corner. Drag it to resize — up and to the left,
+away from the orb — or focus it and use the arrow keys, 24px a step. The size is remembered in
+`localStorage` and re-clamped on every open, so a window that shrank since does not leave a panel
+hanging off the screen.
+
+It is absent on phones, where the panel is already a full-screen sheet.
+
 ### Extension points
 
 **[docs/extending.md](docs/extending.md) has a worked example of each seam.** In short:
@@ -225,6 +266,7 @@ For the widget's markup, override any of these Twig blocks from a theme or plugi
 | `swag_assistant_orb_signet` | empty by default — override it to put a merchant's own mark on the bubble |
 | `swag_assistant_panel_header` | the panel's heading row |
 | `swag_assistant_panel_composer` | the input and send button |
+| `swag_assistant_panel_resize` | the resize handle — override to move or remove it |
 
 `swag_assistant_orb_signet` used to render the Shopware signet, and now renders nothing: the creature
 has a mouth in that spot, and a mouth that can change expression is worth more there than a mark. The
