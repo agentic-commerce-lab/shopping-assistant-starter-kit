@@ -46,6 +46,11 @@ and a shelf that tilts with it is not a shelf being scanned — it is a decorati
     // the corner is the widget disagreeing with itself mid-turn.
     [data-entry-point='creature'] & {
         @include swag-assistant-bubble;
+
+        // Re-asserted because the mixin sets `position: relative` for its glint, and this block
+        // outranks the placement above it.
+        position: absolute;
+        inset: 0;
     }
 
     [data-entry-point='icon'] & {

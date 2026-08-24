@@ -65,6 +65,11 @@ body:has(.swag-assistant) .scroll-up-button {
     // only the paint differs.
     [data-entry-point='creature'] & {
         @include swag-assistant-bubble;
+
+        // Re-asserted because the mixin sets `position: relative` for its glint, and this block
+        // outranks the placement above it.
+        position: absolute;
+        inset: 0;
     }
 
     [data-entry-point='icon'] & {

@@ -470,6 +470,20 @@ test.describe('reading what the server actually sends', () => {
         expect(orb.glyph).toBe(avatar.glyph);
     });
 
+    test('the entry point actually has a painted surface', async ({ page }) => {
+        // The check that a computed-style assertion misses. Scoping the surface into a
+        // `[data-entry-point]` block gave it higher specificity than the rule that *places* the
+        // element, so the mixin's `position: relative` won and the body collapsed to 0x0 — background
+        // colour still reported correctly, and nothing was on screen but the glyph.
+        await page.goto(SHOP);
+        await page.locator('[data-swag-assistant-orb]').waitFor();
+
+        const box = await page.locator('.swag-assistant-orb__body').boundingBox();
+
+        expect(box.width).toBeGreaterThan(40);
+        expect(box.height).toBeGreaterThan(40);
+    });
+
     test('a configured primary colour is the one the entry point paints with', async ({ page }) => {
         // Compares the computed background against the custom property the server emitted, rather
         // than against a colour written into the test. Overriding only the primary once left the

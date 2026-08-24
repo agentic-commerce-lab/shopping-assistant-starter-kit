@@ -40,7 +40,10 @@ fill.
 //
 // Elevation, and no border with it: a surface takes one or the other.
 @mixin swag-assistant-disc {
-    position: relative;
+    // Deliberately sets no `position`. Applied through a `[data-entry-point]` block it outranks the
+    // rule that places the element, and a `position: relative` winning there collapsed the orb's body
+    // to zero size — the disc vanished and only the glyph painted. It needs no containing block of
+    // its own: unlike the creature's bubble it has no pseudo-element to anchor.
     border-radius: 50%;
     background: var(--swag-assistant-primary, #{$swag-assistant-accent});
     box-shadow: $swag-assistant-lift-2;
