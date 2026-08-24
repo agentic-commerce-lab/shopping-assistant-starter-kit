@@ -16,7 +16,9 @@ They can say *"add that to my cart"* and it lands in their actual cart. Checkout
 shop's normal checkout.
 
 The merchant sees every conversation in the Administration: what the assistant
-understood, which products it retrieved, which facts it rendered, and what it refused.
+understood, which products it retrieved, which facts it rendered, what it refused —
+and the system prompt each turn was actually run with, which matters once a partner
+can replace that prompt from their own plugin.
 
 ## What it deliberately does not do
 

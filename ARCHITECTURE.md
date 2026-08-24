@@ -286,6 +286,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 8 | Blocklist | `Policy\BlocklistFilter` | post-retrieval pass; pre-pass happens via `CatalogScope` |
 | 9 | Rank | *inside the gateway's `search()`, at stage 6* | v0: in-stock bias only. `QueryBuilder` only *names* the sort; the gateway applies it **together with the limit**, before variant resolution — see the correction below |
 | 10 | Compact | `Grounding\FactRenderer` | ~200-token cards for the prompt |
+| 10b | Prompt | `Prompt\PromptProviderInterface`, recorded by `AssistantRunner` | the system message this turn ran with, **in full**. Recorded before the platform is called, so a blocked turn has none |
 | 11 | Generate | `Agent\AgentLoop` + LLM | prose + optional tool call. **Not product ids** — see the correction below stage 15 |
 | 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
@@ -821,6 +822,21 @@ first consumer of the deferred trace-sink extension point.
 
 A `ScheduledTask` prunes events past a retention window. **Not optional** — traces live in
 the merchant's database.
+
+The `prompt` event carries the system message in full — `{text, sha256, length}` — for every turn that
+reached the model. It is not behind a setting: a debugging aid you must enable before the failure is
+no aid at all, because the turn that went wrong has already happened. It contains no shopper text,
+since the system message is built from merchant config and the catalogue's facet vocabulary and the
+shopper's words are appended after it.
+
+Measured: 4,446 characters on a real turn against the demo catalogue. At the default 500-turn cap and
+30-day retention the worst case is roughly 45 MB of prompt text, for a shop running at its own ceiling
+every day — uninteresting beside the product tables it sits next to.
+
+Recorded in full rather than hashed-only because `PromptProviderInterface` lets a partner replace the
+prompt from another plugin entirely: "it changed" is not the question a merchant debugging a bad answer
+has, "what did it say" is. The hash is there so that *whether* it changed between two turns needs no
+eyeball diff.
 
 ## Configuration
 
