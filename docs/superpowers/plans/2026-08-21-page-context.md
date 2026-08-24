@@ -1427,8 +1427,20 @@ docker compose exec -T database mariadb -uroot -proot shopware -e \
 ```
 
 Expected: `{"reported":true,"resolved":"<product id>","category":null}` from a product page,
-`{"reported":false,"resolved":null,"category":"<category id>"}` from a listing page, and
-`{"reported":false,"resolved":null,"category":null}` from the home page.
+`{"reported":false,"resolved":null,"category":"<category id>"}` from a listing page.
+
+**Corrected 2026-08-24, measured:** the home page does **not** yield `category:null`. It is itself a
+navigation page, so it emits the **root** category id (`Home`, level 1). Verified live: a product
+page emitted `data-product-id` for the *variant* the shopper had selected, a listing page emitted
+its own category, and `/` emitted the root category with an empty product id.
+
+That constraint is close to a no-op — every product in the navigation tree carries the root in
+`categoriesRo`, so 135 of 135 units matched — and it is left as it is. The one real consequence: a
+product assigned to **no** navigation category is invisible to the assistant on the home page, and
+P9's retry does not cover it, because that retry fires only on an *empty* result, not on one that is
+silently one product shorter. A product outside the navigation tree is not browsable in the
+storefront either, so this is judged acceptable rather than fixed; suppressing it client-side would
+need category-level knowledge the Twig line does not have.
 
 - [x] **Step 6: Add the one automated check the wiring can have** — *written and registered
   (`npx playwright test --list` sees it); **never executed**, no shop running*
