@@ -8,10 +8,17 @@ export function phaseFacts(row) {
     const payload = (stage) => row.events.find((event) => event.stage === stage)?.payload ?? null;
 
     switch (row.key) {
+        case 'prepare':
+            return prepareFacts(payload('page.context'));
         case 'understand':
             return understandFacts(payload('understand'), payload('query.build'));
         case 'search':
-            return searchFacts(payload('retrieve'), payload('retrieve.narrow'), payload('blocklist.filter'));
+            return searchFacts(
+                payload('retrieve'),
+                payload('retrieve.narrow'),
+                payload('blocklist.filter'),
+                payload('retrieve.without_category'),
+            );
         case 'answer':
             return answerFacts(payload('render'), payload('validate'));
         case 'finish':
@@ -41,7 +48,34 @@ function understandFacts(understand, query) {
     return facts;
 }
 
-function searchFacts(retrieve, narrow, blocklist) {
+/**
+ * Whether the shopper was on a product or a category page. This is the row that explains an
+ * unusually fast turn — and, when the model still called a tool anyway, the row that says the
+ * shortcut was available and went unused.
+ */
+function prepareFacts(pageContext) {
+    if (!pageContext) {
+        return [];
+    }
+
+    const facts = [];
+
+    if (pageContext.resolved) {
+        facts.push({ label: 'viewing product', value: pageContext.resolved });
+    } else if (pageContext.reported) {
+        // Reported but not resolved means the blocklist or the catalogue scope refused it, which is
+        // the trust model working and worth seeing rather than inferring from an absence.
+        facts.push({ label: 'reported product not in scope', value: 'ignored' });
+    }
+
+    if (pageContext.category) {
+        facts.push({ label: 'browsing category', value: pageContext.category });
+    }
+
+    return facts;
+}
+
+function searchFacts(retrieve, narrow, blocklist, withoutCategory) {
     const facts = [];
 
     if (typeof retrieve?.hits === 'number') {
@@ -56,6 +90,13 @@ function searchFacts(retrieve, narrow, blocklist) {
 
     if (removed.length) {
         facts.push({ label: 'blocked', value: String(removed.length) });
+    }
+
+    if (withoutCategory) {
+        facts.push({
+            label: 'retried without the category',
+            value: String(withoutCategory.hits ?? 0),
+        });
     }
 
     return facts;

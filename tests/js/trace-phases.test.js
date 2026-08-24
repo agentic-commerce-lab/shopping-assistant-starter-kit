@@ -124,3 +124,22 @@ test('a quiet stage still forms a phase when nothing has started yet', () => {
     assert.deepEqual(rows.map((row) => row.key), ['prepare']);
     assert.equal(rows[0].events.length, 3);
 });
+
+test('page context is part of preparing the turn, not an unlabelled Other', () => {
+    assert.equal(phaseOf('page.context'), 'prepare');
+});
+
+test('the category retry belongs to the search it retried', () => {
+    // It must not open a phase of its own: it is the same search running a second time, and a
+    // separate row would read as a second search the shopper caused.
+    assert.equal(phaseOf('retrieve.without_category'), 'search');
+
+    const rows = buildTimeline([
+        ev(0, 'retrieve'),
+        ev(4, 'retrieve.without_category'),
+        ev(9, 'render'),
+    ]);
+
+    assert.deepEqual(rows.map((row) => row.key), ['search', 'answer']);
+    assert.equal(rows[0].events.length, 2);
+});

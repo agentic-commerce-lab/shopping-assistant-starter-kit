@@ -17,9 +17,9 @@
  */
 
 const PHASES = [
-    { key: 'prepare', stages: ['facet.probe', 'vocabulary.render', 'guard.check'] },
+    { key: 'prepare', stages: ['page.context', 'facet.probe', 'vocabulary.render', 'guard.check'] },
     { key: 'understand', stages: ['tool.call', 'understand', 'query.build', 'tool.arguments.rejected'] },
-    { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'retrieve.relaxTerm', 'variant.resolve', 'blocklist.filter'] },
+    { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'retrieve.without_category', 'retrieve.relaxTerm', 'variant.resolve', 'blocklist.filter'] },
     /*
      * The one phase where something changed.
      *
