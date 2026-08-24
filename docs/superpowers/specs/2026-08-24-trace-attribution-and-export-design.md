@@ -18,9 +18,9 @@ Each row is a decision that was actually taken, not a summary of options.
 
 | # | Decision | Why |
 |---|---|---|
-| T1 | **Store the customer id and nothing else.** `swag_assistant_conversation.customer_id BINARY(16) NULL`. The name is resolved at display time from the customer repository | When a customer deletes their account, their name disappears from every old trace by itself. Snapshotting the name would leave personal data behind that a deletion request has to hunt down — a second erasure path nobody would remember to write. Costs one lookup per page, which the module already does for sales-channel names |
+| T1 | **Store the customer id and nothing else**, as a real foreign key: `swag_assistant_conversation.customer_id BINARY(16) NULL`, `FOREIGN KEY … REFERENCES customer (id) ON DELETE SET NULL`. The name is read through the association | When a customer deletes their account the link is severed **by the database**, with no erasure routine over this table for anyone to forget. Snapshotting the name would leave personal data behind; keeping an unconstrained id would leave a pseudonymous identifier pointing at a transcript forever, which is the same problem wearing a hat. A real association also lets the list and the export read the name through `addAssociation('customer')` rather than the client-side map the sales-channel column needs (its column is VARCHAR, so the DAL cannot join it) |
 | T2 | **Attribution is captured once, when the conversation starts.** A guest who logs in mid-conversation stays a guest on that conversation | The column answers "who produced this trace". Updating it per turn would make it "the last identity seen", which answers nothing exactly. A shopper who logs in and keeps talking starts a conversation that is attributed correctly the moment their next one begins |
-| T3 | **Three display states:** `NULL` → `Guest user`; resolved → the customer's name; set but unresolvable → `Deleted customer` | The third state is the visible proof that T1 works. Rendering a bare id there would look like a bug rather than a deletion |
+| T3 | **Two display states:** no customer → `Guest user`; otherwise the customer's name | A third state for "was a customer, now deleted" is not available and that is the point: `ON DELETE SET NULL` removes the id itself, so a deleted customer's conversation becomes indistinguishable from a guest's. **Accepted cost:** a merchant reading an old trace sees `Guest user` where someone had been logged in. Preserving the distinction would mean keeping a marker about a person after they asked to be forgotten, which is the trade this design refuses |
 | T4 | **The export carries the resolved name**, exactly as the screen shows it | Robin's decision, made against the stated alternative of exporting ids only. **Consequence, accepted:** an exported file is personal data. Whoever forwards it forwards customer names, and it is not covered by the shop's retention pruning once it has left. Recorded here so the trade is on the record rather than discovered later |
 | T5 | **Two formats, chosen by which button was pressed** — CSV for counting, JSON for handing over | Both uses were named. A single format would serve one of them badly, and a format picker in a dialog is a click that the button label already answers |
 | T6 | **One server endpoint produces both formats** | The CSV's useful columns — shop time against model time, tool calls — are derived from the events, which the list does not load. Any format needs the events, so both belong on the server. It also puts the privilege check (T4 makes it a real one) somewhere the frontend cannot skip, and gives the size bound a place to live |
@@ -54,7 +54,7 @@ Admin list ──ids + format──▶ AssistantTraceExportController
 
 **Writing.** `AssistantController::chat()` reads `$context->getCustomer()?->getId()` and passes it to `start()` on the turn that creates the conversation. A conversation resumed by token never re-reads it (T2).
 
-**Reading, list.** The grid loads a page of conversations. The page collects the non-null `customerId` values and resolves them in one criteria, exactly as `channelNames` is built today. Unresolved ids fall through to `Deleted customer`.
+**Reading, list.** The grid loads a page of conversations with `criteria.addAssociation('customer')`. The name comes off the association; a null association is a guest. No client-side id map is needed — that hack exists for sales channels only because their column is a VARCHAR the DAL cannot join.
 
 **Exporting.** The admin posts ids and a format. With no selection it first asks the repository for the ids matching the current filter, bounded by T7, and posts those. The response is a file; the browser saves it through a blob, because the route is authenticated and cannot be opened in a tab.
 
@@ -79,11 +79,11 @@ id,createdAt,salesChannel,user,turns,outcome,totalMs,shopMs,modelMs,toolCalls
 | Empty id list | 400. An export of nothing is a mistake, not an empty file — and it should be unreachable: with T8 an empty list means the filter matched nothing, so the buttons are disabled in that state. The check exists because "unreachable" is a claim about today's caller |
 | Unknown or malformed id | Skipped, and the response header names how many were dropped. One stale id must not cost the merchant the rest of the export |
 | Missing privilege | 403 from Shopware's own ACL layer, before the controller runs |
-| Customer id that no longer resolves | `Deleted customer` in the file, the same string the screen shows |
+| Conversation whose customer was deleted | `Guest user` in the file, the same string the screen shows — the id is gone, so there is nothing else it could truthfully say (T3) |
 
 ## Testing
 
-- **Serialisers**: PHPUnit against hand-built conversations. CSV quoting of a name containing a comma and a quote; the shop/model split against a known event sequence; a guest and a deleted customer in the same file; JSON payloads surviving verbatim.
+- **Serialisers**: PHPUnit against hand-built conversations. CSV quoting of a name containing a comma and a quote; the shop/model split against a known event sequence; a guest and a named customer in the same file; JSON payloads surviving verbatim.
 - **Controller**: the bound refuses at 1 001 and passes at 1 000; an empty list is refused; an unknown id is skipped rather than fatal; the privilege is declared on the route.
 - **Attribution**: a turn from a logged-in context stores the id; a guest stores null; a resumed conversation does not overwrite it (T2).
 - **No browser test.** The format logic is pure derivation, and the download mechanics are three lines of standard admin plumbing.
