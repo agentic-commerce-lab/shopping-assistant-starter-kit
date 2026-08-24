@@ -57,10 +57,19 @@ body:has(.swag-assistant) .scroll-up-button {
 }
 
 .swag-assistant-orb__body {
-    @include swag-assistant-bubble;
-
     position: absolute;
     inset: 0;
+
+    // The surface is the merchant's choice, so it is scoped rather than unconditional. Everything
+    // below this — elevation, the press response, the motion — is shared by both variants, because
+    // only the paint differs.
+    [data-entry-point='creature'] & {
+        @include swag-assistant-bubble;
+    }
+
+    [data-entry-point='icon'] & {
+        @include swag-assistant-disc;
+    }
 
     /*
     Elevation, and nothing else.
@@ -124,10 +133,17 @@ thing the shopper came to read.
 */
 .swag-assistant.is-open .swag-assistant-orb .swag-assistant-orb__body {
     animation: none;
-    // The creature's own body, which is the one place in this widget an overshoot belongs.
     transform: scale(0.86);
-    transition: transform 320ms $swag-assistant-ease-spring;
+    // Exponential ease-out by default, because real objects decelerate. The overshoot below is
+    // scoped to the creature: it is a character, and a bounce is in character. The neutral disc is a
+    // mark a merchant recoloured, and a mark that springs reads as a mistake — the same reason it has
+    // no gradient and no highlight.
+    transition: transform 320ms $swag-assistant-ease-out;
     will-change: auto;
+}
+
+[data-entry-point='creature'].swag-assistant.is-open .swag-assistant-orb .swag-assistant-orb__body {
+    transition: transform 320ms $swag-assistant-ease-spring;
 }
 
 /*
@@ -220,4 +236,30 @@ it schedules a single hop, so nothing here has to be undone with `!important`.
     .swag-assistant.is-open .swag-assistant-orb .swag-assistant-orb__body {
         transform: none;
     }
+}
+
+/*
+The neutral entry point's glyph.
+
+Sized from `--swag-assistant-unit` like every other part of the creature's face, so the same rule
+renders it at 60px in the corner and 34px in the header with its proportions intact. 42% is the ratio
+the face's own features sit at — an icon that filled more of the disc would read as a button, and less
+would read as lost in it.
+
+`currentColor` is not used: the colour is the computed foreground for whatever the merchant chose,
+which the server pairs with the background (see `WidgetTheme`). Hardcoding white here is exactly the
+unreadable pale-brand case that computation exists to prevent.
+*/
+.swag-assistant-orb__glyph {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(0.42 * var(--swag-assistant-unit));
+    height: calc(0.42 * var(--swag-assistant-unit));
+    transform: translate(-50%, -50%);
+    background: var(--swag-assistant-on-primary, #{$swag-assistant-surface});
+    mask-image: $swag-assistant-icon-chat;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
 }

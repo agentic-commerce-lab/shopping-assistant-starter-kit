@@ -35,6 +35,7 @@ final readonly class WidgetTheme
 
     private function __construct(
         public string $primary,
+        public string $primaryDark,
         public string $secondary,
         public string $onPrimary,
         public string $entryPointStyle,
@@ -46,6 +47,9 @@ final readonly class WidgetTheme
 
         return new self(
             $safePrimary,
+            // Derived, never configured: it is the same brand colour at a different depth, and asking
+            // a merchant for both is asking them to keep two values in step.
+            $safePrimary === '' ? '' : self::darken($safePrimary),
             self::hexOrEmpty($secondary),
             // Nothing to compute against means nothing claimed: the stylesheet's own pairing applies.
             $safePrimary === '' ? '' : self::readableOn($safePrimary),
@@ -106,6 +110,32 @@ final readonly class WidgetTheme
         }
 
         return (0.2126 * $channels[0]) + (0.7152 * $channels[1]) + (0.0722 * $channels[2]);
+    }
+
+    /**
+     * The primary, deepened, for text on light surfaces and for hover states.
+     *
+     * `$swag-assistant-accent-dark` turns out to be dual-purpose in the stylesheet: a stop in the
+     * creature's gradient *and* the colour of suggestion-chip text, card links and pressed states.
+     * Overriding only the primary therefore left half the widget Shopware blue — visible immediately
+     * on a purple brand, and the reason this exists.
+     *
+     * Mixed toward black rather than computed in CSS. `color-mix()` is not universally supported
+     * enough to be the only path to a brand's hover state, and SCSS cannot do colour maths on a
+     * custom property, so the one place that can compute it is here.
+     */
+    private static function darken(string $hex): string
+    {
+        $out = '#';
+
+        foreach ([1, 3, 5] as $offset) {
+            $channel = (int) hexdec(substr($hex, $offset, 2));
+            // 18% toward black: enough to read as pressed against the base, not so much that a
+            // saturated brand colour turns muddy.
+            $out .= str_pad(dechex((int) round($channel * 0.82)), 2, '0', \STR_PAD_LEFT);
+        }
+
+        return $out;
     }
 
     private static function contrast(float $first, float $second): float

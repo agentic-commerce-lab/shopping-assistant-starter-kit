@@ -38,10 +38,19 @@ and a shelf that tilts with it is not a shelf being scanned — it is a decorati
 }
 
 .swag-assistant-thinking__orb {
-    @include swag-assistant-bubble;
-
     position: absolute;
     inset: 0;
+
+    // Scoped like the orb and the docked avatar. The bubble leading the thinking indicator is the
+    // same object as the entry point seen a third time; a gradient sphere here beside a flat disc in
+    // the corner is the widget disagreeing with itself mid-turn.
+    [data-entry-point='creature'] & {
+        @include swag-assistant-bubble;
+    }
+
+    [data-entry-point='icon'] & {
+        @include swag-assistant-disc;
+    }
     // Neutral, like every other shadow in the widget. A blue-tinted one was left here after the orb's
     // coloured halo went, which is exactly how a rule survives in one file and dies in another.
     box-shadow:

@@ -449,6 +449,63 @@ test.describe('reading what the server actually sends', () => {
         expect(Math.max(...requestedCounts)).toBeLessThanOrEqual(12);
     });
 
+    test('the orb and the docked avatar always agree on which entry point they are', async ({ page }) => {
+        // Asserted as an invariant rather than per variant, deliberately: a test that hard-codes
+        // "icon" depends on whatever `entryPointStyle` the shop happens to be set to, and fails for
+        // the wrong reason the moment someone flips it. What must hold under either setting is that
+        // exactly one of face-or-glyph exists, and that the corner and the header show the same one —
+        // disagreeing is how a widget starts to look assembled from parts.
+        await openPanel(page);
+
+        const shape = async (root) => ({
+            glyph: await page.locator(`${root} .swag-assistant-orb__glyph`).count(),
+            face: await page.locator(`${root} .swag-assistant-face`).count(),
+        });
+
+        const orb = await shape('[data-swag-assistant-orb]');
+        const avatar = await shape('[data-swag-assistant-avatar]');
+
+        expect(orb.glyph + orb.face).toBe(1);
+        expect(avatar.glyph + avatar.face).toBe(1);
+        expect(orb.glyph).toBe(avatar.glyph);
+    });
+
+    test('a configured primary colour is the one the entry point paints with', async ({ page }) => {
+        // Compares the computed background against the custom property the server emitted, rather
+        // than against a colour written into the test. Overriding only the primary once left the
+        // suggestion chips Shopware blue while the surfaces went purple; this fails if the property
+        // is emitted and the surface ignores it.
+        await openPanel(page);
+
+        const primary = await page.evaluate(() => getComputedStyle(
+            document.querySelector('[data-swag-assistant-root]'),
+        ).getPropertyValue('--swag-assistant-primary').trim());
+
+        test.skip(primary === '', 'no primary configured on this shop, nothing to compare');
+
+        // Only the neutral icon takes the merchant's colour. The creature keeps its own palette: its
+        // surface is a four-stop glossy sphere with a specular highlight, and recolouring that to an
+        // arbitrary brand hue needs four derived tones and frequently looks wrong. Choosing the
+        // creature is choosing our palette; choosing the icon is choosing yours — and the setting's
+        // help text says so.
+        const entryPoint = await page.evaluate(
+            () => document.querySelector('[data-swag-assistant-root]').dataset.entryPoint,
+        );
+        test.skip(entryPoint !== 'icon', 'the creature keeps its own palette by design');
+
+        const painted = await page.evaluate(() => {
+            const body = document.querySelector('.swag-assistant-orb__body');
+            const style = getComputedStyle(body);
+
+            // The creature paints a gradient, the icon a flat colour: whichever it is, the brand
+            // colour has to appear in it.
+            return style.backgroundImage === 'none' ? style.backgroundColor : style.backgroundImage;
+        });
+
+        const [r, g, b] = primary.replace('#', '').match(/../g).map((h) => parseInt(h, 16));
+        expect(painted).toContain(`${r}, ${g}, ${b}`);
+    });
+
     test('an escalated reply offers a way to reach a human', async ({ page }) => {
         // The shape the endpoint sends when `escalate` ran and the merchant configured a contact
         // route. Stubbed rather than prompted for: whether a model chooses to escalate is the eval

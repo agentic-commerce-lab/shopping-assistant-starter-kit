@@ -129,9 +129,16 @@ pass.
 // The creature, docked. Same markup and same moods as the orb — it blinks, it smiles when a reply
 // lands, and it is the reason opening the panel reads as the bubble coming with you.
 .swag-assistant-panel__avatar {
-    @include swag-assistant-bubble;
-
     --swag-assistant-unit: 32px;
+
+    // Scoped to match the orb: whichever surface the entry point wears, the docked avatar wears too.
+    [data-entry-point='creature'] & {
+        @include swag-assistant-bubble;
+    }
+
+    [data-entry-point='icon'] & {
+        @include swag-assistant-disc;
+    }
 
     flex: 0 0 auto;
     width: var(--swag-assistant-unit);

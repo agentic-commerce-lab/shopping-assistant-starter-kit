@@ -44,7 +44,7 @@ The over-length composer state lives in `_composer.scss`, next to the field it b
     border: 1px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
     border-radius: $swag-assistant-radius-control;
     background: $swag-assistant-surface;
-    color: $swag-assistant-accent-dark;
+    color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
     font: inherit;
     font-size: 12px;
     font-weight: 600;

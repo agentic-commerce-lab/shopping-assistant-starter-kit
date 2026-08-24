@@ -17,7 +17,13 @@
                    panel reads as the bubble coming along rather than as an avatar appearing in a
                    frame. It blinks here too. #}
                 <span class="swag-assistant-panel__avatar" data-swag-assistant-avatar data-mood="happy">
-                    {% sw_include '@Storefront/storefront/component/assistant/face.html.twig' %}
+                    {# Follows the entry point's choice. The header avatar and the orb are the same
+                       object seen twice; disagreeing here is how a widget starts to look assembled. #}
+                    {% if swag_assistant_theme(context.salesChannelId).entryPointStyle == 'creature' %}
+                        {% sw_include '@Storefront/storefront/component/assistant/face.html.twig' %}
+                    {% else %}
+                        <span class="swag-assistant-orb__glyph"></span>
+                    {% endif %}
                 </span>
 
                 {# The merchant's name for the assistant, and the only place it is shown.

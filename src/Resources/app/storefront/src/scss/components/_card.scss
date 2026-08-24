@@ -260,7 +260,7 @@ whether it can be bought is two lookups for a decision that is a single thought.
     padding: 7px 10px;
     border: 1px solid $swag-assistant-hairline;
     border-radius: $swag-assistant-radius-control;
-    color: $swag-assistant-accent-dark;
+    color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
     font-size: $swag-assistant-font-meta;
     font-weight: 600;
     text-align: center;
@@ -272,7 +272,7 @@ whether it can be bought is two lookups for a decision that is a single thought.
     &:hover {
         border-color: var(--swag-assistant-primary, #{$swag-assistant-accent});
         background: var(--swag-assistant-secondary, #{$swag-assistant-bubble});
-        color: $swag-assistant-accent-dark;
+        color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
         text-decoration: none;
     }
 
@@ -311,8 +311,8 @@ still reads that it worked.
         transform 200ms $swag-assistant-ease-out;
 
     &:hover:not(:disabled) {
-        background: $swag-assistant-accent-dark;
-        border-color: $swag-assistant-accent-dark;
+        background: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
+        border-color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
     }
 
     &:active:not(:disabled) {

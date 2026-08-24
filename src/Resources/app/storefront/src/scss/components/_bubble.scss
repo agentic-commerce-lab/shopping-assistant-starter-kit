@@ -31,6 +31,21 @@ The brand spec permits a gradient for a brand moment such as an illustration. Th
 one illustration, and it is the only place gradients appear: every control surface below is a flat
 fill.
 */
+// The neutral entry point's surface: one fill, one elevation step, nothing else.
+//
+// Deliberately not `swag-assistant-bubble`. That mixin paints a four-stop radial gradient and a
+// diffuse specular highlight, and it earns them — it is a character with a wet plastic surface. A
+// neutral mark a merchant recolours is a different object, and a highlight placed on an arbitrary
+// brand colour reads as a mistake rather than a finish.
+//
+// Elevation, and no border with it: a surface takes one or the other.
+@mixin swag-assistant-disc {
+    position: relative;
+    border-radius: 50%;
+    background: var(--swag-assistant-primary, #{$swag-assistant-accent});
+    box-shadow: $swag-assistant-lift-2;
+}
+
 @mixin swag-assistant-bubble {
     position: relative;
     border-radius: 50%;

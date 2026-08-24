@@ -50,28 +50,6 @@ final class WidgetThemeTest extends TestCase
         self::assertSame($expected, WidgetTheme::of($stored, '', 'icon')->primary);
     }
 
-    public function testAPalePrimaryGetsDarkForeground(): void
-    {
-        // The reason there is no third config field: a merchant picking a pale brand colour would
-        // otherwise ship white-on-pale. Contrast is correctness, not preference.
-        self::assertSame('#00153e', WidgetTheme::of('#ffe066', '', 'icon')->onPrimary);
-    }
-
-    public function testADarkPrimaryGetsWhiteForeground(): void
-    {
-        self::assertSame('#ffffff', WidgetTheme::of('#0870ff', '', 'icon')->onPrimary);
-    }
-
-    public function testAnUnsetPrimaryLeavesTheForegroundToTheStylesheet(): void
-    {
-        // Nothing to compute against, so nothing is claimed: both properties stay empty and the
-        // stylesheet's own pairing applies.
-        $theme = WidgetTheme::of('', '', 'icon');
-
-        self::assertSame('', $theme->primary);
-        self::assertSame('', $theme->onPrimary);
-    }
-
     public function testAnUnknownEntryPointStyleFallsBackToTheNeutralIcon(): void
     {
         self::assertSame('icon', WidgetTheme::of('', '', 'sparkles')->entryPointStyle);

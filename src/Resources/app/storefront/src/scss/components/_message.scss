@@ -70,7 +70,7 @@ The origin is the corner the bubble belongs to, so each side's message grows out
         // SW 600, not SW 500: white on SW 500 measures 4.40:1 and misses the body-text floor, while
         // white on SW 600 is 5.98:1. One step darker is the difference between a legible message and
         // a decorative one.
-        background: $swag-assistant-accent-dark;
+        background: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
         // The one chat affordance kept: an asymmetric corner. A uniformly-radiused rectangle stops
         // reading as speech.
         border-radius: $swag-assistant-radius-panel $swag-assistant-radius-panel 4px $swag-assistant-radius-panel;

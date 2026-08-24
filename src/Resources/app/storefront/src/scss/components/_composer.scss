@@ -133,7 +133,7 @@ something to send, then fills with accent: the control tells you it is armed bef
     }
 
     &.is-armed:hover {
-        background: $swag-assistant-accent-dark;
+        background: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
         transform: scale(1.06);
     }
 
@@ -186,7 +186,7 @@ They are removed the moment the conversation starts. A first-run affordance that
     border: 1px solid rgba(8, 112, 255, 0.24);
     border-radius: $swag-assistant-radius-pill;
     background: $swag-assistant-surface;
-    color: $swag-assistant-accent-dark;
+    color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
     font: inherit;
     font-size: $swag-assistant-font-meta;
     font-weight: 600;
