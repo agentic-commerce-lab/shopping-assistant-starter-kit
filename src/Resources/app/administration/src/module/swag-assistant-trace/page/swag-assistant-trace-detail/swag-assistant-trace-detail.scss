@@ -128,4 +128,15 @@
         white-space: pre-wrap;
         word-break: break-word;
     }
+
+    // Only the prose variant gets a ceiling. The prompt runs to several thousand characters, and an
+    // uncapped block pushes the rest of the timeline off the page — but capping every payload would
+    // hide short ones behind a scrollbar for no reason.
+    &__payload--prose {
+        background: var(--color-elevation-surface-sunken, #f9f9f9);
+        border-radius: 4px;
+        max-height: 240px;
+        overflow-y: auto;
+        padding: 8px 10px;
+    }
 }

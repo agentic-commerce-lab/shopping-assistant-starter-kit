@@ -114,7 +114,10 @@
                         >
                             <span class="swag-assistant-trace-detail__at">{{ offset(event.elapsedMs) }}</span>
                             <span class="swag-assistant-trace-detail__stage">{{ event.stage }}</span>
-                            <pre class="swag-assistant-trace-detail__payload">{{ payloadJson(event) }}</pre>
+                            <pre
+                                class="swag-assistant-trace-detail__payload"
+                                :class="{ 'swag-assistant-trace-detail__payload--prose': promptProse(event) }"
+                            >{{ promptProse(event) || payloadJson(event) }}</pre>
                         </div>
                     </template>
                 </sw-collapse>

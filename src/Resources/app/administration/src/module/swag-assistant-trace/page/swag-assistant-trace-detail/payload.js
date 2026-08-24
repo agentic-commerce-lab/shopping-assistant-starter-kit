@@ -27,6 +27,22 @@ export function prettyPayload(payload) {
 }
 
 /**
+ * The prompt event's text, as prose, or null for every other event.
+ *
+ * `prettyPayload` is right for structured payloads and wrong for this one: a four-kilobyte string with
+ * its newlines escaped renders as a single unreadable line. The caller shows this in a `<pre>`
+ * instead, and falls back to `prettyPayload` when this returns null.
+ *
+ * Shapes defensively, like `readTurns` and for the same reason: `payload` is a JSON column, and a row
+ * written by an older plugin version must render thinly rather than throw on the detail page.
+ */
+export function promptText(payload) {
+    const text = payload?.text;
+
+    return typeof text === 'string' && text !== '' ? text : null;
+}
+
+/**
  * The stored transcript, as turns a merchant can read.
  *
  * This is the only record of what was asked and answered: the trace events carry the pipeline's

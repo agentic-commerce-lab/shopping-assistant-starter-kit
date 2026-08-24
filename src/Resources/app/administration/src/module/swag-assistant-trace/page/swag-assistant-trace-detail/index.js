@@ -1,7 +1,7 @@
 import './swag-assistant-trace-detail.scss';
 import template from './swag-assistant-trace-detail.html.twig';
 import { humanMs, phaseFacts } from './facts';
-import { alwaysVisible, prettyPayload, readTurns } from './payload';
+import { alwaysVisible, prettyPayload, promptText, readTurns } from './payload';
 import { buildTimeline, shopMs, splitTurns, waitMs } from './phases';
 
 const { Criteria } = Shopware.Data;
@@ -112,6 +112,15 @@ Shopware.Component.register('swag-assistant-trace-detail', {
 
         payloadJson(event) {
             return prettyPayload(event.payload);
+        },
+
+        /**
+         * Non-null only for the `prompt` event. The template prefers it over `payloadJson`, because
+         * JSON.stringify escapes this payload's newlines and turns four kilobytes of prose into one
+         * line.
+         */
+        promptProse(event) {
+            return promptText(event.payload);
         },
     },
 });
