@@ -97,13 +97,32 @@
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
         </service>
 
-        <!-- The two limits in front of the public chat endpoint. Storage is the shop's own cache
-             pool rather than the database: counting rows would mean a query per request on a public
-             route, and the retention task deletes those rows daily, so the count would be wrong by
-             design. Clearing the cache resets both windows, which is acceptable for a throttle. -->
+        <!-- The two limits in front of the public chat endpoint. Storage is a cache rather than the
+             database: counting rows would mean a query per request on a public route, and the
+             retention task deletes those rows daily, so the count would be wrong by design. Clearing
+             the cache resets both windows, which is acceptable for a throttle.
+
+             **Its own pool, not `cache.app`.** Measured on 2026-08-24: a Shopware dev install binds
+             `framework.cache.app` to `cache.adapter.array`, which is in-memory and dies with the
+             request — so every request began with an empty window and three requests against a limit
+             of two all returned 200. A security control whose enforcement depends on the host's cache
+             configuration is the same defect as one that is not wired up at all, so the limiter now
+             owns storage it can rely on. `cache.rate_limiter` was not the answer either: Shopware
+             derives it from `cache.app`.
+
+             Filesystem, and therefore per node: a multi-server shop gets this limit per web node
+             rather than globally. Documented rather than hidden, and still bounded — a Redis-backed
+             pool is the upgrade, and swapping this one service is the whole change. -->
+        <service id="swag_assistant.rate_limiter_cache"
+                 class="Symfony\Component\Cache\Adapter\FilesystemAdapter">
+            <argument>swag_assistant_rate_limiter</argument>
+            <argument>0</argument>
+            <argument>%kernel.cache_dir%</argument>
+        </service>
+
         <service id="swag_assistant.rate_limiter_storage"
                  class="Symfony\Component\RateLimiter\Storage\CacheStorage">
-            <argument type="service" id="cache.app"/>
+            <argument type="service" id="swag_assistant.rate_limiter_cache"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Policy\RequestBudget">

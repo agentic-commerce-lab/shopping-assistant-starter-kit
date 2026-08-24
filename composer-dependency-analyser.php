@@ -31,4 +31,15 @@ if (is_dir(__DIR__ . '/tests')) {
     $config->addPathToScan(__DIR__ . '/tests', isDev: true);
 }
 
+// The analyser reads PHP, and `symfony/cache` is referenced from `services.xml`: the container
+// instantiates `FilesystemAdapter` for the rate limiter's own storage pool, which is a production
+// dependency the scanner cannot see. Without this it reports the package as dev-only, because the
+// only PHP mentioning it is the test that pins the limiter's persistence.
+//
+// The limiter owns that pool rather than using `cache.app` for a measured reason — see the comment
+// on `swag_assistant.rate_limiter_cache` in `services.xml`.
+$config->ignoreErrorsOnPackage('symfony/cache', [
+    \ShipMonk\ComposerDependencyAnalyser\Config\ErrorType::PROD_DEPENDENCY_ONLY_IN_DEV,
+]);
+
 return $config;
