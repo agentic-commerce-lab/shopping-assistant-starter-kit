@@ -173,4 +173,15 @@ Stated because they were decided, not overlooked.
   usually none, so install-time creation would have to guess (the library guesses 1536). The table is
   created on the first write instead, at the width the model actually produced.
 - **The embedding model is a plugin setting** beside `llmBaseUrl`, `llmModel` and `llmApiKey`, and
-  reuses the same OpenAI-compatible provider URL.
+  reuses the same OpenAI-compatible provider URL. **Verified 2026-08-25** against the lab shop's
+  OpenRouter configuration with `openai/text-embedding-3-small`: it serves `/v1/embeddings`, and a
+  document indexed at 1536 dimensions.
+- **`symfony/ai-maria-db-store` ships a Symfony Flex recipe that breaks a Shopware shop.** Installing
+  it writes `config/packages/ai_maria_db_store.yaml`, which declares an `ai:` root key that only
+  `symfony/ai-bundle` can load. Without that bundle every console command and every request dies with
+  *"There is no extension able to load the configuration for ai"* — not just the new feature, the whole
+  shop. Found by hitting it. The file has to be deleted after install, so the plugin's install
+  instructions must say so, or the bundle has to be a declared dependency.
+- **Plugin dependencies live in the shop's vendor tree, not the plugin's.** `composer require` inside
+  the plugin is not enough for a path-repository install: the shop needs
+  `composer update swag/assistant-starter-kit -W` before the new classes can be autoloaded.

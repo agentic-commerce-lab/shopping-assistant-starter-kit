@@ -22,6 +22,8 @@ final class InMemoryPassageStore implements PassageStore
             throw new \RuntimeException('one vector per passage is required');
         }
 
+        StoreWidth::guard($this->dimension(), $vectors);
+
         foreach ($passages as $index => $passage) {
             $this->rows[] = [
                 'passage' => $passage,
