@@ -87,7 +87,7 @@ Everything needed is already in hand at the narrowing step in `SearchProductsToo
 | Field | Source |
 |---|---|
 | `matched` | `\count($survivors)` — the set `retrieve.narrow` already measures its truncation against |
-| `more` | `\count($cards) === $query->effectiveLimit()` measured on the cards **as RetrievalPass returned them**, before variant resolution, because that is the step the gateway's limit applied to |
+| `more` | `\count($cards) === $query->retrievalLimit()` measured on the cards **as RetrievalPass returned them**, before variant resolution, because that is the step the gateway's limit applied to |
 | `families` | The truncated tail (`$survivors` minus `$returned`) grouped by `ProductCard::$parentId`; option values read from `ProductCard::$options`. Both fields already exist on the DTO |
 
 No gateway call is added. No interface changes.
