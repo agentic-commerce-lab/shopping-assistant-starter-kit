@@ -92,11 +92,28 @@ Rejected alternatives, with reasons:
   trace shows the model ignoring a `families` entry that *did* contain the answer. No such trace
   exists — every entry the model saw was missing `Size 30` by construction.
 
-**One open question worth a cheap spike before building that.** `SystemPrompt` tells the model the
-vocabulary block lists "the only spellings this catalogue matches". A value that appears in a tool
-reply but not in that block may therefore read to the model as unusable. Whether the model will filter
-by an option it learned from `families` is unknown, and it decides whether the fix above is sufficient
-or merely necessary. One journey run against a hand-widened window would answer it.
+**~~One open question worth a cheap spike before building that.~~ Answered — and the answer is yes.**
+
+`SystemPrompt` tells the model the vocabulary block lists "the only spellings this catalogue matches",
+so a value appearing in a tool reply but not in that block might have read as unusable. It does not.
+
+**Spike, 2026-08-25.** `CANDIDATE_MULTIPLIER` was temporarily raised from 4 to 8 — the model's own
+`limit: 5` untouched, so the only variable changed was how much the *server* fetched. At that width the
+disclosure carries `Size 30` (`matched: 30`, `variants: 30`, verified before running). Then
+`scale_family_beyond_window` against the large catalogue:
+
+> `✔ Journey meets its assertions with data set "scale_family_beyond_window"` — 1 test, 89 seconds
+
+Green on both archetypes, 3/3 runs each. `rendered_ids_exactly` demands **exactly**
+`sc-family-30-v30` and nothing else, and `stock_matches_source` demands stock 0 on that card — so the
+model read `Size 30` out of `families`, searched again with it, and rendered the sold-out variant it
+was asked about. Six runs, no exceptions.
+
+The multiplier was reverted immediately; nothing from the spike is committed.
+
+**What this settles.** The design premise was right: telling the model the values exist IS enough. The
+only thing missing was that retrieval never fetched the family whole. So fetching the truncated
+family is not just necessary but sufficient, and the prompt needs no change.
 
 ## What this does not say
 
