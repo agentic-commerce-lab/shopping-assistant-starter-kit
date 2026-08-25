@@ -20,6 +20,7 @@ use Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider;
 use Swag\AssistantStarterKit\Core\Prompt\ViewingContext;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
+use Swag\AssistantStarterKit\Core\Retrieval\SharedFacetCache;
 use Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\EscalateToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GetProductToolFactory;
@@ -72,6 +73,14 @@ final readonly class AssistantAgentFactory
         private iterable $groundedToolFactories,
         private PromptProviderInterface $prompt,
         private LlmPlatformInterface $platform,
+        /**
+         * The cross-request facet cache, or null to probe live every request.
+         *
+         * Nullable because the eval suite builds this factory by hand with no container, and a
+         * measurement-driven cache must not become a construction requirement. In the shop it is
+         * always wired — see services.xml, and phase B's Finding 1 for the 560 ms it saves.
+         */
+        private ?SharedFacetCache $facetCache = null,
     ) {}
 
     /**
@@ -155,7 +164,7 @@ final readonly class AssistantAgentFactory
             $renderer->registerRetrieved([$viewing]);
         }
 
-        $facetProbe = new FacetProbe($gateway, $trace);
+        $facetProbe = new FacetProbe($gateway, $trace, $this->facetCache);
 
         // Probed here, once, before we know whether the model will call a tool at all —
         // FacetProbe caches per scope for the life of this request, so SearchProductsTool's
@@ -163,6 +172,10 @@ final readonly class AssistantAgentFactory
         // this result instead of hitting the gateway again. A turn that never calls a tool
         // still pays this one probe; that is the accepted cost of having the vocabulary
         // available before the system prompt is built.
+        //
+        // With $facetCache wired, "this one probe" is a cache read rather than a ~560 ms
+        // aggregation over the whole catalogue — which is what made that accepted cost
+        // acceptable in the first place. Phase B measured it at 558–578 ms on 10k products.
         $vocabularyStats = CatalogVocabulary::renderWithStats($facetProbe->probe($config->scope));
         $trace->record('vocabulary.render', [
             'fieldCount' => $vocabularyStats['fieldCount'],

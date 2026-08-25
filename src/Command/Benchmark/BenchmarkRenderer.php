@@ -50,7 +50,12 @@ final class BenchmarkRenderer
     private function facetProbe(SymfonyStyle $io, FacetProbeMeasurement $probe): void
     {
         $io->section('Facet probe');
-        $io->table(['live ms', 'cached ms'], [[$this->ms($probe->liveMs), $this->ms($probe->cachedMs)]]);
+        $io->table(['live ms', 'instance-cache ms', 'shared-cache ms', 'shared hit'], [[
+            $this->ms($probe->liveMs),
+            $this->ms($probe->cachedMs),
+            $this->ms($probe->sharedMs),
+            $probe->sharedHit ? 'yes' : 'no (pool was cold — run again)',
+        ]]);
     }
 
     /** @param list<QueryMeasurement> $queries */

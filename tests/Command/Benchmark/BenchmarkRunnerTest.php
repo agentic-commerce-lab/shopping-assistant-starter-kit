@@ -111,10 +111,11 @@ final class BenchmarkRunnerTest extends TestCase
             cardIds: [],
         );
 
-        // One live probe reaches the gateway; the second is served from FacetProbe's own cache. The
-        // vocabulary measurement performs one more, so two gateway calls for three probes.
-        self::assertSame(2, $gateway->callsTo('facets'));
+        // Live once, instance-cache once (no gateway), then the shared-tier probe with no pool
+        // wired — which must go live again. Plus the vocabulary measurement's own facets() call.
+        self::assertSame(3, $gateway->callsTo('facets'));
         self::assertGreaterThanOrEqual(0.0, $report->facetProbe->liveMs);
         self::assertGreaterThanOrEqual(0.0, $report->facetProbe->cachedMs);
+        self::assertFalse($report->facetProbe->sharedHit, 'no pool wired means no shared hit');
     }
 }

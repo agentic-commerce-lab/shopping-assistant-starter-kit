@@ -36,7 +36,7 @@ final class BenchmarkRendererTest extends TestCase
                 truncated: $truncated,
                 size: new PromptSize(vocabularyChars: 1_476, promptChars: 4_635),
             ),
-            facetProbe: new FacetProbeMeasurement(liveMs: 812.5, cachedMs: 0.4),
+            facetProbe: new FacetProbeMeasurement(liveMs: 812.5, cachedMs: 0.4, sharedMs: 1.9, sharedHit: true),
             queries: $queries,
             cards: new CardEndpointMeasurement(ids: 12, lookups: 12, totalMs: 96.0),
         );

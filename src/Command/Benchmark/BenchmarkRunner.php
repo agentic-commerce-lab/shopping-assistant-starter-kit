@@ -12,6 +12,7 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary;
 use Swag\AssistantStarterKit\Core\Prompt\SystemPrompt;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
+use Swag\AssistantStarterKit\Core\Retrieval\SharedFacetCache;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
@@ -54,6 +55,11 @@ final class BenchmarkRunner
 
     public function __construct(
         private readonly CountingGateway $gateway,
+        /**
+         * The cross-request cache, so this command can report the tier it exists to add. Null
+         * measures only the live and instance tiers, which is what a fixture run wants.
+         */
+        private readonly ?SharedFacetCache $shared = null,
     ) {}
 
     /**
@@ -108,22 +114,41 @@ final class BenchmarkRunner
     }
 
     /**
-     * Cold then warm, because {@see FacetProbe} keeps a per-instance cache and the two numbers
-     * describe the first turn of a conversation and every later one.
+     * All three tiers, in the order a conversation meets them.
+     *
+     * `live` deliberately uses a probe with NO shared cache, so the column keeps reporting the raw
+     * catalogue cost even once the pool is warm — that is the number worth watching as a catalogue
+     * grows. `shared` then uses a fresh probe WITH the pool, which is what a second request gets.
+     *
+     * On a cold pool the shared probe populates it and reports a live-shaped duration; `sharedHit`
+     * says which happened, so nobody reads a cold run as a broken cache.
      */
     private function facetProbe(): FacetProbeMeasurement
     {
-        $probe = new FacetProbe($this->gateway, new TraceRecorder());
         $scope = new CatalogScope();
+        $uncached = new FacetProbe($this->gateway, new TraceRecorder());
 
         $startedLive = self::nowNs();
-        $probe->probe($scope);
+        $uncached->probe($scope);
         $live = self::elapsedMs($startedLive);
 
         $startedCached = self::nowNs();
-        $probe->probe($scope);
+        $uncached->probe($scope);
+        $cached = self::elapsedMs($startedCached);
 
-        return new FacetProbeMeasurement(liveMs: $live, cachedMs: self::elapsedMs($startedCached));
+        $recorder = new TraceRecorder();
+        $shared = new FacetProbe($this->gateway, $recorder, $this->shared);
+
+        $startedShared = self::nowNs();
+        $shared->probe($scope);
+        $sharedMs = self::elapsedMs($startedShared);
+
+        return new FacetProbeMeasurement(
+            liveMs: $live,
+            cachedMs: $cached,
+            sharedMs: $sharedMs,
+            sharedHit: 'shared' === ($recorder->payload('facet.probe')['source'] ?? null),
+        );
     }
 
     private function query(string $term, int $repetitions): QueryMeasurement
