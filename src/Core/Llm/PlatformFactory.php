@@ -45,6 +45,10 @@ final class PlatformFactory
             baseUrl: $settings->baseUrl,
             apiKey: $settings->apiKey,
             httpClient: self::guarded($settings, $httpClient),
+            // Without this the bridge decides what a model *is* from whether its name contains
+            // "embed", which rules out every embedding model not named by OpenAI — see
+            // {@see EmbeddingsOnlyModelCatalog}.
+            modelCatalog: new EmbeddingsOnlyModelCatalog(),
             supportsCompletions: false,
             supportsEmbeddings: true,
         );
