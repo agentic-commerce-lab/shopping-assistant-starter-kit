@@ -250,22 +250,40 @@ engine chose, while the widget renders them in the order it receives. `CardResol
 requested order and `CardResolverTest::testItPreservesTheRequestedOrder` holds it — the loop preserved
 order for free, which is precisely how this change could have regressed unnoticed.
 
-## An unrelated defect the live test surfaced
+## An unrelated observation the live test surfaced — and a correction
 
 Asked "Do you have the Trail Jersey in blue, size M in stock?", the assistant renders the correct card
-— €74.90, **Out of stock**, add-to-cart disabled — and answers in prose: *"I don't have stock or
-availability information for it in front of me — would you like me to check that for you?"*
+— €74.90, **Out of stock**, add-to-cart disabled — and answers in prose: *"I found the Trail Jersey in
+Blue, size M. I don't have stock or availability information for it in front of me — would you like me
+to check that for you?"*
 
-The fact is in hand and correctly displayed; the prose denies having it. For that question it is a
-poor answer, and **no assertion catches it**: the `variant_stock` journey checks
-`stock_matches_source`, `rendered_ids_exactly`, `no_invented_product` and
-`no_unbacked_price_in_prose`, all of which this satisfies. Nothing requires the prose to state a stock
-figure the card already carries.
+**An earlier version of this section called that a defect. That was wrong, and the correction matters
+more than the observation.** `SystemPrompt` mandates exactly this:
 
-Not a regression from either fix above: the facet cache changes no prompt content, and the vocabulary
-budget change only alters behaviour when even one value per field will not fit, which is not the case
-on this shop (8 fields / 51 values / 1,299 chars). Reproduced identically through the CLI probe and
-the browser widget.
+> A tool result tells you a product EXISTS. It does not tell you whether it can be bought. Never say a
+> product is available, in stock, or that the shop has it — you have not been told that. Name the
+> product you found and stop there: "I found the Trail Jersey in Blue, size M" is right; "yes, we have
+> the Trail Jersey in Blue, size M" is wrong even when it happens to be true.
 
-Worth its own look, and probably its own assertion — an `availability_stated_when_known` check would
-fail this run.
+The model produced almost verbatim the sanctioned example. The division of labour is deliberate: the
+prose names the product, the **card** carries every figure — `Never state a price, stock level,
+delivery time or URL yourself. The shop renders every such figure from its own records.` By that
+design the shopper's question *was* answered, by the "Out of stock" badge directly beneath the
+sentence. No assertion catches it because there is nothing to catch.
+
+Two things do remain worth a look, and they are smaller than "defect":
+
+1. **The phrasing is self-deprecating in a way the design does not require.** "I don't have stock or
+   availability information for it in front of me" tells the shopper the assistant is ignorant, when
+   the answer is rendered one line below. "The card below shows current availability" would satisfy
+   every rule in the prompt and read as competent rather than confused. That is a prompt-copy
+   question, not a grounding one.
+2. **There is a genuine internal tension in the prompt.** One rule says never to state availability;
+   another, thirty lines later, says *"If a product is unavailable, say it is unavailable."* Both
+   cannot be followed for an out-of-stock product. The model resolved it toward the stricter rule,
+   which is the safe direction — but the tension is real and worth resolving deliberately rather than
+   leaving to the model.
+
+Neither is a regression from the two fixes above: the facet cache changes no prompt content, and the
+vocabulary budget change only alters behaviour when even one value per field will not fit, which is
+not the case on this shop (8 fields / 51 values / 1,299 chars).
