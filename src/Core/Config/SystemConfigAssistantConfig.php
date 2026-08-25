@@ -56,6 +56,8 @@ final readonly class SystemConfigAssistantConfig
                 $salesChannelId,
             )),
             logTraces: $this->boolOr('logTraces', false, $salesChannelId),
+            salesChannelId: $salesChannelId,
+            embeddingModel: trim($this->systemConfig->getString(self::PREFIX . 'embeddingModel', $salesChannelId)),
         );
     }
 

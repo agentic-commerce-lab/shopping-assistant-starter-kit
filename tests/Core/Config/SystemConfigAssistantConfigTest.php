@@ -129,4 +129,33 @@ final class SystemConfigAssistantConfigTest extends TestCase
 
         self::assertSame(['a2a2', 'b3b3'], $config->scope->blockedProductIds);
     }
+
+    public function testItRecordsTheSalesChannelItWasBuiltFor(): void
+    {
+        // The tenant every shop-info query filters on. AssistantConfig is already built per sales
+        // channel; until now it simply did not record which one, and nothing above the gateway seam
+        // could ask. Spec R12 needs it, and widening ToolContext — which docs/extending.md presents
+        // as an extension point — would have been the more invasive way to get it there.
+        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService()))->forSalesChannel(self::CHANNEL);
+
+        self::assertSame(self::CHANNEL, $config->salesChannelId);
+    }
+
+    public function testTheEmbeddingModelIsReadAndDefaultsToEmpty(): void
+    {
+        $configured = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
+            self::PREFIX . 'embeddingModel' => '  text-embedding-3-small  ',
+        ])))->forSalesChannel(self::CHANNEL);
+
+        // Trimmed, because a trailing space in a model name is a 404 from the provider and reads
+        // in the admin form as a correctly filled field.
+        self::assertSame('text-embedding-3-small', $configured->embeddingModel);
+
+        // Empty is the off switch for the entire feature (R13), so it must be the default rather
+        // than a fallback model nobody chose. A starter kit offering a tool that always fails is
+        // worse than one offering no tool.
+        $absent = (new SystemConfigAssistantConfig(new FakeSystemConfigService()))->forSalesChannel(self::CHANNEL);
+
+        self::assertSame('', $absent->embeddingModel);
+    }
 }

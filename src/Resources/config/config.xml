@@ -20,6 +20,15 @@
                 product: prefer a model with reliable tool calling.</helpText>
         </input-field>
 
+        <input-field type="text">
+            <name>embeddingModel</name>
+            <label>Embedding model</label>
+            <helpText>Used to index shop documents and to match a question against them. Uses the
+                same provider URL and API key as the chat model. Leave empty to switch shop
+                information off entirely. Changing it makes every indexed document unusable —
+                re-index after a change.</helpText>
+        </input-field>
+
         <input-field type="password">
             <name>llmApiKey</name>
             <label>API key</label>
