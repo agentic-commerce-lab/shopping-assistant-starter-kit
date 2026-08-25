@@ -375,5 +375,7 @@
         <service id="Swag\AssistantStarterKit\Core\ShopInfo\ExtractorChain">
             <argument type="tagged_iterator" tag="swag_assistant.text_extractor"/>
         </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Chunker"/>
     </services>
 </container>
