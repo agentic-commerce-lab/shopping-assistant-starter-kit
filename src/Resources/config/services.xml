@@ -335,5 +335,19 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner"/>
             <tag name="messenger.message_handler"/>
         </service>
+
+        <!-- Shop information retrieval. The vector table lives in the shop's own database and is
+             created on the first write, at the width the configured embedding model produces — see
+             ShopInfoVectorTable for why that is not a migration. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\ShopInfoVectorTable">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoVectorTable"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"
+                 alias="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore"/>
     </services>
 </container>

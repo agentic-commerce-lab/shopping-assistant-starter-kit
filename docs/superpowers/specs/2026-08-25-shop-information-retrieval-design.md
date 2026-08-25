@@ -28,7 +28,7 @@ rather than investigate.
 | MariaDB supports native vectors | **11.8.8** running; `VECTOR(4)` + `VECTOR INDEX` + `VEC_DISTANCE_COSINE` tested, correct ordering |
 | `symfony/ai` has a store abstraction | `symfony/ai-store` plus ~30 adapters, including `symfony/ai-maria-db-store` (requires MariaDB ≥ 11.7) |
 | It can reuse the existing connection | `VecStore::fromDbal($connection)`; the plugin already requires `doctrine/dbal: ^4.0` |
-| Threshold and filtering are expressible | Store `query()` takes `limit`, `minScore`, `filter`; `VectorDocument::getScore()` exposes the score |
+| Threshold and filtering are expressible | Store `query()` takes `limit`, `maxScore`, `where` + `params`; `VectorDocument::getScore()` exposes the score. **Corrected 2026-08-25 while implementing:** the bridge is *distance*-based, not similarity-based — `maxScore` is an upper bound on cosine distance (identical `0`, orthogonal `1`, measured on 11.8.8) and there is no structured filter, only a raw SQL `where` with bound `params`. `PassageStore` keeps `Core` in similarity space and the adapter converts |
 | PDF text extraction is available | `smalot/pdfparser` v2.12.5 already in the tree, pulled in by `horstoeko/zugferd`; extraction tested end to end |
 | HTML text extraction is available | `masterminds/html5` already in the tree; tested, scripts strippable, block elements become paragraph lines |
 | DOCX needs no dependency | `ZipArchive` is built in; `word/document.xml` with `</w:p>` → newline then `strip_tags` tested — three `<w:r>` runs joined into one correct sentence |
@@ -163,8 +163,14 @@ Stated because they were decided, not overlooked.
 - **`schema_filter`.** Doctrine will try to manage the store's vector column and fail. The library's
   own guidance is `schema_filter: '~^(?!ai_)~'`; inside a Shopware plugin this is more delicate than
   in a standalone app, because Shopware manages its own schema. Decide it in the plan, not at the
-  first `doctrine:schema:update`.
+  first `doctrine:schema:update`. **Resolved 2026-08-25:** avoided rather than configured. The vector
+  table is created by the library's own raw DDL on the first write, has no DAL entity, and Shopware
+  evolves schema through migrations rather than `doctrine:schema:update` — so nothing inspects it and
+  there is nothing to filter. See `ShopInfoVectorTable`.
 - **`ai:store:setup`** creates the store's tables. A plugin has to call it on install or ship an
-  equivalent migration.
+  equivalent migration. **Resolved 2026-08-25:** neither. A `VECTOR` column has a fixed width and the
+  width comes from whichever embedding model the merchant configured — which at install time is
+  usually none, so install-time creation would have to guess (the library guesses 1536). The table is
+  created on the first write instead, at the width the model actually produced.
 - **The embedding model is a plugin setting** beside `llmBaseUrl`, `llmModel` and `llmApiKey`, and
   reuses the same OpenAI-compatible provider URL.
