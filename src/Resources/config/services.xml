@@ -252,7 +252,7 @@
         </service>
 
         <service id="Swag\AssistantStarterKit\Controller\AssistantCardController" public="true">
-            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CardResolver"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
@@ -300,6 +300,13 @@
              constructible for the eval suite, which builds it directly and needs no container. -->
         <service id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"
                  alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway"/>
+
+        <!-- Turns a list of stored card ids back into current cards, in one round trip where the
+             gateway implements BatchProductLookup. Phase B measured the per-id loop at 12 lookups
+             and 143.8 ms for a full row. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\CardResolver">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+        </service>
 
         <!-- Storefront widget. The Twig extension is the only gate deciding whether the entry point
              renders, and it reuses the config services rather than re-deriving their rules; the

@@ -8,8 +8,10 @@ use Shopware\Core\Content\Product\SalesChannel\SalesChannelProductEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Bucket\TermsAggregation;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\StatsAggregation;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepository;
+use Swag\AssistantStarterKit\Core\Commerce\BatchProductLookup;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
@@ -31,7 +33,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  * `SalesChannelContext` and `Criteria` may appear inside this namespace and nowhere else in the
  * plugin. Only DTOs leave.
  */
-final readonly class DalCommerceGateway implements CommerceGatewayInterface
+final readonly class DalCommerceGateway implements BatchProductLookup, CommerceGatewayInterface
 {
     /**
      * Facet probing needs one product's worth of rows at most — the values come from the
@@ -133,6 +135,42 @@ final readonly class DalCommerceGateway implements CommerceGatewayInterface
         );
 
         return $cards[0] ?? null;
+    }
+
+    /**
+     * The batched half of {@see self::product()}, and the only difference is `EqualsAnyFilter` plus a
+     * limit wide enough to hold the whole request.
+     *
+     * The scope still goes in with the ids, for the same reason it does there: a blocked product is
+     * refused at the point of lookup rather than fetched and then removed. Batching must not become a
+     * way around the blocklist.
+     *
+     * Order is not restored here — {@see \Swag\AssistantStarterKit\Core\Commerce\CardResolver}
+     * does that, because it is the caller who knows what order was asked for.
+     *
+     * @param list<string> $productIds
+     *
+     * @return list<ProductCard>
+     */
+    public function products(array $productIds, CatalogScope $scope): array
+    {
+        if ([] === $productIds) {
+            return [];
+        }
+
+        $context = $this->contextProvider->current();
+
+        $criteria = $this->criteriaBuilder->build(
+            new ProductQuery(limit: \count($productIds)),
+            $scope,
+            $context->getSalesChannelId(),
+        );
+        $criteria->addFilter(new EqualsAnyFilter('id', $productIds));
+
+        return $this->mapAll(
+            $this->productRepository->search($criteria, $context)->getElements(),
+            $context->getCurrency()->getIsoCode(),
+        );
     }
 
     public function resolveVariant(string $parentId, array $selections, CatalogScope $scope): ?ProductCard
