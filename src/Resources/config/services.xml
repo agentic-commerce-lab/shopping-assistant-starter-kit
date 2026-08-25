@@ -251,6 +251,26 @@
             <tag name="console.command"/>
         </service>
 
+        <!-- Phase B of the catalogue-scale work: measures retrieval cost against the real
+             catalogue. Read-only, and calls no model — every number it reports comes from code
+             below the model, so a model call would only add its own latency to a measurement
+             about the shop. -->
+        <service id="Swag\AssistantStarterKit\Command\Benchmark\CountingGateway">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Benchmark\BenchmarkRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Benchmark\CountingGateway"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\BenchmarkCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Benchmark\BenchmarkRunner"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
+            <tag name="console.command"/>
+        </service>
+
         <!-- Inside a shop the DAL gateway is the gateway. FixtureCommerceGateway stays
              constructible for the eval suite, which builds it directly and needs no container. -->
         <service id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"
