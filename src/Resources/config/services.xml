@@ -403,6 +403,12 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\SearchShopInfoToolFactory">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"/>
+            <tag name="swag_assistant.tool_factory"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\ShopInfo\PassageLookup">
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"/>
