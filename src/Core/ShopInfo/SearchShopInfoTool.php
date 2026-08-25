@@ -41,12 +41,25 @@ final class SearchShopInfoTool
     /**
      * The similarity a passage must reach to be shown to the model at all.
      *
-     * **Provisional.** Spec R4 says this value is measured, not chosen, and the measurement is the
-     * next task: index a real document, ask five questions it answers and five it does not, and read
-     * the scores. This placeholder is deliberately the plan's guess so that nobody mistakes it for a
-     * finding — and the first real measurement against `openai/text-embedding-3-small` already scored
-     * 0.5403 for a question the document *does* answer, so it is very likely too high. Every score is
-     * traced (R5) precisely so this can be corrected from evidence rather than argued about.
+     * **Measured, and the measurement says no value works.** See
+     * `docs/superpowers/reports/2026-08-25-shopinfo-threshold.md`: against the statutory German
+     * revocation notice, the lowest score for a question the document *answers* (0.3566, "muss ich
+     * Gruende angeben?" — answered by the clause "ohne Angabe von Gruenden") falls **below** the
+     * highest score for one it does not (0.3668, "wann kommt meine Bestellung an?"). That holds for
+     * `text-embedding-3-small` and `-large`, and finer chunking widens the overlap rather than
+     * closing it. The two cases are the structural failure modes of single-stage bi-encoder
+     * retrieval — a negation and a topical near-miss — and they sit on opposite sides of any line a
+     * single scalar could draw.
+     *
+     * So this value is **deliberately left at the plan's provisional guess** rather than lowered to
+     * something that looks calibrated. No measured score exceeded 0.71, so as it stands this tool
+     * answers nothing and always returns {@see self::NO_MATCH_NOTE}. That is the safe direction — it
+     * invents nothing — but it is not a working feature, and the fix is a design decision on spec R3
+     * (move relevance judgement to the model, add a reranker, or find an embedding model built for
+     * German), not a smaller number here. Splitting the difference would fail in both directions and
+     * ship exactly the unmeasured constant this project has spent the week removing.
+     *
+     * Every score is traced (R5) so the decision keeps being made from evidence.
      */
     public const MIN_SCORE = 0.75;
 
