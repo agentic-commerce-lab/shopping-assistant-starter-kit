@@ -233,3 +233,108 @@ S7 stands: **no constant was tuned here.** The cliff in Finding 1 is not a case 
 `MAX_TOTAL_CHARS` — raising 1500 moves the cliff without removing it. What the measurement argues for
 is that the last step of `shrinkToBudget()` should degrade to fewer *fields* with values rather than to
 no fields at all. That is a fix plan's decision to make, with its own failing test, not this report's.
+
+---
+
+# Addendum — re-measured after the Finding 1 fix
+
+**Date:** 2026-08-25, same day
+**Change under test:** commit `4d16569`, `fix(prompt): stop the vocabulary block degrading to no vocabulary at all`
+**Method:** identical. Same generated catalogue, same four journeys, same three runs per archetype. Nothing else changed.
+
+Everything above this line is the pre-fix baseline and is left exactly as it was recorded.
+
+## What the model is told, now
+
+| Catalogue | Vocabulary fields | Values | Truncated | Vocabulary chars | Prompt chars |
+|---|---|---|---|---|---|
+| small | 5 | 21 | no | 739 | 3,898 |
+| large, **before** | 0 | 0 | YES | 561 | 3,720 |
+| large, **after** | **29** | **29** | YES | 1,476 | 4,635 |
+
+The cliff is gone. Small is untouched.
+
+## The four scale journeys, before and after
+
+| Journey | Archetype | Before | After |
+|---|---|---|---|
+| scale_broad_term | expert | FAIL — `no_absence_claim_in_prose` 2/3 | **PASS** |
+| scale_broad_term | beginner | PASS | PASS |
+| scale_option_beyond_facet_limit | both | PASS | PASS |
+| scale_family_beyond_window | expert | FAIL — 0/3 | **FAIL — 0/3, unchanged** |
+| scale_family_beyond_window | beginner | FAIL — 0/3 | **FAIL — 0/3, unchanged** |
+| scale_deep_duplicate | expert | FAIL — 0/3 | FAIL — 0/3 |
+| scale_deep_duplicate | beginner | FAIL — 2/3 | FAIL — 0/3 |
+
+## Finding 3 is resolved
+
+`scale_broad_term` passes. The run that previously answered "we don't carry" about a word 500 of 515
+products share does not recur. That is the causal chain the baseline asserted, confirmed in the
+direction it predicted: the model was claiming absence because the vocabulary it was handed was empty,
+and it stopped once the vocabulary was not.
+
+Caveat kept from the baseline: this was 1 failing run of 3 before and 0 of 3 after. The direction is
+right and the mechanism is understood, but six runs cannot measure a rate.
+
+## Finding 2 is NOT resolved, and the reason is a second defect
+
+`scale_family_beyond_window` is unchanged — 0/3 on both archetypes, still rendering
+`sc-family-30-v1` through `v5` and never `v30`.
+
+The repaired block explains why. It reads, in full, one value per field:
+
+```
+properties.Size: M
+properties.Attribute 1: Value 0
+… 22 more Attribute lines …
+```
+
+`properties.Size` has 34 values in this catalogue and the block shows **one**. So the model still has
+no way to learn that `Size 30` is a valid option value, which is exactly what it needed in order to
+pass the option that makes retrieval return the right unit. Fixing the cliff removed the case where
+the model is told *nothing*; it did not create the case where the model is told *enough*.
+
+**The remaining defect is budget allocation, not the budget.** The cap is shared uniformly, so a field
+with 34 values gets the same single slot as a generated field with one. Twenty-four lines of
+`Attribute N: Value 0` crowd out the fields a shopper would actually name. Two candidate directions,
+both needing their own design pass:
+
+1. **Allocate by cardinality** — spend the character budget on fields that have more to say, so a
+   34-value `Size` gets several values and a 1-value field gets its one. Cheap, stays inside
+   `CatalogVocabularyBudget`, and helps every shop.
+2. **Stop expecting the vocabulary block to carry a family's options at all** — a 30-variant family's
+   sizes are a property of one product, and the block is explicitly catalogue-wide and "not an
+   inventory". On that reading the fix belongs in the tool reply for a family, not in the prompt.
+
+Direction 2 may well be the honest one, which is why this addendum does not pick. It is a design
+question, and the spec's own heading — *vocabulary, not inventory* — cuts against direction 1 carrying
+this weight.
+
+Worth stating plainly: **a fifth of this catalogue's noise is a fixture artefact.** 56 of its 60
+property groups are generated `Attribute N` filler with one value each, which is not what a real
+shop's 60 groups look like. A real catalogue would spend those lines on meaningful fields. So the
+"crowded out" effect above is real in mechanism and overstated in degree, and phase B measuring
+`framework:demodata --properties=100` is what would size it honestly.
+
+## scale_deep_duplicate: still Finding 5, and no clearer
+
+The expert archetype is unchanged, 0/3, still rendering only `sc-deep-duplicate` and missing both
+`fx-007` and `fx-008`. The beginner archetype went from 2/3 to 0/3, with runs 1 and 2 missing only
+`fx-008`.
+
+**That is not evidence of a regression.** Three runs per archetype cannot distinguish 2/3 from 0/3 for
+a nondeterministic model, and the misses that appeared are the `fx-008` tokenisation already documented
+in the journey and in Finding 5: `fx-008` is "Alloy Water Bottle 750 ml" and the matcher finds no
+`750ml` substring in `750 ml`. That is the fixture matcher, not the product. Finding 5 stands as it
+was — undetermined, and needing a trace rather than another run.
+
+## Revised recommended next step
+
+**Phase B, as the baseline recommended, and the plan for it is written:**
+`docs/superpowers/plans/2026-08-25-catalogue-scale-benchmark.md`.
+
+The reason the order still holds: Finding 1 is fixed, so B will no longer measure a shop through an
+empty prompt, which was the blocker. What remains — Finding 2's allocation question — is one whose two
+candidate answers differ depending on how much of a real catalogue's vocabulary actually survives the
+budget, and that is a number only phase B produces. Deciding it now would be guessing at exactly the
+figure B exists to measure.
