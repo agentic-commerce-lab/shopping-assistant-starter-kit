@@ -362,6 +362,14 @@ final class SearchProductsTool
             'more' => $windowSaturated,
         ];
 
+        // Only when there is something to disclose. A family returned whole is already fully
+        // described by `products`, and an empty array is context the model pays to read.
+        $families = TruncatedFamilies::of($survivors, $returned);
+
+        if ($families !== []) {
+            $result['families'] = $families;
+        }
+
         if ($returned === []) {
             $result['note'] = self::NO_MATCH_NOTE;
         } elseif ($optionNote !== null) {

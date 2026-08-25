@@ -83,4 +83,52 @@ final class SearchProductsToolWithheldTest extends TestCase
         self::assertFalse($result['more']);
         self::assertArrayHasKey('note', $result);
     }
+
+    /**
+     * The failure this whole change exists for, in miniature.
+     *
+     * Two of four Gravel Tyre variants come back. `Tan` and `650x47` are only on the two that did
+     * not — and the model must still be able to ask for them.
+     */
+    public function testATruncatedFamilyDisclosesTheOptionsOfTheVariantsItWithheld(): void
+    {
+        $result = $this->tool()(term: 'Gravel Tyre', limit: 2);
+
+        self::assertArrayHasKey('families', $result);
+
+        // `families` is optional in the declared return shape, so it is coalesced before use rather
+        // than narrowed by assertArrayHasKey — PHPUnit's assertions are not type guards.
+        $families = $result['families'] ?? [];
+        self::assertCount(1, $families);
+
+        $family = $families[0] ?? self::fail('no family summary');
+        self::assertSame('Gravel Tyre 40c', $family['name']);
+        self::assertSame(2, $family['shown']);
+        self::assertSame(4, $family['variants']);
+        self::assertContains('Tan', $family['options']['Colour'] ?? []);
+        self::assertContains('650x47', $family['options']['Size'] ?? []);
+    }
+
+    /** No truncation, no key. An empty families array is noise the model pays tokens to read. */
+    public function testAnUntruncatedSearchOmitsTheFamiliesKeyEntirely(): void
+    {
+        self::assertArrayNotHasKey('families', $this->tool()(term: 'Gravel Tyre', limit: 8));
+    }
+
+    /**
+     * Spec decision T6 at the level that ships: whatever `families` contains, the reply the model
+     * receives carries no figure. Asserted on the encoded reply because that is what crosses the
+     * boundary.
+     */
+    public function testTheRepliesNewFieldsNeverCarryAFigure(): void
+    {
+        $result = $this->tool()(term: 'Gravel Tyre', limit: 2);
+        unset($result['products'], $result['note']);
+
+        $encoded = json_encode($result, \JSON_THROW_ON_ERROR);
+
+        foreach (['price', 'stock', 'deliveryTime', 'url', 'EUR'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $encoded, \sprintf('%s leaked', $forbidden));
+        }
+    }
 }
