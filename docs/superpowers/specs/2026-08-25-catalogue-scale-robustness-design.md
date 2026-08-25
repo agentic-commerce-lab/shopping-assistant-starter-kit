@@ -101,8 +101,59 @@ p95, the vocabulary block's field count / value count / truncation flag, `retrie
 the prompt's character count. Numbers in a table, re-runnable, quotable in the README. No assertions:
 a latency is not a pass.
 
-Its thresholds — what counts as too slow, too truncated, too wide — come from A's report. Writing
-them now would be inventing the answer the measurement exists to produce.
+### Handoff for whoever plans B
+
+**Correction to an earlier reading of this section.** The first version of this spec said B's plan had
+to wait for A's thresholds. That was half wrong: B *reports* numbers and asserts none, so it needs no
+thresholds to be built. Thresholds are needed by the constant-tuning decision that comes **after** B,
+not by B. What genuinely blocks a B plan is the environment question below, plus the softer point that
+A's findings decide which columns are worth the most depth.
+
+So B is plannable from this spec alone, given one decision. The rest is written down here so it is not
+re-derived.
+
+**The one decision: where the large shop lives.** `framework:demodata` seeds into whatever shop it is
+pointed at, and it **adds rather than replaces** — nothing existing is deleted.
+
+| Option | Cost |
+|---|---|
+| Seed `shopping-assistant-test` in place | Cheapest. The seeded Trail Jersey survives, so `tests/e2e` still passes — but its search ranking and the vocabulary block do not, and the local shop stops being the small-catalogue reference the storefront work uses. Reversible only by restoring the database |
+| **Snapshot, seed, measure, restore** | One extra step each way (`mysqldump` in the `database` container). Keeps the e2e shop intact and makes the measurement repeatable. **Recommended** |
+| A third docker stack | Cleanest isolation, most disk and setup for a measurement that runs occasionally |
+
+Never the staging shop — decision S8, and demodata adding rather than replacing is exactly why: the
+`fx-*` catalogue would survive but be buried under generated products, which costs the eleven
+engineered traps their usefulness without deleting a thing.
+
+**The seed command**, with `--reset-defaults` so it does not also generate thousands of orders,
+customers and reviews nobody is measuring:
+
+```
+php bin/console framework:demodata --reset-defaults --products=10000 --properties=100 --categories=50
+```
+
+`--properties` creates each group with `rand(30-300)` options, so 100 groups is comfortably past
+`MAX_FIELDS` (30) and `FACET_VALUE_LIMIT` (50) — the same bounds phase A crosses in the fixture, now
+below the gateway where the aggregation actually runs.
+
+**Where each number comes from**, so the command is a wiring job rather than a design one:
+
+| Number | Source |
+|---|---|
+| facet-probe ms | wrap `FacetProbe::probe()`; the `facet.probe` trace event already marks `live` vs `cache` |
+| search ms, p50/p95 | wrap `CommerceGatewayInterface::search()` across N repetitions of a query list |
+| vocabulary fields / values / truncated | `CatalogVocabulary::renderWithStats()` returns exactly `array{text, fieldCount, valueCount, truncated}` |
+| prompt chars | `strlen(SystemPrompt::build($config, $vocabulary))` |
+| retrieve hits | the `retrieve` trace event's `hits` payload |
+| cards-endpoint cost | `AssistantCardController` performs one catalogue lookup **per id** — a known N+1, and the reason `CardIdList::MAX_IDS` is 12. Count queries, not just milliseconds |
+
+**A console command has no HTTP request**, so `SalesChannelContextProvider::current()` throws.
+`ProbeCommand` already solves this — it builds a context and supplies it through that provider's
+callback scope. Copy that pattern rather than inventing one; it is the reason a real-catalogue check
+is possible from the CLI at all.
+
+**Read A's report first.** Its *Findings* section decides which of the columns above deserves depth,
+and its *What this does not say* section is the half of the picture B exists to fill.
 
 ## Testing
 
