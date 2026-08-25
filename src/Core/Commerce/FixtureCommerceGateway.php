@@ -24,7 +24,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureVariantMatcher;
  * with no shop and no database. Plan 2 later adds a Shopware DAL implementation
  * behind the same interface.
  */
-final class FixtureCommerceGateway implements CommerceGatewayInterface
+final class FixtureCommerceGateway implements CommerceGatewayInterface, FamilyVariantLookup
 {
     /** @var array<string, CartLine> keyed by variant id */
     private array $cartLines = [];
@@ -89,6 +89,17 @@ final class FixtureCommerceGateway implements CommerceGatewayInterface
         $inScope = FixtureScopeFilter::apply([$unit], $scope);
 
         return $inScope[0] ?? null;
+    }
+
+    /**
+     * The whole family, scope-filtered — the same first step {@see self::resolveVariant()} takes
+     * before it starts matching selections.
+     *
+     * @return list<ProductCard>
+     */
+    public function variantsOf(string $parentId, CatalogScope $scope): array
+    {
+        return FixtureScopeFilter::apply($this->index->unitsByParent($parentId), $scope);
     }
 
     public function resolveVariant(string $parentId, array $selections, CatalogScope $scope): ?ProductCard

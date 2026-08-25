@@ -131,4 +131,22 @@ final class SearchProductsToolWithheldTest extends TestCase
             self::assertStringNotContainsString($forbidden, $encoded, \sprintf('%s leaked', $forbidden));
         }
     }
+
+    /**
+     * The whole point of the change, and the thing a candidate window cannot do.
+     *
+     * `fx-030` has four variants and the window is wide enough to hold them, so this asserts the
+     * mechanism rather than the escape. `TruncatedFamiliesFullFamilyTest` covers the case where the
+     * window is genuinely too narrow, which is where a family lookup is the only way to know.
+     */
+    public function testTheDisclosureComesFromTheWholeFamilyNotJustTheRetrievedWindow(): void
+    {
+        $result = $this->tool()(term: 'Gravel Tyre', limit: 2);
+        $family = ($result['families'] ?? [])[0] ?? self::fail('no family summary');
+
+        // Four variants exist and all four inform the disclosure, whether or not retrieval fetched
+        // them into the candidate window.
+        self::assertSame(4, $family['variants']);
+        self::assertSame(['Black', 'Tan'], $family['options']['Colour'] ?? []);
+    }
 }

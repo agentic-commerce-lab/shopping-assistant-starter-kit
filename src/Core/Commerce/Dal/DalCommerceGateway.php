@@ -19,6 +19,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
+use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
 
 /**
  * {@see CommerceGatewayInterface} over the Shopware DAL — the implementation that makes this
@@ -33,7 +34,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  * `SalesChannelContext` and `Criteria` may appear inside this namespace and nowhere else in the
  * plugin. Only DTOs leave.
  */
-final readonly class DalCommerceGateway implements BatchProductLookup, CommerceGatewayInterface
+final readonly class DalCommerceGateway implements BatchProductLookup, CommerceGatewayInterface, FamilyVariantLookup
 {
     /**
      * Facet probing needs one product's worth of rows at most — the values come from the
@@ -47,6 +48,16 @@ final readonly class DalCommerceGateway implements BatchProductLookup, CommerceG
      * is not asked for thousands of buckets that get discarded.
      */
     private const FACET_VALUE_LIMIT = 50;
+
+    /**
+     * How many variants of one family a single lookup will fetch.
+     *
+     * Two hundred: enough for any realistic size/colour matrix, bounded so a pathological family
+     * cannot turn one disclosure into a catalogue dump. The caller caps the values it reports far
+     * lower — see `FamilyOptionValues::MAX_VALUES` — so this bound only limits what is considered,
+     * never what is sent.
+     */
+    private const FAMILY_VARIANT_LIMIT = 200;
 
     // @mago-expect lint:excessive-parameter-list
     // Standing-constraints carve-out 2: a service constructor injecting the collaborators it
@@ -166,6 +177,37 @@ final readonly class DalCommerceGateway implements BatchProductLookup, CommerceG
             $context->getSalesChannelId(),
         );
         $criteria->addFilter(new EqualsAnyFilter('id', $productIds));
+
+        return $this->mapAll(
+            $this->productRepository->search($criteria, $context)->getElements(),
+            $context->getCurrency()->getIsoCode(),
+        );
+    }
+
+    /**
+     * One family, in one query.
+     *
+     * The scope goes in with the parent id, exactly as {@see self::product()} does it: a blocked
+     * product is refused at the point of lookup rather than fetched and filtered afterwards. Fetching
+     * a whole family is the call most likely to become a way around the blocklist, so it is the one
+     * where that matters most.
+     *
+     * Bounded by {@see self::FAMILY_VARIANT_LIMIT}. A family past that bound is described from the
+     * first N variants, which is still strictly more than the candidate window this call exists to
+     * escape — and the value list the caller builds is capped far lower anyway.
+     *
+     * @return list<ProductCard>
+     */
+    public function variantsOf(string $parentId, CatalogScope $scope): array
+    {
+        $context = $this->contextProvider->current();
+
+        $criteria = $this->criteriaBuilder->build(
+            new ProductQuery(limit: self::FAMILY_VARIANT_LIMIT),
+            $scope,
+            $context->getSalesChannelId(),
+        );
+        $criteria->addFilter(new EqualsFilter('parentId', $parentId));
 
         return $this->mapAll(
             $this->productRepository->search($criteria, $context)->getElements(),

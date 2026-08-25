@@ -364,7 +364,11 @@ final class SearchProductsTool
 
         // Only when there is something to disclose. A family returned whole is already fully
         // described by `products`, and an empty array is context the model pays to read.
-        $families = TruncatedFamilies::of($survivors, $returned);
+        $families = TruncatedFamilies::of(
+            $survivors,
+            $returned,
+            WholeFamilyResolver::resolve($this->gateway, $survivors, $returned, $scope),
+        );
 
         if ($families !== []) {
             $result['families'] = $families;

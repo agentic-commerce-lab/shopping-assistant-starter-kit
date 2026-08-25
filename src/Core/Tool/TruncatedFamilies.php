@@ -47,29 +47,75 @@ final class TruncatedFamilies
     private function __construct() {}
 
     /**
-     * @param list<ProductCard> $survivors everything retrieval and filtering produced
-     * @param list<ProductCard> $returned  the narrowed slice the model actually receives
+     * @param list<ProductCard>                $survivors   everything retrieval and filtering produced
+     * @param list<ProductCard>                $returned    the narrowed slice the model actually receives
+     * @param array<string, list<ProductCard>> $wholeFamily a family's own variants, keyed by parent id,
+     *                                                      for families a {@see \Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup}
+     *                                                      could answer for
      *
      * @return list<FamilySummary>
      */
-    public static function of(array $survivors, array $returned): array
+    public static function of(array $survivors, array $returned, array $wholeFamily = []): array
     {
-        $shownPerFamily = self::countByFamily($returned);
         $summaries = [];
 
-        foreach (self::groupByFamily($survivors) as $familyId => $members) {
-            $shown = $shownPerFamily[$familyId] ?? 0;
+        foreach (self::truncated($survivors, $returned) as $familyId => ['members' => $members, 'shown' => $shown]) {
+            // The family's own variants when a lookup answered, the candidate window otherwise. This
+            // is the whole difference between describing a family and describing what happened to fit
+            // in the window: at the model's default limit the window is 20, and a 30-variant family's
+            // thirtieth size is unnameable from it.
+            $describedBy = $wholeFamily[$familyId] ?? [];
 
-            // Only a family that lost members has anything to disclose. One returned whole is
-            // already fully described by the `products` array beside it.
-            if ($shown >= \count($members)) {
-                continue;
-            }
-
-            $summaries[] = self::summarise($members, $shown);
+            $summaries[] = self::summarise($describedBy === [] ? $members : $describedBy, $shown);
         }
 
         return $summaries;
+    }
+
+    /**
+     * The families that lost members, so a caller knows which ones are worth one lookup each.
+     *
+     * Separate from {@see self::of()} because the caller has to ask the gateway BETWEEN the two —
+     * this class stays pure, and the I/O stays where it can be seen.
+     *
+     * @param list<ProductCard> $survivors
+     * @param list<ProductCard> $returned
+     *
+     * @return list<string>
+     */
+    public static function truncatedParentIds(array $survivors, array $returned): array
+    {
+        return array_keys(self::truncated($survivors, $returned));
+    }
+
+    /**
+     * Every family that lost members to narrowing, with what survived and how many were shown.
+     *
+     * One shared pass rather than one per public method: this class is measured against a
+     * cyclomatic-complexity budget summed across every method, and two loops doing the same grouping
+     * put it over.
+     *
+     * @param list<ProductCard> $survivors
+     * @param list<ProductCard> $returned
+     *
+     * @return array<string, array{members: non-empty-list<ProductCard>, shown: int}>
+     */
+    private static function truncated(array $survivors, array $returned): array
+    {
+        $shownPerFamily = self::groupByFamily($returned);
+        $truncated = [];
+
+        foreach (self::groupByFamily($survivors) as $familyId => $members) {
+            $shown = \count($shownPerFamily[$familyId] ?? []);
+
+            // Only a family that lost members has anything to disclose. One returned whole is
+            // already fully described by the `products` array beside it.
+            if ($shown < \count($members)) {
+                $truncated[$familyId] = ['members' => $members, 'shown' => $shown];
+            }
+        }
+
+        return $truncated;
     }
 
     /**
@@ -95,26 +141,6 @@ final class TruncatedFamilies
         }
 
         return $families;
-    }
-
-    /**
-     * @param list<ProductCard> $cards
-     *
-     * @return array<string, int>
-     */
-    private static function countByFamily(array $cards): array
-    {
-        $counts = [];
-
-        foreach ($cards as $card) {
-            if ($card->parentId === null) {
-                continue;
-            }
-
-            $counts[$card->parentId] = ($counts[$card->parentId] ?? 0) + 1;
-        }
-
-        return $counts;
     }
 
     /**
