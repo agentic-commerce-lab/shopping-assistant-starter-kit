@@ -1578,13 +1578,22 @@ S8).
 
 ```bash
 cd ../shopping-assistant-test
+# The password comes from .env — do not guess it.
+PW=$(php -r '$l=file_get_contents(".env"); preg_match("#DATABASE_URL=\"?mysql://([^:]+):([^@]*)@#",$l,$m); echo $m[2];')
+
+# `mariadb-dump`, NOT `mysqldump`: the mariadb:11.8 image ships only the renamed
+# binaries, and `mysqldump` fails with "not found" while still creating a 0-byte file.
 docker exec shopping-assistant-test-database-1 sh -c \
-  'mysqldump -uroot -proot --single-transaction --routines --events shopware' \
+  "mariadb-dump -uroot -p'$PW' --single-transaction --routines --events shopware" \
   > /tmp/shopware-before-demodata.sql
 ls -lh /tmp/shopware-before-demodata.sql
+grep -c '^CREATE TABLE' /tmp/shopware-before-demodata.sql
+tail -1 /tmp/shopware-before-demodata.sql   # must read "Dump completed"
+cp /tmp/shopware-before-demodata.sql /tmp/shopware-before-demodata.sql.bak
 ```
 
-Expected: a file of non-trivial size. **Do not continue if it is empty or the command errored** — the
+Expected: ~12 MB, 261 `CREATE TABLE` statements, and a final `-- Dump completed` line. A second copy
+is kept because this file is the only undo. **Do not continue if it is empty or the command errored** — the
 restore in Step 6 is the only thing that gives the local shop back, and `framework:demodata` adds
 rather than replaces, so there is no undo without this file. If the credentials differ, read them from
 `.env` in that directory rather than guessing.
@@ -1592,20 +1601,37 @@ rather than replaces, so there is no undo without this file. If the credentials 
 - [ ] **Step 2: Record the before-state, so the after-state means something**
 
 ```bash
-docker exec shopping-assistant-test-database-1 sh -c \
-  'mysql -uroot -proot shopware -e "select count(*) products from product; select count(*) groups_ from property_group; select count(*) options_ from property_group_option;"'
+docker exec shopping-assistant-test-database-1 sh -c "mariadb -uroot -p'$PW' shopware -e \
+  \"select (select count(*) from product) products,
+         (select count(*) from product where parent_id is null) parents,
+         (select count(*) from property_group) groups_,
+         (select count(*) from property_group_option) options_,
+         (select count(*) from category) categories;\""
 ```
 
-Write the three numbers down; they go in the report's first table.
+Write the numbers down; they go in the report's first table, and Step 6 compares against them.
+
+Measured on 2026-08-25: 135 products / 121 parents / 13 groups / 795 options / 810 categories.
 
 - [ ] **Step 3: Seed**
 
 ```bash
+# APP_ENV=prod is REQUIRED: the command refuses to run otherwise with "Demo data command
+# requires the app environment set to production". -d memory_limit=-1 because the default
+# container limit is not enough for 10,000 products.
 docker exec shopping-assistant-test-web-1 bash -lc \
-  'cd /var/www/html && php bin/console framework:demodata --reset-defaults --products=10000 --properties=100 --categories=50'
+  'cd /var/www/html && APP_ENV=prod php -d memory_limit=-1 bin/console framework:demodata --reset-defaults --products=10000 --properties=100 --categories=50'
 docker exec shopping-assistant-test-web-1 bash -lc \
-  'cd /var/www/html && php bin/console dal:refresh:index'
+  'cd /var/www/html && APP_ENV=prod php -d memory_limit=-1 bin/console dal:refresh:index'
 ```
+
+**`--properties=100` does not create property groups on a shop that already has some.** Measured: the
+seed reports `property_group 100 items` in 0.51 s and the count stays exactly where it was. It links
+the new products to the EXISTING options instead. So this step does **not** cross `MAX_FIELDS` below
+the gateway, and the vocabulary column of the report will say so — see phase B's Finding 5. If
+crossing it is the goal, that needs a fresh shop or explicitly created groups, not this flag.
+
+Timings measured: demodata ~157 s for 10,000 products, `dal:refresh:index` ~5 min.
 
 `--reset-defaults` keeps it from also generating thousands of orders, customers and reviews nobody is
 measuring. `--properties=100` creates each group with `rand(30-300)` options, so the vocabulary is
@@ -1619,8 +1645,14 @@ Re-run Step 2's counts and write down the after numbers.
 - [ ] **Step 4: Measure**
 
 ```bash
+# Clear the PROD cache once, or the command is "not defined" there even though it works in dev.
 docker exec shopping-assistant-test-web-1 bash -lc \
-  'cd /var/www/html && php bin/console swag:assistant:benchmark --label=demodata-10k --repetitions=20' \
+  'cd /var/www/html && APP_ENV=prod php -d memory_limit=-1 bin/console cache:clear'
+
+# APP_ENV=prod for the measurement too: dev runs with debug=true and the profiler collecting,
+# which inflates every duration. Measure the environment shoppers actually get.
+docker exec shopping-assistant-test-web-1 bash -lc \
+  'cd /var/www/html && APP_ENV=prod php bin/console swag:assistant:benchmark --label=demodata-10k --repetitions=20' \
   | tee /tmp/benchmark-demodata.txt
 ```
 
@@ -1628,12 +1660,13 @@ Then the cards endpoint at its real maximum — 12 ids, which is `CardIdList::MA
 from the seeded catalogue:
 
 ```bash
-docker exec shopping-assistant-test-database-1 sh -c \
-  'mysql -uroot -proot shopware -N -e "select lower(hex(id)) from product where parent_id is null limit 12;"' \
+docker exec shopping-assistant-test-database-1 sh -c "mariadb -uroot -p'$PW' shopware -N -e \
+  \"select lower(hex(id)) from product where parent_id is null and active=1 limit 12;\"" \
   > /tmp/card-ids.txt
 
+CARDS=$(sed 's/^/--card-id=/' /tmp/card-ids.txt | tr '\n' ' ')
 docker exec shopping-assistant-test-web-1 bash -lc \
-  "cd /var/www/html && php bin/console swag:assistant:benchmark --label=demodata-10k-cards --repetitions=1 $(sed 's/^/--card-id=/' /tmp/card-ids.txt | tr '\n' ' ')" \
+  "cd /var/www/html && APP_ENV=prod php bin/console swag:assistant:benchmark --label=demodata-10k-cards --repetitions=1 --term=jacket $CARDS" \
   | tee /tmp/benchmark-cards.txt
 ```
 
@@ -1642,7 +1675,7 @@ docker exec shopping-assistant-test-web-1 bash -lc \
 ```bash
 for run in 2 3; do
   docker exec shopping-assistant-test-web-1 bash -lc \
-    'cd /var/www/html && php bin/console swag:assistant:benchmark --label=demodata-10k --repetitions=20' \
+    'cd /var/www/html && APP_ENV=prod php bin/console swag:assistant:benchmark --label=demodata-10k --repetitions=20' \
     | tee /tmp/benchmark-demodata-$run.txt
 done
 ```
@@ -1653,10 +1686,10 @@ spread. The report states the range across runs, not just one run's figure.
 - [ ] **Step 6: Restore**
 
 ```bash
-docker exec -i shopping-assistant-test-database-1 sh -c \
-  'mysql -uroot -proot shopware' < /tmp/shopware-before-demodata.sql
+docker exec -i shopping-assistant-test-database-1 sh -c "mariadb -uroot -p'$PW' shopware" \
+  < /tmp/shopware-before-demodata.sql
 docker exec shopping-assistant-test-web-1 bash -lc \
-  'cd /var/www/html && php bin/console cache:clear && php bin/console dal:refresh:index'
+  'cd /var/www/html && APP_ENV=prod php -d memory_limit=-1 bin/console cache:clear && APP_ENV=prod php -d memory_limit=-1 bin/console dal:refresh:index'
 ```
 
 Verify the shop is itself again — this is the step that protects `tests/e2e`:
@@ -1780,7 +1813,7 @@ permanently someone else's.
 ## Known risks
 
 1. **~~`AssistantConfig` may not be a plain service id.~~ Checked while writing this plan, and it is not.** There is no `AssistantConfig` service; `Core\Config\SystemConfigAssistantConfig` (services.xml line 92) exposes `forSalesChannel(string): AssistantConfig`. The plan above already reflects this: the command resolves the config per sales channel and passes the value into `run()`. Recorded here because the obvious wiring — injecting a config into the runner — is wrong, and would look right until the container failed to compile.
-2. **`dal:refresh:index` on 10,000 products takes minutes and can run out of memory** in the default container. If it dies, re-run it; if it keeps dying, seed 5,000 instead and say so in the report. A smaller shop honestly labelled beats a bigger one that was never indexed.
+2. **~~`dal:refresh:index` can run out of memory.~~ It did not, with `-d memory_limit=-1`.** Measured: ~5 minutes, peak 111 MiB reported by the indexer. Keep the flag; without it the default container limit is the risk.
 3. **The default sales channel id is the lab environment's.** `01a01b4af6567284ac9eeb3616598ac3` is hardcoded in `ProbeCommand` and copied here. If the seeded shop uses another channel, pass `--sales-channel`; a wrong channel yields empty results that look like fast ones.
 4. **p95 off a laptop under docker is noisy.** Three runs and a stated range, per Task 6 Step 5. Do not quote a single p95 as though it were a property of the code.
 5. **The cards measurement uses parent product ids from SQL.** If the seeded ids are not valid for the chosen sales channel — not assigned to its category tree — every lookup returns null quickly and the row measures nothing. Sanity-check that `catalogue lookups` equals `ids requested` and that the total is not near zero.
