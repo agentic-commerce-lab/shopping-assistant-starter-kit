@@ -189,3 +189,34 @@ another:
 
 Phase A's Finding 2 — the 30-variant family answering the wrong variant — remains open and is
 unaffected by anything measured here.
+
+---
+
+## Addendum — Finding 1 is fixed (commit `8a9b295`)
+
+`FacetProbe` now has a cross-request tier behind its instance array, backed by its own filesystem
+pool and keyed per sales channel. `swag:assistant:benchmark` reports all three tiers.
+
+**Verified across three separate processes**, on the restored 135-product shop:
+
+| Process | live ms | instance-cache ms | shared-cache ms | shared hit |
+|---|---|---|---|---|
+| 1 (cold pool) | 6.1 | 0.0 | 7.9 | no — populated it |
+| 2 | 6.7 | 0.0 | 4.0 | yes |
+| 3 | 8.7 | 0.0 | 0.3 | yes |
+
+**What this verifies and what it does not.** It verifies the mechanism: a second process reads the
+first process's result instead of the catalogue. It does **not** re-measure the magnitude at 10,000
+products — that would mean seeding and restoring the shop again, and the saving is already measured
+above (558–578 ms live, and the shared read is a file read of the same order as the 0.3 ms seen here).
+The claim is therefore "the ~560 ms is now paid once per TTL per node instead of once per turn",
+resting on this run for the mechanism and on the table above for the size.
+
+**TTL 300 s, and why that is safe rather than merely convenient.** The block is a *vocabulary*, not an
+inventory — `CatalogVocabulary`'s heading says so and the `vocabulary_not_inventory` journey enforces
+it — so a stale entry cannot misreport stock or price. The worst case is a word added five minutes ago
+not yet being offered as a spelling, and the disclosure note already warns the model the list may be
+incomplete.
+
+**Still open:** Finding 3 (cards endpoint, 12 sequential lookups, 143.8 ms) and Finding 5 (`MAX_FIELDS`
+never crossed below the gateway).
