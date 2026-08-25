@@ -86,11 +86,21 @@ Everything needed is already in hand at the narrowing step in `SearchProductsToo
 
 | Field | Source |
 |---|---|
-| `matched` | `\count($survivors) + $supersededParents` — both already computed for the `retrieve.narrow` event |
-| `more` | `\count($retrieved) === $query->effectiveLimit()`, where `effectiveLimit()` is `max($limit, $candidateLimit)` |
+| `matched` | `\count($survivors)` — the set `retrieve.narrow` already measures its truncation against |
+| `more` | `\count($cards) === $query->effectiveLimit()` measured on the cards **as RetrievalPass returned them**, before variant resolution, because that is the step the gateway's limit applied to |
 | `families` | The truncated tail (`$survivors` minus `$returned`) grouped by `ProductCard::$parentId`; option values read from `ProductCard::$options`. Both fields already exist on the DTO |
 
 No gateway call is added. No interface changes.
+
+**`matched` deliberately excludes superseded parents.** `RedundantParentFilter` removes a family
+parent when its own variants are in the result — an unbuyable aggregate beside the rows that already
+answered the question. Counting it back in would report one product twice and invite the model to
+treat the parent as a separate thing to offer. `matched` is therefore "distinct buyable candidates
+retrieval found", which is also the number `retrieve.narrow` already measures truncation against.
+
+**`more` is measured before variant resolution**, not after. The gateway's limit applied to what
+`RetrievalPass` returned; `VariantResolver` can replace a parent card with a variant card afterwards,
+so counting at that point would compare a post-resolution size against a pre-resolution bound.
 
 ## Architecture
 
