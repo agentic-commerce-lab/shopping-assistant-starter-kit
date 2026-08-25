@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-25
 **Task:** Part 1, Task 7 (spec R4 — the threshold is measured, not chosen)
-**Outcome:** **No separating threshold exists.** The Gate is not passed. `MIN_SCORE` is left at its
-provisional value, and the next step is a design decision on R3, not a number.
+**Outcome:** **No separating threshold exists, with any of three embedding models.** R3 is revised
+rather than parameterised: the threshold becomes a recall floor (0.40 with `bge-m3`) and the model
+decides relevance. See *Run 4* and *The decision* below.
 
 ## What was measured
 
@@ -136,3 +137,72 @@ Ordered by what the measurement supports, not by cost.
   width change while non-empty, and was recreated at `vector(3072)` once emptied.
 - **R8 replacement holds.** Re-indexing a changed document left exactly one generation, with the new
   text and no trace of the old.
+
+
+## Run 4 — `bge-m3`, 1024 dimensions
+
+Tried because a multilingual model is the right shape for German legal prose, and because prior
+experience with it was good. **It separates the groups worse than either OpenAI model.**
+
+| Question | Answered? | Best score |
+|---|---|---|
+| Was ist die Widerrufsfrist? | yes | 0.7360 |
+| Wie lange kann ich zurueckschicken? | yes | 0.6759 |
+| Kann ich den Vertrag widerrufen? | yes | 0.6528 |
+| Ab wann laeuft die Frist? | yes | 0.5972 |
+| **Muss ich Gruende angeben?** | **yes** | **0.4421** |
+| **Wann kommt meine Bestellung an?** | **no** | **0.5539** |
+| Wie hoch sind die Versandkosten nach Japan? | no | 0.4615 |
+| Kann ich mit Bitcoin bezahlen? | no | 0.4549 |
+| Habt ihr das Trikot in XL? | no | 0.3316 |
+| Wer ist euer Geschaeftsfuehrer? | no | 0.3041 |
+
+| Model | Lowest answerable | Highest unanswerable | Overlap |
+|---|---|---|---|
+| `text-embedding-3-small` | 0.3622 | 0.4155 | 0.053 |
+| `text-embedding-3-large` | 0.3566 | 0.3668 | 0.010 |
+| `bge-m3` | 0.4421 | 0.5539 | **0.112** |
+
+`bge-m3` raises every score — its range is 0.30–0.74 against `-large`'s 0.26–0.60 — so the absolute
+overlap grows. High baseline similarity is a known property of the model and it is not a defect; it is
+simply orthogonal to the thing being asked of it here. **"A multilingual model will fix German
+retrieval" was measured, and it did not hold.**
+
+Getting this far also required a code fix: the generic bridge decides whether a model name refers to
+an embedding model by testing it for the substring `embed`, so `bge-m3` was routed to a completions
+client that the embeddings-only platform does not have, failing with *"No ModelClient registered"*
+before any request. That heuristic ruled out every embedding model not named by OpenAI. See
+`EmbeddingsOnlyModelCatalog`.
+
+## The decision
+
+Four runs, three models, and the same two questions fail in opposite directions every time. The
+conclusion is not "keep looking for a threshold" — it is that a bi-encoder similarity score answers
+*"is this passage about the same topic?"* while the tool needs *"does this passage contain the
+answer?"*, and those come apart precisely on negations and topical near-misses.
+
+So **R3 is revised** (spec R3a): the threshold becomes a **recall floor** and the model judges
+relevance.
+
+- `RECALL_MIN_SCORE = 0.40`, with `bge-m3`. Below the lowest answerable score (0.4421) with margin, so
+  every question the document can answer gets its passage through; above the plainly unrelated (0.33
+  size question, 0.30 imprint question), which it still discards.
+- It makes **no attempt** to exclude the near-misses at 0.45–0.55. Nothing could: they outrank a
+  question the document genuinely answers.
+- Those reach the model with `SearchShopInfoTool::RELEVANCE_NOTE`, which states outright that some
+  passages may be irrelevant and that it must decline rather than stretch one to fit.
+
+**Why `bge-m3` and not `-large`,** given `-large` had the smallest overlap. A recall floor needs margin
+underneath the lowest answerable score, not a narrow overlap. With `-large` the floor would have to sit
+at or below 0.3566 while an irrelevant passage scores 0.3668 — a 0.01 window that any new question
+would move. `bge-m3` allows any floor up to 0.4421 and spreads its scores more widely, so the recall
+property survives questions not in this sample. It is also multilingual, which the text is, and 1024
+dimensions rather than 3072.
+
+**What this costs, stated plainly.** R3 promised that the model could not be handed an irrelevant
+passage. That guarantee is gone; it was never achievable. What replaces it is an instruction, and an
+instruction is a request rather than a guarantee — this project measured this week that a model
+overrides an explicit instruction not to claim absence in roughly one run of three. Which is why
+`shop_info_not_in_documents` stops being a nice-to-have and becomes the test that holds this line.
+That journey is the next task, and if it proves unreliable the answer is a reranker (option 2 above),
+not a larger number here.

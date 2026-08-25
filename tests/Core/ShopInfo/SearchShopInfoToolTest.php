@@ -34,15 +34,18 @@ final class SearchShopInfoToolTest extends TestCase
         self::assertSame(1, $result['total']);
         self::assertStringContainsString('vierzehn Tagen', $passage['text']);
         self::assertSame('Widerrufsfrist', $passage['section']);
-        self::assertArrayNotHasKey('note', $result);
+        // Revised R3: the passages carry the relevance warning, because the model is what decides
+        // whether any of them answers the question.
+        self::assertSame(SearchShopInfoTool::RELEVANCE_NOTE, $result['note']);
     }
 
     /**
-     * Spec R3, and the reason a threshold exists at all. Vector search always returns its nearest
-     * neighbour, so without this the model receives a passage about payment data processing and
-     * paraphrases it into an answer about Bitcoin.
+     * Below the recall floor there is nothing at all, and the model is told what that means.
+     *
+     * The floor no longer pretends to separate relevant from irrelevant — measurement showed no value
+     * can (see the tool's own docblock). It discards what is plainly unrelated, and this is that case.
      */
-    public function testNothingAboveTheThresholdYieldsANoteAndNoPassages(): void
+    public function testNothingAboveTheRecallFloorYieldsANoteAndNoPassages(): void
     {
         // Not registered with the embedder, so it embeds far from every stored passage.
         $result = self::tool()('Kann ich mit Bitcoin bezahlen?');
@@ -91,7 +94,7 @@ final class SearchShopInfoToolTest extends TestCase
         $payload = $trace->payload('retrieve.shopinfo') ?? self::fail('nothing recorded');
 
         self::assertSame(0, $payload['accepted']);
-        self::assertSame(SearchShopInfoTool::MIN_SCORE, $payload['threshold']);
+        self::assertSame(SearchShopInfoTool::RECALL_MIN_SCORE, $payload['threshold']);
         // The rejected score is the whole point: it is what says "we would have had the answer at
         // 0.62" after a week of real use, instead of that being guessed at now.
         self::assertNotSame([], $payload['scores']);
@@ -107,6 +110,27 @@ final class SearchShopInfoToolTest extends TestCase
 
         self::assertSame(1, $payload['accepted']);
         self::assertSame([1.0], $payload['scores']);
+    }
+
+    /**
+     * The two notes must not be interchangeable.
+     *
+     * "Nothing was found" and "something was found that may be irrelevant" call for different
+     * behaviour from the model, and a single note covering both would have to be vague about which
+     * situation it is describing — at which point it stops steering anything.
+     */
+    public function testTheAbsenceNoteAndTheRelevanceNoteAreDifferentInstructions(): void
+    {
+        self::assertNotSame(SearchShopInfoTool::NO_MATCH_NOTE, SearchShopInfoTool::RELEVANCE_NOTE);
+
+        // Both must forbid invention, because that is the failure they share.
+        foreach ([SearchShopInfoTool::NO_MATCH_NOTE, SearchShopInfoTool::RELEVANCE_NOTE] as $note) {
+            self::assertStringContainsString('erfinde', strtolower($note));
+        }
+
+        // Only the relevance note may say a passage might not belong; the absence note has no
+        // passages to say it about.
+        self::assertStringContainsString('may have nothing to do', SearchShopInfoTool::RELEVANCE_NOTE);
     }
 
     private static function tool(

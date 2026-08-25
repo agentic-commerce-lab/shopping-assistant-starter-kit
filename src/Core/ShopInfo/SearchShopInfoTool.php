@@ -18,12 +18,21 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  * sales-channel filter, and it would emit none of this plugin's trace events — leaving document turns
  * a blind spot in the admin trace view, which is precisely where "why did it say that" matters most.
  *
- * **The threshold is the whole design.** Vector search always returns its nearest neighbour, whether
- * or not that neighbour answers the question: "can I pay with Bitcoin?" against a privacy policy
- * returns the paragraph about payment data processing, and a paraphrase of that is a confident wrong
- * answer about a payment method. Below {@see self::MIN_SCORE} there is no passage at all and the model
- * is told so — the same discipline {@see SearchProductsTool::NO_MATCH_NOTE} already enforces for
- * products.
+ * **The threshold is a recall floor, and the model judges relevance** — spec R3 as revised on
+ * 2026-08-25 by measurement. The original design made the threshold a gate: below it, no passage at
+ * all. That cannot work, and the measurement says why
+ * (`docs/superpowers/reports/2026-08-25-shopinfo-threshold.md`): across three embedding models, the
+ * lowest score for a question the document *answers* always fell below the highest score for one it
+ * does not. The two cases that break it are structural, not incidental — an answer carried by a
+ * negation ("ohne Angabe von Gruenden" answering "muss ich Gruende angeben?"), and a topical
+ * near-miss that shares a document's whole vocabulary while being absent from it ("wann kommt meine
+ * Bestellung an?" against a returns deadline). No single scalar puts both on the correct side.
+ *
+ * What all three models *do* reliably is retrieve the right passage among their top few. So the
+ * scalar is used for what it can do — discard the obviously unrelated — and the relevance decision
+ * goes to the one component that can read a negation. That is a real trade: it takes on exactly the
+ * risk the original R3 was written to avoid, so {@see self::RELEVANCE_NOTE} travels with every
+ * passage, and the `shop_info_not_in_documents` journey is what holds the line R3 used to hold.
  *
  * **The model receives the passage text and may paraphrase it** (spec R6). Note the asymmetry with
  * products, where the model gets no figures because the rendered card carries them. There is no card
@@ -39,29 +48,27 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 final class SearchShopInfoTool
 {
     /**
-     * The similarity a passage must reach to be shown to the model at all.
+     * The similarity a passage must reach to be worth showing the model at all.
      *
-     * **Measured, and the measurement says no value works.** See
-     * `docs/superpowers/reports/2026-08-25-shopinfo-threshold.md`: against the statutory German
-     * revocation notice, the lowest score for a question the document *answers* (0.3566, "muss ich
-     * Gruende angeben?" — answered by the clause "ohne Angabe von Gruenden") falls **below** the
-     * highest score for one it does not (0.3668, "wann kommt meine Bestellung an?"). That holds for
-     * `text-embedding-3-small` and `-large`, and finer chunking widens the overlap rather than
-     * closing it. The two cases are the structural failure modes of single-stage bi-encoder
-     * retrieval — a negation and a topical near-miss — and they sit on opposite sides of any line a
-     * single scalar could draw.
+     * **Measured, not chosen** (spec R4), against the statutory German revocation notice with
+     * `bge-m3`: the five questions the document answers scored 0.4421 to 0.7360, and the five it does
+     * not scored 0.3041 to 0.5539. This value sits below the lowest answerable score with room to
+     * spare, so it is a floor on *recall* — every question the document can answer gets its passage
+     * through — and it discards only what is plainly unrelated (a size question at 0.33, an imprint
+     * question at 0.30).
      *
-     * So this value is **deliberately left at the plan's provisional guess** rather than lowered to
-     * something that looks calibrated. No measured score exceeded 0.71, so as it stands this tool
-     * answers nothing and always returns {@see self::NO_MATCH_NOTE}. That is the safe direction — it
-     * invents nothing — but it is not a working feature, and the fix is a design decision on spec R3
-     * (move relevance judgement to the model, add a reranker, or find an embedding model built for
-     * German), not a smaller number here. Splitting the difference would fail in both directions and
-     * ship exactly the unmeasured constant this project has spent the week removing.
+     * It deliberately does **not** try to exclude the topical near-misses at 0.45 to 0.55. Nothing
+     * could: they outrank a question the document genuinely answers. Those reach the model with
+     * {@see self::RELEVANCE_NOTE} attached, and rejecting them is its job.
      *
-     * Every score is traced (R5) so the decision keeps being made from evidence.
+     * `bge-m3` rather than either OpenAI model, on the same measurement: all three separate the
+     * groups equally badly, but bge-m3 leaves the widest margin under its lowest answerable score,
+     * which is what a recall floor needs. It is also multilingual, which this text is, and 1024
+     * dimensions rather than 3072.
+     *
+     * Every score is still traced (R5), the rejected ones included, so this stays a measurement.
      */
-    public const MIN_SCORE = 0.75;
+    public const RECALL_MIN_SCORE = 0.40;
 
     /**
      * How many passages the model may receive.
@@ -90,6 +97,28 @@ final class SearchShopInfoTool
             . 'no fee and no condition, and do not answer from general knowledge about consumer law — '
             . 'erfinde nichts.';
 
+    /**
+     * What travels with every passage the model receives.
+     *
+     * This is the load-bearing half of the revised R3. The passages are ranked by cosine similarity,
+     * which measures topical overlap and not whether a question is answered — so on the measured
+     * sample roughly half of what clears the recall floor for an unanswerable question is a near-miss
+     * that reads plausible. The model has to be told that outright, because a retrieved passage looks
+     * like an answer by default.
+     *
+     * The prohibitions are itemised for the same reason as in {@see self::NO_MATCH_NOTE}: deadline,
+     * address, fee and condition are the four things a model supplies from general knowledge about
+     * German consumer law when a shop's own document does not contain them, and each one would be a
+     * legal statement the merchant never made.
+     */
+    public const RELEVANCE_NOTE =
+        'These passages were found by similarity, not by understanding, and one or more of them may '
+            . 'have nothing to do with the question. Answer only from a passage that actually contains '
+            . 'the answer. If none of them does, say you cannot find it in the shop information and '
+            . 'point the shopper at the relevant page — do not stretch a passage to fit. Invent no '
+            . 'deadline, no address, no fee and no condition, and do not answer from general knowledge '
+            . 'about consumer law — erfinde nichts.';
+
     private const MAX_QUESTION_CHARS = 500;
 
     public function __construct(
@@ -103,7 +132,7 @@ final class SearchShopInfoTool
      * @param string $question What the shopper wants to know about the shop's terms, returns,
      *                         privacy, shipping or contact details.
      *
-     * @return array{passages: list<array{id: string, document: string, section: string, text: string}>, total: int, note?: string}
+     * @return array{passages: list<array{id: string, document: string, section: string, text: string}>, total: int, note: string}
      */
     public function __invoke(string $question): array
     {
@@ -116,17 +145,17 @@ final class SearchShopInfoTool
         $accepted = [];
 
         foreach ($passages as $passage) {
-            if ($passage->score >= self::MIN_SCORE) {
+            if ($passage->score >= self::RECALL_MIN_SCORE) {
                 $accepted[] = $passage;
             }
         }
 
-        // Spec R5: every score, the rejected ones included. We do not yet know the right threshold,
-        // and this is what makes "we would have had the answer at 0.62" visible after a week of real
-        // use rather than guessed at now.
+        // Spec R5: every score, the rejected ones included. This is what turned the threshold from a
+        // guess into a measurement, and it is what will show whether the recall floor is set right
+        // after real use — a rejected 0.39 beside an answered question is the signal to lower it.
         $this->trace->record('retrieve.shopinfo', [
             'question' => $question,
-            'threshold' => self::MIN_SCORE,
+            'threshold' => self::RECALL_MIN_SCORE,
             'scores' => array_map(static fn(ShopInfoPassage $p): float => $p->score, $passages),
             'accepted' => \count($accepted),
             'ms' => $elapsedMs,
@@ -136,7 +165,14 @@ final class SearchShopInfoTool
             return ['passages' => [], 'total' => 0, 'note' => self::NO_MATCH_NOTE];
         }
 
-        return ['passages' => self::shapeOf($accepted), 'total' => \count($accepted)];
+        // A note travels with the passages too, not only with their absence. Under the revised R3 the
+        // model is the one deciding whether any of these answers the question, and it cannot do that
+        // job without being told that some of them probably do not.
+        return [
+            'passages' => self::shapeOf($accepted),
+            'total' => \count($accepted),
+            'note' => self::RELEVANCE_NOTE,
+        ];
     }
 
     /**
@@ -151,7 +187,7 @@ final class SearchShopInfoTool
             // Spec R12: this tool's own channel and no other. Two channels genuinely have different
             // terms, and a query without this filter serves one shop's revocation notice in another.
             $this->config->salesChannelId,
-            // Queried at 0.0 rather than at the threshold so the rejected scores reach the trace
+            // Queried at 0.0 rather than at the recall floor so the rejected scores reach the trace
             // above. Filtering in the store would make R5's record impossible to write.
             minScore: 0.0,
             limit: self::MAX_PASSAGES,
