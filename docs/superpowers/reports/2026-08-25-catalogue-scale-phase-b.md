@@ -128,9 +128,14 @@ recurred, so they are warmup rather than tail latency. Reported because p95 over
 
 **Measured.** 12 ids → 12 catalogue lookups → 143.8 ms, ~12.0 ms per id.
 
-This is the N+1 the spec asked to be counted rather than timed, now with both numbers. It is paid on
-every card row the storefront renders, in addition to the turn that produced the ids. A batched lookup
-is the obvious lever, and at ~12 ms per sequential id the saving is most of 144 ms.
+This is the N+1 the spec asked to be counted rather than timed, now with both numbers.
+
+**Correction, from watching the widget in a browser rather than reasoning about it.** An earlier draft
+of this section said the cost is "paid on every card row the storefront renders". It is not. A fresh
+turn returns its cards inline in the `/assistant/chat` response and never calls `/assistant/cards`;
+the endpoint fires when a returning shopper reopens the widget and a stored conversation is
+rehydrated. So the 143.8 ms is a history-restore cost, not a per-turn one — which lowers this
+finding's priority relative to Finding 1, and is why it was fixed second.
 
 ### Finding 4 — the vocabulary block truncates on a real shop, but only values
 
@@ -218,5 +223,49 @@ it — so a stale entry cannot misreport stock or price. The worst case is a wor
 not yet being offered as a spelling, and the disclosure note already warns the model the list may be
 incomplete.
 
-**Still open:** Finding 3 (cards endpoint, 12 sequential lookups, 143.8 ms) and Finding 5 (`MAX_FIELDS`
-never crossed below the gateway).
+**Still open:** Finding 5 (`MAX_FIELDS` never crossed below the gateway).
+
+---
+
+## Addendum — Finding 3 is fixed (commit `248914d`)
+
+`AssistantCardController` no longer loops. `CardResolver` takes one round trip when the gateway
+implements the new `BatchProductLookup`, and keeps the per-id loop for any gateway that does not —
+`CommerceGatewayInterface` is marked `@api Public extension point`, so adding a method to it would
+have broken every gateway a merchant has already written.
+
+**Verified live against the demo shop**, not just in unit tests:
+
+| Request | Result |
+|---|---|
+| 3 ids | Returned in the requested order, each with its own variant price and stock: 69.90/3, 74.90/0, 79.90/7 |
+| 1 id, three runs | 65 / 81 / 65 ms |
+| 12 ids, three runs | 81 / 68 / 69 ms — all 12 cards |
+
+Twelve ids now cost what one costs; the ~65 ms floor is Shopware's request overhead, not the lookup.
+The widget's history restore was re-checked in a browser and renders exactly as before.
+
+The part worth guarding was ordering, not speed: a batched query returns rows in whatever order the
+engine chose, while the widget renders them in the order it receives. `CardResolver` restores the
+requested order and `CardResolverTest::testItPreservesTheRequestedOrder` holds it — the loop preserved
+order for free, which is precisely how this change could have regressed unnoticed.
+
+## An unrelated defect the live test surfaced
+
+Asked "Do you have the Trail Jersey in blue, size M in stock?", the assistant renders the correct card
+— €74.90, **Out of stock**, add-to-cart disabled — and answers in prose: *"I don't have stock or
+availability information for it in front of me — would you like me to check that for you?"*
+
+The fact is in hand and correctly displayed; the prose denies having it. For that question it is a
+poor answer, and **no assertion catches it**: the `variant_stock` journey checks
+`stock_matches_source`, `rendered_ids_exactly`, `no_invented_product` and
+`no_unbacked_price_in_prose`, all of which this satisfies. Nothing requires the prose to state a stock
+figure the card already carries.
+
+Not a regression from either fix above: the facet cache changes no prompt content, and the vocabulary
+budget change only alters behaviour when even one value per field will not fit, which is not the case
+on this shop (8 fields / 51 values / 1,299 chars). Reproduced identically through the CLI probe and
+the browser widget.
+
+Worth its own look, and probably its own assertion — an `availability_stated_when_known` check would
+fail this run.
