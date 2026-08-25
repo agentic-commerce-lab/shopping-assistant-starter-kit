@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Eval\Journey;
 use Swag\AssistantStarterKit\Eval\JourneyRunner;
+use Swag\AssistantStarterKit\Tests\Fixtures\Large\LargeCatalogFile;
 
 /**
  * Drives every journey under tests/Journeys/ through a real LLM endpoint and checks it
@@ -68,7 +69,11 @@ final class JourneyEvalTest extends TestCase
             model: $model,
         );
 
-        $runner = new JourneyRunner($settings, __DIR__ . '/../Fixtures/catalog.json');
+        // Which catalogue this journey runs against. `ASSISTANT_EVAL_CATALOG=large` swaps in the
+        // generated one; anything else, including unset, keeps the twelve-product fixture every
+        // expectation in tests/Journeys was written against. See spec decision S6 — the large run is
+        // opt-in because the suite already costs ten minutes and real money.
+        $runner = new JourneyRunner($settings, LargeCatalogFile::chosen());
         $report = $runner->run($journey);
 
         if ($report->passed()) {
