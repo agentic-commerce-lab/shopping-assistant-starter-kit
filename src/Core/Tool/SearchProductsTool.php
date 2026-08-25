@@ -147,6 +147,15 @@ final class SearchProductsTool
      * @return array{
      *     products: list<array{id: string, name: string, options: array<string, string>}>,
      *     total: int,
+     *     matched: int,
+     *     more: bool,
+     *     families?: list<array{
+     *         name: string,
+     *         shown: int,
+     *         variants: int,
+     *         options: array<string, list<string>>,
+     *         options_truncated?: bool,
+     *     }>,
      *     note?: string,
      * }
      */
@@ -289,6 +298,11 @@ final class SearchProductsTool
         // case-sensitive matching fail exactly when the model's casing differs from the
         // catalog's — the retrieval filter above would already have narrowed correctly
         // while variant resolution silently did not.
+        // Measured HERE, before variant resolution, because the gateway's limit applied to this set.
+        // VariantResolver can replace a parent card with a variant card, so counting afterwards would
+        // compare a post-resolution size against a pre-resolution bound.
+        $windowSaturated = \count($cards) === $query->retrievalLimit();
+
         $cards = $this->variantResolver->resolve($cards, $buildResult->canonicalSelections, $scope);
 
         $filtered = $this->blocklist->apply($cards, $scope);
@@ -337,7 +351,15 @@ final class SearchProductsTool
             // id + name + options, never a figure — see ToolProductSummary for why bare ids made
             // variant identification cost one tool call per candidate.
             'products' => ToolProductSummary::of($returned),
+            // `total` deliberately keeps meaning "how many are in products" (T3). The model has
+            // learned it; redefining a number in place is how something else quietly breaks.
             'total' => \count($returned),
+            // What the search actually found, which is the number `total` was being read as. Excludes
+            // superseded parents: RedundantParentFilter removed them because their own variants are
+            // present, and counting one back in would report a product twice.
+            'matched' => \count($survivors),
+            // `matched` is a floor, not a census, whenever the candidate window filled up (T4).
+            'more' => $windowSaturated,
         ];
 
         if ($returned === []) {
