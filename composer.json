@@ -5,13 +5,17 @@
   "license": "MIT",
   "require": {
     "php": "^8.2",
+    "ext-dom": "*",
     "ext-filter": "*",
     "ext-mbstring": "*",
+    "ext-zip": "*",
     "doctrine/dbal": "^4.0",
+    "masterminds/html5": "^2.11",
     "psr/cache": "^3.0",
     "psr/log": "^3.0",
     "shopware/core": "~6.7.0",
     "shopware/storefront": "~6.7.0",
+    "smalot/pdfparser": "^2.12",
     "symfony/ai-agent": "0.12.*",
     "symfony/ai-generic-platform": "0.12.*",
     "symfony/ai-maria-db-store": "0.12.*",
@@ -30,15 +34,16 @@
     "twig/twig": "^3.26"
   },
   "require-dev": {
+    "ext-simplexml": "*",
     "captainhook/captainhook": "^5.25",
     "captainhook/hook-installer": "^1.0",
     "carthage-software/mago": "^1.30",
-    "ext-simplexml": "*",
+    "dompdf/dompdf": "^3.1",
     "phauthentic/cognitive-code-analysis": "^1.11",
     "phpunit/phpunit": "^11.0",
     "shipmonk/composer-dependency-analyser": "^1.0",
-    "symfony/filesystem": "~7.4.0",
-    "symfony/dotenv": "~7.4.0"
+    "symfony/dotenv": "~7.4.0",
+    "symfony/filesystem": "~7.4.0"
   },
   "conflict": {
     "symfony/clock": ">=8.0",

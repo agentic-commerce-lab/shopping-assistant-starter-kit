@@ -349,5 +349,31 @@
 
         <service id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"
                  alias="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore"/>
+
+        <!-- One extractor per format behind one interface (spec R10). Tagged rather than injected as
+             a list so a merchant with an in-house format adds a service and changes nothing else. -->
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\PlainExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\MarkdownExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\HtmlExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\PdfExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\DocxExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\ExtractorChain">
+            <argument type="tagged_iterator" tag="swag_assistant.text_extractor"/>
+        </service>
     </services>
 </container>
