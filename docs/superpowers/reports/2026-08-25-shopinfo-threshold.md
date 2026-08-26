@@ -365,3 +365,54 @@ covers currency figures only. The journeys currently rest on the model declining
 turns, rather than on a detector that would catch it not declining. That is the same shape as the
 absence-claim problem this project already knows about: a safety property resting on prose adherence
 instead of on a control.
+
+
+## Answer quality, graded (2026-08-26)
+
+Everything measured until now was *precision of refusal* — that the assistant does not invent. That is
+not the same question as whether the answers are **right**, and it had never been graded. Eight
+answerable questions through the real storefront endpoint against the English corpus, each compared
+against the source document.
+
+**8/8 correct, and complete including their conditions.** What stood out was not the bare facts but the
+qualifications, which are where a support answer usually goes wrong:
+
+| Question | What made it more than a fact lookup |
+|---|---|
+| How long to return? | Got the **two-stage** deadline right — fourteen days to declare, then fourteen more to ship back — plus the start point, that the form is optional, who pays return postage, and both exclusions |
+| Shipping to Austria? | Joined the **cost** and the **delivery time** from two different sections |
+| Free shipping threshold? | Volunteered the limitation unprompted: 75 euro, *within Germany only* |
+| Pay by invoice? | All three conditions: second order onwards, 500 euro ceiling, fourteen days to pay |
+| Data retention? | Ten years, and how that interacts with account deletion within thirty days |
+| Erasure? | The right, the interaction with the ten-year obligation, and that it cannot access accounts itself |
+| Managing director? | Both names |
+| Applicable law? | German law, UN Convention excluded, mandatory consumer provisions unaffected, Hamburg for merchants |
+
+**The most fragile thing found.** "Who is your managing director?" is the weakest answerable question in
+every run — 0.4401 here against a recall floor of 0.40. It answered correctly, but the headroom is
+0.04. A floor at 0.45 would silently lose it, and a larger corpus will push short factual lookups like
+it further down. That is the number to watch as documents are added, and R5's trace already carries it.
+
+**Caveat on this grading.** The corpus is synthetic and I wrote it, so it is cleaner than a merchant's
+real documents — no tables, no footnotes, no cross-references between pages, no clause that only makes
+sense beside another. The extraction limits in the spec's *Known gaps* (DOCX tables and footnotes
+dropped) bite on real files and not on these.
+
+### Does this justify a reranker?
+
+**No, on the evidence.** A reranker improves retrieval *precision* — it stops irrelevant passages
+reaching the model. Three measurements say that is not the binding constraint:
+
+- `recall@3` is **8/8**, so a reranker cannot improve what arrives.
+- Answers are **8/8** correct *with* those near-miss passages in context, so the irrelevant ones are
+  not degrading the answers.
+- Every observed near-miss was declined, across twelve journey turns and several hand checks.
+
+It would buy a precision improvement with no observed benefit, at the cost of a dependency the generic
+OpenAI-compatible bridge cannot serve and a second round trip on every document turn.
+
+**The trigger to revisit is measurable, and it is recall rather than precision.** At a few hundred
+passages `recall@3` will stop being 8/8; retrieving wider and reranking is then the standard answer,
+and the labelled question sets in `tests/Fixtures/` are the setup for deciding it. Reranking is also
+the answer if `shop_info_not_in_documents` starts flaking — but that is a different trigger and neither
+has fired.
