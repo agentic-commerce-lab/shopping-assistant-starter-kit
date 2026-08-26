@@ -9,7 +9,13 @@ php-version = "8.3"
 
 [source]
 paths = ["src"]
-excludes = ["var/**", "build/**", "dist/**", "vendor/**"]
+## Dependencies. Mago parses `includes` for symbols but never lints, formats, or
+## reports on them — which is what lets the analyzer resolve types coming from
+## vendored code. Without it every dependency class reads as "not found", so a
+## project fails `mago analyze` the moment it has its first `composer require`.
+## `vendor` must NOT also appear in `excludes`: an exclude cancels the include.
+includes = ["vendor"]
+excludes = ["var/**", "build/**", "dist/**", "vendor/bin"]
 extensions = ["php"]
 
 [formatter]
