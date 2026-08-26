@@ -62,7 +62,7 @@ final class AssistantRunnerTest extends TestCase
     public function testReturnsTheGuardMessageWithoutCallingThePlatformWhenKilled(): void
     {
         $http = self::forbiddenHttpClient();
-        $runner = $this->runner(new AssistantConfig(killSwitch: true), $http);
+        $runner = $this->runner(new AssistantConfig(assistantEnabled: false), $http);
 
         $turn = $runner->run('anything', new MessageBag());
 

@@ -1,0 +1,60 @@
+/*
+The off switch reads as a status panel rather than as one more row in a form, because it is not one
+more row in a form: every other setting on this page changes the next reply, and this one decides
+whether there is one. The lamp is the part doing that work — a merchant scanning the page sees the
+state before reading a word of it.
+*/
+.swag-assistant-status-switch {
+    &__row {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+
+    &__lamp {
+        flex: 0 0 auto;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #37d046;
+        // Not a glow for decoration: it is the only thing separating "green dot" from "green dot
+        // that is switched on" at a glance, and it is what disappears in the stopped state below.
+        box-shadow: 0 0 0 4px rgba(55, 208, 70, 0.18);
+    }
+
+    &__text {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    &__state {
+        margin: 0;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    &__detail {
+        margin: 2px 0 0;
+        font-size: 13px;
+        line-height: 1.45;
+        color: #64748b;
+    }
+
+    &__control {
+        flex: 0 0 auto;
+    }
+
+    // Grey rather than red. A stopped assistant is a merchant's deliberate decision, not a fault,
+    // and colouring their own choice as an error is the interface arguing with them.
+    &--stopped {
+        .swag-assistant-status-switch__lamp {
+            background: #94a3b8;
+            box-shadow: none;
+        }
+    }
+
+    &__modal-body {
+        margin: 0;
+        line-height: 1.55;
+    }
+}

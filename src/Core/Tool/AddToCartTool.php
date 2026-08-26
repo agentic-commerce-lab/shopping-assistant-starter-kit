@@ -100,6 +100,14 @@ final class AddToCartTool
         $variantId = Guard::boundedString($variantId, 64, 'variant_id') ?? '';
         $quantity = Guard::boundedInt($quantity, 1, 100, 'quantity');
 
+        // Both cart limits ship **unlimited** and are skipped entirely when unset. The old defaults
+        // — 5 per item, 1000 in cart value — were guesses in an unspecified currency: a furniture
+        // shop's single sofa tripped the second one, and neither was protecting the merchant from
+        // anything. It is the shopper's own cart, and Shopware's own checkout is what decides
+        // whether an order is real. `hasItemQuantityLimit()`/`hasCartValueLimit()` are read rather
+        // than the raw fields compared, because a bare `> 0` limit comparison against an unlimited
+        // 0 blocks every add — the exact failure this guard is here to avoid.
+        //
         // Ruling R32 is why maxCartValue reads the live cart total (gateway->cart())
         // rather than trusting the call's own argument; this bound must read the live
         // line quantity the same way. Checking only the increment let repeated small
@@ -107,7 +115,7 @@ final class AddToCartTool
         // would do it, and exactly the pattern maxCartValue was already hardened
         // against.
         $existingQuantity = $this->existingLineQuantity($variantId);
-        if (($existingQuantity + $quantity) > $this->config->maxItemQuantity) {
+        if ($this->config->hasItemQuantityLimit() && ($existingQuantity + $quantity) > $this->config->maxItemQuantity) {
             return $this->blocked(PolicyDecision::block('cart_limit', sprintf(
                 'You can add at most %d of one item.',
                 $this->config->maxItemQuantity,
@@ -134,7 +142,7 @@ final class AddToCartTool
         }
 
         $projectedTotal = $this->gateway->cart()->total + ($card->price * $quantity);
-        if ($projectedTotal > $this->config->maxCartValue) {
+        if ($this->config->hasCartValueLimit() && $projectedTotal > $this->config->maxCartValue) {
             return $this->blocked(PolicyDecision::block('cart_limit', sprintf(
                 'Adding %d would bring the cart to %.2f %s, above the %.2f limit. Reduce the quantity or remove '
                 . 'something else from the cart first.',

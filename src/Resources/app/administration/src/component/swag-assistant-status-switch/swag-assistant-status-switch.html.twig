@@ -1,0 +1,72 @@
+{% block swag_assistant_status_switch %}
+<div
+    class="swag-assistant-status-switch"
+    :class="{ 'swag-assistant-status-switch--stopped': !running }"
+>
+
+    {% block swag_assistant_status_switch_row %}
+    <div class="swag-assistant-status-switch__row">
+        <span
+            class="swag-assistant-status-switch__lamp"
+            aria-hidden="true"
+        ></span>
+
+        <div class="swag-assistant-status-switch__text">
+            <p class="swag-assistant-status-switch__state">
+                {{ running
+                    ? $tc('swag-assistant-settings.status.stateRunning')
+                    : $tc('swag-assistant-settings.status.stateStopped') }}
+            </p>
+            <p class="swag-assistant-status-switch__detail">
+                {{ running
+                    ? $tc('swag-assistant-settings.status.detailRunning')
+                    : $tc('swag-assistant-settings.status.detailStopped') }}
+            </p>
+        </div>
+
+        <mt-switch
+            :key="switchKey"
+            class="swag-assistant-status-switch__control"
+            :model-value="running"
+            :disabled="disabled"
+            :label="$tc('swag-assistant-settings.status.label')"
+            :remove-top-margin="true"
+            @update:model-value="onToggle"
+        />
+    </div>
+    {% endblock %}
+
+    {% block swag_assistant_status_switch_confirm %}
+    <sw-modal
+        v-if="confirming"
+        class="swag-assistant-status-switch__modal"
+        :title="$tc('swag-assistant-settings.status.confirm' + dialogSuffix + 'Title')"
+        variant="small"
+        @modal-close="onCancel"
+    >
+        <p class="swag-assistant-status-switch__modal-body">
+            {{ $tc('swag-assistant-settings.status.confirm' + dialogSuffix + 'Body') }}
+        </p>
+
+        <template #modal-footer>
+            <mt-button
+                size="small"
+                variant="secondary"
+                @click="onCancel"
+            >
+                {{ $tc('global.default.cancel') }}
+            </mt-button>
+
+            <mt-button
+                size="small"
+                :variant="pending === false ? 'critical' : 'primary'"
+                @click="onConfirm"
+            >
+                {{ $tc('swag-assistant-settings.status.confirm' + dialogSuffix + 'Action') }}
+            </mt-button>
+        </template>
+    </sw-modal>
+    {% endblock %}
+
+</div>
+{% endblock %}

@@ -8,10 +8,15 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 
 /**
- * Until this class exists, `config.xml` is a form that changes nothing — including the kill switch,
+ * Until this class exists, `config.xml` is a form that changes nothing — including the off switch,
  * which `ARCHITECTURE.md` calls a security control rather than an operational nicety. So these
  * assertions are about a setting reaching the pipeline at all, and about what happens when one is
  * absent.
+ *
+ * **Absent no longer means "the shipped number".** For the four limits it means *unlimited*, which
+ * is the reading a merchant who never opened the form should get: an assistant that works, rather
+ * than one throttled by figures nobody chose. The one exception is `maxToolCallsPerTurn`, and the
+ * tests below pin the difference in both directions.
  */
 final class SystemConfigAssistantConfigTest extends TestCase
 {
@@ -26,7 +31,7 @@ final class SystemConfigAssistantConfigTest extends TestCase
             self::PREFIX . 'enableAddToCart' => false,
             self::PREFIX . 'maxItemQuantity' => 2,
             self::PREFIX . 'maxCartValue' => 250.0,
-            self::PREFIX . 'killSwitch' => true,
+            self::PREFIX . 'assistantEnabled' => false,
             self::PREFIX . 'dailyRequestCap' => 50,
             self::PREFIX . 'maxToolCallsPerTurn' => 3,
             self::PREFIX . 'requestsPerMinute' => 2,
@@ -38,38 +43,45 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertFalse($config->enableAddToCart);
         self::assertSame(2, $config->maxItemQuantity);
         self::assertSame(250.0, $config->maxCartValue);
-        self::assertTrue($config->killSwitch);
+        self::assertFalse($config->assistantEnabled);
         self::assertSame(50, $config->dailyRequestCap);
         self::assertSame(3, $config->maxToolCallsPerTurn);
         self::assertSame(2, $config->requestsPerMinute);
     }
 
-    public function testAnUnsetSettingFallsBackToTheDefaultRatherThanToZero(): void
+    public function testAddToCartAndTheAssistantItselfBothDefaultToOn(): void
     {
-        // `getInt()` returns 0 for an absent key, and 0 is a *valid but catastrophic* value here:
-        // maxToolCallsPerTurn 0 means no tool may ever run, dailyRequestCap 0 means every request
-        // is refused. A shop that never opened config.xml must get the documented defaults, not a
-        // silently disabled assistant.
-        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService()))->forSalesChannel(self::CHANNEL);
-
-        self::assertSame(5, $config->maxItemQuantity);
-        self::assertSame(1000.0, $config->maxCartValue);
-        self::assertSame(500, $config->dailyRequestCap);
-        self::assertSame(5, $config->maxToolCallsPerTurn);
-        // Zero here would refuse every shopper's very first message.
-        self::assertSame(12, $config->requestsPerMinute);
-    }
-
-    public function testAddToCartDefaultsToOnAndTheKillSwitchToOff(): void
-    {
-        // These two cannot use "absent means default" the way the ints do, because false is a
-        // legitimate stored value. `getBool()` returns false for both an absent key and a stored
-        // false — so enableAddToCart is read through get() to tell them apart, while killSwitch
-        // reads false either way, which is the safe direction.
+        // Neither can use "absent means default" the way the ints do, because false is a legitimate
+        // stored value: `getBool()` returns false for an absent key *and* for a stored false, so
+        // both are read through the raw get() to tell them apart. It matters more for
+        // `assistantEnabled` than it ever did for the switch it replaced — the old `killSwitch`
+        // read false either way, which happened to be the safe direction. This one does not have
+        // that luxury: read it wrong and a shop that never opened the form ships with a dead
+        // assistant.
         $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService()))->forSalesChannel(self::CHANNEL);
 
         self::assertTrue($config->enableAddToCart);
-        self::assertFalse($config->killSwitch);
+        self::assertTrue($config->assistantEnabled);
+    }
+
+    public function testAStoredFalseForTheAssistantItselfSurvives(): void
+    {
+        // The direction the migration exists to protect: a merchant who stopped the assistant must
+        // stay stopped.
+        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
+            self::PREFIX . 'assistantEnabled' => false,
+        ])))->forSalesChannel(self::CHANNEL);
+
+        self::assertFalse($config->assistantEnabled);
+    }
+
+    public function testLoggingDefaultsToOn(): void
+    {
+        // It writes no shopper text, and a merchant who has to discover a logging switch before
+        // they can debug a failing assistant has already had the bad afternoon it would prevent.
+        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService()))->forSalesChannel(self::CHANNEL);
+
+        self::assertTrue($config->logTraces);
     }
 
     public function testAStoredFalseForAddToCartIsHonouredAndNotMistakenForAbsent(): void
@@ -94,19 +106,22 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertSame(['a2a2', 'b3b3', 'c4c4'], $config->scope->blockedProductIds);
     }
 
-    public function testAllThreeIdListsLandInTheirOwnScopeField(): void
+    public function testBothIdListsLandInTheirOwnScopeField(): void
     {
-        // Mixing these up would block what should merely be out of scope, or vice versa — and
-        // both failures are invisible without reading a trace.
+        // Swapping these would hide a whole branch where one product was meant to go, or the
+        // reverse — and both failures are invisible without reading a trace.
+        //
+        // There used to be a third list, `excludedCategories`, and this test asserted it landed
+        // somewhere of its own. It did, and then `DalCriteriaBuilder` concatenated it straight back
+        // together with the blocked one before filtering — so the assertion was true about the
+        // plumbing and meaningless about the behaviour.
         $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
             self::PREFIX . 'blockedProducts' => 'prod-1',
             self::PREFIX . 'blockedCategories' => 'cat-1',
-            self::PREFIX . 'excludedCategories' => 'cat-2',
         ])))->forSalesChannel(self::CHANNEL);
 
         self::assertSame(['prod-1'], $config->scope->blockedProductIds);
         self::assertSame(['cat-1'], $config->scope->blockedCategoryIds);
-        self::assertSame(['cat-2'], $config->scope->excludeCategoryIds);
     }
 
     public function testAnEmptyListFieldYieldsAnEmptyArrayAndNotAnArrayWithAnEmptyString(): void

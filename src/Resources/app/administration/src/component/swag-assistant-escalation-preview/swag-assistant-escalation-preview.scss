@@ -1,0 +1,91 @@
+/*
+A mock conversation, not a screenshot.
+
+Drawn deliberately *unlike* the real widget: no brand colour, no shadow, no rounded entry point. A
+faithful copy would read as a live preview of this shop's assistant, and a merchant would reasonably
+expect their own greeting and colours in it. This is an illustration of a behaviour, and it should
+look like one.
+*/
+.swag-assistant-escalation-preview {
+    margin-bottom: 24px;
+
+    &__cases {
+        display: grid;
+        gap: 16px;
+        margin-top: 16px;
+        grid-template-columns: 1fr;
+
+        // Side by side is the whole argument — the two outcomes are only informative against each
+        // other. Below this width they stack, and the headings carry the comparison instead.
+        @media (min-width: 900px) {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    &__case {
+        padding: 16px;
+        border: 1px solid #d1d9e0;
+        border-radius: 8px;
+        background: #f9fafb;
+    }
+
+    &__heading {
+        margin: 0 0 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    &__chat {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__shopper,
+    &__assistant {
+        max-width: 92%;
+        margin: 0;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    &__shopper {
+        align-self: flex-end;
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+
+    &__assistant {
+        align-self: flex-start;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #0f172a;
+
+        p {
+            margin: 0;
+        }
+    }
+
+    // A button drawn as a button rather than rendered as one: it is illustrating a control, and a
+    // real `mt-button` here would invite a click that does nothing.
+    &__action {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        background: #0870ff;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    &__note {
+        margin: 12px 0 0;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #64748b;
+    }
+}

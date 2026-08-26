@@ -21,25 +21,30 @@ final class LoggerTraceSinkTest extends TestCase
 
     private const PREFIX = 'SwagAssistantStarterKit.config.';
 
-    public function testItLogsNothingUntilTheMerchantSwitchesItOn(): void
+    public function testItLogsOneLinePerTurnWithoutTheMerchantHavingToFindTheSetting(): void
     {
-        // Default off. A shop that never opened the setting must not start writing a line per turn
-        // into its production log.
+        // **Default on, and it used to be off.** The line carries no shopper text — a channel, an
+        // outcome, a duration — so the case for shipping it off was thin, and the case against was
+        // concrete: the first time a merchant needs to know why replies are failing is exactly when
+        // they discover the logging they needed was never running. Retroactively switching it on
+        // does not produce yesterday's failures.
         $logger = new CollectingLogger();
 
         $this->sink($logger, [])->send('tok', self::CHANNEL, $this->trace());
 
-        self::assertSame([], $logger->records);
-    }
-
-    public function testItLogsOneLinePerTurnWhenSwitchedOn(): void
-    {
-        $logger = new CollectingLogger();
-
-        $this->sink($logger, [self::PREFIX . 'logTraces' => true])->send('tok', self::CHANNEL, $this->trace());
-
         self::assertCount(1, $logger->records);
         self::assertSame('info', $logger->records[0]['level']);
+    }
+
+    public function testItLogsNothingWhenTheMerchantSwitchesItOff(): void
+    {
+        // A stored false is a decision and must survive, the same way `enableAddToCart`'s does — a
+        // default that overrode it would make the switch decorative.
+        $logger = new CollectingLogger();
+
+        $this->sink($logger, [self::PREFIX . 'logTraces' => false])->send('tok', self::CHANNEL, $this->trace());
+
+        self::assertSame([], $logger->records);
     }
 
     public function testTheRecordCarriesTheOutcomeAndTheChannelButNoShopperText(): void

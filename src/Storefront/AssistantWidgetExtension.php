@@ -17,7 +17,7 @@ use Twig\TwigFunction;
  * ## Why the gate lives in PHP
  *
  * `isConfigured()` already encodes what *"this shop can answer"* means — all three credentials
- * present, environment overriding stored config — and `killSwitch` already encodes *"stop
+ * present, environment overriding stored config — and `assistantEnabled` already encodes *"stop
  * everything"*. Re-deriving either in Twig would give a one-owner contract a second owner, which is
  * the duplication AGENTS.md's shared-contracts rule exists to prevent. `SystemConfigLlmSettings`
  * even names this caller in its own doc block: *"the widget needs it to stay hidden on a shop that
@@ -65,7 +65,7 @@ final class AssistantWidgetExtension extends AbstractExtension
             return false;
         }
 
-        return !$this->assistantConfig->forSalesChannel($salesChannelId)->killSwitch;
+        return $this->assistantConfig->forSalesChannel($salesChannelId)->assistantEnabled;
     }
 
     public function theme(string $salesChannelId): WidgetTheme

@@ -241,8 +241,7 @@ final readonly class FacetSet
 final readonly class CatalogScope
 {
     public function __construct(
-        /** @var string[] */ public array $includeCategoryIds = [],
-        /** @var string[] */ public array $excludeCategoryIds = [],
+        /** @var string[] */ public array $includeCategoryIds = [],   // programmatic only
         /** @var string[] */ public array $blockedProductIds = [],
         /** @var string[] */ public array $blockedCategoryIds = [],
         public int $minDescriptionWords = 0,
@@ -276,7 +275,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | # | Stage | Class | Note |
 |---|---|---|---|
 | 0 | Budget | `Policy\RequestBudget` | per-caller window then per-channel daily budget, **before the first database call**. A refusal is a 429 with `Retry-After`, and writes nothing |
-| 1 | Guard | `Policy\GuardCheck` | kill switch. Rejects before any model cost |
+| 1 | Guard | `Policy\GuardCheck` | `assistantEnabled`. Rejects before any model cost |
 | 2 | Session load | `AssistantController` | history + inferred shopper profile |
 | 2b | Page context | `Agent\ShopwareChatTurnRunner` | records `page.context` `{reported: bool, resolved: ?string, category: ?string}`. The reported product id is resolved through `gateway->product($id, $config->scope)` — a **hint, not an authority**: what does not resolve is ignored, so the blocklist and the excluded categories decide what the assistant may see, not the client. A resolved card is registered on the `FactRenderer` and named in the prompt by `Prompt\ViewingContext` as id, name and options — **never a figure**. A reported category id is not resolved at all; it becomes a `ProductQuery` constraint, and `retrieve.without_category` is recorded when a search that found nothing is retried without it |
 | 3 | Understand | *(no separate step)* | With tool calling the model's tool arguments **are** the extracted intent. `SearchProductsTool` records the `understand` stage from its own validated arguments. The guarantee that matters — the model never supplies a field name — is enforced in `QueryBuilder`, not here. Saves one LLM round trip per turn |
@@ -291,7 +290,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 11 | Generate | `Agent\AgentLoop` + LLM | prose + optional tool call. **Not product ids** — see the correction below stage 15 |
 | 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
-| 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 5) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
+| 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 20) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
 | 15 | Record | `Trace\TraceRecorder` | persist conversation + events |
 
 Stages 12 and 13 are the product. Everything else is plumbing.
@@ -432,6 +431,9 @@ tools register their cards with `FactRenderer` — the request-scoped authority 
 > which. It exhausted `maxToolCallsPerTurn` on the fifth call; the turn ended
 > `tool_limit_exceeded` and rendered the **parent** product.
 >
+> *(The default was 5 at the time and is 20 now. The arithmetic below is what forced the return-shape
+> change; raising the budget would only have moved the wall further out.)*
+>
 > That is arithmetic, not a model weakness: **with opaque ids, identifying one of N candidates
 > costs N tool calls**, so any product family larger than the call budget is unanswerable. No
 > fixture family exceeds four variants, which is why it read as run-to-run variance instead of a
@@ -509,7 +511,7 @@ example of each:
 | Add a tool (catalogue) | implement `GroundedToolFactoryInterface`, tag `swag_assistant.grounded_tool_factory` | `SearchProductsToolFactory`, `GetProductToolFactory`, `AddToCartToolFactory` |
 | Change the system prompt | decorate `PromptProviderInterface` | `SystemPromptProvider` |
 | Use another model provider | decorate `LlmPlatformInterface` | `SymfonyAiPlatform` |
-| Send turns to analytics | implement `TraceSinkInterface`, tag `swag_assistant.trace_sink` | `LoggerTraceSink`, off unless `logTraces` |
+| Send turns to analytics | implement `TraceSinkInterface`, tag `swag_assistant.trace_sink` | `LoggerTraceSink`, on unless `logTraces` is switched off |
 | Swap the commerce backend | decorate/replace `CommerceGatewayInterface` | `FixtureCommerceGateway` |
 | Swap conversation persistence | decorate/replace `ConversationStore` | `InMemoryConversationStore` in the suite |
 | Replace the whole turn | decorate/replace `ChatTurnRunnerInterface` | the widest seam there is |
@@ -693,21 +695,35 @@ not to take:
 
 | Window | Setting | Policy | Counted per | Purpose |
 |---|---|---|---|---|
-| Caller | `requestsPerMinute` (12) | sliding | `sha256(salesChannelId + client IP)` | the abuse defence: the only thing that stops a scripted loop |
-| Channel | `dailyRequestCap` (500) | fixed, 24h | sales channel | the merchant's spend ceiling |
+| Caller | `requestsPerMinute` (60) | sliding | `sha256(salesChannelId + client IP)` | the abuse defence: the only thing that stops a scripted loop |
+| Channel | `dailyRequestCap` (**0 — off**) | fixed, 24h | sales channel | the merchant's spend ceiling, opt-in |
+
+**`0` means unlimited on both, and it used to mean "refuse everything".** The old reading made zero
+the most destructive value a merchant could put in a numeric field — reachable by clearing a box,
+and redundant besides, since `GuardCheck` already answers "this shop is switched off" with a reason
+a trace can record. What zero could not express, and now does, is *no ceiling*.
+
+The daily cap ships off for the same reason: 500 was a number nobody chose, and a good day's traffic
+turned the assistant off by mid-afternoon with nothing in the interface explaining why. The caller
+window stays on, because it is the only control standing between a public unauthenticated endpoint
+and a scripted loop — and 60 a minute is roughly twenty times what a person typing produces, so no
+real shopper meets it.
 
 Both are consumed in `AssistantController::chat()` **before the conversation row is written** — a
 throttle that stores something first is an amplifier, not a defence — and a refusal answers 429 with
 `Retry-After` rather than a traced turn. The caller window is consumed unconditionally, including for
-a shop whose kill switch is on, so no branch is an unthrottled path. The daily budget is consumed
-only when a turn could actually spend, so a switched-off shop is reported as `kill_switch` by
-`GuardCheck` rather than as "out of budget".
+a shop that is switched off, so no branch is an unthrottled path. The daily budget is consumed only
+when a turn could actually spend, so a switched-off shop is reported as `kill_switch` by `GuardCheck`
+rather than as "out of budget". The reason code kept its old name deliberately: it is a recorded
+value in every trace already written, and renaming it would only make the shop's own history harder
+to search.
 
-The daily cap alone would be a denial-of-service vector: one script could burn a day's budget in
+A daily cap alone would be a denial-of-service vector: one script could burn a day's budget in
 seconds and leave real shoppers with a dead assistant until it reset. The caller window raises the
-cost of that from seconds to **about 40 minutes** at the default settings — which is a mitigation,
-not a fix. A caller that is patient enough can still exhaust a whole sales channel's budget on its
-own, and every other shopper then gets 429 until the window rolls over.
+cost of that — but only to a delay, not to a wall. A caller that is patient enough can still exhaust
+a whole sales channel's budget on its own, and every other shopper then gets 429 until the window
+rolls over. **A merchant who switches the daily cap on is choosing that trade**, which is the second
+reason it is off by default: it is a spend ceiling that a hostile caller can spend on their behalf.
 
 Closing that properly needs a third window: a per-caller *daily* limit, so one address cannot hold
 more than a fraction of the channel's budget. It is deliberately not in v0 — it is a third number for
@@ -723,12 +739,41 @@ from one address and shares one caller window. Trusting `X-Forwarded-For` uncond
 worse — a caller could then pick its own bucket per request — so this is the shop's configuration to
 get right, not something the plugin can decide.
 
+### Catalogue scope
+
+Two lists, and they used to be three. `excludedCategories` and `blockedCategories` filtered
+**identically** — `DalCriteriaBuilder` concatenated them into one array before building a single
+filter, and the fixture gateway OR-ed two equivalent `array_intersect` checks. One control, two
+names, two places for a merchant to look and get it half right.
+
+The only asymmetry ran the wrong way: `BlocklistFilter`'s second-line-of-defence pass covered the
+list called *blocked* and not the one called *excluded*, so the field with the softer name was the
+one checked twice. `Migration1788134400MergeExcludedIntoBlockedCategories` folds stored values into
+`blockedCategories` — dropping the field without moving its contents would un-hide categories a
+merchant had deliberately hidden, silently.
+
+What survives is a distinction that can be stated in one line: `blockedProducts` is *this product*
+(and every variant beneath it, because the criteria builder also matches `parentId`);
+`blockedCategories` is *this whole branch*.
+
+**A soft scope was never implemented.** If "the assistant does not volunteer this, but will discuss
+it when a shopper names the product outright" is ever wanted, it needs building — there is no notion
+of *retrieved but not offered* anywhere in the retrieval layer.
+
 ### Cart guardrails
 
 From the harness profile — cheap, and they close a real failure mode where the model adds
 999 items or builds a five-figure cart:
 
-`maxItemQuantity` (default 5) · `maxCartValue` (default 1000, sales-channel currency)
+`maxItemQuantity` · `maxCartValue` (sales-channel currency) — **both default to 0, meaning no
+limit**, and are skipped entirely rather than compared when unset.
+
+They shipped at 5 and 1000, and both numbers were guesses: 1000 in an unspecified currency against
+an unknown catalogue blocks a genuine sale the first time a shop sells one expensive thing, and 5 of
+one item is a restriction on a shopper's own cart that the shop's own checkout is better placed to
+make. `AssistantConfig::hasItemQuantityLimit()` / `hasCartValueLimit()` are read at both call sites
+rather than the raw fields compared — a bare `> $limit` against an unlimited `0` blocks every add,
+which is the failure mode this phrasing exists to prevent.
 
 Both are enforced in `AddToCartTool` and produce a `cart_limit` decision, and both read the
 *live* cart — `maxCartValue` against `gateway->cart()->total`, `maxItemQuantity` against that
@@ -872,9 +917,9 @@ eyeball diff.
 `config.xml`, v0:
 
 `llmBaseUrl` · `llmModel` · `llmApiKey` (env var preferred; `config.xml` is the fallback —
-Shopware system config has no real secret storage) · `agentVoice` · `excludedCategories` ·
+Shopware system config has no real secret storage) · `agentVoice` ·
 `blockedProducts` · `blockedCategories` · `enableAddToCart` · `maxItemQuantity` ·
-`maxCartValue` · `killSwitch` · `maxToolCallsPerTurn` · `requestsPerMinute` ·
+`maxCartValue` · `assistantEnabled` · `maxToolCallsPerTurn` · `requestsPerMinute` ·
 `dailyRequestCap` · `traceRetentionDays`
 
 ## Eval slice (v0)
@@ -928,4 +973,4 @@ of it.
 | Search is keyword-based, not semantic | v0 is facet-grounded retrieval (Tier 0) only. Query expansion is deferred |
 | No native compatibility concept in Shopware | No mapping configured means the capability is absent, not guessed |
 | Trace volume in the merchant DB | Retention task from day one |
-| Public `POST /assistant/chat` | Two windows in `RequestBudget`, consumed before the first database call: a per-caller sliding window (`requestsPerMinute`) as the abuse defence, and a per-channel daily budget (`dailyRequestCap`) as the spend ceiling. **This row described the design for months while `dailyRequestCap` was enforced nowhere** — `GuardCheck` compared it against a count no caller ever supplied. A control named in a document and absent from the request path is worse than one that was never promised |
+| Public `POST /assistant/chat` | Two windows in `RequestBudget`, consumed before the first database call: a per-caller sliding window (`requestsPerMinute`, on by default) as the abuse defence, and an opt-in per-channel daily budget (`dailyRequestCap`, off by default) as the spend ceiling. **This row described the design for months while `dailyRequestCap` was enforced nowhere** — `GuardCheck` compared it against a count no caller ever supplied. A control named in a document and absent from the request path is worse than one that was never promised |

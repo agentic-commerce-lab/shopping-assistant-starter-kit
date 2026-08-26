@@ -42,7 +42,7 @@ final class AssistantWidgetGateTest extends AssistantWidgetTestCase
     public function testTheWidgetIsHiddenWhenTheKillSwitchIsOn(): void
     {
         self::assertFalse($this->extension($this->configured([
-            self::PREFIX . 'killSwitch' => true,
+            self::PREFIX . 'assistantEnabled' => false,
         ]))->isEnabled(self::CHANNEL));
     }
 
@@ -60,12 +60,25 @@ final class AssistantWidgetGateTest extends AssistantWidgetTestCase
         self::assertTrue($this->extension($this->configured())->isEnabled(self::CHANNEL));
     }
 
-    public function testTheWidgetSurvivesAKillSwitchTurnedOffFromTheCli(): void
+    public function testAnAssistantStoppedFromTheCliActuallyHidesTheWidget(): void
     {
-        // Found by running this against the real shop, not by review. `bin/console system:config:set
-        // ... killSwitch false` stores the string "false", `(bool) "false"` is true, and the widget
-        // hid itself on a shop whose kill switch was demonstrably off.
-        $extension = $this->extension($this->configured([self::PREFIX . 'killSwitch' => 'false']));
+        // The same string trap as before, now pointed the other way — and it got more dangerous in
+        // the rename, which is why it keeps a test.
+        //
+        // `bin/console system:config:set ... assistantEnabled false` stores the string `"false"`,
+        // and `(bool) "false"` is `true`. Under the old `killSwitch` name a plain cast produced a
+        // widget that hid itself on a shop that was demonstrably running: annoying, and visible
+        // immediately. Under this name the same cast reads a stopped assistant as **enabled** and
+        // serves it to shoppers — a merchant's deliberate stop silently ignored, in the direction
+        // nobody checks. `FILTER_VALIDATE_BOOLEAN` is what keeps this passing.
+        $extension = $this->extension($this->configured([self::PREFIX . 'assistantEnabled' => 'false']));
+
+        self::assertFalse($extension->isEnabled(self::CHANNEL));
+    }
+
+    public function testAnAssistantExplicitlyEnabledFromTheCliStillRenders(): void
+    {
+        $extension = $this->extension($this->configured([self::PREFIX . 'assistantEnabled' => 'true']));
 
         self::assertTrue($extension->isEnabled(self::CHANNEL));
     }

@@ -1,0 +1,67 @@
+{% block swag_assistant_escalation_preview %}
+<div class="swag-assistant-escalation-preview">
+
+    {% block swag_assistant_escalation_preview_notice %}
+    <mt-banner
+        variant="info"
+        :closable="false"
+    >
+        {{ $tc('swag-assistant-settings.escalation.nothingIsSent') }}
+    </mt-banner>
+    {% endblock %}
+
+    {% block swag_assistant_escalation_preview_cases %}
+    <div class="swag-assistant-escalation-preview__cases">
+
+        {% block swag_assistant_escalation_preview_with_link %}
+        <section class="swag-assistant-escalation-preview__case">
+            <h4 class="swag-assistant-escalation-preview__heading">
+                {{ $tc('swag-assistant-settings.escalation.withLinkHeading') }}
+            </h4>
+
+            <div class="swag-assistant-escalation-preview__chat">
+                <p class="swag-assistant-escalation-preview__shopper">
+                    {{ $tc('swag-assistant-settings.escalation.shopperAsks') }}
+                </p>
+
+                <div class="swag-assistant-escalation-preview__assistant">
+                    <p>{{ $tc('swag-assistant-settings.escalation.withLinkReply') }}</p>
+                    <span class="swag-assistant-escalation-preview__action">
+                        {{ $tc('swag-assistant-settings.escalation.withLinkAction') }}
+                    </span>
+                </div>
+            </div>
+
+            <p class="swag-assistant-escalation-preview__note">
+                {{ $tc('swag-assistant-settings.escalation.withLinkNote') }}
+            </p>
+        </section>
+        {% endblock %}
+
+        {% block swag_assistant_escalation_preview_without_link %}
+        <section class="swag-assistant-escalation-preview__case">
+            <h4 class="swag-assistant-escalation-preview__heading">
+                {{ $tc('swag-assistant-settings.escalation.withoutLinkHeading') }}
+            </h4>
+
+            <div class="swag-assistant-escalation-preview__chat">
+                <p class="swag-assistant-escalation-preview__shopper">
+                    {{ $tc('swag-assistant-settings.escalation.shopperAsks') }}
+                </p>
+
+                <div class="swag-assistant-escalation-preview__assistant">
+                    <p>{{ $tc('swag-assistant-settings.escalation.withoutLinkReply') }}</p>
+                </div>
+            </div>
+
+            <p class="swag-assistant-escalation-preview__note">
+                {{ $tc('swag-assistant-settings.escalation.withoutLinkNote') }}
+            </p>
+        </section>
+        {% endblock %}
+
+    </div>
+    {% endblock %}
+
+</div>
+{% endblock %}

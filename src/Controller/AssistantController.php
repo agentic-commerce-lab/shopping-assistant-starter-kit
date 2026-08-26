@@ -102,7 +102,7 @@ class AssistantController extends StorefrontController
         // runner, which records `kill_switch` in the trace as that setting's help text promises;
         // consuming the budget here first would answer "out of budget" to a shop that is simply off
         // — the wrong reason, and one no trace would ever show.
-        if ($refusal->accepted && !$config->killSwitch) {
+        if ($refusal->accepted && $config->assistantEnabled) {
             $refusal = $this->budget->consumeDailyBudget($config, $salesChannelId);
         }
 

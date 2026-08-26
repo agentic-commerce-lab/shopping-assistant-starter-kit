@@ -37,14 +37,14 @@ final class CategoryConstraintTest extends TestCase
 
     public function testTheConstraintNarrowsWithinTheMerchantScopeRatherThanEscapingIt(): void
     {
-        // The whole of P8: a shopper standing in a category a merchant excluded gets nothing, not
+        // The whole of P8: a shopper standing in a category a merchant blocked gets nothing, not
         // access. If this ever returns rows, page context has become a policy bypass.
         $gateway = FixtureCommerceGateway::fromFile(self::catalogFixturePath());
         $category = self::aCategoryInTheFixture($gateway);
 
         $cards = $gateway->search(
             new ProductQuery(limit: 50, categoryId: $category),
-            new CatalogScope(excludeCategoryIds: [$category]),
+            new CatalogScope(blockedCategoryIds: [$category]),
         );
 
         self::assertSame([], $cards);

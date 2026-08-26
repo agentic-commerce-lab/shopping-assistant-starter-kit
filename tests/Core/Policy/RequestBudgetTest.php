@@ -87,24 +87,50 @@ final class RequestBudgetTest extends TestCase
         self::assertFalse($budget->consumeDailyBudget($config, self::CHANNEL)->accepted);
     }
 
-    public function testAZeroLimitRefusesEveryRequestRatherThanMeaningUnlimited(): void
+    public function testAZeroLimitMeansUnlimitedRatherThanRefusingEveryRequest(): void
     {
-        // `SystemConfigAssistantConfig` maps an *absent* setting to the documented default, so a
-        // stored 0 is a deliberate "refuse everything" — the same reading its docblock already gives
-        // `dailyRequestCap: 0`. Treating 0 as unlimited would invert a merchant's intent.
+        // **This assertion is the inverse of the one it replaced, and the reversal is the fix.**
+        //
+        // A stored 0 used to refuse everything, which made zero the most destructive value a
+        // merchant could type into a numeric field — reachable by clearing a box, and describing
+        // itself in the form as a limit. It was also redundant: the assistant already has a
+        // deliberate off switch, and `GuardCheck` is what answers "this shop is switched off" with
+        // a reason a trace can record. What zero *could not* express, and now does, is the thing
+        // merchants actually want from a spend ceiling they never asked for: no ceiling.
         $budget = new RequestBudget(new InMemoryStorage());
         $config = new AssistantConfig(dailyRequestCap: 0, requestsPerMinute: 0);
 
-        self::assertFalse($budget->consumeClientWindow($config, 'client-a')->accepted);
-        self::assertFalse($budget->consumeDailyBudget($config, self::CHANNEL)->accepted);
+        foreach (range(1, 200) as $ignored) {
+            self::assertTrue($budget->consumeClientWindow($config, 'client-a')->accepted);
+            self::assertTrue($budget->consumeDailyBudget($config, self::CHANNEL)->accepted);
+        }
+    }
+
+    public function testANegativeLimitIsUnlimitedTooRatherThanRejectingEverything(): void
+    {
+        // `SystemConfigAssistantConfig` already folds negatives into 0 before they get here, so this
+        // pins the second line of defence: a caller constructing an AssistantConfig directly — the
+        // probe command, the eval suite, a test — must not be able to produce a budget that refuses
+        // unconditionally by passing a number no form could have produced.
+        $budget = new RequestBudget(new InMemoryStorage());
+        $config = new AssistantConfig(dailyRequestCap: -1, requestsPerMinute: -1);
+
+        self::assertTrue($budget->consumeClientWindow($config, 'client-a')->accepted);
+        self::assertTrue($budget->consumeDailyBudget($config, self::CHANNEL)->accepted);
     }
 
     public function testARejectionAlwaysCarriesARetryAfterOfAtLeastOneSecond(): void
     {
         // The value goes into a `Retry-After` header. Zero would invite an immediate retry, which is
         // the request this verdict just refused.
+        //
+        // A real limit has to be exhausted to get a rejection now — there is no longer a setting
+        // that refuses on the first call, which is the point of the two tests above.
         $budget = new RequestBudget(new InMemoryStorage());
-        $config = new AssistantConfig(dailyRequestCap: 0, requestsPerMinute: 0);
+        $config = new AssistantConfig(dailyRequestCap: 1, requestsPerMinute: 1);
+
+        $budget->consumeClientWindow($config, 'client-a');
+        $budget->consumeDailyBudget($config, self::CHANNEL);
 
         self::assertGreaterThanOrEqual(1, $budget->consumeClientWindow($config, 'client-a')->retryAfterSeconds);
         self::assertGreaterThanOrEqual(1, $budget->consumeDailyBudget($config, self::CHANNEL)->retryAfterSeconds);

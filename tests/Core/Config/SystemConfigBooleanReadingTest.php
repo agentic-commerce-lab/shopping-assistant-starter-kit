@@ -12,14 +12,16 @@ use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
  *
  * `bin/console system:config:set` writes **every** value as a string, so a guardrail turned off from
  * the CLI arrives as the string `"false"` — and `(bool) "false"` is `true` in PHP. Measured in the
- * running shop: `system_config` held `{"_value":"false"}` for `killSwitch` while the assistant read
- * it as ON. The admin UI sends real JSON booleans and is unaffected, which is exactly why this
+ * running shop: `system_config` held `{"_value":"false"}` for the off switch while the assistant
+ * read it as ON. The admin UI sends real JSON booleans and is unaffected, which is exactly why this
  * stayed invisible — and why `docs/HANDOFF.md`'s CLI round-trip evidence proved storage rather than
  * interpretation.
  *
- * The direction that matters is `enableAddToCart`: its help text promises the tool "is never
- * constructed" when off, so under a plain cast a merchant disabling it from the CLI would get the
- * tool constructed anyway — a guardrail failing **open** while the form shows it disabled.
+ * Two directions matter. `enableAddToCart`'s help text promises the tool "is never constructed" when
+ * off, so under a plain cast a merchant disabling it from the CLI would get the tool constructed
+ * anyway — a guardrail failing **open** while the form shows it disabled. `assistantEnabled` is the
+ * same trap pointed at the product itself: a cast would read a CLI-stored `"false"` as *enabled* and
+ * quietly restart an assistant somebody deliberately stopped.
  */
 final class SystemConfigBooleanReadingTest extends TestCase
 {
@@ -29,7 +31,7 @@ final class SystemConfigBooleanReadingTest extends TestCase
 
     public function testABooleanStoredAsTheStringFalseIsNotReadAsTrue(): void
     {
-        self::assertFalse($this->config(['killSwitch' => 'false'])->killSwitch);
+        self::assertFalse($this->config(['assistantEnabled' => 'false'])->assistantEnabled);
     }
 
     public function testAGuardrailDisabledFromTheCliDoesNotFailOpen(): void
@@ -44,7 +46,7 @@ final class SystemConfigBooleanReadingTest extends TestCase
 
     public function testABooleanStoredAsTheStringTrueStillReadsAsTrue(): void
     {
-        self::assertTrue($this->config(['killSwitch' => 'true'])->killSwitch);
+        self::assertTrue($this->config(['assistantEnabled' => 'true'])->assistantEnabled);
     }
 
     public function testARealBooleanIsStillHonoured(): void
@@ -55,11 +57,11 @@ final class SystemConfigBooleanReadingTest extends TestCase
 
     public function testAnAbsentKeyStillFallsBackToTheDocumentedDefault(): void
     {
-        // enableAddToCart defaults on, killSwitch defaults off. Neither is stored here.
+        // Both default on. Neither is stored here.
         $config = $this->config([]);
 
         self::assertTrue($config->enableAddToCart);
-        self::assertFalse($config->killSwitch);
+        self::assertTrue($config->assistantEnabled);
     }
 
     /**

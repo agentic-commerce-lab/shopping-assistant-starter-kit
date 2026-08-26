@@ -52,13 +52,26 @@ final class AssistantThrottleTest extends AssistantEndpointTestCase
 
     public function testARefusedRequestStartsNoConversationAndWritesNoTurn(): void
     {
-        $controller = $this->controller($this->configuredWith([self::PREFIX . 'requestsPerMinute' => 0]));
+        // A limit of 1, exhausted, rather than a limit of 0. Zero means *unlimited* now, so the
+        // only way to reach a refusal is the way a real caller reaches one — which is the more
+        // honest test anyway: it proves the second request writes nothing, where the old one only
+        // ever proved the first request did.
+        $controller = $this->controller($this->configuredWith([self::PREFIX . 'requestsPerMinute' => 1]));
 
-        $response = $controller->chat($this->post(['message' => 'hello']), $this->context());
+        $controller->chat($this->post(['message' => 'hello']), $this->context());
+
+        $conversationsBefore = $this->store->startedConversations;
+        $callsBefore = $this->runner->calls;
+
+        $response = $controller->chat($this->post(['message' => 'again']), $this->context());
 
         self::assertSame(Response::HTTP_TOO_MANY_REQUESTS, $response->getStatusCode());
-        self::assertSame(0, $this->store->startedConversations, 'a refused request must write nothing');
-        self::assertSame(0, $this->runner->calls);
+        self::assertSame(
+            $conversationsBefore,
+            $this->store->startedConversations,
+            'a refused request must write nothing',
+        );
+        self::assertSame($callsBefore, $this->runner->calls);
     }
 
     public function testTwoShoppersDoNotShareOneWindow(): void
@@ -93,11 +106,11 @@ final class AssistantThrottleTest extends AssistantEndpointTestCase
 
     public function testASwitchedOffAssistantIsAnsweredByTheRunnerRatherThanByTheBudget(): void
     {
-        // `killSwitch` help text promises the trace records why it stopped, and `GuardCheck` is what
+        // The off switch's help text promises the trace records why it stopped, and `GuardCheck` is what
         // writes that. Consuming the daily budget first would answer 429 to a shop that is simply
         // switched off — the wrong reason, and one that never reaches a trace at all.
         $controller = $this->controller($this->configuredWith([
-            self::PREFIX . 'killSwitch' => true,
+            self::PREFIX . 'assistantEnabled' => false,
             self::PREFIX . 'dailyRequestCap' => 0,
         ]));
 
@@ -112,7 +125,7 @@ final class AssistantThrottleTest extends AssistantEndpointTestCase
         // The branch above must not become an unthrottled path: the kill switch stops model spend,
         // not the database writes a request still performs on its way to being refused.
         $controller = $this->controller($this->configuredWith([
-            self::PREFIX . 'killSwitch' => true,
+            self::PREFIX . 'assistantEnabled' => false,
             self::PREFIX . 'requestsPerMinute' => 1,
         ]));
 

@@ -92,7 +92,7 @@ final class PromptTraceTest extends TestCase
     {
         // The kill switch stops the turn before the message bag is assembled. Recording a prompt for
         // a turn that never had one would be inventing evidence.
-        $config = new AssistantConfig(killSwitch: true);
+        $config = new AssistantConfig(assistantEnabled: false);
         $bundle = $this->bundle($config);
 
         (new AssistantRunner($config, $bundle))->run('hello', new MessageBag());

@@ -20,7 +20,7 @@ final class GuardCheckTest extends TestCase
 {
     public function testBlocksWhenKillSwitchIsOn(): void
     {
-        $decision = (new GuardCheck())->check(new AssistantConfig(killSwitch: true));
+        $decision = (new GuardCheck())->check(new AssistantConfig(assistantEnabled: false));
 
         self::assertSame(PolicyVerdict::Block, $decision->verdict);
         self::assertSame('kill_switch', $decision->reasonCode);

@@ -15,11 +15,15 @@ use Symfony\Component\RateLimiter\Storage\StorageInterface;
  *
  * - **The client window** is the abuse defence. It is per caller and short, and it is the only
  *   control that stops a scripted loop. It is consumed *unconditionally*, before any database read
- *   or write — a defence that first stores something is an amplifier, not a defence.
- * - **The daily budget** is the merchant's spend ceiling, per sales channel. On its own it would be
- *   a denial-of-service vector: one script could burn a whole day's budget and leave real shoppers
- *   with a dead assistant until it reset. It is safe only *because* the client window bounds who can
- *   spend it, which is why both exist.
+ *   or write — a defence that first stores something is an amplifier, not a defence. It ships **on**,
+ *   at 60 a minute: that is roughly twenty times what a shopper typing can produce and still bounds
+ *   a script, which is the shape a default on a public endpoint should have.
+ * - **The daily budget** is the merchant's spend ceiling, per sales channel. It ships **off**,
+ *   because a ceiling nobody chose is not a safety feature — the old default of 500 turned a good
+ *   day's traffic into a dead assistant by mid-afternoon, with no error a merchant could see. On its
+ *   own it would also be a denial-of-service vector: one script could burn a whole day's budget and
+ *   leave real shoppers with nothing until it reset. It is safe only *because* the client window
+ *   bounds who can spend it, which is why the client window is the one that stays on.
  *
  * `dailyRequestCap` used to be enforced nowhere at all: {@see GuardCheck} implemented the comparison
  * correctly, but the storefront path constructed
@@ -95,11 +99,17 @@ final readonly class RequestBudget
     private function consume(RateWindow $window, string $key): BudgetVerdict
     {
         if ($window->limit < 1) {
-            // A stored 0 means "refuse everything", matching how SystemConfigAssistantConfig already
-            // reads `dailyRequestCap: 0`. Answered here rather than by the limiter, which would need
-            // a token consumed against a limit that can never accept one — and whose `Retry-After`
-            // would then read as one second for a setting that is off indefinitely.
-            return BudgetVerdict::reject($window->reasonCode, $window->seconds);
+            // **Zero means unlimited, and it used to mean the opposite.**
+            //
+            // A stored 0 refused every request. That made zero the most destructive value a merchant
+            // could type into a numeric field — in a form that already carries a deliberate off
+            // switch, so the behaviour was not even reachable except by accident. Worse, it left
+            // *"do not limit this"* with nothing to express itself as: a merchant who wanted no
+            // daily ceiling had to invent a number large enough to never trip.
+            //
+            // Answered here rather than by the limiter, which would otherwise need a token consumed
+            // against an infinite limit on every request for no result.
+            return BudgetVerdict::accept();
         }
 
         $factory = new RateLimiterFactory([

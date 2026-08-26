@@ -20,15 +20,20 @@ namespace Swag\AssistantStarterKit\Core\Policy;
  * {@see RequestBudget}, at the HTTP boundary, where a refusal costs neither a database write nor a
  * model call. Keeping a second copy here is what let the two drift apart in the first place.
  *
- * What remains is the kill switch, which needs no count and belongs per turn: it is the merchant's
- * deliberate off switch, and every entry point — the storefront, the probe command, the eval suite —
- * must honour it.
+ * What remains is the off switch, which needs no count and belongs per turn: it is the merchant's
+ * deliberate stop, and every entry point — the storefront, the probe command, the eval suite — must
+ * honour it.
+ *
+ * `assistantEnabled` is read rather than a `killSwitch` flag, and the inversion is the whole change:
+ * the setting is now stated in the direction the admin toggle is drawn. The blocked **reason code**
+ * stays `kill_switch` deliberately. It is a recorded value in every trace already written, and
+ * renaming it would buy a tidier string at the cost of making the shop's own history unsearchable.
  */
 final class GuardCheck
 {
     public function check(AssistantConfig $config): PolicyDecision
     {
-        if ($config->killSwitch) {
+        if (!$config->assistantEnabled) {
             return PolicyDecision::block('kill_switch', 'The assistant is switched off.');
         }
 

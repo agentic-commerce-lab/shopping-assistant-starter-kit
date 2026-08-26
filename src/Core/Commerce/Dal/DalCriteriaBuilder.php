@@ -93,9 +93,8 @@ final readonly class DalCriteriaBuilder
             $exclusions[] = new EqualsAnyFilter('parentId', $scope->blockedProductIds);
         }
 
-        $blockedCategories = [...$scope->blockedCategoryIds, ...$scope->excludeCategoryIds];
-        if ($blockedCategories !== []) {
-            $exclusions[] = new EqualsAnyFilter('categoriesRo.id', $blockedCategories);
+        if ($scope->blockedCategoryIds !== []) {
+            $exclusions[] = new EqualsAnyFilter('categoriesRo.id', $scope->blockedCategoryIds);
         }
 
         if ($exclusions === []) {

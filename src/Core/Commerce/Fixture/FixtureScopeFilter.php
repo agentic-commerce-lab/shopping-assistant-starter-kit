@@ -46,10 +46,7 @@ final class FixtureScopeFilter
             return false;
         }
 
-        if (
-            array_intersect($unit->categoryPath, $scope->blockedCategoryIds) !== []
-            || array_intersect($unit->categoryPath, $scope->excludeCategoryIds) !== []
-        ) {
+        if (array_intersect($unit->categoryPath, $scope->blockedCategoryIds) !== []) {
             return false;
         }
 

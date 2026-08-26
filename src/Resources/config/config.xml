@@ -3,132 +3,174 @@
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
 
     <card>
+        <name>assistantStatus</name>
+        <title>Assistant status</title>
+        <subtitle>Two switches, and they do different things. The first stops the assistant from
+            answering at all. The second only hides it from your storefront.</subtitle>
+
+        <component name="swag-assistant-status-switch">
+            <name>assistantEnabled</name>
+        </component>
+
+        <input-field type="bool">
+            <name>widgetEnabled</name>
+            <label>Show the assistant in your storefront</label>
+            <defaultValue>true</defaultValue>
+            <helpText>Turn this off to remove the assistant from your shop pages while leaving it
+                running. The chat endpoint stays reachable, so your own interface built against it
+                keeps working — that is the difference between this switch and the one above.
+                The assistant also hides itself when no model is configured.</helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <name>languageModel</name>
         <title>Language model</title>
+        <subtitle>The assistant cannot answer anything until a model is set here.</subtitle>
 
         <input-field type="text">
             <name>llmBaseUrl</name>
             <label>OpenAI-compatible base URL</label>
+            <placeholder>https://api.openai.com/v1</placeholder>
             <helpText>Any OpenAI-compatible chat completions endpoint (Azure, OpenRouter, a local
-                model). The URL is validated on every request to block egress into private
-                networks; a private or loopback address is rejected.</helpText>
+                model). The URL is checked on every request to make sure it points outside your
+                own network; a private or loopback address is rejected.</helpText>
         </input-field>
 
         <input-field type="text">
             <name>llmModel</name>
             <label>Model</label>
-            <helpText>The assistant is inert until this is set. A weak model reads as a bad
-                product: prefer a model with reliable tool calling.</helpText>
+            <placeholder>gpt-4o-mini</placeholder>
+            <helpText>The assistant is inert until this is set. Choose a model that handles tool
+                calling reliably — a weak model here reads to your shoppers as a bad product, not
+                as a configuration choice.</helpText>
         </input-field>
 
         <input-field type="password">
             <name>llmApiKey</name>
             <label>API key</label>
-            <helpText>Prefer an environment variable. Shopware system config has no real secret
-                storage, so a key entered here is readable by anyone with config access and is
-                included in database backups.</helpText>
+            <helpText>Prefer an environment variable. Shopware's settings have no real secret
+                storage, so a key entered here can be read by anyone with config access and ends up
+                in database backups.</helpText>
         </input-field>
     </card>
 
     <card>
+        <name>voiceAndScope</name>
         <title>Voice and catalogue scope</title>
+        <subtitle>Anything listed here is hidden from the assistant entirely: it is never looked up,
+            so it cannot be mentioned, recommended or added to a cart.</subtitle>
 
         <input-field type="textarea">
             <name>agentVoice</name>
             <label>Agent voice</label>
-            <helpText>Tone and persona only. This text cannot grant the assistant a capability:
-                what it may do is decided by which tools are constructed, never by instruction.</helpText>
-        </input-field>
-
-        <input-field type="textarea">
-            <name>excludedCategories</name>
-            <label>Excluded category IDs</label>
-            <helpText>One ID per line. Products in these categories are never retrieved.</helpText>
+            <placeholder>Warm and concise. Speak like a knowledgeable shop assistant, not a
+                salesperson. Never oversell — if something is not a good fit, say so.</placeholder>
+            <helpText>Tone and personality only. Nothing written here can give the assistant a new
+                ability: what it is allowed to do is decided by the switches in this form, never by
+                instructions in this box.</helpText>
         </input-field>
 
         <input-field type="textarea">
             <name>blockedProducts</name>
             <label>Blocked product IDs</label>
-            <helpText>One ID per line. Blocked products never enter the model's context and never
-                appear in a reply — the block is a retrieval filter, not a prompt instruction.</helpText>
+            <placeholder>018c4f2a9b7d73f1a4e2c8d5b6a90312</placeholder>
+            <helpText>One ID per line. Hides this product. Blocking a product that has variants
+                hides all of them, so you do not have to list each colour or size. Blocked products
+                never reach the model and can never appear in a reply — this filters what gets
+                looked up rather than asking the model to behave, so it cannot be talked
+                around.</helpText>
         </input-field>
 
         <input-field type="textarea">
             <name>blockedCategories</name>
             <label>Blocked category IDs</label>
-            <helpText>One ID per line. Same guarantee as blocked products.</helpText>
+            <placeholder>018c4f2a9b7d73f1a4e2c8d5b6a90312</placeholder>
+            <helpText>One ID per line. Hides everything in this category and everything below it.
+                Same guarantee as blocked products.</helpText>
         </input-field>
     </card>
 
     <card>
-        <title>Guardrails</title>
+        <name>limits</name>
+        <title>Limits</title>
+        <subtitle>Everything here is unlimited unless you set a number. Leave a field at 0 and no
+            limit applies.</subtitle>
 
         <input-field type="bool">
             <name>enableAddToCart</name>
-            <label>Allow the assistant to add items to the cart</label>
+            <label>Let the assistant add items to the cart</label>
             <defaultValue>true</defaultValue>
-            <helpText>When off, the add-to-cart tool is never constructed, so the model cannot see
-                it and cannot call it.</helpText>
+            <helpText>When off, the add-to-cart tool is never built, so the model cannot see it and
+                cannot call it. Add buttons disappear from the assistant's product cards too.</helpText>
         </input-field>
 
         <input-field type="int">
             <name>maxItemQuantity</name>
-            <label>Maximum quantity per item</label>
-            <defaultValue>5</defaultValue>
-            <helpText>Checked against the live cart, not against a single call, so repeated small
-                additions cannot accumulate past it.</helpText>
+            <label>Most units of one item the assistant may add</label>
+            <defaultValue>0</defaultValue>
+            <placeholder>0 — no limit</placeholder>
+            <helpText>Counted against the live cart, not against a single request, so a model
+                cannot get around it by adding one at a time. Leave at 0 unless you have a reason —
+                it is the shopper's own cart, and your checkout still decides what is a real
+                order.</helpText>
         </input-field>
 
         <input-field type="float">
             <name>maxCartValue</name>
-            <label>Maximum cart value</label>
-            <defaultValue>1000</defaultValue>
-            <helpText>In the sales channel's currency. Also checked against the live cart total.</helpText>
+            <label>Highest cart total the assistant may reach</label>
+            <defaultValue>0</defaultValue>
+            <placeholder>0 — no limit</placeholder>
+            <helpText>In your sales channel's currency, checked against the live cart total. Worth
+                leaving at 0 unless your catalogue makes a ceiling meaningful — one expensive
+                product is enough to make a number chosen here block a genuine sale.</helpText>
         </input-field>
 
         <input-field type="int">
             <name>maxToolCallsPerTurn</name>
-            <label>Maximum tool calls per turn</label>
-            <defaultValue>5</defaultValue>
-            <helpText>Bounds cost and stops a model looping. Reaching the cap ends the turn
-                gracefully with whatever was already grounded, never with an error.</helpText>
-        </input-field>
-
-        <input-field type="bool">
-            <name>killSwitch</name>
-            <label>Kill switch — stop the assistant</label>
-            <defaultValue>false</defaultValue>
-            <helpText>Rejects every turn before any model spend, and is reported ahead of the
-                daily cap so the trace records that the assistant was switched off rather than out
-                of budget. The per-shopper limit still applies: switching off stops model spend, not
-                the traffic arriving at the endpoint.</helpText>
+            <label>Most lookups the assistant may make per reply</label>
+            <defaultValue>20</defaultValue>
+            <helpText>The one limit that cannot be switched off, because it is what stops a model
+                that has started looping. Reaching it ends the reply gracefully with whatever was
+                already found, never with an error. A single question can easily use several
+                lookups — a search, a stock check, an add to cart — so lower this only if you are
+                watching costs closely. Blank or 0 falls back to 20.</helpText>
         </input-field>
     </card>
 
     <card>
+        <name>requestLimits</name>
         <title>Request limits</title>
+        <subtitle>Your chat page is public and every message costs you model credit. Only the
+            per-shopper limit is on by default.</subtitle>
 
         <input-field type="int">
             <name>requestsPerMinute</name>
             <label>Messages per minute, per shopper</label>
-            <defaultValue>12</defaultValue>
-            <helpText>The chat endpoint is public and every call spends model tokens, so this is the
-                control that stops a scripted loop. Counted per caller address in a sliding window;
-                a caller past it is refused before the shop reads or writes anything. 0 refuses
-                every request.</helpText>
+            <defaultValue>60</defaultValue>
+            <placeholder>0 — no limit</placeholder>
+            <helpText>This is the one control that stops a script hammering your shop, which is why
+                it ships on. 60 is roughly twenty times what a person typing can produce, so real
+                shoppers never meet it. Counted per visitor in a rolling window; someone over the
+                limit is turned away before your shop reads or writes anything. 0 removes the
+                limit.</helpText>
         </input-field>
 
         <input-field type="int">
             <name>dailyRequestCap</name>
-            <label>Requests per day, whole sales channel</label>
-            <defaultValue>500</defaultValue>
-            <helpText>A spend ceiling, not an abuse defence: it is the per-shopper limit above that
-                stops one caller exhausting this. Counted in a 24-hour window that opens on the
-                first request rather than at midnight, and reset by clearing the shop's cache. 0
-                refuses every request.</helpText>
+            <label>Messages per day, whole sales channel</label>
+            <defaultValue>0</defaultValue>
+            <placeholder>0 — no limit</placeholder>
+            <helpText>A spending ceiling, off by default. Set one only if you want the assistant to
+                stop for the day at a known number — and note that when it trips, every shopper
+                gets nothing until it resets, including the ones who would have bought something.
+                The 24 hours start at the first message of the day, not at midnight, and clearing
+                your shop's cache resets the count.</helpText>
         </input-field>
     </card>
 
     <card>
+        <name>appearance</name>
         <title>Appearance</title>
 
         <input-field type="single-select">
@@ -145,112 +187,118 @@
                     <name>Character — the animated assistant face</name>
                 </option>
             </options>
-            <helpText>Both take your colours. The chat icon is a flat mark and holds still. The
-                character is a shaded sphere with a highlight and expressions that react to the
-                conversation — it floats, blinks and reacts to the pointer, which is more personality
-                than a merchant storefront usually wants. Its shading is derived from your primary
-                colour, so it is your brand either way.</helpText>
+            <helpText>Both take your colours. The chat icon is a flat mark that holds still, and
+                while the assistant is thinking it shows three quiet dots. The character is a
+                shaded sphere that floats, blinks, follows the pointer and changes expression as
+                the conversation goes — more personality than most shops want, and unmistakable
+                when you do.</helpText>
         </input-field>
 
         <input-field type="colorpicker">
             <name>primaryColor</name>
             <label>Primary colour</label>
-            <helpText>The action colour: the entry point, the send button, focus rings. Left empty,
-                the shipped blue is used. Whatever sits on top of it is chosen automatically so it
-                stays readable — a pale colour gets dark text, not white.</helpText>
+            <helpText>The action colour: the entry point, the send button, focus outlines. Left
+                empty, the shipped blue is used. Text on top of it is chosen for you so it stays
+                readable — a pale colour gets dark text, not white.</helpText>
         </input-field>
 
         <input-field type="colorpicker">
             <name>secondaryColor</name>
             <label>Secondary colour</label>
             <helpText>The quiet surface behind the assistant's replies. Deliberately not a second
-                action colour: if two things on screen shout equally, a shopper cannot tell which one
-                is the button.</helpText>
+                action colour: if two things on screen shout equally loudly, a shopper cannot tell
+                which one is the button.</helpText>
         </input-field>
     </card>
 
     <card>
-        <title>Escalation</title>
+        <name>escalation</name>
+        <title>Handing over to a human</title>
+
+        <component name="swag-assistant-escalation-preview">
+            <name>escalationPreview</name>
+        </component>
 
         <input-field type="bool">
             <name>enableEscalation</name>
             <label>Let the assistant hand a conversation to a human</label>
             <defaultValue>true</defaultValue>
-            <helpText>When off, the escalate tool is never constructed, so the model cannot see it
-                and cannot call it — the same guarantee as the add-to-cart switch. The assistant then
-                declines questions it cannot answer from shop data instead of offering a handoff.</helpText>
+            <helpText>When off, the handover tool is never built, so the model cannot see it and
+                cannot call it. The assistant then simply says it cannot answer, without offering
+                anywhere to go.</helpText>
         </input-field>
 
         <input-field type="text">
             <name>escalationUrl</name>
             <label>Where shoppers reach a human</label>
-            <helpText>A path on this shop (/contact) or an https URL. Left empty, the assistant says
-                it cannot help with the question instead of offering a link — it never claims a human
-                will follow up when there is nowhere to send them. Only http and https are accepted;
-                anything else is ignored, because this link is served to every shopper.</helpText>
+            <placeholder>/contact</placeholder>
+            <helpText>A page on this shop (/contact) or a full https address. Leave it empty and
+                the assistant says it cannot help instead of offering a link — it will never
+                suggest someone will follow up when there is nowhere to send them. Only http and
+                https addresses are accepted, because this link is shown to every shopper.</helpText>
         </input-field>
 
         <input-field type="textarea">
             <name>escalationMessage</name>
-            <label>Escalation message</label>
-            <helpText>Shown above the link when the assistant hands off. Say what the team can help
-                with. Left empty, a translated default is used.</helpText>
+            <label>Handover message</label>
+            <placeholder>Our team can help with orders, returns and anything account-related.</placeholder>
+            <helpText>Shown above the link when the assistant hands over. Say what your team can
+                actually help with. Left empty, a translated default is used.</helpText>
         </input-field>
     </card>
 
     <card>
+        <name>storefrontWidget</name>
         <title>Storefront widget</title>
-
-        <input-field type="bool">
-            <name>widgetEnabled</name>
-            <label>Show the assistant in the storefront</label>
-            <defaultValue>true</defaultValue>
-            <helpText>When off, no entry point renders. The chat endpoint stays reachable, so a
-                custom interface built against it keeps working. The entry point is also hidden
-                automatically when no model is configured or the kill switch is on.</helpText>
-        </input-field>
 
         <input-field type="text">
             <name>assistantName</name>
             <label>Assistant name</label>
-            <helpText>Shown in the panel heading and used as its accessible name. Defaults to
+            <placeholder>Shopping Assistant</placeholder>
+            <helpText>Shown in the panel heading, and read out by screen readers. Defaults to
                 "Shopping Assistant".</helpText>
         </input-field>
 
         <input-field type="textarea">
             <name>greeting</name>
             <label>Greeting</label>
+            <placeholder>Welcome to our shop! I can look up products, prices and availability —
+                what are you after?</placeholder>
             <helpText>The first message a shopper sees. Say what the assistant can look up, not how
-                advanced it is. Left empty, a translated default is used.</helpText>
+                clever it is. Left empty, a translated default is used.</helpText>
         </input-field>
     </card>
 
     <card>
-        <title>Analytics</title>
+        <name>logging</name>
+        <title>Logging</title>
+        <subtitle>Separate from the conversation list in Settings, which records every conversation
+            in full and is always on.</subtitle>
 
         <input-field type="bool">
             <name>logTraces</name>
-            <label>Write one log line per conversation turn</label>
-            <defaultValue>false</defaultValue>
-            <helpText>Logs which conversation, which sales channel, how the turn ended and how long
-                it took — and no shopper text, because a log file has neither the retention task nor
-                the access control the conversation table has. This is the shipped example of the
-                swag_assistant.trace_sink extension point rather than a full analytics integration:
-                see docs/extending.md to send turns somewhere of your own.</helpText>
+            <label>Log a line for every reply</label>
+            <defaultValue>true</defaultValue>
+            <helpText>Writes one line to your shop's log each time the assistant replies: which
+                sales channel, how the reply ended and how long it took. Useful for spotting
+                failures and slow replies without opening conversations one by one. No shopper
+                messages are ever written to the log — a log file does not have the deletion
+                schedule or the access rules that the conversation list has.</helpText>
         </input-field>
     </card>
 
     <card>
+        <name>dataRetention</name>
         <title>Data retention</title>
 
         <input-field type="int">
             <name>traceRetentionDays</name>
             <label>Keep conversations for (days)</label>
             <defaultValue>30</defaultValue>
-            <helpText>Conversations older than this are deleted daily, together with their traces.
-                There is no "keep forever": an empty or zero value falls back to 30 days. These rows
-                hold what shoppers typed, so an unbounded table is a data-protection problem rather
-                than a convenience.</helpText>
+            <helpText>Conversations older than this are deleted every day, along with their
+                records. There is deliberately no "keep forever": these rows hold what shoppers
+                typed, so a table that only grows is a data-protection problem rather than a
+                convenience. Blank or 0 falls back to 30 days.</helpText>
         </input-field>
     </card>
 

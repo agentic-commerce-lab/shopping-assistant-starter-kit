@@ -116,18 +116,26 @@ it. Both are in the Administration under **Request limits**:
 
 | Setting | Default | What it does |
 |---|---|---|
-| `requestsPerMinute` | 12 | Per caller, sliding window. The control that stops a scripted loop |
-| `dailyRequestCap` | 500 | Per sales channel, 24h. A spend ceiling, not an abuse defence |
+| `requestsPerMinute` | 60 | Per caller, sliding window. The control that stops a scripted loop |
+| `dailyRequestCap` | **0 — off** | Per sales channel, 24h. An opt-in spend ceiling, not an abuse defence |
 
 A refused request answers **429** with a `Retry-After` header and writes nothing — no conversation
 row, no trace, no model call. The widget already treats 429 as transient and offers a retry button.
 
 The order matters and is deliberate: the per-caller window is consumed first and in every branch, so
 switching the assistant off does not create an unthrottled path; the daily budget is consumed only
-when a turn could actually spend, so a shop with the kill switch on is told it is switched off rather
-than out of budget.
+when a turn could actually spend, so a shop that is switched off is told exactly that rather than
+told it is out of budget.
 
-`0` in either field refuses every request, matching how the other integer settings read a stored zero.
+**`0` in either field means unlimited.** It used to mean the opposite — refuse everything — which
+made zero the most destructive value a merchant could type into a numeric field, and duplicated a
+job the assistant's own off switch already does with a reason the trace can record.
+
+Only the per-caller window ships on. The daily cap is a spend ceiling, and a ceiling nobody chose is
+not a safety feature: at the old default of 500 a good day's traffic turned the assistant off by
+mid-afternoon, silently. Switch it on if you want a known stopping point, and be aware of what you
+are choosing — when it trips, every shopper gets nothing until it resets, including the ones who were
+about to buy something.
 
 Counters live in the shop's cache, not the database, so **clearing the cache resets both windows**.
 Behind a proxy or CDN, `framework.trusted_proxies` has to be right or every shopper shares one
@@ -189,12 +197,14 @@ Styles are compiled by Shopware's own PHP SCSS pipeline, and the JavaScript is c
 on install rather than after a build.
 
 **The entry point renders only on a shop that can answer.** No orb appears when no model is
-configured, when the kill switch is on, or when `widgetEnabled` is off. That is deliberate: an orb
+configured, when `assistantEnabled` is off, or when `widgetEnabled` is off. That is deliberate: an orb
 that opens a panel which answers 503 invites a shopper to ask a question nothing can answer. The chat
 endpoint stays reachable in every one of those cases, so a custom interface built against it keeps
 working.
 
-Three settings under **Storefront widget**: `widgetEnabled`, `assistantName`, `greeting`. A blank
+`assistantName` and `greeting` live under **Storefront widget**; `widgetEnabled` sits with the off
+switch under **Assistant status**, because the two are easy to confuse and belong side by side —
+`assistantEnabled` stops the assistant answering, `widgetEnabled` only stops it being shown. A blank
 greeting falls back to a translated snippet, so an unconfigured German shop still greets in German.
 
 ### Changing it

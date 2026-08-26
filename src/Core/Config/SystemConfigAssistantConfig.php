@@ -11,58 +11,87 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 /**
  * Builds an {@see AssistantConfig} from the merchant's `config.xml` settings for one sales channel.
  *
- * Until this class existed, `config.xml` was a form that changed nothing — including the kill
- * switch, which `ARCHITECTURE.md` calls a security control rather than an operational nicety.
+ * Until this class existed, `config.xml` was a form that changed nothing — including the off switch,
+ * which `ARCHITECTURE.md` calls a security control rather than an operational nicety.
  *
- * **The interesting half is what happens when a key is absent**, because Shopware's typed getters
- * return zero values rather than null:
+ * **What each setting is called and what its default is** lives here. **How a stored value is
+ * coerced** — including every way Shopware's storage misleads a naive reader — lives in
+ * {@see StoredValueReader}, because that half would read identically for any plugin's config form
+ * and reading it here made this class a list of settings interrupted by a treatise on
+ * `FILTER_VALIDATE_BOOLEAN`.
  *
- * - `getInt()` returns `0`, and 0 is a *valid but catastrophic* value here. `maxToolCallsPerTurn: 0`
- *   means no tool may ever run; `dailyRequestCap: 0` and `requestsPerMinute: 0` refuse every
- *   request. A shop that never opened the config form must get the documented defaults, not a
- *   silently disabled assistant — so ints are read through {@see self::intOr()}, which distinguishes
- *   absent from stored.
- * - `getBool()` returns `false` for an absent key *and* for a stored `false`. For `killSwitch` that
- *   is harmless: both mean off, which is the safe direction. For `enableAddToCart` it is not — the
- *   default is **on**, so an absent key must not read as "the merchant switched it off", and a
- *   stored `false` must not be overridden by the default. Hence the raw `get()`.
+ * ## Zero means unlimited
+ *
+ * The four limits ship at `0`, and zero means *no limit*. It used to mean the opposite for the two
+ * rate windows — `dailyRequestCap: 0` refused every request — which made zero the most destructive
+ * value a merchant could type into a numeric field, in a form that already carries a deliberate off
+ * switch. It also left *"unlimited"* with no way to express itself at all.
+ *
+ * `maxToolCallsPerTurn` is the exception and takes no zero: it bounds a model that has started
+ * looping rather than a merchant's budget, so it is read through `positiveInt()` and floored.
+ *
+ * ## `assistantEnabled` replaced `killSwitch`
+ *
+ * Same control, inverted, because a toggle whose blue ON position stopped the product read as
+ * backwards to everyone who had not read the source.
+ * {@see \Swag\AssistantStarterKit\Migration\Migration1788048000InvertKillSwitch} carries stored
+ * values across; without it every shop that had deliberately switched the assistant **off** would
+ * have come back **on** at update time, the new key being absent and defaulting to enabled. The
+ * trace reason code stays `kill_switch`: a recorded wire value is an interface, and renaming it
+ * would only make old traces harder to read.
  */
 final readonly class SystemConfigAssistantConfig
 {
     public const PREFIX = 'SwagAssistantStarterKit.config.';
 
-    public function __construct(
-        private SystemConfigService $systemConfig,
-    ) {}
+    /**
+     * Matches `config.xml`'s `defaultValue` and {@see AssistantConfig}'s constructor default. Named
+     * because the floor needs the same number the form shows, and three copies of `20` is how a
+     * form and a runtime drift apart.
+     */
+    private const DEFAULT_TOOL_CALLS_PER_TURN = 20;
+
+    private const DEFAULT_REQUESTS_PER_MINUTE = 60;
+
+    private StoredValueReader $stored;
+
+    public function __construct(SystemConfigService $systemConfig)
+    {
+        $this->stored = new StoredValueReader($systemConfig, self::PREFIX);
+    }
 
     public function forSalesChannel(string $salesChannelId): AssistantConfig
     {
         // Named arguments throughout: ruling R17's carve-out for AssistantConfig's parameter-count
         // pragma is conditional on its call sites using them.
         return new AssistantConfig(
-            agentVoice: $this->systemConfig->getString(self::PREFIX . 'agentVoice', $salesChannelId),
+            agentVoice: $this->stored->string('agentVoice', $salesChannelId),
             scope: $this->scope($salesChannelId),
-            enableAddToCart: $this->boolOr('enableAddToCart', true, $salesChannelId),
-            maxItemQuantity: $this->intOr('maxItemQuantity', 5, $salesChannelId),
-            maxCartValue: $this->floatOr('maxCartValue', 1000.0, $salesChannelId),
-            killSwitch: $this->boolOr('killSwitch', false, $salesChannelId),
-            dailyRequestCap: $this->intOr('dailyRequestCap', 500, $salesChannelId),
-            maxToolCallsPerTurn: $this->intOr('maxToolCallsPerTurn', 5, $salesChannelId),
-            requestsPerMinute: $this->intOr('requestsPerMinute', 12, $salesChannelId),
-            enableEscalation: $this->boolOr('enableEscalation', true, $salesChannelId),
-            escalationUrl: $this->safeUrl('escalationUrl', $salesChannelId),
-            escalationMessage: trim($this->systemConfig->getString(
-                self::PREFIX . 'escalationMessage',
+            enableAddToCart: $this->stored->bool('enableAddToCart', true, $salesChannelId),
+            maxItemQuantity: $this->stored->limit('maxItemQuantity', $salesChannelId),
+            maxCartValue: $this->stored->floatLimit('maxCartValue', $salesChannelId),
+            assistantEnabled: $this->stored->bool('assistantEnabled', true, $salesChannelId),
+            dailyRequestCap: $this->stored->limit('dailyRequestCap', $salesChannelId),
+            maxToolCallsPerTurn: $this->stored->positiveInt(
+                'maxToolCallsPerTurn',
+                self::DEFAULT_TOOL_CALLS_PER_TURN,
                 $salesChannelId,
-            )),
-            logTraces: $this->boolOr('logTraces', false, $salesChannelId),
+            ),
+            requestsPerMinute: $this->stored->int(
+                'requestsPerMinute',
+                self::DEFAULT_REQUESTS_PER_MINUTE,
+                $salesChannelId,
+            ),
+            enableEscalation: $this->stored->bool('enableEscalation', true, $salesChannelId),
+            escalationUrl: $this->safeUrl('escalationUrl', $salesChannelId),
+            escalationMessage: trim($this->stored->string('escalationMessage', $salesChannelId)),
+            logTraces: $this->stored->bool('logTraces', true, $salesChannelId),
         );
     }
 
     private function scope(string $salesChannelId): CatalogScope
     {
         return new CatalogScope(
-            excludeCategoryIds: $this->idList('excludedCategories', $salesChannelId),
             blockedProductIds: $this->idList('blockedProducts', $salesChannelId),
             blockedCategoryIds: $this->idList('blockedCategories', $salesChannelId),
         );
@@ -81,7 +110,7 @@ final readonly class SystemConfigAssistantConfig
      */
     private function idList(string $key, string $salesChannelId): array
     {
-        $raw = $this->systemConfig->getString(self::PREFIX . $key, $salesChannelId);
+        $raw = $this->stored->string($key, $salesChannelId);
 
         $lines = preg_split('/\R/', $raw);
 
@@ -108,7 +137,7 @@ final readonly class SystemConfigAssistantConfig
      */
     private function safeUrl(string $key, string $salesChannelId): string
     {
-        $raw = trim($this->systemConfig->getString(self::PREFIX . $key, $salesChannelId));
+        $raw = trim($this->stored->string($key, $salesChannelId));
 
         if ($raw === '') {
             return '';
@@ -125,44 +154,5 @@ final readonly class SystemConfigAssistantConfig
         $scheme = strtolower((string) parse_url($raw, \PHP_URL_SCHEME));
 
         return \in_array($scheme, ['http', 'https'], strict: true) ? $raw : '';
-    }
-
-    private function intOr(string $key, int $default, string $salesChannelId): int
-    {
-        $value = $this->systemConfig->get(self::PREFIX . $key, $salesChannelId);
-
-        return \is_numeric($value) ? (int) $value : $default;
-    }
-
-    private function floatOr(string $key, float $default, string $salesChannelId): float
-    {
-        $value = $this->systemConfig->get(self::PREFIX . $key, $salesChannelId);
-
-        return \is_numeric($value) ? (float) $value : $default;
-    }
-
-    private function boolOr(string $key, bool $default, string $salesChannelId): bool
-    {
-        $value = $this->systemConfig->get(self::PREFIX . $key, $salesChannelId);
-
-        if ($value === null) {
-            // Absent means the documented default.
-            return $default;
-        }
-
-        // **Not `(bool)`.** `bin/console system:config:set` stores every value as a string, so a
-        // guardrail turned off from the CLI arrives as the string `"false"` — and `(bool) "false"`
-        // is `true`. Measured in the real shop: `system_config` held `{"_value":"false"}` for
-        // `killSwitch` while the assistant read it as ON.
-        //
-        // The direction that matters is `enableAddToCart`, whose help text promises the tool "is
-        // never constructed" when off: under a plain cast, a merchant disabling it from the CLI
-        // would get the tool constructed anyway — a guardrail failing **open** while the admin form
-        // shows it as disabled. The admin UI sends real JSON booleans and is unaffected, which is
-        // exactly why this stayed invisible.
-        //
-        // FILTER_VALIDATE_BOOLEAN reads "false"/"0"/"" as false and "true"/"1"/"on"/"yes" as true,
-        // and passes real booleans through unchanged.
-        return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
     }
 }

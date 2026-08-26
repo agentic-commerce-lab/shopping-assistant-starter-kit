@@ -187,6 +187,12 @@ intended way to discover you dropped one. Run `composer run test:eval` after cha
 
 ## Example 4: send turns to your analytics
 
+The plugin ships one sink of its own — `LoggerTraceSink`, controlled by the **Logging** card's
+`logTraces` setting, which writes one line per reply to the shop's log and no shopper text. That is
+an example of this extension point rather than an analytics integration; the merchant-facing help
+text no longer mentions the tag, because a service-container tag in a settings form is documentation
+in the wrong place. Sinks are additive, so yours runs alongside it.
+
 ```php
 <?php declare(strict_types=1);
 
