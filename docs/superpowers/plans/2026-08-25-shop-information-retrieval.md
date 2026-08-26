@@ -1597,6 +1597,21 @@ Full data: `docs/superpowers/reports/2026-08-25-shopinfo-threshold.md`.
 - **A multibyte test for the forced chunk split.** It counts bytes; half a character is invalid UTF-8
   and German legal text is full of umlauts.
 
+### Measured after the plan, at the plan's own invitation
+
+R5's trace made three further questions cheap to answer, and all three came back negative — which is
+why they are recorded rather than left as folklore:
+
+- **A within-query margin rule does not work either.** Promising on a three-passage store (20×
+  separation on the worst near-misses), refuted on a real corpus (overlap 0.0281 German, 0.1014
+  English — worse than the absolute threshold).
+- **English does not rescue the threshold.** Both OpenAI models are English-first and the text was
+  German, so this was the obvious suspect. Absolute gap −0.1448 English against −0.1702 German, and
+  the same *kinds* of question fail in both. Structural, not linguistic.
+- **`recall@3` is 8/8 in both languages.** Retrieval is not the weak half. That is what makes R3a the
+  right architecture rather than a concession, and it is also why comparing more embedding models has
+  no value at this corpus size: the metric that matters is saturated.
+
 ### Not done
 
 - **Part 2, the admin module** — as planned, it was gated on Task 7. The Gate's condition is now

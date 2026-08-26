@@ -334,3 +334,34 @@ than similarity). Its scores are comparable across queries because they are clas
 is exactly the property the bi-encoder lacks. That remains option 2, and the cost is unchanged: the
 generic OpenAI-compatible bridge exposes no reranking endpoint, so it needs a new dependency or bridge
 — a real decision for a starter kit, not a detail.
+
+
+## A defect the language question surfaced (2026-08-26)
+
+Checking *why* this suite is English-first turned up something worse than a style inconsistency.
+
+`NoAbsenceClaimInProse` — the assertion carrying the headline safety property of
+`shop_info_not_in_documents` — is a set of English regexes: `we don't sell`, `we have no`, `not part of
+the shop's catalogue`. Both new journeys were written in German. **That assertion therefore passed on
+every run without ever being able to fire.**
+
+It is the same failure `retrieved_shop_info` was added to prevent, one layer further down, and I had
+not thought to check the layer below the one I had just fixed. Worth recording as a pattern rather than
+an incident: *an assertion that cannot fail is indistinguishable in a green report from one that
+passed*, and prose detectors are where that hides, because their reach is invisible from the journey
+file.
+
+Both journeys are now English. Run 5 is what made that free rather than a trade: recall@3 is 8/8 in
+both languages and neither separates the two groups, so there was nothing to be gained by testing in a
+language the assertions cannot read.
+
+The fixture now indexes a whole directory, and the journeys use all six documents. A question the
+corpus cannot answer competes against five plausible neighbours rather than one — the near-miss
+measures 0.4468 there, still clear of the 0.40 floor. Both journeys green 3/3 on both archetypes.
+
+**Still open, and worth naming:** there is no assertion for the risk specific to this feature —
+*"stated a deadline, fee or period that no retrieved passage supports"*. `no_unbacked_price_in_prose`
+covers currency figures only. The journeys currently rest on the model declining, observed over twelve
+turns, rather than on a detector that would catch it not declining. That is the same shape as the
+absence-claim problem this project already knows about: a safety property resting on prose adherence
+instead of on a control.
