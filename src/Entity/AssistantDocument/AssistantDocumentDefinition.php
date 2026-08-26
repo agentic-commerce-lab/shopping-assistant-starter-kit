@@ -60,6 +60,7 @@ class AssistantDocumentDefinition extends EntityDefinition
             new IntField('chunk_count', 'chunkCount'),
             new IntField('dimension', 'dimension'),
             new LongTextField('text', 'text'),
+            (new StringField('source', 'source'))->addFlags(new Required()),
         ]);
     }
 }

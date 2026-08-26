@@ -414,10 +414,33 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\ShopInfo\SalesChannelLanguage">
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <!-- The shop's own legal pages, which spec R1 deferred to its own plan. HTML extraction was
+             built for exactly this path, which is why it existed before anything uploaded HTML. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\CmsLegalPages">
+            <argument type="service" id="cms_page.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\SalesChannelLanguage"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\CmsLegalPages"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Controller\ShopInfoDocumentController" public="true">
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\PassageLookup"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Controller\ShopInfoSyncController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
         </service>
 

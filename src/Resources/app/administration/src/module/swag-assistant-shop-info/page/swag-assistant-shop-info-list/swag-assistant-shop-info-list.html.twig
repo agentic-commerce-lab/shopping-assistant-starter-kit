@@ -33,6 +33,43 @@
             </div>
             {% endblock %}
 
+            {# The shop's own pages come before uploading, because they are the documents a shopper
+               asks about most and the ones a merchant should never have had to upload. Spec R1
+               deferred this to its own plan; HTML extraction was built for exactly this path, which
+               is why it existed before anything uploaded HTML. #}
+            {% block swag_assistant_shop_info_list_pages %}
+            <sw-card :title="$tc('swag-assistant-shop-info.list.shopPages')">
+                <p class="swag-assistant-shop-info-list__hint">
+                    {{ $tc('swag-assistant-shop-info.list.shopPagesHelp') }}
+                </p>
+
+                <div class="swag-assistant-shop-info-list__actions">
+                    <sw-button
+                        variant="primary"
+                        size="small"
+                        :disabled="isSwitchedOff || bulkAction !== null || !acl.can('swag_assistant_document.editor')"
+                        :isLoading="bulkAction === 'pages'"
+                        @click="onBulk('pages')"
+                    >
+                        {{ $tc('swag-assistant-shop-info.list.indexPages') }}
+                    </sw-button>
+
+                    <sw-button
+                        size="small"
+                        :disabled="isSwitchedOff || bulkAction !== null || !documents || !documents.total || !acl.can('swag_assistant_document.editor')"
+                        :isLoading="bulkAction === 'all'"
+                        @click="onBulk('all')"
+                    >
+                        {{ $tc('swag-assistant-shop-info.list.reindexAll') }}
+                    </sw-button>
+                </div>
+
+                <p class="swag-assistant-shop-info-list__hint">
+                    {{ $tc('swag-assistant-shop-info.list.reindexAllHelp') }}
+                </p>
+            </sw-card>
+            {% endblock %}
+
             {% block swag_assistant_shop_info_list_upload %}
             <sw-card :title="$tc('swag-assistant-shop-info.list.upload')">
                 {# `update:value`, not `change` — sw-file-input emits only the former, and binding the
@@ -98,6 +135,12 @@
                 {# The status column is a label and a word, never a bare colour: a merchant reading a
                    red dot has to learn what red means, and one who cannot distinguish it learns
                    nothing at all. #}
+                {# A word, not an icon: "Shop page" and "Uploaded" differ in where a re-index reads
+                   from, which is a fact about the row and not decoration. #}
+                <template #column-source="{ item }">
+                    <span class="swag-assistant-shop-info-list__source">{{ sourceLabel(item.source) }}</span>
+                </template>
+
                 <template #column-status="{ item }">
                     <sw-label :variant="statusVariant(item.status)" appearance="pill" size="small">
                         {{ statusLabel(item.status) }}

@@ -23,6 +23,18 @@ final readonly class ShopInfoDocument
 
     public const STATUS_FAILED = 'failed';
 
+    /** A file a merchant uploaded. Re-indexed from {@see self::$text}, because the file is not kept. */
+    public const SOURCE_UPLOAD = 'upload';
+
+    /**
+     * One of the shop's own CMS pages — imprint, privacy, revocation, terms, shipping.
+     *
+     * Re-indexed by reading the page again rather than from {@see self::$text}, and that difference is
+     * the whole reason this field exists: a merchant who edits their revocation page in the CMS and
+     * presses re-index expects the new wording, not the wording that was extracted last week.
+     */
+    public const SOURCE_CMS = 'cms';
+
     // @mago-expect lint:excessive-parameter-list
     // A record, not a behaviour: every field is an independent column that the admin list in Part 2
     // shows in its own right, and grouping them behind a sub-object would move the same flat fields
@@ -38,5 +50,6 @@ final readonly class ShopInfoDocument
         public int $chunkCount = 0,
         public int $dimension = 0,
         public string $text = '',
+        public string $source = self::SOURCE_UPLOAD,
     ) {}
 }

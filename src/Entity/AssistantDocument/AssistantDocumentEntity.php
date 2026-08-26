@@ -46,6 +46,8 @@ class AssistantDocumentEntity extends Entity
 
     protected ?string $text = null;
 
+    protected string $source = ShopInfoDocument::SOURCE_UPLOAD;
+
     public function getName(): string
     {
         return $this->name;
@@ -114,6 +116,16 @@ class AssistantDocumentEntity extends Entity
     public function setDimension(int $dimension): void
     {
         $this->dimension = $dimension;
+    }
+
+    public function getSource(): string
+    {
+        return $this->source;
+    }
+
+    public function setSource(string $source): void
+    {
+        $this->source = $source;
     }
 
     public function getText(): ?string

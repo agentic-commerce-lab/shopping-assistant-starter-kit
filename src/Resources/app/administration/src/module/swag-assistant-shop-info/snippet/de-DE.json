@@ -33,7 +33,17 @@
             "configuration": "Konfiguration",
             "model": "Embedding-Modell",
             "modelUnset": "Nicht gesetzt — Shopinformationen sind für diesen Verkaufskanal aus",
-            "openPluginSettings": "Plugin-Einstellungen öffnen"
+            "openPluginSettings": "Plugin-Einstellungen öffnen",
+            "columnSource": "Quelle",
+            "sourceCms": "Shopseite",
+            "sourceUpload": "Hochgeladen",
+            "shopPages": "Die eigenen Seiten des Shops",
+            "shopPagesHelp": "Impressum, Datenschutzerklärung, Widerrufsbelehrung, AGB sowie Versand und Zahlung — gelesen aus den unter Einstellungen konfigurierten Seiten, damit du sie nicht hochladen musst. Ein erneutes Indexieren übernimmt seitdem gemachte Änderungen.",
+            "indexPages": "Shopseiten indexieren",
+            "reindexAll": "Alles neu indexieren",
+            "reindexAllHelp": "Nötig nach einer Änderung des Embedding-Modells: alle Dokumente wurden mit dem vorherigen indexiert. Shopseiten werden neu gelesen, hochgeladene Dateien aus ihrem gespeicherten Text neu indexiert.",
+            "bulkIndexed": "{count} Dokument(e) indexiert.",
+            "bulkSkipped": "Übersprungen, weil die Seite leer ist: {names}."
         }
     }
 }

@@ -31,6 +31,29 @@ export function uploadRequest(api, file, salesChannelId) {
     return { url: `${api.apiPath}/${ACTION}/upload`, options: { method: 'POST', headers: headers(api), body } };
 }
 
+/**
+ * Index the shop's own legal pages, and index everything again.
+ *
+ * Both are per sales channel, like everything else on this screen: documents and the embedding model
+ * are scoped to one, and a bulk action that crossed channels would index a shop's German terms into
+ * an English storefront.
+ */
+export function indexPagesRequest(api, salesChannelId) {
+    return channelPost(api, 'index-pages', salesChannelId);
+}
+
+export function reindexAllRequest(api, salesChannelId) {
+    return channelPost(api, 'reindex-all', salesChannelId);
+}
+
+function channelPost(api, action, salesChannelId) {
+    const body = new FormData();
+
+    body.append('salesChannelId', salesChannelId);
+
+    return { url: `${api.apiPath}/${ACTION}/${action}`, options: { method: 'POST', headers: headers(api), body } };
+}
+
 export function reindexRequest(api, documentId) {
     return formPost(api, 'reindex', documentId);
 }

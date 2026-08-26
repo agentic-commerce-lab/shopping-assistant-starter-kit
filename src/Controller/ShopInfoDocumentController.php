@@ -10,6 +10,7 @@ use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords;
 use Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory;
 use Swag\AssistantStarterKit\ShopInfo\PassageLookup;
+use Swag\AssistantStarterKit\ShopInfo\ShopInfoSync;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

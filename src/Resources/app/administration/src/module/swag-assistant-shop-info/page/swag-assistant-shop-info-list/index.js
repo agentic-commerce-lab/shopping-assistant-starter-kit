@@ -1,5 +1,12 @@
 import template from './swag-assistant-shop-info-list.html.twig';
-import { deleteRequest, errorDetail, reindexRequest, uploadRequest } from './requests';
+import {
+    deleteRequest,
+    errorDetail,
+    indexPagesRequest,
+    reindexAllRequest,
+    reindexRequest,
+    uploadRequest,
+} from './requests';
 import './swag-assistant-shop-info-list.scss';
 
 const { Criteria } = Shopware.Data;
@@ -40,6 +47,7 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             busyId: null,
             isUploading: false,
             uploadError: null,
+            bulkAction: null,
         };
     },
 
@@ -106,6 +114,7 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
         documentColumns() {
             return [
                 { property: 'name', label: 'swag-assistant-shop-info.list.columnName', primary: true },
+                { property: 'source', label: 'swag-assistant-shop-info.list.columnSource' },
                 { property: 'status', label: 'swag-assistant-shop-info.list.columnStatus' },
                 { property: 'chunkCount', label: 'swag-assistant-shop-info.list.columnChunks', align: 'right' },
                 { property: 'dimension', label: 'swag-assistant-shop-info.list.columnDimension', align: 'right' },
@@ -217,6 +226,74 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             } finally {
                 this.isUploading = false;
             }
+        },
+
+        /**
+         * Index the shop's own legal pages, and index everything again.
+         *
+         * One handler, because the only difference is which request is sent and which sentence is
+         * reported. Both report counts rather than "done": a merchant who sees "4 indexed, 1 failed"
+         * knows to look at the table, and one who sees "done" beside a failed row does not.
+         */
+        async onBulk(action) {
+            const build = action === 'pages' ? indexPagesRequest : reindexAllRequest;
+            this.bulkAction = action;
+
+            const { url, options } = build(Shopware.Context.api, this.salesChannelId);
+
+            try {
+                const result = await this.send(url, options);
+
+                this.reportBulk(result);
+                await this.loadDocuments();
+            } catch (error) {
+                this.createNotificationError({ message: error.message });
+            } finally {
+                this.bulkAction = null;
+            }
+        },
+
+        /**
+         * A count, and the reasons when there are any.
+         *
+         * Failures are named individually rather than counted, because each one has a different cause
+         * and the merchant can only act on the specific reason. Skipped pages are said out loud too:
+         * a configured page with nothing on it is not an error, but silently indexing four of five
+         * pages would leave a merchant believing all five are searchable.
+         */
+        reportBulk(result) {
+            const failed = result.failed || [];
+            const skipped = result.skipped || [];
+
+            if (failed.length) {
+                this.createNotificationError({
+                    message: failed.map((f) => `${f.name}: ${f.reason}`).join(' — '),
+                });
+            }
+
+            if (skipped.length) {
+                this.createNotificationWarning({
+                    message: this.$tc('swag-assistant-shop-info.list.bulkSkipped', 0, {
+                        names: skipped.join(', '),
+                    }),
+                });
+            }
+
+            if (!failed.length) {
+                this.createNotificationSuccess({
+                    message: this.$tc('swag-assistant-shop-info.list.bulkIndexed', 0, {
+                        count: result.indexed || 0,
+                    }),
+                });
+            }
+        },
+
+        sourceLabel(source) {
+            return this.$tc(
+                source === 'cms'
+                    ? 'swag-assistant-shop-info.list.sourceCms'
+                    : 'swag-assistant-shop-info.list.sourceUpload',
+            );
         },
 
         async onReindex(document) {

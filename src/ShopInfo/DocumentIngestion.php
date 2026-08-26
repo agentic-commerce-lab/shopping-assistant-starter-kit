@@ -68,6 +68,39 @@ final readonly class DocumentIngestion
     }
 
     /**
+     * Index one of the shop's own CMS pages (spec R1).
+     *
+     * The HTML goes through the same extractor an uploaded `.html` file does — which is why HTML is in
+     * R10's format list although nobody uploads it. `page.html` is a filename only in the sense the
+     * extractor chain needs one to pick by extension; the document is named after the page.
+     *
+     * @return string the document id
+     *
+     * @throws \Throwable whatever failed, after recording it on the document
+     */
+    public function ingestPage(string $name, string $html, string $salesChannelId): string
+    {
+        $document = new ShopInfoDocument(
+            id: self::idFor($salesChannelId, $name),
+            name: $name,
+            extension: 'html',
+            salesChannelId: $salesChannelId,
+            status: ShopInfoDocument::STATUS_PENDING,
+            source: ShopInfoDocument::SOURCE_CMS,
+        );
+
+        try {
+            $text = $this->extractor->extract('page.html', $html);
+        } catch (\Throwable $failure) {
+            $this->recordFailure($document, $failure);
+
+            throw $failure;
+        }
+
+        return $this->write($document, $text);
+    }
+
+    /**
      * Index a document again from the text already stored for it (spec R9).
      *
      * The reason the extracted text is a column rather than a discarded intermediate: a merchant who
@@ -131,6 +164,9 @@ final readonly class DocumentIngestion
             chunkCount: \count($chunks),
             dimension: \count($vectors[0] ?? []),
             text: $text,
+            // Carried through, because it decides where a re-index reads from: a CMS document is read
+            // from the page again, an upload from this stored text.
+            source: $document->source,
         ));
 
         return $document->id;
@@ -145,6 +181,7 @@ final readonly class DocumentIngestion
             salesChannelId: $document->salesChannelId,
             status: ShopInfoDocument::STATUS_FAILED,
             statusReason: $failure->getMessage(),
+            source: $document->source,
         ));
     }
 

@@ -33,7 +33,17 @@
             "configuration": "Configuration",
             "model": "Embedding model",
             "modelUnset": "Not set — shop information is off for this sales channel",
-            "openPluginSettings": "Open plugin settings"
+            "openPluginSettings": "Open plugin settings",
+            "columnSource": "Source",
+            "sourceCms": "Shop page",
+            "sourceUpload": "Uploaded",
+            "shopPages": "The shop's own pages",
+            "shopPagesHelp": "Imprint, privacy policy, right of withdrawal, terms, and shipping and payment — read from the pages configured under Settings, so you do not have to upload them. Indexing them again picks up any edits you have made since.",
+            "indexPages": "Index shop pages",
+            "reindexAll": "Index everything again",
+            "reindexAllHelp": "Needed after changing the embedding model: every document was indexed with the previous one. Shop pages are read again, uploaded files are re-indexed from their stored text.",
+            "bulkIndexed": "{count} document(s) indexed.",
+            "bulkSkipped": "Skipped, because the page is empty: {names}."
         }
     }
 }

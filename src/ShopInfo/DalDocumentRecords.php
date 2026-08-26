@@ -41,6 +41,7 @@ final readonly class DalDocumentRecords implements DocumentRecords
             'chunkCount' => $document->chunkCount,
             'dimension' => $document->dimension,
             'text' => $document->text,
+            'source' => $document->source,
         ]], Context::createDefaultContext());
     }
 
@@ -95,6 +96,7 @@ final readonly class DalDocumentRecords implements DocumentRecords
             chunkCount: $entity->getChunkCount(),
             dimension: $entity->getDimension(),
             text: $entity->getText() ?? '',
+            source: $entity->getSource(),
         );
     }
 }

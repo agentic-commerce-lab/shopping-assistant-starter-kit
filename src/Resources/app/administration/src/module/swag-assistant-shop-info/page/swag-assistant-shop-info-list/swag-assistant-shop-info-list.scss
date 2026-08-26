@@ -27,6 +27,19 @@
         line-height: 1.6;
     }
 
+    /* Primary action first, and both always present: nothing appears or disappears as state changes. */
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    &__source {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+    }
+
     &__notice,
     &__progress {
         margin-top: 16px;
