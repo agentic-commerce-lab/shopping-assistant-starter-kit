@@ -1,5 +1,6 @@
 import './swag-assistant-trace-list.scss';
 import { exportFileName, exportRequest, saveBlob } from '../../export';
+import { conversationPreview } from './preview';
 import { humanMs } from '../swag-assistant-trace-detail/facts';
 import template from './swag-assistant-trace-list.html.twig';
 
@@ -50,6 +51,26 @@ Shopware.Component.register('swag-assistant-trace-list', {
                 // filter below, `tool_limit_exceeded` and `escalate` are reachable without reading
                 // every row. Those are the two live failure modes.
                 { property: 'outcome', label: 'swag-assistant-trace.list.columnOutcome' },
+                // What the conversation was actually about, which the grid never used to say. The
+                // three columns above describe how a turn went; without these, finding the one
+                // `tool_limit_exceeded` row that matters means opening every one of them.
+                //
+                // Not sortable, and deliberately: they are derived from a JSON column, so the DAL
+                // has nothing to sort on and a header that looked clickable would do nothing.
+                {
+                    property: 'question',
+                    label: 'swag-assistant-trace.list.columnQuestion',
+                    allowResize: true,
+                    sortable: false,
+                    width: '260px',
+                },
+                {
+                    property: 'reply',
+                    label: 'swag-assistant-trace.list.columnReply',
+                    allowResize: true,
+                    sortable: false,
+                    width: '260px',
+                },
                 { property: 'totalMs', label: 'swag-assistant-trace.list.columnTotalMs' },
             ];
         },
@@ -155,6 +176,17 @@ Shopware.Component.register('swag-assistant-trace-list', {
         /** `8183` reads as an id. A duration column has to read as a duration. */
         duration(ms) {
             return ms ? humanMs(ms) : '—';
+        },
+
+        /**
+         * The last exchange of a conversation, for the two prose columns.
+         *
+         * Read straight off the row: `transcript` is ApiAware and the criteria below restricts no
+         * fields, so the grid already holds every conversation's transcript whether these columns
+         * render it or not. There is no second request here and nothing to add to the criteria.
+         */
+        preview(conversation) {
+            return conversationPreview(conversation.transcript);
         },
 
         onOutcomeFilterChange(value) {

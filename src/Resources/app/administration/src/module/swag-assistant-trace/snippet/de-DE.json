@@ -9,6 +9,8 @@
             "columnSalesChannel": "Verkaufskanal",
             "columnTurnCount": "Züge",
             "columnOutcome": "Ergebnis",
+            "columnQuestion": "Frage",
+            "columnReply": "Antwort",
             "columnTotalMs": "Dauer",
             "filterOutcome": "Nach Ergebnis filtern",
             "filterOutcomeAll": "Alle Ergebnisse",

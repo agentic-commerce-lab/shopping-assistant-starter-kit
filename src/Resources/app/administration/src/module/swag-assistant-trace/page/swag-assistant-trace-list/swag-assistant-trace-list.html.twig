@@ -84,6 +84,22 @@
                 </template>
 
 
+                {# The whole string stays in the DOM and the stylesheet clips it, so it can still be
+                   selected and copied. `title` is the browser's own tooltip rather than a component:
+                   one attribute, mouse-only, and honest about being neither — the keyboard path to
+                   the full conversation is the detail page this row already links to. #}
+                <template #column-question="{ item }">
+                    <span class="swag-assistant-trace-list__prose" :title="preview(item).question">
+                        {{ preview(item).question ?? '—' }}
+                    </span>
+                </template>
+
+                <template #column-reply="{ item }">
+                    <span class="swag-assistant-trace-list__prose" :title="preview(item).reply">
+                        {{ preview(item).reply ?? '—' }}
+                    </span>
+                </template>
+
                 <template #column-totalMs="{ item }">
                     {{ duration(item.totalMs) }}
                 </template>

@@ -43,4 +43,21 @@
         margin-top: 16px;
         margin-bottom: 0;
     }
+
+    /*
+     * One line, clipped at whatever width the column currently has.
+     *
+     * Clipping in CSS rather than in JavaScript is the point: `substring(0, 60)` throws the text
+     * away, is wrong at every width except the one it was tuned for, and leaves nothing to select.
+     * This keeps the whole string in the DOM — copyable by dragging, and available to the `title`
+     * attribute beside it — while the column stays the width the merchant dragged it to.
+     */
+    &__prose {
+        display: block;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        /* Shopper text beside machine-readable outcome codes. Quieter, so the codes still lead. */
+        color: var(--color-text-secondary-default, #758ca3);
+    }
 }

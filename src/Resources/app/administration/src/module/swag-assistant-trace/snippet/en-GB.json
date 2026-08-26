@@ -9,6 +9,8 @@
             "columnSalesChannel": "Sales channel",
             "columnTurnCount": "Turns",
             "columnOutcome": "Outcome",
+            "columnQuestion": "Question",
+            "columnReply": "Reply",
             "columnTotalMs": "Duration",
             "filterOutcome": "Filter by outcome",
             "filterOutcomeAll": "Any outcome",
