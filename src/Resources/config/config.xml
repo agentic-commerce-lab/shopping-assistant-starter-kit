@@ -24,9 +24,13 @@
             <name>embeddingModel</name>
             <label>Embedding model</label>
             <helpText>Used to index shop documents and to match a question against them. Uses the
-                same provider URL and API key as the chat model. Leave empty to switch shop
-                information off entirely. Changing it makes every indexed document unusable —
-                re-index after a change.</helpText>
+                same provider URL and API key as the chat model, so it must be a model your provider
+                serves at /v1/embeddings. Measured working on OpenRouter: baai/bge-m3 (1024
+                dimensions, multilingual — the one this plugin was calibrated against),
+                openai/text-embedding-3-small (1536) and openai/text-embedding-3-large (3072). Leave
+                empty to switch shop information off entirely: no tool is offered to the model at all.
+                Changing it makes every indexed document unusable — delete and index them again after
+                a change, which the shop information screen will tell you.</helpText>
         </input-field>
 
         <input-field type="password">

@@ -1,7 +1,7 @@
 /*
  * Layout only, and every colour comes from an Administration custom property with a fallback — the
  * convention the trace list already follows. A hand-picked hex beside a token system is drift, and it
- * is the thing that gets left behind when the Administration changes theme.
+ * is what gets left behind when the Administration changes theme.
  */
 .swag-assistant-shop-info-list {
     &__content {
@@ -9,42 +9,18 @@
     }
 
     /*
-     * Channel and file side by side on a wide screen, stacked below it. Grid rather than flex
-     * percentages: the two controls have different natural widths, and a calc() split makes the
-     * narrower one grow into the gap at exactly one viewport width.
+     * The page's scope, above the cards it governs. Not in a card of its own: it is one control, and
+     * wrapping a single select in a titled container would make the page read as three equal steps
+     * when only one of them is a choice about the page itself.
      */
-    &__controls {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.4fr);
-        gap: 24px;
-        align-items: start;
+    &__scope {
+        max-width: 420px;
+        margin-bottom: 24px;
     }
 
-    /* One column well before the three would start truncating their labels. */
-    @media (max-width: 1180px) {
-        &__controls {
-            grid-template-columns: minmax(0, 1fr);
-        }
-    }
-
-    /*
-     * Field and its save button on one baseline. `align-items: end` rather than centre because the
-     * field carries a label above it and the button does not — centring would float the button
-     * halfway up the label.
-     */
-    &__model {
-        display: flex;
-        align-items: end;
-        gap: 8px;
-
-        > :first-child {
-            flex: 1 1 auto;
-            min-width: 0;
-        }
-    }
-
+    &__scope-hint,
     &__hint {
-        margin: 12px 0 0;
+        margin: 8px 0 0;
         max-width: 70ch;
         color: var(--color-text-secondary-default, #758ca3);
         font-size: 13px;
@@ -63,14 +39,44 @@
     }
 
     &__grid,
-    &__skeleton {
+    &__skeleton,
+    &__config {
         margin-top: 24px;
     }
 
     /*
+     * A definition row rather than a form row: this is a value being reported, not one being entered,
+     * and it should not look like a disabled input a merchant might try to click into.
+     */
+    &__config-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px;
+        margin: 0;
+
+        dt {
+            color: var(--color-text-secondary-default, #758ca3);
+            font-size: 13px;
+        }
+
+        dd {
+            margin: 0;
+        }
+
+        code {
+            font-size: 13px;
+        }
+    }
+
+    &__config-unset {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+    }
+
+    /*
      * The failure reason, quieter than the status it explains but not below the Administration's
-     * functional text floor: it is the sentence telling a merchant what to do next, so it has to stay
-     * readable.
+     * functional text floor: it is the sentence telling a merchant what to do next.
      */
     &__reason {
         display: block;

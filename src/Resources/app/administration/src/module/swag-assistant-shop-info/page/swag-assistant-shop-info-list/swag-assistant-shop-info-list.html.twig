@@ -11,83 +11,53 @@
     <template #content>
         <div class="swag-assistant-shop-info-list__content">
 
-            {# Channel and upload share one card. They belong together: which channel is selected
-               decides what an upload becomes, and separating them let a merchant upload into a channel
-               they had stopped looking at. #}
+            {# The scope of the whole page, so it sits above everything it governs rather than inside
+               one card. Documents and the embedding model are both per sales channel (spec R12), so
+               this control changes what every card below it means — including whether uploading does
+               anything at all. Buried among the upload fields it read as one input of three, and a
+               document went to a channel with no storefront on it. #}
+            {% block swag_assistant_shop_info_list_scope %}
+            <div class="swag-assistant-shop-info-list__scope">
+                <sw-single-select
+                    class="swag-assistant-shop-info-list__channel"
+                    :label="$tc('swag-assistant-shop-info.list.salesChannel')"
+                    :options="salesChannelOptions"
+                    :value="salesChannelId"
+                    :disabled="isUploading"
+                    @change="onSalesChannelChange"
+                />
+
+                <p class="swag-assistant-shop-info-list__scope-hint">
+                    {{ $tc('swag-assistant-shop-info.list.salesChannelHelp') }}
+                </p>
+            </div>
+            {% endblock %}
+
             {% block swag_assistant_shop_info_list_upload %}
             <sw-card :title="$tc('swag-assistant-shop-info.list.upload')">
-                <div class="swag-assistant-shop-info-list__controls">
-                    <sw-single-select
-                        class="swag-assistant-shop-info-list__channel"
-                        :label="$tc('swag-assistant-shop-info.list.salesChannel')"
-                        :options="salesChannelOptions"
-                        :value="salesChannelId"
-                        :disabled="isUploading"
-                        @change="onSalesChannelChange"
-                    />
+                {# `update:value`, not `change` — sw-file-input emits only the former, and binding the
+                   wrong one silently produces a picker that selects a file and does nothing.
 
-                    {# `update:value`, not `change` — sw-file-input emits only the former, and binding
-                       the wrong one silently produces a picker that selects a file and does nothing.
+                   maxFileSize and allowedMimeTypes mirror the server's own bounds so a wrong file is
+                   refused before it is uploaded. The server still checks: a client-side bound is a
+                   courtesy, never the control. #}
+                <sw-file-input
+                    class="swag-assistant-shop-info-list__file"
+                    :label="$tc('swag-assistant-shop-info.list.uploadButton')"
+                    :maxFileSize="maxFileSize"
+                    :allowedMimeTypes="allowedMimeTypes"
+                    :disabled="isUploading || isSwitchedOff || !acl.can('swag_assistant_document.editor')"
+                    @update:value="onFileSelected"
+                />
 
-                       maxFileSize and allowedMimeTypes mirror the server's own bounds so a wrong file
-                       is refused before it is uploaded. The server still checks: a client-side bound
-                       is a courtesy, never the control. #}
-                    {# The model lives on this page and not only in the plugin settings, because it is
-                       the switch that decides whether anything below it does anything at all — spec
-                       R13. Sending a merchant to a different screen to discover why their upload has
-                       no effect is the gap this closes. #}
-                    {# The model lives on this page and not only in the plugin settings, because it is
-                       the switch that decides whether anything below it does anything at all (spec
-                       R13). Sending a merchant to another screen to discover why their upload had no
-                       effect is the gap this closes.
-
-                       Saved by an explicit button rather than on blur, for two reasons. Changing it
-                       invalidates every vector already stored — the store refuses to mix widths — so
-                       it is a deliberate act, not a side effect of moving the cursor. And `@change`
-                       and `@blur` are not part of sw-text-field's contract: it wraps mt-text-field
-                       and forwards only `update:value`, so a blur handler here might simply never
-                       fire. #}
-                    <div class="swag-assistant-shop-info-list__model">
-                        <sw-text-field
-                            :label="$tc('swag-assistant-shop-info.list.model')"
-                            :placeholder="$tc('swag-assistant-shop-info.list.modelPlaceholder')"
-                            v-model:value="modelDraft"
-                            :disabled="isSavingModel || !acl.can('swag_assistant_document.editor')"
-                        />
-
-                        {# Disabled until the field actually differs, so the button doubles as the
-                           answer to "did I already save this?" #}
-                        <sw-button
-                            size="small"
-                            variant="primary"
-                            :disabled="!isModelDirty || isSavingModel"
-                            :isLoading="isSavingModel"
-                            @click="onEmbeddingModelChange"
-                        >
-                            {{ $tc('swag-assistant-shop-info.list.modelSave') }}
-                        </sw-button>
-                    </div>
-
-                    <sw-file-input
-                        class="swag-assistant-shop-info-list__file"
-                        :label="$tc('swag-assistant-shop-info.list.uploadButton')"
-                        :maxFileSize="maxFileSize"
-                        :allowedMimeTypes="allowedMimeTypes"
-                        :disabled="isUploading || isSwitchedOff || !acl.can('swag_assistant_document.editor')"
-                        @update:value="onFileSelected"
-                    />
-                </div>
-
-                {# Visible, not a help-text tooltip. A merchant deciding which file to upload needs
+                {# Visible, not a help-text tooltip: a merchant deciding which file to upload needs
                    this before hovering anything, and a hover affordance never fires on a tablet. #}
                 <p class="swag-assistant-shop-info-list__hint">
                     {{ $tc('swag-assistant-shop-info.list.uploadHelp') }}
-                    {{ $tc('swag-assistant-shop-info.list.salesChannelHelp') }}
                 </p>
 
-                {# Both messages sit below the controls, so neither can push the file input out from
-                   under the cursor while a merchant is reaching for it — the same layout-stability rule
-                   the trace list follows. #}
+                {# Both messages sit below the control, so neither can push the file input out from
+                   under the cursor while a merchant is reaching for it. #}
                 <sw-alert
                     v-if="isSwitchedOff"
                     class="swag-assistant-shop-info-list__notice"
@@ -129,13 +99,13 @@
                    red dot has to learn what red means, and one who cannot distinguish it learns
                    nothing at all. #}
                 <template #column-status="{ item }">
-                    <sw-label :variant="statusVariant(item.status)" :appearance="'pill'" size="small">
+                    <sw-label :variant="statusVariant(item.status)" appearance="pill" size="small">
                         {{ statusLabel(item.status) }}
                     </sw-label>
 
                     {# The reason is the actionable half of a failure — "this PDF is a scan" tells the
-                       merchant to run OCR. It is only rendered when there is one, and it is the last
-                       thing in the cell, so nothing shifts when it appears. #}
+                       merchant to run OCR. Rendered only when there is one, and last in the cell, so
+                       nothing shifts when it appears. #}
                     <span v-if="item.statusReason" class="swag-assistant-shop-info-list__reason">
                         {{ item.statusReason }}
                     </span>
@@ -152,7 +122,14 @@
                     >
                         {{ $tc('swag-assistant-shop-info.list.reindex') }}
                     </sw-context-menu-item>
+                </template>
 
+                {# **Overriding `delete-action`, not adding to `more-actions`.** sw-entity-listing puts
+                   a delete item in this slot by default, disabled by `allowDelete: false` — so adding
+                   ours elsewhere produced two Delete entries in one menu, one dead and one live.
+                   Replacing the slot leaves exactly one, and it is the one that also removes the
+                   passages. #}
+                <template #delete-action="{ item }">
                     <sw-context-menu-item
                         variant="danger"
                         :disabled="busyId === item.id || !acl.can('swag_assistant_document.deleter')"
@@ -176,6 +153,36 @@
                 :subline="$tc('swag-assistant-shop-info.list.emptyBody')"
                 :absolute="false"
             />
+            {% endblock %}
+
+            {# Read-only, and last. The model is a plugin setting and belongs in the plugin settings —
+               one place to change it, rather than two that can disagree. It is shown here because this
+               is the page whose behaviour it decides: without it every upload on this screen is a
+               no-op, and a merchant should not have to guess that from a disabled control. #}
+            {% block swag_assistant_shop_info_list_configuration %}
+            <sw-card
+                class="swag-assistant-shop-info-list__config"
+                :title="$tc('swag-assistant-shop-info.list.configuration')"
+            >
+                <dl class="swag-assistant-shop-info-list__config-row">
+                    <dt>{{ $tc('swag-assistant-shop-info.list.model') }}</dt>
+                    <dd>
+                        <code v-if="!isSwitchedOff">{{ embeddingModel }}</code>
+                        <span v-else class="swag-assistant-shop-info-list__config-unset">
+                            {{ $tc('swag-assistant-shop-info.list.modelUnset') }}
+                        </span>
+                    </dd>
+                </dl>
+
+                <template #footer>
+                    <sw-button
+                        size="small"
+                        :router-link="pluginSettingsRoute"
+                    >
+                        {{ $tc('swag-assistant-shop-info.list.openPluginSettings') }}
+                    </sw-button>
+                </template>
+            </sw-card>
             {% endblock %}
         </div>
     </template>

@@ -30,11 +30,10 @@
             "reindexed": "„{name}“ neu indexiert: {count} Passagen.",
             "uploaded": "„{name}“ indexiert: {count} Passagen.",
             "deleted": "„{name}“ und die zugehörigen Passagen sind entfernt.",
+            "configuration": "Konfiguration",
             "model": "Embedding-Modell",
-            "modelPlaceholder": "z. B. baai/bge-m3",
-            "modelSaved": "Embedding-Modell für diesen Verkaufskanal gespeichert.",
-            "modelChangedReindex": "Embedding-Modell geändert. Die Dokumente unten wurden mit dem vorherigen Modell indexiert und müssen neu indexiert werden, bevor der Assistent sie nutzen kann.",
-            "modelSave": "Modell speichern"
+            "modelUnset": "Nicht gesetzt — Shopinformationen sind für diesen Verkaufskanal aus",
+            "openPluginSettings": "Plugin-Einstellungen öffnen"
         }
     }
 }

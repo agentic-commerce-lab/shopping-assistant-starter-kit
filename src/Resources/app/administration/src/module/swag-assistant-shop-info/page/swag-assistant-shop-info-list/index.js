@@ -33,11 +33,9 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             documents: null,
             salesChannels: [],
             salesChannelId: null,
-            // The saved value, which is what decides whether the feature is on. Kept apart from
-            // `modelDraft` so the "switched off" notice does not flicker while a merchant types.
+            // Read-only here. It is a plugin setting, and this page shows it because it decides
+            // whether anything on this page does anything (spec R13) — not because it is edited here.
             embeddingModel: '',
-            modelDraft: '',
-            isSavingModel: false,
             isLoading: true,
             busyId: null,
             isUploading: false,
@@ -91,9 +89,14 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             ];
         },
 
-        /** Whether the field holds something other than what is saved. Drives the save button. */
-        isModelDirty() {
-            return (this.modelDraft || '').trim() !== this.embeddingModel;
+        /**
+         * Where the model is actually configured.
+         *
+         * A route rather than a copied path: the extension config page owns its own URL, and a
+         * hand-written `#/sw/extension/config/...` is a link that breaks silently on an upgrade.
+         */
+        pluginSettingsRoute() {
+            return { name: 'sw.extension.config', params: { namespace: 'SwagAssistantStarterKit' } };
         },
 
         salesChannelOptions() {
@@ -169,57 +172,6 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             );
 
             this.embeddingModel = (config['SwagAssistantStarterKit.config.embeddingModel'] || '').trim();
-            this.modelDraft = this.embeddingModel;
-        },
-
-        /**
-         * Saves the embedding model for this channel, immediately.
-         *
-         * **Immediately, rather than behind a smart-bar Save.** Everything else on this page acts at
-         * once — an upload indexes, a delete deletes — and mixing "this happened" with "this will
-         * happen when you save" on one screen is how a merchant ends up uploading against a model
-         * they thought they had changed.
-         *
-         * Changing it while documents exist is the one case that needs saying out loud: their vectors
-         * were produced by the old model and the store refuses to mix widths, so they have to be
-         * indexed again. The alternative to warning here is a merchant discovering it from a failed
-         * re-index later.
-         */
-        async onEmbeddingModelChange() {
-            const next = (this.modelDraft || '').trim();
-
-            if (next === this.embeddingModel) {
-                return;
-            }
-
-            this.isSavingModel = true;
-
-            try {
-                await this.systemConfigApiService.saveValues(
-                    { 'SwagAssistantStarterKit.config.embeddingModel': next === '' ? null : next },
-                    this.salesChannelId,
-                );
-
-                const had = this.embeddingModel;
-                this.embeddingModel = next;
-
-                if (had !== '' && next !== '' && this.documents && this.documents.total) {
-                    this.createNotificationWarning({
-                        message: this.$tc('swag-assistant-shop-info.list.modelChangedReindex'),
-                    });
-                } else {
-                    this.createNotificationSuccess({
-                        message: this.$tc('swag-assistant-shop-info.list.modelSaved'),
-                    });
-                }
-            } catch (error) {
-                this.modelDraft = this.embeddingModel;
-                this.createNotificationError({
-                    message: this.$tc('global.notification.unspecifiedSaveErrorMessage'),
-                });
-            } finally {
-                this.isSavingModel = false;
-            }
         },
 
         async loadDocuments() {

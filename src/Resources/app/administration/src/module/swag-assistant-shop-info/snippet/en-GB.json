@@ -30,11 +30,10 @@
             "reindexed": "\"{name}\" indexed again: {count} passages.",
             "uploaded": "\"{name}\" indexed: {count} passages.",
             "deleted": "\"{name}\" and its passages are gone.",
+            "configuration": "Configuration",
             "model": "Embedding model",
-            "modelPlaceholder": "e.g. baai/bge-m3",
-            "modelSaved": "Embedding model saved for this sales channel.",
-            "modelChangedReindex": "Embedding model changed. The documents below were indexed with the previous model and must be indexed again before the assistant can use them.",
-            "modelSave": "Save model"
+            "modelUnset": "Not set — shop information is off for this sales channel",
+            "openPluginSettings": "Open plugin settings"
         }
     }
 }
