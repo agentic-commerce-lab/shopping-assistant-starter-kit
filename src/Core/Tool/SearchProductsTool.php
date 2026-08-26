@@ -13,7 +13,10 @@ use Swag\AssistantStarterKit\Core\Grounding\RedundantParentFilter;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
+use Swag\AssistantStarterKit\Core\Retrieval\CandidateInterleave;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
+use Swag\AssistantStarterKit\Core\Retrieval\IntentCandidates;
+use Swag\AssistantStarterKit\Core\Retrieval\IntentRetrieval;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuildResult;
 use Swag\AssistantStarterKit\Core\Retrieval\RetrievalPass;
@@ -49,7 +52,11 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'Never state a figure yourself. '
     . 'The shop shows the products from your MOST RECENT search to the shopper, as a short row '
     . 'of cards. So search for the thing you are actually answering about last, and ask for the '
-    . 'few products that answer it rather than the maximum.',
+    . 'few products that answer it rather than the maximum. '
+    . 'If your answer covers more than one KIND of product — an occasion needing either a dress or '
+    . 'a suit, say — do NOT search twice: pass both words in "terms" in this one call, and the '
+    . 'shop will show some of each. Searching twice shows the shopper only the second one, so '
+    . 'anything you named from the first search would be described but not shown.',
 )]
 final class SearchProductsTool
 {
@@ -138,6 +145,7 @@ final class SearchProductsTool
 
     /**
      * @param ?string $term    Free-text search term, e.g. "water bottle".
+     * @param ?array<array-key, string> $terms Up to 3 search terms for ONE search, when your answer covers more than one kind of product (for example ["occasion dress", "occasion suit"]). Their results are interleaved, so the limit is shared between them rather than spent on the first. Use this instead of searching twice: the shop shows only your most recent search, so a second search silently replaces the first.
      * @param ?float  $priceMax Maximum price, inclusive, in the shop's currency.
      * @param ?float  $priceMin Minimum price, inclusive, in the shop's currency.
      * @param ?string $brand   Brand name to filter by.
@@ -170,9 +178,10 @@ final class SearchProductsTool
         ?float $priceMin = null,
         ?string $brand = null,
         ?array $options = null,
+        ?array $terms = null,
         int $limit = self::DEFAULT_LIMIT,
     ): array {
-        $term = Guard::boundedString($term, 200, 'term');
+        $searchTerms = SearchTermList::of($term, $terms, 'terms');
         $brand = Guard::boundedString($brand, 120, 'brand');
         $requestedLimit = Guard::boundedInt($limit, 1, self::MAX_LIMIT, 'limit');
 
@@ -198,98 +207,45 @@ final class SearchProductsTool
         ));
         $selections = VariantSelectionGuard::fromRaw($options, 'options');
 
-        $intent = new ShopperIntent(
-            term: $term,
-            priceMax: $priceMax,
-            priceMin: $priceMin,
-            brand: $brand,
-            selections: $selections,
-        );
-
-        $this->trace->record('understand', [
-            'term' => $intent->term,
-            'priceMax' => $intent->priceMax,
-            'priceMin' => $intent->priceMin,
-            'brand' => $intent->brand,
-            'selectionCount' => \count($intent->selections),
-            'source' => 'tool_arguments',
-        ]);
-
         $scope = $this->config->scope;
         $facets = $this->facetProbe->probe($scope);
 
-        $buildResult = $this->queryBuilder->build($intent, $facets);
-        $this->trace->record('query.build', [
-            'filtersApplied' => array_map(static fn($filter) => $filter->field, $buildResult->query->filters),
-            'filtersDropped' => $buildResult->droppedFields,
-            'searchTerm' => $buildResult->query->term,
-            'limitRequested' => $requestedLimit,
-            'candidateLimit' => $candidateLimit,
-            'categoryId' => $this->browsingCategoryId,
-        ]);
+        $retrieval = new IntentRetrieval($this->gateway, $this->queryBuilder, $this->trace, $this->browsingCategoryId);
 
-        // QueryBuilder::build() does not carry a limit — ShopperIntent has none — so the
-        // guarded limit and the candidate window are applied here, on top of the query it
-        // produced, rather than being silently dropped on the floor.
-        $query = new ProductQuery(
-            term: $buildResult->query->term,
-            filters: $buildResult->query->filters,
-            limit: $requestedLimit,
-            sort: $buildResult->query->sort,
-            candidateLimit: $candidateLimit,
-            categoryId: $this->browsingCategoryId,
-        );
+        // One pass per term, and one pass with no term at all when the shopper only gave a price or an
+        // option — `[null]` rather than `[]`, so "anything under 40" still searches.
+        $candidates = [];
 
-        // The full scope — including blockedProductIds/blockedCategoryIds — goes to
-        // retrieval, not a stripped-down one: a well-behaved gateway should never even
-        // fetch a blocked product, and that is strictly less exposure than fetching it and
-        // relying on removal afterwards. BlocklistFilter below still runs unconditionally
-        // as the second line of defence, for a gateway whose scope mapping is incomplete
-        // (the future Shopware DAL implementation, mapping scope onto Store API filters,
-        // plausibly will be one). VariantResolver::resolve()'s own gateway->resolveVariant()
-        // call below now also takes this same scope (Finding C1's seam change), but
-        // whether an implementation actually enforces it there is its own choice — see
-        // CommerceGatewayInterface::product()'s docblock — so this is not redundant.
-        // With FixtureCommerceGateway, whose search() already fully honours the scope,
-        // this second line is expected to record zero removals in ordinary operation —
-        // an unfireable safety net is not a broken one; its primary control is holding.
-        // The caged pass: everything the shopper asked for, inside the aisle they are standing in.
-        ['cards' => $cards, 'note' => $optionNote] = RetrievalPass::run(
-            $this->gateway,
-            $query,
-            $buildResult,
-            $scope,
-            $this->trace,
-        );
-
-        // P9 — the aisle is a helpful default, not a cage — and it is given up only after every
-        // relaxation has been tried *inside* it, which is a correction on two earlier attempts.
-        //
-        // Giving it up LAST was the first shape, and the `page_context_not_a_cage` eval falsified it
-        // live: the relaxations ran inside the cage while this pass restored the unrelaxed words, so
-        // "gloves" in Jerseys never met the pair it needs — relaxed term AND no category.
-        //
-        // Giving it up FIRST fixed that and broke the opposite case, measured against the fixture:
-        // "bottles" while browsing Bottles then returned the Alloy Bottle *Cage* — from another
-        // category — ranked above the bottles, because relaxation went shop-wide before it had been
-        // tried where the shopper was standing.
-        //
-        // Neither ordering works, because this is not an ordering problem: it is two passes. The
-        // whole chain runs caged, and if that yields nothing the whole chain runs again uncaged. The
-        // shopper gets the aisle's answer when the aisle has one, and the shop's answer when it does
-        // not — and page context can still never make the assistant worse than its absence.
-        if ($cards === [] && $this->browsingCategoryId !== null) {
-            $query = $query->withoutCategory();
-            $this->trace->record('retrieve.without_category', ['categoryId' => $this->browsingCategoryId]);
-
-            ['cards' => $cards, 'note' => $optionNote] = RetrievalPass::run(
-                $this->gateway,
-                $query,
-                $buildResult,
+        foreach ($searchTerms === [] ? [null] : $searchTerms as $searchTerm) {
+            $candidates[] = $retrieval->run(
+                new ShopperIntent(
+                    term: $searchTerm,
+                    priceMax: $priceMax,
+                    priceMin: $priceMin,
+                    brand: $brand,
+                    selections: $selections,
+                ),
+                $facets,
+                $requestedLimit,
+                $candidateLimit,
                 $scope,
-                $this->trace,
             );
         }
+
+        // Interleaved, never concatenated: a family found by the first term would otherwise fill the
+        // limit before the second term was reached, which is the very row shape this argument exists to
+        // fix. See CandidateInterleave.
+        $cards = CandidateInterleave::of(
+            array_map(static fn(IntentCandidates $one): array => $one->cards, $candidates),
+            self::MAX_CANDIDATES,
+        );
+
+        // The first pass's, deliberately: every intent above carries the SAME options, price and brand
+        // — only the term varies — so every buildResult resolved the same selections against the same
+        // catalogue spelling.
+        $buildResult = $candidates[0]->buildResult;
+        $optionNote = self::firstNote($candidates);
+        $windowSaturated = self::anySaturated($candidates);
 
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
         // each one against the catalog's own spelling — see
@@ -298,11 +254,6 @@ final class SearchProductsTool
         // case-sensitive matching fail exactly when the model's casing differs from the
         // catalog's — the retrieval filter above would already have narrowed correctly
         // while variant resolution silently did not.
-        // Measured HERE, before variant resolution, because the gateway's limit applied to this set.
-        // VariantResolver can replace a parent card with a variant card, so counting afterwards would
-        // compare a post-resolution size against a pre-resolution bound.
-        $windowSaturated = \count($cards) === $query->retrievalLimit();
-
         $cards = $this->variantResolver->resolve($cards, $buildResult->canonicalSelections, $scope);
 
         $filtered = $this->blocklist->apply($cards, $scope);
@@ -381,5 +332,41 @@ final class SearchProductsTool
         }
 
         return $result;
+    }
+
+    /**
+     * The first option/term retry note any pass produced.
+     *
+     * First rather than concatenated: the notes are instructions to the model about how to read a
+     * result, and two of them in one reply is how a model starts ignoring both.
+     *
+     * @param list<IntentCandidates> $candidates
+     */
+    private static function firstNote(array $candidates): ?string
+    {
+        foreach ($candidates as $one) {
+            if (null !== $one->note) {
+                return $one->note;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether ANY pass filled its window, which is what makes `matched` a floor rather than a census
+     * (T4). Any, not all: one saturated term is already enough for the count to be incomplete.
+     *
+     * @param list<IntentCandidates> $candidates
+     */
+    private static function anySaturated(array $candidates): bool
+    {
+        foreach ($candidates as $one) {
+            if ($one->windowSaturated) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
