@@ -52,12 +52,18 @@ final readonly class PassageAudit
 
         foreach ($passages as $passage) {
             foreach ($this->periodClaims->extract($passage) as $period) {
-                $supported[$period] = true;
+                $supported[PeriodEquivalence::keyFor($period)] = true;
             }
         }
 
         $stated = $this->periodClaims->extract($prose);
 
-        return array_values(array_filter($stated, static fn(string $period): bool => !isset($supported[$period])));
+        // Compared by equivalence key rather than by string: a passage granting fourteen days supports
+        // a reply saying two weeks, and calling that an invention would be the false alarm that makes
+        // the whole check ignorable — see PeriodEquivalence.
+        return array_values(array_filter(
+            $stated,
+            static fn(string $period): bool => !isset($supported[PeriodEquivalence::keyFor($period)]),
+        ));
     }
 }
