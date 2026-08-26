@@ -29,6 +29,7 @@ final class AssertionRegistry
             'escalated_with_handoff' => new EscalatedWithHandoff(),
             'tool_calls_at_most' => new ToolCallsAtMost(),
             'retrieved_shop_info' => new RetrievedShopInfo(),
+            'no_unsupported_period_in_prose' => new NoUnsupportedPeriodInProse(),
             default => throw new \InvalidArgumentException(\sprintf(
                 'Journey "%s" declares unknown assertion "%s".',
                 $journeyId,

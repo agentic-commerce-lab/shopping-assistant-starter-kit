@@ -69,6 +69,12 @@ return [
         // declining anyway, so a run where nothing cleared the floor tested the easy path and must
         // not count as evidence.
         'retrieved_shop_info' => ['expectPassages' => true],
+        // **The assertion this journey was previously missing.** Everything else here checks that the
+        // model did not invent a *product* or claim an absence; none of it could see the harm specific
+        // to this feature, which is a warranty period stated from a passage about withdrawal
+        // deadlines. Until this existed the journey rested on the model declining — observed over
+        // twelve turns, which is evidence and not a control.
+        'no_unsupported_period_in_prose' => [],
         // The document says nothing about guarantees, so any claim about what the shop does or does
         // not warrant is invented.
         'no_absence_claim_in_prose' => [],

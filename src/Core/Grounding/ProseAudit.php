@@ -23,6 +23,11 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  *   a sold-out item that is worse than a wrong price: it is the expectation D4 exists to prevent,
  *   arriving through the prose instead of the stock field.
  *
+ * A third kind — a *period* no retrieved shop-information passage supports — lives in
+ * {@see PassageAudit}. It is a different question with a different source of truth: these two methods
+ * check prose against the cards the server rendered, that one checks it against document text the
+ * server retrieved.
+ *
  * Stateless on purpose — the caller owns what to do with a finding, and this class is then trivially
  * testable against a hand-built card list.
  */

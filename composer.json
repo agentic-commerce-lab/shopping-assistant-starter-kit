@@ -5,6 +5,7 @@
   "license": "MIT",
   "require": {
     "php": "^8.2",
+    "ext-ctype": "*",
     "ext-dom": "*",
     "ext-filter": "*",
     "ext-mbstring": "*",

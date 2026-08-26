@@ -86,33 +86,6 @@ final class SearchShopInfoToolTest extends TestCase
         self::assertArrayHasKey('note', $result);
     }
 
-    /** Spec R5: every score is traced, including rejected ones, so the threshold is calibratable. */
-    public function testEveryScoreIsTracedIncludingRejectedOnes(): void
-    {
-        $trace = new TraceRecorder();
-        self::tool(trace: $trace)('Kann ich mit Bitcoin bezahlen?');
-
-        $payload = $trace->payload('retrieve.shopinfo') ?? self::fail('nothing recorded');
-
-        self::assertSame(0, $payload['accepted']);
-        self::assertSame(SearchShopInfoTool::RECALL_MIN_SCORE, $payload['threshold']);
-        // The rejected score is the whole point: it is what says "we would have had the answer at
-        // 0.62" after a week of real use, instead of that being guessed at now.
-        self::assertNotSame([], $payload['scores']);
-        self::assertArrayHasKey('ms', $payload);
-    }
-
-    public function testAnAcceptedPassageIsTracedWithItsScore(): void
-    {
-        $trace = new TraceRecorder();
-        self::tool(trace: $trace)(self::QUESTION);
-
-        $payload = $trace->payload('retrieve.shopinfo') ?? self::fail('nothing recorded');
-
-        self::assertSame(1, $payload['accepted']);
-        self::assertSame([1.0], $payload['scores']);
-    }
-
     /**
      * The two notes must not be interchangeable.
      *

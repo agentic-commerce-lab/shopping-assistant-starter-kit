@@ -50,6 +50,11 @@ return [
         // retrieved, and something must have cleared the recall floor, or nothing here was a test of
         // shop information at all.
         'retrieved_shop_info' => ['expectPassages' => true],
+        // The control, rather than a hope: every deadline the reply states must appear in a passage
+        // the server actually retrieved. On the positive journey this is the assertion that catches a
+        // right answer for the wrong reason — a correct-sounding fourteen days that came from the
+        // model's knowledge of consumer law rather than from this merchant's document.
+        'no_unsupported_period_in_prose' => [],
         'no_invented_product' => [],
         'no_absence_claim_in_prose' => [],
         'no_unbacked_price_in_prose' => [],

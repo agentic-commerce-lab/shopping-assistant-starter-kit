@@ -159,6 +159,18 @@ final class SearchShopInfoTool
             'scores' => array_map(static fn(ShopInfoPassage $p): float => $p->score, $passages),
             'accepted' => \count($accepted),
             'ms' => $elapsedMs,
+            // The passage text the model was actually given, and the only record of it.
+            //
+            // Two things need it. The admin trace view answers "why did it say that", and for a
+            // document turn the passages ARE the answer — a list of scores without the text says a
+            // retrieval happened, not what it found. And
+            // {@see \Swag\AssistantStarterKit\Core\Grounding\ProseAudit::unsupportedPeriods()}
+            // audits the reply against them: a deadline the model states that no passage here
+            // supports is an invention, and this is where the audit learns what "supported" means.
+            //
+            // Bounded by MAX_PASSAGES and the chunk size, so at most a few kilobytes — the same order
+            // as the prompt this trace already stores.
+            'passages' => array_map(static fn(ShopInfoPassage $p): string => $p->text, $accepted),
         ]);
 
         if ($accepted === []) {
