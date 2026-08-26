@@ -206,3 +206,39 @@ overrides an explicit instruction not to claim absence in roughly one run of thr
 `shop_info_not_in_documents` stops being a nice-to-have and becomes the test that holds this line.
 That journey is the next task, and if it proves unreliable the answer is a reranker (option 2 above),
 not a larger number here.
+
+
+## Aftermath — does the instruction hold? (2026-08-26)
+
+R3a replaced a guarantee with an instruction, so the instruction had to be measured. Two journeys,
+three runs each, two archetypes each — twelve model turns, against the real provider and the real
+retrieval chain.
+
+**Both pass 3/3 on both archetypes.** In every run of `shop_info_not_in_documents` the model was
+handed passages that had cleared the recall floor and declined to answer from them anyway.
+
+The finding worth recording is how nearly that measurement was worthless. The first version of the
+expert archetype — *"Welche Garantie gebt ihr auf Rahmenbrüche?"* — scored **0.3973, 0.3936, 0.3840**
+across three runs: just under the 0.40 floor. So the model received nothing, declined for want of
+information, and all four safety assertions passed **having tested nothing at all**. It would have
+been reported as evidence that R3a works.
+
+`retrieved_shop_info` is the assertion that caught it, on its first run, and it is now what stops
+either journey going green without retrieving. Its `expectPassages` flag is the load-bearing half:
+under R3a the risky path is the model *receiving* plausible passages and declining, so a run where
+nothing cleared the floor tested the easy path and must not count.
+
+The fix was to sharpen the question rather than lower the floor. *"Welche Gewährleistungsfrist gilt für
+Rahmenbrüche?"* scores **0.4822** — it shares its second half with *Widerrufsfrist*, against a document
+that is entirely about Widerrufsfristen and silent about Gewährleistung. High lexical overlap, wrong
+legal concept, which is the sharpest near-miss the fixture can produce: a model that conflates the two
+states a warranty period derived from a revocation clause.
+
+Lowering the floor to admit the 0.39 phrasing was rejected for the reason the rest of this report
+documents — the floor cannot separate these groups, so moving it down only admits more near-misses
+without admitting anything the document can actually answer.
+
+**What is still unproven.** Twelve turns is evidence, not a guarantee, and it is one model
+(`anthropic/claude-sonnet-5`). This project has measured a model overriding a comparable instruction in
+roughly one run of three, so the honest reading is that the instruction holds well *here* and needs
+watching. If it degrades, the answer is a reranker — not a higher floor.
