@@ -242,3 +242,34 @@ without admitting anything the document can actually answer.
 (`anthropic/claude-sonnet-5`). This project has measured a model overriding a comparable instruction in
 roughly one run of three, so the honest reading is that the instruction holds well *here* and needs
 watching. If it degrades, the answer is a reranker — not a higher floor.
+
+
+## Regression: the fifteen existing journeys (2026-08-26)
+
+`--filter '/^(?!.*scale_).*$/'`, small catalogue, live model. **17 journeys, 16 pass.** 15 minutes.
+
+The one failure is `no_match_not_absence · expert`, `no_absence_claim_in_prose` **2/3** — run 3 said
+*"we don't have"*. That is the same journey, archetype, assertion and failure shape the previous
+change's report recorded as its own baseline (*"failed 2/3 — one run said 'we don't carry'"*), and the
+journey file itself documents the weakness as roughly one run in five historically.
+
+**Not a regression, and this time the structural argument is airtight rather than merely persuasive:**
+
+1. **The tool is not in that journey's toolbox at all.** `search_shop_info` reaches a journey only when
+   its `config` declares `embeddingModel`, and `no_match_not_absence` does not. `JourneyConfig` yields
+   `''`, `JourneyAttempt::shopInfoFactories()` returns `[]`, and the tool is never constructed — so it
+   cannot have influenced the reply by any path.
+2. **The only field this work adds to every journey's config is `salesChannelId`, and nothing in the
+   core tool path reads it.** Checked rather than assumed: `config->salesChannelId` has exactly two
+   readers in the whole tree, both of them shop-info classes. Every other use of a sales-channel id
+   takes it as a parameter from the DAL or HTTP path, and the eval harness has no DAL.
+
+**What I am not claiming.** Re-running the journey immediately afterwards gave **1/3**, not the green
+the previous report got from the same manoeuvre. Across today that archetype measured 2/3 and 1/3,
+against a history of 2/3, 3/3, 2/3 — the low end of the documented range. At three runs a piece there
+is no way to separate model drift from ordinary noise, and it would be dishonest to present either
+reading as established. What is established is that this work cannot be the cause.
+
+The journey's own conclusion still stands and is untouched by this work: a safety claim resting on a
+prompt is the defect, and the fix is wiring `NoAbsenceClaimInProse` into `ProseAudit` so the reply
+carries a warning the way unbacked prices already do.
