@@ -1,0 +1,35 @@
+{
+    "swag-assistant-shop-info": {
+        "general": {
+            "mainMenuItemGeneral": "Assistant shop information",
+            "description": "Documents the assistant may answer from"
+        },
+        "list": {
+            "salesChannel": "Sales channel",
+            "salesChannelHelp": "Documents are indexed per sales channel, because two channels can have different terms.",
+            "upload": "Upload a document",
+            "uploadHelp": "PDF, TXT, MD, HTML or DOCX, up to 8 MB. The text is extracted on upload; the file itself is not kept.",
+            "uploadButton": "Upload and index",
+            "uploading": "Extracting and indexing…",
+            "offTitle": "Shop information is switched off",
+            "offBody": "No embedding model is configured for this sales channel, so the assistant has no shop-information tool at all. Set one in the plugin settings.",
+            "columnName": "Document",
+            "columnStatus": "Status",
+            "columnChunks": "Passages",
+            "columnDimension": "Vector width",
+            "columnUpdated": "Last indexed",
+            "statusIndexed": "Indexed",
+            "statusPending": "Pending",
+            "statusFailed": "Failed",
+            "reindex": "Index again",
+            "delete": "Delete",
+            "deleteTitle": "Delete this document?",
+            "deleteBody": "Its passages are removed as well, so the assistant can no longer answer from it. The original file is not stored here and cannot be recovered.",
+            "emptyTitle": "No documents yet",
+            "emptyBody": "Upload your returns policy, terms, privacy notice or shipping information. The assistant answers from these instead of declining.",
+            "reindexed": "\"{name}\" indexed again: {count} passages.",
+            "uploaded": "\"{name}\" indexed: {count} passages.",
+            "deleted": "\"{name}\" and its passages are gone."
+        }
+    }
+}

@@ -47,41 +47,105 @@ final readonly class DocumentIngestion
     public function ingest(string $filename, string $bytes, string $salesChannelId): string
     {
         $name = basename($filename);
-        $id = self::idFor($salesChannelId, $name);
-        $extension = strtolower(pathinfo($name, \PATHINFO_EXTENSION));
+
+        $document = new ShopInfoDocument(
+            id: self::idFor($salesChannelId, $name),
+            name: $name,
+            extension: strtolower(pathinfo($name, \PATHINFO_EXTENSION)),
+            salesChannelId: $salesChannelId,
+            status: ShopInfoDocument::STATUS_PENDING,
+        );
 
         try {
             $text = $this->extractor->extract($name, $bytes);
+        } catch (\Throwable $failure) {
+            $this->recordFailure($document, $failure);
+
+            throw $failure;
+        }
+
+        return $this->write($document, $text);
+    }
+
+    /**
+     * Index a document again from the text already stored for it (spec R9).
+     *
+     * The reason the extracted text is a column rather than a discarded intermediate: a merchant who
+     * changes the embedding model has to re-index everything, and asking them to re-upload files from
+     * months ago would make that a data-loss event instead of a maintenance task.
+     *
+     * @return string the document id
+     *
+     * @throws \RuntimeException when there is no such document, or nothing was ever extracted from it
+     * @throws \Throwable        whatever failed, after recording it on the document
+     */
+    public function reindex(string $documentId): string
+    {
+        $document = $this->records->findById($documentId);
+
+        if ($document === null) {
+            throw new \RuntimeException(\sprintf('No shop information document with id "%s".', $documentId));
+        }
+
+        if (trim($document->text) === '') {
+            // A document whose extraction failed has no text to index, and quietly succeeding here
+            // would report it as indexed with no passages behind it.
+            throw new \RuntimeException(\sprintf(
+                'Document "%s" has no extracted text, so there is nothing to index. Upload it again.',
+                $document->name,
+            ));
+        }
+
+        return $this->write($document, $document->text);
+    }
+
+    /**
+     * Chunk, embed, replace, record — the half {@see self::ingest()} and {@see self::reindex()} share.
+     *
+     * @throws \Throwable
+     */
+    private function write(ShopInfoDocument $document, string $text): string
+    {
+        try {
             $chunks = $this->chunker->chunk($text);
             $vectors = $this->embedder->embed(array_map(static fn(array $chunk): string => $chunk['text'], $chunks));
 
-            $this->store->deleteDocument($id);
-            $this->store->add(self::passagesFor($id, $name, $chunks), $vectors, $salesChannelId);
+            $this->store->deleteDocument($document->id);
+            $this->store->add(
+                self::passagesFor($document->id, $document->name, $chunks),
+                $vectors,
+                $document->salesChannelId,
+            );
         } catch (\Throwable $failure) {
-            $this->records->save(new ShopInfoDocument(
-                id: $id,
-                name: $name,
-                extension: $extension,
-                salesChannelId: $salesChannelId,
-                status: ShopInfoDocument::STATUS_FAILED,
-                statusReason: $failure->getMessage(),
-            ));
+            $this->recordFailure($document, $failure);
 
             throw $failure;
         }
 
         $this->records->save(new ShopInfoDocument(
-            id: $id,
-            name: $name,
-            extension: $extension,
-            salesChannelId: $salesChannelId,
+            id: $document->id,
+            name: $document->name,
+            extension: $document->extension,
+            salesChannelId: $document->salesChannelId,
             status: ShopInfoDocument::STATUS_INDEXED,
             chunkCount: \count($chunks),
             dimension: \count($vectors[0] ?? []),
             text: $text,
         ));
 
-        return $id;
+        return $document->id;
+    }
+
+    private function recordFailure(ShopInfoDocument $document, \Throwable $failure): void
+    {
+        $this->records->save(new ShopInfoDocument(
+            id: $document->id,
+            name: $document->name,
+            extension: $document->extension,
+            salesChannelId: $document->salesChannelId,
+            status: ShopInfoDocument::STATUS_FAILED,
+            statusReason: $failure->getMessage(),
+        ));
     }
 
     /** Both the passages and the record, so a deleted document leaves nothing retrievable. */

@@ -414,6 +414,13 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Controller\ShopInfoDocumentController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\PassageLookup"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Command\ShopInfoCommand">
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>

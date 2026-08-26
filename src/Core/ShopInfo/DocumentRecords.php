@@ -17,6 +17,14 @@ interface DocumentRecords
 
     public function find(string $salesChannelId, string $name): ?ShopInfoDocument;
 
+    /**
+     * By id, for re-indexing.
+     *
+     * Re-indexing works from {@see ShopInfoDocument::$text} rather than the original file (spec R9),
+     * so the admin surface needs to reach a document by the only identifier it shows in a table row.
+     */
+    public function findById(string $documentId): ?ShopInfoDocument;
+
     /** @return list<ShopInfoDocument> */
     public function all(string $salesChannelId): array;
 

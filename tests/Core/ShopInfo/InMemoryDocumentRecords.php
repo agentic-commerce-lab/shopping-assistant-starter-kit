@@ -29,6 +29,11 @@ final class InMemoryDocumentRecords implements DocumentRecords
         return null;
     }
 
+    public function findById(string $documentId): ?ShopInfoDocument
+    {
+        return $this->documents[$documentId] ?? null;
+    }
+
     public function all(string $salesChannelId): array
     {
         return array_values(array_filter(

@@ -1,0 +1,65 @@
+/*
+ * Layout only, and every colour comes from an Administration custom property with a fallback — the
+ * convention the trace list already follows. A hand-picked hex beside a token system is drift, and it
+ * is the thing that gets left behind when the Administration changes theme.
+ */
+.swag-assistant-shop-info-list {
+    &__content {
+        padding: 24px;
+    }
+
+    /*
+     * Channel and file side by side on a wide screen, stacked below it. Grid rather than flex
+     * percentages: the two controls have different natural widths, and a calc() split makes the
+     * narrower one grow into the gap at exactly one viewport width.
+     */
+    &__controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        gap: 24px;
+        align-items: start;
+    }
+
+    @media (max-width: 960px) {
+        &__controls {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    &__hint {
+        margin: 12px 0 0;
+        max-width: 70ch;
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    &__notice,
+    &__progress {
+        margin-top: 16px;
+        margin-bottom: 0;
+    }
+
+    &__progress {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+    }
+
+    &__grid,
+    &__skeleton {
+        margin-top: 24px;
+    }
+
+    /*
+     * The failure reason, quieter than the status it explains but not below the Administration's
+     * functional text floor: it is the sentence telling a merchant what to do next, so it has to stay
+     * readable.
+     */
+    &__reason {
+        display: block;
+        margin-top: 4px;
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+}

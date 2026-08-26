@@ -56,6 +56,13 @@ final readonly class DalDocumentRecords implements DocumentRecords
         return $entity instanceof AssistantDocumentEntity ? self::toDocument($entity) : null;
     }
 
+    public function findById(string $documentId): ?ShopInfoDocument
+    {
+        $entity = $this->documents->search(new Criteria([$documentId]), Context::createDefaultContext())->first();
+
+        return $entity instanceof AssistantDocumentEntity ? self::toDocument($entity) : null;
+    }
+
     public function all(string $salesChannelId): array
     {
         $criteria = (new Criteria())->addFilter(new EqualsFilter('salesChannelId', $salesChannelId));

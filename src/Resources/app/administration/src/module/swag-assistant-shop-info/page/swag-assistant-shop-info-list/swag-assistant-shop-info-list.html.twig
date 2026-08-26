@@ -1,0 +1,148 @@
+{% block swag_assistant_shop_info_list %}
+<sw-page class="swag-assistant-shop-info-list">
+
+    {% block swag_assistant_shop_info_list_smart_bar_header %}
+    <template #smart-bar-header>
+        <h2>{{ $tc('swag-assistant-shop-info.general.mainMenuItemGeneral') }}</h2>
+    </template>
+    {% endblock %}
+
+    {% block swag_assistant_shop_info_list_content %}
+    <template #content>
+        <div class="swag-assistant-shop-info-list__content">
+
+            {# Channel and upload share one card. They belong together: which channel is selected
+               decides what an upload becomes, and separating them let a merchant upload into a channel
+               they had stopped looking at. #}
+            {% block swag_assistant_shop_info_list_upload %}
+            <sw-card :title="$tc('swag-assistant-shop-info.list.upload')">
+                <div class="swag-assistant-shop-info-list__controls">
+                    <sw-single-select
+                        class="swag-assistant-shop-info-list__channel"
+                        :label="$tc('swag-assistant-shop-info.list.salesChannel')"
+                        :options="salesChannelOptions"
+                        :value="salesChannelId"
+                        :disabled="isUploading"
+                        @change="onSalesChannelChange"
+                    />
+
+                    {# `update:value`, not `change` — sw-file-input emits only the former, and binding
+                       the wrong one silently produces a picker that selects a file and does nothing.
+
+                       maxFileSize and allowedMimeTypes mirror the server's own bounds so a wrong file
+                       is refused before it is uploaded. The server still checks: a client-side bound
+                       is a courtesy, never the control. #}
+                    <sw-file-input
+                        class="swag-assistant-shop-info-list__file"
+                        :label="$tc('swag-assistant-shop-info.list.uploadButton')"
+                        :maxFileSize="maxFileSize"
+                        :allowedMimeTypes="allowedMimeTypes"
+                        :disabled="isUploading || isSwitchedOff || !acl.can('swag_assistant_document.editor')"
+                        @update:value="onFileSelected"
+                    />
+                </div>
+
+                {# Visible, not a help-text tooltip. A merchant deciding which file to upload needs
+                   this before hovering anything, and a hover affordance never fires on a tablet. #}
+                <p class="swag-assistant-shop-info-list__hint">
+                    {{ $tc('swag-assistant-shop-info.list.uploadHelp') }}
+                    {{ $tc('swag-assistant-shop-info.list.salesChannelHelp') }}
+                </p>
+
+                {# Both messages sit below the controls, so neither can push the file input out from
+                   under the cursor while a merchant is reaching for it — the same layout-stability rule
+                   the trace list follows. #}
+                <sw-alert
+                    v-if="isSwitchedOff"
+                    class="swag-assistant-shop-info-list__notice"
+                    variant="info"
+                    :title="$tc('swag-assistant-shop-info.list.offTitle')"
+                >
+                    {{ $tc('swag-assistant-shop-info.list.offBody') }}
+                </sw-alert>
+
+                <sw-alert
+                    v-if="uploadError"
+                    class="swag-assistant-shop-info-list__notice"
+                    variant="error"
+                >
+                    {{ uploadError }}
+                </sw-alert>
+
+                <p v-if="isUploading" class="swag-assistant-shop-info-list__progress">
+                    {{ $tc('swag-assistant-shop-info.list.uploading') }}
+                </p>
+            </sw-card>
+            {% endblock %}
+
+            {% block swag_assistant_shop_info_list_grid %}
+            <sw-entity-listing
+                v-if="documents && documents.total"
+                class="swag-assistant-shop-info-list__grid"
+                :items="documents"
+                :repository="documentRepository"
+                :columns="documentColumns"
+                :isLoading="isLoading"
+                :showSelection="false"
+                :allowEdit="false"
+                :allowDelete="false"
+                :allowInlineEdit="false"
+                :allowColumnEdit="false"
+            >
+                {# The status column is a label and a word, never a bare colour: a merchant reading a
+                   red dot has to learn what red means, and one who cannot distinguish it learns
+                   nothing at all. #}
+                <template #column-status="{ item }">
+                    <sw-label :variant="statusVariant(item.status)" :appearance="'pill'" size="small">
+                        {{ statusLabel(item.status) }}
+                    </sw-label>
+
+                    {# The reason is the actionable half of a failure — "this PDF is a scan" tells the
+                       merchant to run OCR. It is only rendered when there is one, and it is the last
+                       thing in the cell, so nothing shifts when it appears. #}
+                    <span v-if="item.statusReason" class="swag-assistant-shop-info-list__reason">
+                        {{ item.statusReason }}
+                    </span>
+                </template>
+
+                <template #column-updatedAt="{ item }">
+                    <sw-time-ago v-if="item.updatedAt || item.createdAt" :date="item.updatedAt || item.createdAt" />
+                </template>
+
+                <template #more-actions="{ item }">
+                    <sw-context-menu-item
+                        :disabled="busyId === item.id || isSwitchedOff || !acl.can('swag_assistant_document.editor')"
+                        @click="onReindex(item)"
+                    >
+                        {{ $tc('swag-assistant-shop-info.list.reindex') }}
+                    </sw-context-menu-item>
+
+                    <sw-context-menu-item
+                        variant="danger"
+                        :disabled="busyId === item.id || !acl.can('swag_assistant_document.deleter')"
+                        @click="onDelete(item)"
+                    >
+                        {{ $tc('swag-assistant-shop-info.list.delete') }}
+                    </sw-context-menu-item>
+                </template>
+            </sw-entity-listing>
+            {% endblock %}
+
+            {# Two distinct absences, deliberately not one component. A skeleton says "wait"; an empty
+               state says "do this". Showing the empty state while loading would tell a merchant with
+               forty documents that they have none. #}
+            {% block swag_assistant_shop_info_list_empty %}
+            <sw-skeleton v-if="isLoading" class="swag-assistant-shop-info-list__skeleton" variant="detail" />
+
+            <sw-empty-state
+                v-else-if="!documents || !documents.total"
+                :title="$tc('swag-assistant-shop-info.list.emptyTitle')"
+                :subline="$tc('swag-assistant-shop-info.list.emptyBody')"
+                :absolute="false"
+            />
+            {% endblock %}
+        </div>
+    </template>
+    {% endblock %}
+</sw-page>
+{% endblock %}
