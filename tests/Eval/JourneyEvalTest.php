@@ -73,15 +73,12 @@ final class JourneyEvalTest extends TestCase
         // generated one; anything else, including unset, keeps the twelve-product fixture every
         // expectation in tests/Journeys was written against. See spec decision S6 — the large run is
         // opt-in because the suite already costs ten minutes and real money.
-        // The shop document a `shop_info_*` journey retrieves from. Passed unconditionally: a journey
-        // that does not configure an embeddingModel never touches it, and one that does must not be
-        // able to run without it — see JourneyAttempt::shopInfoFactories().
-        $runner = new JourneyRunner(
-            $settings,
-            LargeCatalogFile::chosen(),
-            null,
-            __DIR__ . '/../Fixtures/shop_info_widerruf.txt',
-        );
+        // The shop documents a `shop_info_*` journey retrieves from — the whole corpus, not one file,
+        // so an unanswerable question competes against several plausible neighbours the way it would
+        // in a real shop. Passed unconditionally: a journey that does not configure an embeddingModel
+        // never touches it, and one that does must not be able to run without it — see
+        // JourneyAttempt::shopInfoFactories().
+        $runner = new JourneyRunner($settings, LargeCatalogFile::chosen(), null, __DIR__ . '/../Fixtures/shop_info_en');
         $report = $runner->run($journey);
 
         if ($report->passed()) {

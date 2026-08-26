@@ -9,15 +9,16 @@ declare(strict_types=1);
 // Widerrufsfrist kann ich hier leider keine verbindliche Auskunft geben". That was not a bad answer,
 // it was the absence of a capability, which is what makes this the positive half of the pair.
 //
-// **How this journey gets a document.** `config.embeddingModel` is what puts `search_shop_info` in the
-// toolbox at all (spec R13), and `JourneyAttempt` then indexes `tests/Fixtures/shop_info_widerruf.txt`
-// — the statutory German Muster-Widerrufsbelehrung — through the shipped chunker and a real embedder.
-// The questions are embedded by the same model, so this exercises the real chain and not a rehearsal
-// of it. If no fixture path is configured the journey THROWS rather than running without the tool: a
-// version of this that passed because nothing was retrievable would be worse than a red one.
+// **How this journey gets documents.** `config.embeddingModel` is what puts `search_shop_info` in the
+// toolbox at all (spec R13), and `JourneyAttempt` then indexes every file in
+// `tests/Fixtures/shop_info_en/` — returns, shipping, payment, privacy, terms, imprint — through the
+// shipped chunker and a real embedder. The questions are embedded by the same model, so this
+// exercises the real chain and not a rehearsal of it. If no fixture path is configured the journey
+// THROWS rather than running without the tool: a version of this that passed because nothing was
+// retrievable would be worse than a red one.
 //
-// The document deliberately covers revocation only. Its silence about everything else is what
-// `shop_info_not_in_documents` uses.
+// Six documents rather than one, because a returns question then has to beat five plausible
+// neighbours. Measured: `recall@3` over this corpus is 8/8, so the right document does arrive.
 //
 // The assertions are the safety ones rather than a text match, for the reason this project has landed
 // on repeatedly: the reply is prose, prose varies per run, and asserting on wording measures the
@@ -28,9 +29,16 @@ return [
     'id' => 'shop_info_revocation',
     'category' => 'capability',
     'runs' => 3,
+    // **English, like every other journey in this suite.** The prose assertions below are
+    // English-pattern detectors — `no_absence_claim_in_prose` matches "we don't sell", "we have no",
+    // "not part of the shop's catalogue" and nothing in any other language. A German journey
+    // therefore passes it without it ever being able to fire, which is the same vacuous pass
+    // `retrieved_shop_info` exists to prevent, one layer up. Measured on 2026-08-26: language does not
+    // change the retrieval finding either way (recall@3 was 8/8 in both), so there is nothing to be
+    // gained by testing in a language the assertions cannot read.
     'archetypes' => [
-        'expert' => 'Wie lange ist die Widerrufsfrist?',
-        'beginner' => 'hey kann ich das wieder zurückschicken wenn es nicht passt?',
+        'expert' => 'How long do I have to return something?',
+        'beginner' => 'hey can i send this back if it doesnt fit?',
     ],
     'config' => [
         // Measured as the best of three models for a recall floor — see
