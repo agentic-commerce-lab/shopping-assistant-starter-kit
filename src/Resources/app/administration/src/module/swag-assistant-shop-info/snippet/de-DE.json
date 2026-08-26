@@ -29,7 +29,12 @@
             "emptyBody": "Lade Widerrufsbelehrung, AGB, Datenschutzerklärung oder Versandinformationen hoch. Der Assistent antwortet dann daraus, statt abzulehnen.",
             "reindexed": "„{name}“ neu indexiert: {count} Passagen.",
             "uploaded": "„{name}“ indexiert: {count} Passagen.",
-            "deleted": "„{name}“ und die zugehörigen Passagen sind entfernt."
+            "deleted": "„{name}“ und die zugehörigen Passagen sind entfernt.",
+            "model": "Embedding-Modell",
+            "modelPlaceholder": "z. B. baai/bge-m3",
+            "modelSaved": "Embedding-Modell für diesen Verkaufskanal gespeichert.",
+            "modelChangedReindex": "Embedding-Modell geändert. Die Dokumente unten wurden mit dem vorherigen Modell indexiert und müssen neu indexiert werden, bevor der Assistent sie nutzen kann.",
+            "modelSave": "Modell speichern"
         }
     }
 }

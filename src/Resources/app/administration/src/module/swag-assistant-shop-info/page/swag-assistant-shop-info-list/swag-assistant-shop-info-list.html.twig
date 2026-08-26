@@ -32,6 +32,42 @@
                        maxFileSize and allowedMimeTypes mirror the server's own bounds so a wrong file
                        is refused before it is uploaded. The server still checks: a client-side bound
                        is a courtesy, never the control. #}
+                    {# The model lives on this page and not only in the plugin settings, because it is
+                       the switch that decides whether anything below it does anything at all — spec
+                       R13. Sending a merchant to a different screen to discover why their upload has
+                       no effect is the gap this closes. #}
+                    {# The model lives on this page and not only in the plugin settings, because it is
+                       the switch that decides whether anything below it does anything at all (spec
+                       R13). Sending a merchant to another screen to discover why their upload had no
+                       effect is the gap this closes.
+
+                       Saved by an explicit button rather than on blur, for two reasons. Changing it
+                       invalidates every vector already stored — the store refuses to mix widths — so
+                       it is a deliberate act, not a side effect of moving the cursor. And `@change`
+                       and `@blur` are not part of sw-text-field's contract: it wraps mt-text-field
+                       and forwards only `update:value`, so a blur handler here might simply never
+                       fire. #}
+                    <div class="swag-assistant-shop-info-list__model">
+                        <sw-text-field
+                            :label="$tc('swag-assistant-shop-info.list.model')"
+                            :placeholder="$tc('swag-assistant-shop-info.list.modelPlaceholder')"
+                            v-model:value="modelDraft"
+                            :disabled="isSavingModel || !acl.can('swag_assistant_document.editor')"
+                        />
+
+                        {# Disabled until the field actually differs, so the button doubles as the
+                           answer to "did I already save this?" #}
+                        <sw-button
+                            size="small"
+                            variant="primary"
+                            :disabled="!isModelDirty || isSavingModel"
+                            :isLoading="isSavingModel"
+                            @click="onEmbeddingModelChange"
+                        >
+                            {{ $tc('swag-assistant-shop-info.list.modelSave') }}
+                        </sw-button>
+                    </div>
+
                     <sw-file-input
                         class="swag-assistant-shop-info-list__file"
                         :label="$tc('swag-assistant-shop-info.list.uploadButton')"

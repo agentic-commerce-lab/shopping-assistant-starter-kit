@@ -15,14 +15,31 @@
      */
     &__controls {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.4fr);
         gap: 24px;
         align-items: start;
     }
 
-    @media (max-width: 960px) {
+    /* One column well before the three would start truncating their labels. */
+    @media (max-width: 1180px) {
         &__controls {
             grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    /*
+     * Field and its save button on one baseline. `align-items: end` rather than centre because the
+     * field carries a label above it and the button does not — centring would float the button
+     * halfway up the label.
+     */
+    &__model {
+        display: flex;
+        align-items: end;
+        gap: 8px;
+
+        > :first-child {
+            flex: 1 1 auto;
+            min-width: 0;
         }
     }
 
