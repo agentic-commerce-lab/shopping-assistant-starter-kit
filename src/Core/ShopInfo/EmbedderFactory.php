@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\ShopInfo;
 
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
-use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
-use Swag\AssistantStarterKit\Core\Llm\PlatformFactory;
-use Symfony\AI\Store\Document\Vectorizer;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -37,13 +34,10 @@ final readonly class EmbedderFactory
             );
         }
 
-        $llm = $this->llmSettings->forSalesChannel($salesChannelId);
-
-        $platform = PlatformFactory::createEmbeddings(
-            new LlmSettings(baseUrl: $llm->baseUrl, apiKey: $llm->apiKey, model: $embeddingModel),
+        return PlatformEmbedder::over(
+            $this->llmSettings->forSalesChannel($salesChannelId),
+            $embeddingModel,
             $this->httpClient,
         );
-
-        return new PlatformEmbedder(new Vectorizer($platform, $embeddingModel));
     }
 }

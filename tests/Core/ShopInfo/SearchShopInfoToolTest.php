@@ -9,6 +9,7 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\ShopInfo\SearchShopInfoTool;
 use Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoPassage;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Swag\AssistantStarterKit\ShopInfo\InMemoryPassageStore;
 
 /**
  * The model-facing tool: the threshold, the reply shape, and the trace.

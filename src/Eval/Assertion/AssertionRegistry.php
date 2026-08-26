@@ -28,6 +28,7 @@ final class AssertionRegistry
             'no_handoff_claim_in_prose' => new NoHandoffClaimInProse(),
             'escalated_with_handoff' => new EscalatedWithHandoff(),
             'tool_calls_at_most' => new ToolCallsAtMost(),
+            'retrieved_shop_info' => new RetrievedShopInfo(),
             default => throw new \InvalidArgumentException(\sprintf(
                 'Journey "%s" declares unknown assertion "%s".',
                 $journeyId,

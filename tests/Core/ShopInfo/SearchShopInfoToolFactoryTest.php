@@ -13,6 +13,7 @@ use Swag\AssistantStarterKit\Core\ShopInfo\SearchShopInfoTool;
 use Swag\AssistantStarterKit\Core\Tool\Factory\SearchShopInfoToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolContext;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Swag\AssistantStarterKit\ShopInfo\InMemoryPassageStore;
 use Swag\AssistantStarterKit\Tests\Core\Config\FakeSystemConfigService;
 
 /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Swag\AssistantStarterKit\Tests\Core\ShopInfo;
+namespace Swag\AssistantStarterKit\ShopInfo;
 
 /**
  * @internal the width invariant {@see InMemoryPassageStore} mirrors from the real store

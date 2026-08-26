@@ -13,8 +13,8 @@ use Swag\AssistantStarterKit\Core\ShopInfo\ExtractorChain;
 use Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoDocument;
 use Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoPassage;
 use Swag\AssistantStarterKit\ShopInfo\DocumentIngestion;
+use Swag\AssistantStarterKit\ShopInfo\InMemoryPassageStore;
 use Swag\AssistantStarterKit\Tests\Core\ShopInfo\InMemoryDocumentRecords;
-use Swag\AssistantStarterKit\Tests\Core\ShopInfo\InMemoryPassageStore;
 use Swag\AssistantStarterKit\Tests\Core\ShopInfo\StubEmbedder;
 
 /**
