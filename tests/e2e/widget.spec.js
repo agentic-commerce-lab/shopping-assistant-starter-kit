@@ -135,7 +135,29 @@ test.describe('assistant widget', () => {
 
         // The wait must be visible immediately. A silent nineteen seconds is the failure the phased
         // indicator exists to prevent, so this asserts it appears before the answer does.
-        await expect(page.locator('.swag-assistant-thinking')).toBeVisible();
+        const thinking = page.locator('.swag-assistant-thinking');
+        await expect(thinking).toBeVisible();
+
+        // The indicator has to agree with the entry point the merchant chose. A shaded sphere with
+        // a face appearing for nineteen seconds under a *neutral* chat icon is the widget
+        // contradicting a setting, and it is only visible while a turn is in flight — which is
+        // exactly the window no manual pass ever looks at twice.
+        const entryPoint = await page
+            .locator('[data-swag-assistant-root]')
+            .getAttribute('data-entry-point');
+
+        await expect(thinking).toHaveAttribute('data-variant', entryPoint);
+
+        if (entryPoint === 'creature') {
+            await expect(thinking.locator('.swag-assistant-thinking__orb')).toBeVisible();
+        } else {
+            await expect(thinking.locator('.swag-assistant-thinking__dot')).toHaveCount(3);
+            await expect(thinking.locator('.swag-assistant-thinking__orb')).toHaveCount(0);
+        }
+
+        // The sweep bar was read as a progress bar, which is a claim about server work the copy is
+        // careful never to make. It is gone, and nothing should quietly reintroduce it.
+        await expect(thinking.locator('.swag-assistant-thinking__sweep')).toHaveCount(0);
 
         const card = page.locator('.swag-assistant-card').first();
         await expect(card).toBeVisible({ timeout: TURN_TIMEOUT });

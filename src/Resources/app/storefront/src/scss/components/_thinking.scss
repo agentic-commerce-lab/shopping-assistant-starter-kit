@@ -3,16 +3,31 @@ Assistant widget — the wait
 ==============================================
 A real turn takes ~19 seconds, measured, which makes this the single most important element in the
 widget. A two-second loop played ten times is where "cute" goes to die, so the indicator is *phased*:
-the creature changes what it is doing and the copy changes with it, and what a shopper perceives is
-state changing rather than one animation repeating.
-
-`[data-phase]` is set from elapsed time by `thinking.js`, and `[data-mood]` beside it drives the face
-through the same six expressions the orb uses. This file owns only the body motion for each phase.
+the copy changes as the wait goes on, and what a shopper perceives is state changing rather than one
+animation repeating.
 
 **Nothing here claims to know what the server is doing.** Trace events are persisted once, after the
 run completes, so there is no progress signal to read — a line like "searching the catalogue…" would
 be invented, in a product whose whole thesis is that the interface never states what the server did
 not produce. The copy only ever says how long it has been, which is something we actually know.
+
+## Two indicators, one per entry point
+
+`[data-variant]` is written by `thinking.js` from the widget root's `[data-entry-point]`, and picks
+which of the two below renders:
+
+- **creature** — the face, on a body that wakes, tilts, bobs and settles. `[data-phase]` drives the
+  body and `[data-mood]` beside it drives the face through the same six expressions the orb uses.
+- **icon** — three dots at one steady rhythm. The neutral entry point is a flat mark that holds
+  still, and a shaded sphere with eyes appearing for nineteen seconds every time a shopper asks
+  something is the widget disagreeing with itself about what it is. The dots also do not read
+  `[data-phase]`: four choreographed acts is the creature's job, and an indicator that performs one
+  is not the neutral option any more.
+
+**The sweep bar is gone.** A 2px line scanning under the creature was read as a progress bar — which
+is exactly the claim about server work the copy is careful never to make, smuggled in as a graphic.
+It also had to be a separate element from the creature so it would not tilt with it, and an element
+that exists to avoid looking wrong while asserting something untrue is two problems, not one.
 */
 
 .swag-assistant-thinking {
@@ -23,10 +38,17 @@ not produce. The copy only ever says how long it has been, which is something we
     animation: swag-assistant-thinking-in 300ms $swag-assistant-ease-out both;
 }
 
+.swag-assistant-thinking__copy {
+    color: $swag-assistant-meta;
+    font-size: 12px;
+    font-weight: 500;
+    // The copy swaps four times across ~19s. Fading each one in stops the change reading as a glitch.
+    animation: swag-assistant-thinking-copy 300ms $swag-assistant-ease-out;
+}
+
 /*
-The stage holds the creature and the shelf it scans as two separate things. Nesting the shelf inside
-the creature would have been fewer elements and wrong: the creature tilts during the search phase,
-and a shelf that tilts with it is not a shelf being scanned — it is a decoration glued to a face.
+The creature
+----------------------------------------------
 */
 .swag-assistant-thinking__stage {
     --swag-assistant-unit: 34px;
@@ -42,20 +64,14 @@ and a shelf that tilts with it is not a shelf being scanned — it is a decorati
     inset: 0;
 
     // Scoped like the orb and the docked avatar. The bubble leading the thinking indicator is the
-    // same object as the entry point seen a third time; a gradient sphere here beside a flat disc in
-    // the corner is the widget disagreeing with itself mid-turn.
-    [data-entry-point='creature'] & {
-        @include swag-assistant-bubble;
+    // same object as the entry point seen a third time.
+    @include swag-assistant-bubble;
 
-        // Re-asserted because the mixin sets `position: relative` for its glint, and this block
-        // outranks the placement above it.
-        position: absolute;
-        inset: 0;
-    }
+    // Re-asserted because the mixin sets `position: relative` for its glint, and this block
+    // outranks the placement above it.
+    position: absolute;
+    inset: 0;
 
-    [data-entry-point='icon'] & {
-        @include swag-assistant-disc;
-    }
     // Neutral, like every other shadow in the widget. A blue-tinted one was left here after the orb's
     // coloured halo went, which is exactly how a rule survives in one file and dies in another.
     box-shadow:
@@ -65,56 +81,18 @@ and a shelf that tilts with it is not a shelf being scanned — it is a decorati
     animation: swag-assistant-wobble 9s ease-in-out infinite;
 }
 
-.swag-assistant-thinking__copy {
-    color: $swag-assistant-meta;
-    font-size: 12px;
-    font-weight: 500;
-    // The copy swaps four times across ~19s. Fading each one in stops the change reading as a glitch.
-    animation: swag-assistant-thinking-copy 300ms $swag-assistant-ease-out;
-}
-
-// The shelf the creature appears to scan during the search phase.
-.swag-assistant-thinking__sweep {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -4px;
-    height: 2px;
-    border-radius: $swag-assistant-radius-pill;
-    background: $swag-assistant-brand;
-    opacity: 0;
-}
-
-/*
-Phase 1 — wake: the indicator arrives.
-
-Exponential ease-out by default; the overshoot is scoped to the creature below. Third place this rule
-had to be applied: the orb's open-shrink, the surface mixins, and here. A flat disc that springs reads
-as a mistake, and the creature earning a bounce does not transfer to the mark that replaced it.
-*/
+/* Phase 1 — wake: the indicator arrives. The creature earns the overshoot. */
 [data-phase='wake'] .swag-assistant-thinking__orb {
-    animation:
-        swag-assistant-think-wake 620ms $swag-assistant-ease-out both,
-        swag-assistant-wobble 9s ease-in-out infinite;
-}
-
-[data-entry-point='creature'] [data-phase='wake'] .swag-assistant-thinking__orb {
     animation:
         swag-assistant-think-wake 620ms $swag-assistant-ease-spring both,
         swag-assistant-wobble 9s ease-in-out infinite;
 }
 
-/* Phase 2 — search: it tilts side to side, and the sweep passes beneath it. */
-[data-phase='search'] {
-    .swag-assistant-thinking__orb {
-        animation:
-            swag-assistant-think-tilt 2400ms ease-in-out infinite,
-            swag-assistant-wobble 9s ease-in-out infinite;
-    }
-
-    .swag-assistant-thinking__sweep {
-        animation: swag-assistant-think-sweep 2400ms ease-in-out infinite;
-    }
+/* Phase 2 — search: it tilts side to side. */
+[data-phase='search'] .swag-assistant-thinking__orb {
+    animation:
+        swag-assistant-think-tilt 2400ms ease-in-out infinite,
+        swag-assistant-wobble 9s ease-in-out infinite;
 }
 
 /* Phase 3 — still working: a slow, patient bob. */
@@ -124,12 +102,52 @@ as a mistake, and the creature earning a bounce does not transfer to the mark th
         swag-assistant-wobble 9s ease-in-out infinite;
 }
 
-/* Phase 4 — patience: it settles and breathes. `thinking.js` also turns the face `sleepy` here, which
-   is the part that survives reduced motion. */
+/* Phase 4 — patience: it settles and breathes. `thinking.js` also turns the face `sleepy` here,
+   which is the part that survives reduced motion. */
 [data-phase='patient'] .swag-assistant-thinking__orb {
     animation:
         swag-assistant-think-settle 2800ms ease-in-out infinite,
         swag-assistant-wobble 9s ease-in-out infinite;
+}
+
+/*
+The dots
+----------------------------------------------
+Three of them, at the widget's own text colour rather than the brand colour. A brand-coloured dot
+row beside a brand-coloured send button gives a shopper two things pulling equally for attention
+while one of them is not a control — the same reasoning that keeps the secondary colour out of the
+action role.
+
+The rhythm is one 1.2s cycle with each dot 160ms behind the last: slow enough to read as breathing
+rather than as a spinner, and the trailing gap at the end of the cycle is what stops three dots
+pulsing in a row from looking like a countdown.
+*/
+.swag-assistant-thinking__dots {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 5px;
+    align-items: center;
+    // Matches the creature stage's optical height, so swapping the entry point does not shift the
+    // log by a few pixels mid-conversation.
+    height: 34px;
+    padding-left: 2px;
+}
+
+.swag-assistant-thinking__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: $swag-assistant-meta;
+    opacity: 0.35;
+    animation: swag-assistant-think-dot 1200ms ease-in-out infinite;
+
+    &:nth-child(2) {
+        animation-delay: 160ms;
+    }
+
+    &:nth-child(3) {
+        animation-delay: 320ms;
+    }
 }
 
 @keyframes swag-assistant-thinking-in {
@@ -177,19 +195,6 @@ as a mistake, and the creature earning a bounce does not transfer to the mark th
     }
 }
 
-@keyframes swag-assistant-think-sweep {
-    0%,
-    100% {
-        opacity: 0.2;
-        transform: scaleX(0.35) translateX(-13px);
-    }
-
-    50% {
-        opacity: 0.9;
-        transform: scaleX(1) translateX(6px);
-    }
-}
-
 @keyframes swag-assistant-think-bob {
     0%,
     100% {
@@ -212,23 +217,41 @@ as a mistake, and the creature earning a bounce does not transfer to the mark th
     }
 }
 
+/* The tail of the cycle is flat on purpose: it is the pause that makes the row read as one repeating
+   breath rather than as three independent blinks. */
+@keyframes swag-assistant-think-dot {
+    0%,
+    60%,
+    100% {
+        opacity: 0.3;
+        transform: translateY(0);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+}
+
 /*
-Motion is optional; the reassurance is not. Every phase still swaps the copy, and `thinking.js` still
-swaps the mood — so the creature visibly changes expression four times across the wait even with
-every animation removed. That is the part that was carrying the information.
+Motion is optional; the reassurance is not.
+
+Every phase still swaps the copy, and `thinking.js` still swaps the mood — so the creature visibly
+changes expression four times across the wait even with every animation removed. That is the part
+that was carrying the information. The dots have no such fallback and need none: they are held at
+full opacity rather than animated, which reads as "waiting" without moving.
 */
 @media (prefers-reduced-motion: reduce) {
     .swag-assistant-thinking,
     .swag-assistant-thinking__orb,
     .swag-assistant-thinking__copy,
-    .swag-assistant-thinking__sweep,
-    [data-phase] .swag-assistant-thinking__orb,
-    [data-phase] .swag-assistant-thinking__sweep {
+    .swag-assistant-thinking__dot,
+    [data-phase] .swag-assistant-thinking__orb {
         animation: none;
         transition: none;
     }
 
-    .swag-assistant-thinking__sweep {
-        opacity: 0;
+    .swag-assistant-thinking__dot {
+        opacity: 0.55;
     }
 }
