@@ -416,3 +416,54 @@ passages `recall@3` will stop being 8/8; retrieving wider and reranking is then 
 and the labelled question sets in `tests/Fixtures/` are the setup for deciding it. Reranking is also
 the answer if `shop_info_not_in_documents` starts flaking — but that is a different trigger and neither
 has fired.
+
+
+## Does the period audit earn its place? (2026-08-26)
+
+Wired at runtime it writes to `claims.audit`. The question was whether to go further and *escalate* on
+a finding — replacing a reply the model already produced. That needs a false-positive rate and a look
+at a real true positive, and neither existed, so both were manufactured.
+
+**False positives: 0 in 20 live turns.** Twelve period-heavy questions against a period-dense corpus,
+every reply stating an explicit period (fourteen days, three working days, ten years, one month). The
+audit stayed silent throughout — after the `PeriodEquivalence` fix, which was itself found this way:
+a passage granting *fourteen days* against a reply saying *two weeks* had been reported as invented.
+
+**True positives with `claude-sonnet-5`: 0 in 8 adversarial turns.** Questions written to invite an
+invented period — statutory warranty, guarantee on frames, defect-reporting deadline. Six were declined
+with no period at all, and the strongest bait produced the best answer: *"German law provides for a
+statutory warranty, but I don't want to state a figure that isn't confirmed by the shop's own
+information."*
+
+**True positives with a weak 8B model: it fired immediately, and the result reframed the audit.** The
+same eight questions against `meta-llama/llama-3.1-8b-instruct` produced three inventions. The audit
+caught one:
+
+| Reply | Truth | Audit |
+|---|---|---|
+| "The statutory warranty in Germany is two years." | in no document — training data | **caught** (`2 year`) |
+| "the cooling-off period for custom-made orders is 14 days" | the document **excludes** custom items from withdrawal | **missed** |
+| "you have 14 days to cancel a subscription" | 14 days is the withdrawal window, not a subscription right | **missed** |
+
+**The two misses are the finding.** The audit asks whether a number appears in the passages, not
+whether it applies to the question — so a reply that borrows a real number and attaches it to the
+wrong thing passes. And that is the *worse* error: the custom-made answer states the opposite of the
+source. Catching it needs a judgement about which claim a passage supports, which is a relevance
+problem, not a lookup — the same wall R3a hit.
+
+The strong model answered all three correctly, including the exclusion.
+
+### Conclusion, which is not the one this line of work was heading towards
+
+**Do not escalate on a finding.** It would catch the invented-number case and sail past the two
+misapplied-number cases, and shipping it would invite exactly the belief the measurement refutes —
+that the feature is now safe against invented terms. The honest ordering of controls is:
+
+1. **The model.** It is doing nearly all the work here: 28 turns clean, including deliberate
+   provocation. That is also the fragile part, because a starter kit runs on whatever model a merchant
+   configures, and swapping to an 8B model broke it on the first attempt.
+2. **The journeys**, which measure adherence over runs rather than trusting one.
+3. **`claims.audit`**, which is a tripwire for exactly the case above: a merchant on a cheap model. It
+   fires, the merchant can see it, and the eval assertion goes red.
+
+Its value is that it is **model-independent** while the primary control is not.

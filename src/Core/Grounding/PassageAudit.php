@@ -42,6 +42,22 @@ final readonly class PassageAudit
      * days to return this?" is asking a question whose answer is exactly the number at issue. Echoing
      * it back as fact is the failure, not an exemption from it.
      *
+     * **What it cannot see, measured rather than reasoned about.** It checks whether a *number* the
+     * reply states appears in the passages — not whether that number applies to what was asked. Run
+     * against a weak 8B model on 2026-08-26, three inventions came back and this caught one:
+     *
+     * - *"The statutory warranty in Germany is two years"* — **caught**, `2 year` appears nowhere.
+     * - *"the cooling-off period for custom-made orders is 14 days"* — **missed**, and it is the worse
+     *   error: the document *excludes* custom items from withdrawal entirely, so the reply states the
+     *   opposite of the source while quoting a number the source does contain.
+     * - *"you have 14 days to cancel a subscription"* — **missed**, same shape.
+     *
+     * So this is a floor, not a guarantee. Catching a misapplied number needs something that can tell
+     * which claim a passage supports, which is a relevance judgement rather than a lookup — the same
+     * wall spec R3a hit. The strong model got all three right, which is the honest summary: the
+     * primary control on this class of error remains the model, and this is what notices when the
+     * model is not up to it.
+     *
      * @param list<string> $passages the retrieved passage texts the model was given
      *
      * @return list<string>
