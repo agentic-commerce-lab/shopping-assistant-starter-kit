@@ -257,9 +257,16 @@ namespace Swag\AssistantStarterKit\Tests\Fixtures\Fashion;
  * **Seeded arithmetic, not `random_int()`** — same reasoning as `LargeCatalogGenerator`: a fixture
  * that differs between runs turns a red eval into a coin toss.
  *
- * **The twelve real products are copied verbatim** (spec O10), first and in order, so all fifteen
- * existing journeys run against this catalogue unchanged. They land under `Sport > Cycling`, which is
- * a plausible department for a fashion shop to have and keeps them out of every trap's subtree.
+ * **The twelve real products are copied verbatim** (spec O10), first, in order, and INCLUDING their
+ * category paths — so all fifteen existing journeys run against this catalogue unchanged. Their
+ * departments (`Apparel`, `Accessories`, `Maintenance`, …) therefore appear beside `Women`/`Men`/`Kids`
+ * at the top level, which is a slightly odd shop and the correct trade.
+ *
+ * An earlier draft re-pathed them under `Sport > Cycling`. That would have broken
+ * `page_context_not_a_cage`, which stands the shopper in the category `Jerseys` and expects the
+ * Commuter Glove out of `Apparel > Gloves`: re-pathing deletes both names, and the P9 journey with
+ * them. A category path is not decoration in this fixture — `FixtureCategoryFilter` matches on the
+ * names in it.
  *
  * **The word "wedding" appears in exactly one product in this catalogue, and it is not wearable.**
  * That is trap `fw-occasion-word` and trap `fw-false-friend` seen from either side; see
@@ -301,8 +308,9 @@ final class FashionCatalogGenerator
 
     /**
      * 3 departments × 14 garment types × 22 cuts = 924 leaves, plus 42 garment-type nodes and 3
-     * department nodes = 969. Plus the Brand branch (1 + 40), Season (1 + 4), Occasion (1 + 10) and
-     * Sport (1 + 1) = 59. Total 1,028.
+     * department nodes = 969. Plus the Brand branch (1 + 40), Season (1 + 4) and Occasion (1 + 10)
+     * = 57. Plus the trap products' own paths, plus whatever nodes the twelve real products bring with
+     * them verbatim. Take the total from the measurement in Step 6, not from this sum.
      *
      * Asserted rather than described: a tree the generator quietly halves is a measurement about a
      * catalogue nobody has.
@@ -356,15 +364,15 @@ final class FashionCatalogGenerator
     }
 
     /**
-     * The twelve real products, re-pathed under `Sport > Cycling` and otherwise untouched.
+     * The twelve real products, byte-for-byte as the committed fixture holds them.
      *
-     * Re-pathing is the ONE change made to them, and it is safe: no existing journey asserts a
-     * category path. `CategoryConstraintTest` reads `categoryPath[0]` from whatever the small
-     * catalogue holds, and runs against the small catalogue, not this one.
+     * NOT re-pathed. `page_context_not_a_cage` stands the shopper in `Jerseys` and expects
+     * `fx-004-black` out of `Apparel > Gloves`, and `FixtureCategoryFilter::apply()` matches on the
+     * names in `categoryPath` — so moving them silently breaks the one journey that proves P9.
      *
      * @return list<FashionProduct>
      */
-    private function realProducts(): array { /* decode $smallCatalogPath, map categoryPath to ['Sport', 'Cycling'] */ }
+    private function realProducts(): array { /* decode $smallCatalogPath, return $decoded['products'] unchanged */ }
 
     /** @return list<FashionProduct> */
     private function generated(): array { /* GENERATED_PARENTS products, see below */ }
@@ -394,11 +402,10 @@ The `generated()` loop, stated precisely so it can be written without re-derivin
 - **The name must never contain "wedding".** `singular()` and the word lists above contain no
   occasion words at all, which is what makes that true by construction rather than by filtering.
 
-`Brand`, `Season`, `Occasion` and `Sport` nodes are reached by re-pathing: every 90th generated
-product also gets a second path — no. **One path per product**, and the extra 59 nodes come from the
-trap products and from 59 dedicated generated products whose `categoryPath` is
-`['Brand', $brandName]`, `['Season', $season]` or `['Occasion', $occasion]`. Take them from the front
-of the generated loop (`$i < 59`) so the count is exact and the arithmetic above still holds.
+**One path per product.** The extra `Brand` / `Season` / `Occasion` nodes come from 57 dedicated
+generated products whose `categoryPath` is `['Brand', $brandName]`, `['Season', $season]` or
+`['Occasion', $occasion]`. Take them from the front of the generated loop (`$i < 57`) so the unit
+arithmetic above still holds.
 
 **The `Occasion` branch must not contain the word "wedding".** Its ten values are `Party`, `Evening`,
 `Cocktail`, `Black Tie`, `Garden Party`, `Christening`, `Graduation`, `Prom`, `Race Day`, `Festival`.
