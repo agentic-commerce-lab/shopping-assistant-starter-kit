@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Eval\Assertion;
 
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Grounding\PassageAudit;
+use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
 use Swag\AssistantStarterKit\Core\ShopInfo\SearchShopInfoTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Swag\AssistantStarterKit\Eval\Assertion;
@@ -71,7 +72,7 @@ final class NoUnsupportedPeriodInProse implements Assertion
      */
     public function evaluate(AssistantTurn $turn, TraceRecorder $trace, array $expectations): AssertionResult
     {
-        $passages = self::passagesGivenToTheModel($trace);
+        $passages = RetrievedPassages::from($trace);
         $unsupported = $this->audit->unsupportedPeriods($turn->prose, $passages);
 
         if ($unsupported === []) {
@@ -92,29 +93,6 @@ final class NoUnsupportedPeriodInProse implements Assertion
                 \count($passages),
             ),
         );
-    }
-
-    /**
-     * Every passage the model was handed across the run, from the tool's own trace events.
-     *
-     * All events, not the last: a multi-turn journey retrieves more than once, and a period supported
-     * by turn one's passage is not an invention when restated in turn two.
-     *
-     * @return list<string>
-     */
-    private static function passagesGivenToTheModel(TraceRecorder $trace): array
-    {
-        $passages = [];
-
-        foreach (TraceEvents::payloads($trace, 'retrieve.shopinfo') as $payload) {
-            foreach (\is_array($payload['passages'] ?? null) ? $payload['passages'] : [] as $passage) {
-                if (\is_string($passage)) {
-                    $passages[] = $passage;
-                }
-            }
-        }
-
-        return $passages;
     }
 
     public function isSafety(): bool

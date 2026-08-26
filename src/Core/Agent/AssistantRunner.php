@@ -6,8 +6,10 @@ namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory\Bundle;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Grounding\PassageAudit;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\GuardCheck;
+use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
 use Symfony\AI\Agent\Exception\MaxIterationsExceededException;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -46,6 +48,7 @@ final class AssistantRunner
         private readonly Bundle $bundle,
         private readonly TurnOutcomeResolver $outcomeResolver = new TurnOutcomeResolver(),
         private readonly TurnToolCallCounter $activityCounter = new TurnToolCallCounter(),
+        private readonly PassageAudit $passageAudit = new PassageAudit(),
     ) {}
 
     /**
@@ -99,7 +102,44 @@ final class AssistantRunner
 
         $prose = $result instanceof TextResult ? $result->getContent() : '';
 
+        $this->auditPeriods($prose);
+
         return new AssistantTurn($prose, $cards, $outcome, $unbackedPrices, $unbackedAvailability);
+    }
+
+    /**
+     * Records any period the reply states that no retrieved passage supports.
+     *
+     * **Recorded, not yet shown to the shopper**, and that is a deliberate stopping point rather than
+     * an oversight. `AssistantTurn` sits at Mago's five-parameter bound, so carrying a third warning
+     * out to the endpoint needs a value object across 29 construction sites and a change to the
+     * payload the widget reads — a separate piece of work. Writing it to `claims.audit` costs none of
+     * that and buys the thing that matters most for this class of error: an invented revocation
+     * deadline or warranty term becomes **visible and auditable** in the trace view a merchant already
+     * reads, in the phase already labelled "answer".
+     *
+     * Why it needs its own check at all, given escalation exists: handoff fires when the model *knows*
+     * it cannot help. This fires when it does not know — it states a deadline confidently and wrongly,
+     * which escalation cannot catch by construction, because the model would have to know it was wrong
+     * in order to escalate.
+     *
+     * `claims.audit` rather than a new stage: {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer}
+     * already writes unbacked prices there and the Administration already renders it, so this arrives
+     * where a merchant is already looking for "the sentence disagrees with the facts".
+     */
+    private function auditPeriods(string $prose): void
+    {
+        $passages = RetrievedPassages::from($this->bundle->trace);
+        $unsupported = $this->passageAudit->unsupportedPeriods($prose, $passages);
+
+        if ($unsupported === []) {
+            return;
+        }
+
+        $this->bundle->trace->record('claims.audit', [
+            'unsupportedPeriods' => $unsupported,
+            'passagesGiven' => \count($passages),
+        ]);
     }
 
     /**
