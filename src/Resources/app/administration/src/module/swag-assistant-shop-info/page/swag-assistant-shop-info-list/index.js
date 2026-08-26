@@ -5,6 +5,14 @@ import './swag-assistant-shop-info-list.scss';
 const { Criteria } = Shopware.Data;
 
 /**
+ * Shopware's built-in Storefront sales-channel type.
+ *
+ * A constant rather than a lookup by name: the type's *name* is translated and a merchant can rename
+ * a channel, while this id is fixed platform data.
+ */
+const STOREFRONT_TYPE_ID = '8a243080f92e4c719546314b577cf82b';
+
+/**
  * The documents the assistant may answer from, for one sales channel.
  *
  * **Scoped to a sales channel, always, with no "all channels" option.** Passages are stored per
@@ -111,11 +119,36 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
         async loadSalesChannels() {
             const criteria = new Criteria(1, 100);
             criteria.addSorting(Criteria.sort('name', 'ASC'));
+            criteria.addFilter(Criteria.equals('active', true));
 
             this.salesChannels = await this.salesChannelRepository.search(criteria, Shopware.Context.api);
-            this.salesChannelId = this.salesChannels[0] ? this.salesChannels[0].id : null;
+            this.salesChannelId = this.defaultSalesChannelId();
 
             await this.onSalesChannelChange(this.salesChannelId);
+        },
+
+        /**
+         * The channel to land on, which is deliberately not "the first one alphabetically".
+         *
+         * Measured the hard way on the lab shop: a demo install has a Headless channel and a
+         * Storefront channel, "Headless" sorts first, and a document uploaded on arrival went to the
+         * channel with no storefront on it. Everything reported success — indexed, twelve passages —
+         * and the widget could not see any of it, because documents and the embedding model are both
+         * per channel (spec R12). A wrong default here is invisible in exactly the way that costs an
+         * hour.
+         *
+         * A storefront channel is the answer when there is one: it is the only kind that has a widget
+         * for a shopper to type into. When there is not, the first active channel is as good a guess
+         * as exists, and the dropdown is right there.
+         */
+        defaultSalesChannelId() {
+            const storefront = this.salesChannels.find(
+                (channel) => channel.typeId === STOREFRONT_TYPE_ID,
+            );
+
+            const chosen = storefront || this.salesChannels[0];
+
+            return chosen ? chosen.id : null;
         },
 
         async onSalesChannelChange(salesChannelId) {
