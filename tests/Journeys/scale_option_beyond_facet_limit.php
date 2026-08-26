@@ -13,10 +13,9 @@ declare(strict_types=1);
 //
 // Verified reachable without a model: the name plus `Colour: Chartreuse` returns exactly
 // `sc-rare-option`.
-//
-// REQUIRES `ASSISTANT_EVAL_CATALOG=large`.
 return [
     'id' => 'scale_option_beyond_facet_limit',
+    'catalog' => 'large',
     'category' => 'grounding',
     'runs' => 3,
     'archetypes' => [

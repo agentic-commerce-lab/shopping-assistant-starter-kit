@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Eval\Journey;
 use Swag\AssistantStarterKit\Eval\JourneyRunner;
-use Swag\AssistantStarterKit\Tests\Fixtures\Large\LargeCatalogFile;
+use Swag\AssistantStarterKit\Tests\Fixtures\EvalCatalogue;
 
 /**
  * Drives every journey under tests/Journeys/ through a real LLM endpoint and checks it
@@ -53,6 +53,20 @@ final class JourneyEvalTest extends TestCase
     public function testJourneyMeetsItsAssertions(string $path): void
     {
         $journey = Journey::fromFile($path);
+        $catalogue = EvalCatalogue::chosenName();
+
+        // Before the credentials are read, so a journey written for another catalogue costs no model
+        // call. The four `scale_*` journeys used to carry this requirement in a header comment that
+        // nothing enforced, and a default run therefore executed them against a twelve-product
+        // catalogue that has none of the shapes they assert — see JourneyCatalogue.
+        if (!$journey->catalogue->requires($catalogue)) {
+            self::markTestSkipped(\sprintf(
+                'Journey "%s" is written against the %s catalogue; this run uses %s.',
+                $journey->id,
+                $journey->catalogue->name(),
+                $catalogue,
+            ));
+        }
 
         // setUp() already guarantees this is a non-empty string; re-checked here only
         // so the analyzer can narrow LlmSettings::$model's non-empty-string parameter
@@ -69,11 +83,11 @@ final class JourneyEvalTest extends TestCase
             model: $model,
         );
 
-        // Which catalogue this journey runs against. `ASSISTANT_EVAL_CATALOG=large` swaps in the
-        // generated one; anything else, including unset, keeps the twelve-product fixture every
-        // expectation in tests/Journeys was written against. See spec decision S6 — the large run is
-        // opt-in because the suite already costs ten minutes and real money.
-        $runner = new JourneyRunner($settings, LargeCatalogFile::chosen());
+        // Which catalogue this journey runs against. `ASSISTANT_EVAL_CATALOG=large` or `=fashion`
+        // swaps in a generated one; anything else, including unset, keeps the twelve-product fixture
+        // every expectation in tests/Journeys was written against. See spec decision S6 — a generated
+        // run is opt-in because the suite already costs ten minutes and real money.
+        $runner = new JourneyRunner($settings, EvalCatalogue::chosen());
         $report = $runner->run($journey);
 
         if ($report->passed()) {

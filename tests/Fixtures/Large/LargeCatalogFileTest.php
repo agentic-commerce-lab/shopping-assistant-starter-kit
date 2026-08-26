@@ -30,27 +30,11 @@ final class LargeCatalogFileTest extends TestCase
         }
     }
 
-    public function testItDefaultsToTheSmallCatalogue(): void
+    public function testItWritesTheGeneratedFileOnDemand(): void
     {
-        putenv('ASSISTANT_EVAL_CATALOG');
-
-        self::assertStringEndsWith('tests/Fixtures/catalog.json', LargeCatalogFile::chosen());
-    }
-
-    public function testAnUnknownValueDefaultsToTheSmallCatalogueRatherThanFailing(): void
-    {
-        // A typo must not silently produce a large run, and must not break a suite that was going
-        // to skip anyway for want of credentials.
-        putenv('ASSISTANT_EVAL_CATALOG=larg');
-
-        self::assertStringEndsWith('tests/Fixtures/catalog.json', LargeCatalogFile::chosen());
-    }
-
-    public function testLargeSelectsTheGeneratedFileAndWritesIt(): void
-    {
-        putenv('ASSISTANT_EVAL_CATALOG=large');
-
-        $path = LargeCatalogFile::chosen();
+        // The environment switch itself moved to EvalCatalogueTest with `chosen()`. What stays here is
+        // what this class still owns: the file, its location, and its staleness rule.
+        $path = LargeCatalogFile::path();
 
         self::assertStringEndsWith('var/catalog-large.json', $path);
         self::assertFileExists($path);
