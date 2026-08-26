@@ -273,3 +273,64 @@ reading as established. What is established is that this work cannot be the caus
 The journey's own conclusion still stands and is untouched by this work: a safety claim resting on a
 prompt is the defect, and the fix is wiring `NoAbsenceClaimInProse` into `ProseAudit` so the reply
 carries a warning the way unbacked prices already do.
+
+
+## Run 5 — a realistic corpus, two criteria, two languages (2026-08-26)
+
+Everything above was measured against **one** document with three passages, which meant "top 3" was
+the entire store. Two things needed testing on a corpus where retrieval actually has to choose:
+whether a **within-query margin** does what an absolute threshold cannot, and whether the whole
+problem is simply that both models are English-first while the text was German.
+
+Corpora committed as `tests/Fixtures/shop_info/` (German, 6 documents, 13 passages) and
+`tests/Fixtures/shop_info_en/` (English, the same 6 documents, 11 passages): returns, shipping,
+payment, privacy, terms, imprint. Eight questions each corpus answers and eight it does not, with the
+answering document labelled so recall is checkable. `bge-m3` throughout.
+
+| Criterion | German | English |
+|---|---|---|
+| `recall@3` — answering document in the top 3 | **8/8** | **8/8** |
+| Absolute threshold: lowest answerable − highest unanswerable | −0.1702 | −0.1448 |
+| Margin (top‑1 − top‑2): lowest answerable − highest unanswerable | −0.0281 | −0.1014 |
+
+**Three findings, and the third is the one that matters.**
+
+**1. The margin idea is dead.** It looked promising on the single-document store, where the two worst
+near-misses had margins of 0.0065 and 0.0001 against a minimum answerable margin of 0.0286 — a 20×
+separation. On a real corpus that vanishes: German overlaps by 0.0281, English by 0.1014, which is
+*worse* than the absolute threshold it was meant to replace. The flat distributions were substantially
+an artefact of having only three passages to rank. Worth having tested, and worth recording as
+refuted so nobody re-derives it from the same tempting hint.
+
+**2. English does not rescue it.** Marginally better on the absolute threshold (−0.1448 against
+−0.1702), clearly worse on the margin. The same *kinds* of question fail in both languages: "Who is
+your managing director?" / "Wer ist euer Geschäftsführer?" is the lowest-scoring answerable question in
+both, and "Can I order spare parts individually?" / "Kann ich Ersatzteile einzeln bestellen?" the
+highest-scoring unanswerable one in both. That cross-language agreement is what makes this structural
+rather than a German-text problem, and it is consistent with the reason: a bi-encoder's cosine score
+is calibrated for *ranking within one query*, not for comparison *across* queries, and every threshold
+here is a cross-query comparison.
+
+**3. Recall is perfect and precision is the entire problem.** 8/8 in both languages. The retrieval half
+of this feature is not the weak part and does not need tuning — which reframes R3a from a compromise
+into the correct architecture: the scalar is used for the thing it can do, and the judgement that
+requires reading goes to the reader.
+
+### What this says about comparing more embedding models
+
+**The metric that matters is already saturated**, so a model sweep cannot improve it: `recall@3` is 8/8,
+and no model can beat that. A sweep would only re-measure threshold separability, which Run 5 shows is
+not a property any bi-encoder has. So the answer to "should we compare more models" is **not at this
+corpus size** — 8 questions over 11–13 passages is an easy retrieval problem, and everything passes it.
+
+It becomes a real question at realistic scale: a shop with a few hundred passages, where recall@3 will
+*not* be 8/8 and models will genuinely differ. At that point the right comparison is recall@3 over a
+labelled question set — the setup this run leaves behind — and not threshold separation.
+
+### What would restore a structural guarantee
+
+Only a reranker (a cross-encoder scoring query and passage jointly, trained on relevance labels rather
+than similarity). Its scores are comparable across queries because they are classifier outputs, which
+is exactly the property the bi-encoder lacks. That remains option 2, and the cost is unchanged: the
+generic OpenAI-compatible bridge exposes no reranking endpoint, so it needs a new dependency or bridge
+— a real decision for a starter kit, not a detail.
