@@ -184,12 +184,14 @@ Stated because they were decided, not overlooked.
   reuses the same OpenAI-compatible provider URL. **Verified 2026-08-25** against the lab shop's
   OpenRouter configuration with `openai/text-embedding-3-small`: it serves `/v1/embeddings`, and a
   document indexed at 1536 dimensions.
-- **`symfony/ai-maria-db-store` ships a Symfony Flex recipe that breaks a Shopware shop.** Installing
-  it writes `config/packages/ai_maria_db_store.yaml`, which declares an `ai:` root key that only
-  `symfony/ai-bundle` can load. Without that bundle every console command and every request dies with
-  *"There is no extension able to load the configuration for ai"* — not just the new feature, the whole
-  shop. Found by hitting it. The file has to be deleted after install, so the plugin's install
-  instructions must say so, or the bundle has to be a declared dependency.
+- **`symfony/ai-maria-db-store` ships a Symfony Flex recipe that breaks a Shopware shop** — the second
+  package to do so, and the same failure the README already documents for `symfony/ai-generic-platform`.
+  Installing it writes `config/packages/ai_maria_db_store.yaml` with an `ai.store` key that only
+  `symfony/ai-bundle` can load, and every console command and every request then dies with *"There is
+  no extension able to load the configuration for ai"* — not just the new feature, the whole shop.
+  Found by hitting it. **Not a new class of problem:** the README's existing fix, writing a
+  comment-only placeholder before `composer require` so Flex leaves it alone, now covers both files.
+  Any further `symfony/ai-*` dependency needs the same treatment.
 - **Plugin dependencies live in the shop's vendor tree, not the plugin's.** `composer require` inside
   the plugin is not enough for a path-repository install: the shop needs
   `composer update swag/assistant-starter-kit -W` before the new classes can be autoloaded.
