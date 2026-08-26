@@ -17,7 +17,12 @@
             <name>llmModel</name>
             <label>Model</label>
             <helpText>The assistant is inert until this is set. A weak model reads as a bad
-                product: prefer a model with reliable tool calling.</helpText>
+                product: prefer a model with reliable tool calling. If you index shop documents, this
+                is also a safety setting — answers about your terms are written by this model from the
+                document text, and whether it declines when a document does not answer the question
+                depends on the model. Measured: a small 8B model stated a warranty period no document
+                contained, and said custom-made goods have a 14-day cooling-off period when the
+                document excludes them from withdrawal entirely.</helpText>
         </input-field>
 
         <input-field type="text">
