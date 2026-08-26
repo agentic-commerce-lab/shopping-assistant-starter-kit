@@ -1547,3 +1547,58 @@ embedding-model question, not a UI.
 3. **The embedding dimension is a foot-gun by construction.** A merchant changing the model silently invalidates the store. The guard turns that into a refusal with an explanation; it cannot turn it into a non-event.
 4. **The eval environment has no documents.** Task 8 Step 1 requires deciding how the two journeys get a store, and a journey that passes because it tested nothing is the failure mode to avoid.
 5. **Journeys are model behaviour.** `shop_info_not_in_documents` asks the model to admit ignorance, and this project measured this week that a model overrides an explicit instruction not to claim absence in roughly one run of three. If that journey is flaky, the finding is about prompt adherence, not about retrieval — and it is a finding, not a reason to weaken the assertion.
+
+---
+
+## Outcome (2026-08-26)
+
+**All eight tasks executed.** Branch `feat/shop-info-retrieval`. The chain works end to end against
+the lab shop: a question about the shop's revocation terms is answered from a document the merchant
+supplied, and a question the document does not answer is declined without invention.
+
+### The one decision that changed
+
+**Task 7's Gate did not pass on its own terms, and R3 was revised rather than parameterised.** No
+similarity threshold separates questions a document answers from questions it does not — measured
+across `text-embedding-3-small`, `text-embedding-3-large` and `bge-m3`, plus a chunking experiment
+that made the overlap wider rather than narrower. Two structural cases cause it and they sit on
+opposite sides of any line: an answer carried by a negation, and a topical near-miss that shares the
+document's whole vocabulary while being absent from it.
+
+So the threshold became a **recall floor** (0.40 with `bge-m3`) and the relevance decision moved to
+the model, which arrives with `SearchShopInfoTool::RELEVANCE_NOTE`. That replaces a guarantee with an
+instruction — spec R3a records the trade, and `shop_info_not_in_documents` is what holds the line.
+Measured: 3/3 on both archetypes, with passages above the floor in every run.
+
+Full data: `docs/superpowers/reports/2026-08-25-shopinfo-threshold.md`.
+
+### What the plan assumed that did not hold
+
+| Assumption | Reality |
+|---|---|
+| Store `query()` takes `minScore` and a structured `filter` | It is **distance**-based: `maxScore` bounds cosine distance, and filtering is a raw SQL `where` plus bound `params`. The sign conversion is isolated to `AiStorePassageStore` |
+| A `Vectorizer` service exists to inject | The plugin builds its platform with `supportsEmbeddings: false`, so embedding was impossible. A second, embeddings-only platform now sits beside the completions one — flipping the flag would have risked routing completions to the embeddings endpoint |
+| Any configured embedding model works | The generic bridge infers a model's kind from whether its name contains `embed`, so `bge-m3` failed before any HTTP request. `EmbeddingsOnlyModelCatalog` fixes it |
+| `remove()` can delete a document's passages | It takes ids only, so `deleteDocument()` is a direct `DELETE` on the `documentId` metadata — trusting a stored chunk count would orphan passages that retrieval can still serve |
+| The eval harness needs documents seeded | It needed the **tool** first: `JourneyAttempt` uses `withCoreToolsOnly()`, so `search_shop_info` did not exist there at all |
+| Character-granular chunk overlap | The plan's own test forbids it. Overlap is whole paragraphs |
+| `extension` can be an entity property | `Entity` inherits `ExtendableTrait::getExtension(string)`; renamed to `fileExtension` with the column unchanged |
+| `schema_filter` must be configured | Avoided instead: the vector table is created by the library's raw DDL at first write, has no DAL entity, and Shopware evolves schema through migrations — nothing inspects it |
+
+### Added beyond the plan, and why
+
+- **`retrieved_shop_info` assertion.** Without it both new journeys passed vacuously: the first expert
+  archetype scored just under the recall floor, so the model received nothing, declined for want of
+  information, and every safety assertion went green having tested nothing. It caught that on its
+  first run.
+- **`DocumentRecords` port and `Embedder` interface.** The plan's DB-free ingestion test needs a fake
+  document repository, and faking Shopware's `EntityRepository` means constructing DAL internals. The
+  library's `VectorizerInterface` is `final` and returns a union of four shapes.
+- **A multibyte test for the forced chunk split.** It counts bytes; half a character is invalid UTF-8
+  and German legal text is full of umlauts.
+
+### Not done
+
+- **Part 2, the admin module** — as planned, it was gated on Task 7. The Gate's condition is now
+  satisfied differently than expected: the chain works, but its relevance guarantee is an instruction
+  rather than a threshold. Worth deciding whether a reranker comes before the UI.
