@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Eval\Journey;
 use Swag\AssistantStarterKit\Eval\JourneyAttempt;
+use Swag\AssistantStarterKit\Eval\JourneyCatalogue;
 use Swag\AssistantStarterKit\Eval\JourneyPage;
 use Swag\AssistantStarterKit\Tests\Support\UsesCatalogFixture;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -96,6 +97,7 @@ final class JourneyAttemptPageContextTest extends TestCase
             turns: ['archetype'],
             assertions: [],
             page: $page,
+            catalogue: JourneyCatalogue::parse(null, 'page_context_fidelity'),
         );
     }
 
