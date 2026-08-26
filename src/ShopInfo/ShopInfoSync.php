@@ -8,18 +8,20 @@ use Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords;
 use Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoDocument;
 
 /**
- * The two bulk actions: index the shop's own pages, and index everything again.
- *
- * **Neither stops at the first failure.** A shop has five legal pages and a merchant may have twenty
- * documents; refusing the rest because one page is empty would make one bad page look like a broken
- * feature. Each item is attempted, each failure is recorded on its own document with its own reason,
- * and the caller gets a count of both — which is also what makes the reply useful in the
- * Administration: "4 indexed, 1 failed" plus a row explaining which.
+ * Indexing every document of a channel again, each from its own source.
  *
  * **Re-indexing reads from where the document came from.** A CMS document is read from the page again,
  * because a merchant who edited their revocation notice and pressed the button expects the new
  * wording. An uploaded document is re-indexed from its stored text, because the file is not kept
  * (spec R9). Getting this backwards would silently serve last week's terms.
+ *
+ * **It does not stop at the first failure.** A merchant may have twenty documents, and refusing the
+ * rest because one is broken would make one bad document look like a broken feature. Each is
+ * attempted, each failure carries its own reason, and the caller gets counts — which is what makes
+ * "19 indexed, 1 failed" plus a row explaining which useful in the Administration.
+ *
+ * Indexing the shop's own pages lives in {@see ShopPageIndexer}: different unit of work, and Mago
+ * bounds complexity per class.
  */
 final readonly class ShopInfoSync
 {
@@ -28,40 +30,6 @@ final readonly class ShopInfoSync
         private DocumentIngestionFactory $ingestions,
         private DocumentRecords $records,
     ) {}
-
-    /**
-     * Index every configured legal page of one sales channel.
-     *
-     * @return array{indexed: int, failed: list<array{name: string, reason: string}>, skipped: list<string>}
-     */
-    public function indexPages(string $salesChannelId, string $embeddingModel): array
-    {
-        $ingestion = $this->ingestions->forSalesChannel($salesChannelId, $embeddingModel);
-        $indexed = 0;
-        $failed = [];
-        $skipped = [];
-
-        foreach ($this->pages->forSalesChannel($salesChannelId) as $page) {
-            if (trim($page['html']) === '') {
-                // A configured page with nothing on it. Skipped rather than failed: an empty page is a
-                // shop that has not written its terms yet, which is not an error the merchant can fix
-                // here — and recording it as a failed document would put a red row under their nose
-                // every time they open the screen.
-                $skipped[] = $page['name'];
-
-                continue;
-            }
-
-            try {
-                $ingestion->ingestPage($page['name'], $page['html'], $salesChannelId);
-                ++$indexed;
-            } catch (\Throwable $failure) {
-                $failed[] = ['name' => $page['name'], 'reason' => $failure->getMessage()];
-            }
-        }
-
-        return ['indexed' => $indexed, 'failed' => $failed, 'skipped' => $skipped];
-    }
 
     /**
      * Index every document of one sales channel again, each from its own source.

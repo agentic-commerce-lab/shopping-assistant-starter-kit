@@ -8,7 +8,6 @@ use Shopware\Core\Content\Cms\CmsPageEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\System\SystemConfig\SystemConfigService;
 
 /**
  * The shop's own legal pages, as HTML, for one sales channel.
@@ -26,27 +25,10 @@ use Shopware\Core\System\SystemConfig\SystemConfigService;
  */
 final readonly class CmsLegalPages
 {
-    /**
-     * The pages worth indexing, and the label each becomes.
-     *
-     * `contactPage` and `revocationRequestPage` are deliberately absent: a contact page is a form, and
-     * a revocation *request* page is the form for exercising the right rather than the text describing
-     * it. Indexing a form yields field labels, which retrieve as prose and answer nothing.
-     *
-     * @var array<string, string>
-     */
-    private const PAGES = [
-        'imprintPage' => 'Imprint',
-        'privacyPage' => 'Privacy policy',
-        'revocationPage' => 'Right of withdrawal',
-        'tosPage' => 'Terms and conditions',
-        'shippingPaymentInfoPage' => 'Shipping and payment',
-    ];
-
     public function __construct(
         private EntityRepository $cmsPages,
         private SalesChannelLanguage $language,
-        private SystemConfigService $systemConfig,
+        private LegalPageConfig $configured,
     ) {}
 
     /**
@@ -54,22 +36,35 @@ final readonly class CmsLegalPages
      */
     public function forSalesChannel(string $salesChannelId): array
     {
-        $context = $this->language->contextFor($salesChannelId);
-        $wanted = [];
-
-        foreach (self::PAGES as $key => $label) {
-            $pageId = $this->systemConfig->getString('core.basicInformation.' . $key, $salesChannelId);
-
-            if ($pageId !== '') {
-                $wanted[$pageId] = ['key' => $key, 'label' => $label];
-            }
-        }
+        $wanted = $this->configured->entries($salesChannelId);
 
         if ($wanted === []) {
             return [];
         }
 
-        return $this->read(array_keys($wanted), $wanted, $context);
+        return $this->read(array_keys($wanted), $wanted, $this->language->contextFor($salesChannelId));
+    }
+
+    /**
+     * One page, if that page is configured for this channel.
+     *
+     * Null when it is not, which is the answer the automatic path needs: a merchant editing some other
+     * CMS page must not cause an embedding call, and a page un-configured since the change was queued
+     * must not be indexed as if it were still a legal page.
+     *
+     * @return array{key: string, label: string, name: string, html: string}|null
+     */
+    public function pageFor(string $salesChannelId, string $cmsPageId): ?array
+    {
+        $meta = $this->configured->entries($salesChannelId)[$cmsPageId] ?? null;
+
+        if ($meta === null) {
+            return null;
+        }
+
+        $found = $this->read([$cmsPageId], [$cmsPageId => $meta], $this->language->contextFor($salesChannelId));
+
+        return $found[0] ?? null;
     }
 
     /**

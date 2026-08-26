@@ -420,10 +420,46 @@
 
         <!-- The shop's own legal pages, which spec R1 deferred to its own plan. HTML extraction was
              built for exactly this path, which is why it existed before anything uploaded HTML. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\LegalPageConfig">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\ShopInfo\CmsLegalPages">
             <argument type="service" id="cms_page.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\SalesChannelLanguage"/>
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\LegalPageConfig"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\CmsLegalPages"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+        </service>
+
+        <!-- Automatic re-indexing when a merchant edits a legal page. Off unless the merchant
+             switched it on: every change would otherwise spend an embedding call. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\ChangedCmsPages">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\AutoIndexPolicy">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\LegalPageConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\CmsPageChangeSubscriber">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ChangedCmsPages"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\AutoIndexPolicy"/>
+            <argument type="service" id="messenger.default_bus"/>
+            <argument type="service" id="logger"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\ReindexShopPageHandler">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="logger"/>
+            <tag name="messenger.message_handler"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync">
@@ -440,6 +476,7 @@
         </service>
 
         <service id="Swag\AssistantStarterKit\Controller\ShopInfoSyncController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer"/>
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
         </service>

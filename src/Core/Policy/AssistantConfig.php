@@ -48,5 +48,15 @@ final readonly class AssistantConfig
          * tool.
          */
         public string $embeddingModel = '',
+        /**
+         * Whether editing one of the shop's own pages re-indexes it automatically.
+         *
+         * **Off by default, and the default is the decision.** Every content change would otherwise
+         * spend embedding calls the merchant never asked for, and a shop reworking its terms over a
+         * week would discover that on an invoice. On, it keeps a revocation notice from going stale —
+         * which is the failure spec R8 is about, arriving through the CMS instead of through a
+         * re-upload.
+         */
+        public bool $autoIndexShopPages = false,
     ) {}
 }

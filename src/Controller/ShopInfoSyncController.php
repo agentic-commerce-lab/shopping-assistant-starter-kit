@@ -8,6 +8,7 @@ use Shopware\Core\Framework\Routing\ApiRouteScope;
 use Shopware\Core\PlatformRequest;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\ShopInfo\ShopInfoSync;
+use Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,6 +27,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class ShopInfoSyncController
 {
     public function __construct(
+        private readonly ShopPageIndexer $pages,
         private readonly ShopInfoSync $sync,
         private readonly SystemConfigAssistantConfig $config,
     ) {}
@@ -50,7 +52,7 @@ class ShopInfoSyncController
             return self::refusal('A sales channel is required.');
         }
 
-        return $this->bulk(fn(string $model): array => $this->sync->indexPages(
+        return $this->bulk(fn(string $model): array => $this->pages->indexPages(
             $salesChannelId,
             $model,
         ), $salesChannelId);

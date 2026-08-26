@@ -57,6 +57,10 @@ final readonly class SystemConfigAssistantConfig
             )),
             logTraces: $this->boolOr('logTraces', false, $salesChannelId),
             salesChannelId: $salesChannelId,
+            // Through boolOr, not a cast: `system:config:set ... false` stores the string "false",
+            // and `(bool) "false"` is true. The kill switch was measured failing exactly that way,
+            // and this one would spend money rather than open a guardrail.
+            autoIndexShopPages: $this->boolOr('autoIndexShopPages', false, $salesChannelId),
             embeddingModel: trim($this->systemConfig->getString(self::PREFIX . 'embeddingModel', $salesChannelId)),
         );
     }
