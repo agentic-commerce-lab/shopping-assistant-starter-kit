@@ -86,6 +86,13 @@ final readonly class SystemConfigAssistantConfig
             escalationUrl: $this->safeUrl('escalationUrl', $salesChannelId),
             escalationMessage: trim($this->stored->string('escalationMessage', $salesChannelId)),
             logTraces: $this->stored->bool('logTraces', true, $salesChannelId),
+            salesChannelId: $salesChannelId,
+            embeddingModel: trim($this->stored->string('embeddingModel', $salesChannelId)),
+            // Through StoredValueReader::bool(), never a cast: `system:config:set ... false` stores
+            // the string "false", and `(bool) "false"` is true. The kill switch was measured failing
+            // exactly that way, and this one would spend embedding money rather than open a
+            // guardrail. That reader runs filter_var(FILTER_VALIDATE_BOOLEAN), which reads it right.
+            autoIndexShopPages: $this->stored->bool('autoIndexShopPages', false, $salesChannelId),
         );
     }
 

@@ -1,0 +1,101 @@
+/*
+ * Layout only, and every colour comes from an Administration custom property with a fallback — the
+ * convention the trace list already follows. A hand-picked hex beside a token system is drift, and it
+ * is what gets left behind when the Administration changes theme.
+ */
+.swag-assistant-shop-info-list {
+    &__content {
+        padding: 24px;
+    }
+
+    /*
+     * The page's scope, above the cards it governs. Not in a card of its own: it is one control, and
+     * wrapping a single select in a titled container would make the page read as three equal steps
+     * when only one of them is a choice about the page itself.
+     */
+    &__scope {
+        max-width: 420px;
+        margin-bottom: 24px;
+    }
+
+    &__scope-hint,
+    &__hint {
+        margin: 8px 0 0;
+        max-width: 70ch;
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    /* Primary action first, and both always present: nothing appears or disappears as state changes. */
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    &__source {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+    }
+
+    &__notice,
+    &__progress {
+        margin-top: 16px;
+        margin-bottom: 0;
+    }
+
+    &__progress {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+    }
+
+    &__grid,
+    &__skeleton,
+    &__config {
+        margin-top: 24px;
+    }
+
+    /*
+     * A definition row rather than a form row: this is a value being reported, not one being entered,
+     * and it should not look like a disabled input a merchant might try to click into.
+     */
+    &__config-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px;
+        margin: 0;
+
+        dt {
+            color: var(--color-text-secondary-default, #758ca3);
+            font-size: 13px;
+        }
+
+        dd {
+            margin: 0;
+        }
+
+        code {
+            font-size: 13px;
+        }
+    }
+
+    &__config-unset {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 13px;
+    }
+
+    /*
+     * The failure reason, quieter than the status it explains but not below the Administration's
+     * functional text floor: it is the sentence telling a merchant what to do next.
+     */
+    &__reason {
+        display: block;
+        margin-top: 4px;
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+}

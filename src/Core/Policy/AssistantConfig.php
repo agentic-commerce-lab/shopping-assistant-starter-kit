@@ -48,6 +48,37 @@ final readonly class AssistantConfig
         public string $escalationUrl = '',
         public string $escalationMessage = '',
         public bool $logTraces = true,
+        /**
+         * The sales channel this config was built for.
+         *
+         * Not a setting — it is the identity of the scope every other value here belongs to. It
+         * lives on the config because `SystemConfigAssistantConfig::forSalesChannel()` already knows
+         * it, and because a tool that has the config then has the tenant without widening
+         * `ToolContext`, which `docs/extending.md` presents as an extension point.
+         *
+         * Shop-info retrieval filters on it (spec R12): two channels can have different terms and
+         * conditions, and a store query without this filter serves one channel's revocation notice
+         * in another.
+         */
+        public string $salesChannelId = '',
+        /**
+         * The embedding model, empty when the merchant has not configured one.
+         *
+         * Empty means shop-info retrieval is entirely off: no tool in the toolbox, no ingestion
+         * (spec R13). A starter kit offering a tool that always fails is worse than one offering no
+         * tool.
+         */
+        public string $embeddingModel = '',
+        /**
+         * Whether editing one of the shop's own pages re-indexes it automatically.
+         *
+         * **Off by default, and the default is the decision.** Every content change would otherwise
+         * spend embedding calls the merchant never asked for, and a shop reworking its terms over a
+         * week would discover that on an invoice. On, it keeps a revocation notice from going stale —
+         * which is the failure spec R8 is about, arriving through the CMS instead of through a
+         * re-upload.
+         */
+        public bool $autoIndexShopPages = false,
     ) {}
 
     /**

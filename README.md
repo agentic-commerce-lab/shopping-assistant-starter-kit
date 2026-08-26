@@ -62,9 +62,11 @@ request. Verified in `Framework/Plugin/KernelPluginLoader/KernelPluginLoader.php
 From the shop's project root:
 
 ```fish
-# Do this FIRST — see the note below. One line, and the shop never breaks.
-mkdir -p config/packages && printf '# Intentionally empty — see SwagAssistantStarterKit README.\n' \
-    > config/packages/ai_generic_platform.yaml
+# Do this FIRST — see the note below. Two files, and the shop never breaks.
+mkdir -p config/packages
+for f in ai_generic_platform ai_maria_db_store
+    printf '# Intentionally empty — see SwagAssistantStarterKit README.\n' > config/packages/$f.yaml
+end
 
 composer config repositories.assistant '{"type":"path","url":"../shopping-assistant-starter-kit","options":{"symlink":true}}'
 composer require "swag/assistant-starter-kit:*@dev"
@@ -94,6 +96,13 @@ bin/console cache:clear
 >
 > The **recipe itself** is still not preventable from inside the plugin — it belongs to a dependency
 > and is applied by the *shop's* Flex. What is preventable is the outage.
+>
+> **`symfony/ai-maria-db-store` is a second package with the same problem**, added for shop
+> information retrieval. Its recipe writes `config/packages/ai_maria_db_store.yaml` with an `ai.store`
+> key, and it takes the shop down exactly the same way — found the hard way on 2026-08-25, when
+> installing it turned every console command and every request into *"There is no extension able to
+> load the configuration for 'ai'"*. Same fix, which is why the loop above covers both. Any further
+> `symfony/ai-*` package needs its own placeholder on the same principle.
 
 Then configure a model — in the Administration under the plugin's settings, or as environment
 variables, which take precedence:

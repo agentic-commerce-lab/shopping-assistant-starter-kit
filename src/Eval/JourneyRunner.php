@@ -17,9 +17,13 @@ final class JourneyRunner
 {
     private readonly JourneyAttempt $attempt;
 
-    public function __construct(LlmSettings $llm, string $catalogFixturePath, ?HttpClientInterface $http = null)
-    {
-        $this->attempt = new JourneyAttempt($llm, $catalogFixturePath, $http);
+    public function __construct(
+        LlmSettings $llm,
+        string $catalogFixturePath,
+        ?HttpClientInterface $http = null,
+        ?string $shopInfoFixturePath = null,
+    ) {
+        $this->attempt = new JourneyAttempt($llm, $catalogFixturePath, $http, $shopInfoFixturePath);
     }
 
     /**

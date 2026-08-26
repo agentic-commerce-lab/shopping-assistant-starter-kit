@@ -3,11 +3,11 @@
   "entryPoints": {
     "swag-assistant-starter-kit": {
       "css": [
-        "/bundles/swagassistantstarterkit/administration/assets/swag-assistant-starter-kit-OD8_FaYt.css"
+        "/bundles/swagassistantstarterkit/administration/assets/swag-assistant-starter-kit-BEB-edjC.css"
       ],
       "dynamic": [],
       "js": [
-        "/bundles/swagassistantstarterkit/administration/assets/swag-assistant-starter-kit-BXB96g5W.js"
+        "/bundles/swagassistantstarterkit/administration/assets/swag-assistant-starter-kit-CDYRpTci.js"
       ],
       "legacy": false,
       "preload": []

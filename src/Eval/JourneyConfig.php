@@ -19,19 +19,20 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
  * Only the keys journeys actually need are here. Adding a setting to `AssistantConfig` does not
  * automatically make it journey-configurable, and that is deliberate: each one is a decision about
  * what an eval is allowed to vary.
+ *
+ * `embeddingModel` is that decision for shop information: naming a model in a journey's `config` is
+ * what puts `search_shop_info` in that journey's toolbox, and nowhere else.
  */
 final class JourneyConfig
 {
     public static function of(Journey $journey): AssistantConfig
     {
-        $unknown = array_diff(
-            array_keys($journey->config),
-            [
-                'blockedProductIds',
-                'enableEscalation',
-                'escalationUrl',
-            ],
-        );
+        $unknown = array_diff(array_keys($journey->config), [
+            'blockedProductIds',
+            'enableEscalation',
+            'escalationUrl',
+            'embeddingModel',
+        ]);
 
         if ($unknown !== []) {
             throw new \InvalidArgumentException(\sprintf(
@@ -49,6 +50,14 @@ final class JourneyConfig
             scope: new CatalogScope(blockedProductIds: $blockedProductIds),
             enableEscalation: (bool) ($journey->config['enableEscalation'] ?? true),
             escalationUrl: (string) ($journey->config['escalationUrl'] ?? ''),
+            // Spec R12: the fixture writes its passages for one channel and the tool filters on the
+            // channel in this config, so the two must be the same one or the journey silently
+            // retrieves nothing — precisely the "tests nothing" failure this class exists to prevent.
+            salesChannelId: ShopInfoFixture::SALES_CHANNEL_ID,
+            // Empty unless a journey asks for shop information, which keeps the tool out of every
+            // other journey's toolbox (spec R13). A new tool changes what the model can choose, so
+            // the fifteen existing journeys must not silently acquire one.
+            embeddingModel: (string) ($journey->config['embeddingModel'] ?? ''),
         );
     }
 }

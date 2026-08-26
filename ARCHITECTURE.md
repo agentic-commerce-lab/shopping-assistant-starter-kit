@@ -920,7 +920,26 @@ eyeball diff.
 Shopware system config has no real secret storage) · `agentVoice` ·
 `blockedProducts` · `blockedCategories` · `enableAddToCart` · `maxItemQuantity` ·
 `maxCartValue` · `assistantEnabled` · `maxToolCallsPerTurn` · `requestsPerMinute` ·
-`dailyRequestCap` · `traceRetentionDays`
+`dailyRequestCap` · `traceRetentionDays` · `embeddingModel` · `autoIndexShopPages`
+
+**`embeddingModel` switches shop information on.** Empty is off, and off means the model is offered no
+shop-information tool at all rather than one that fails. It must be a model the configured provider
+serves at `/v1/embeddings`. Changing it invalidates every indexed document: the store holds one vector
+width and refuses to mix, so the documents must be deleted and indexed again.
+
+**`autoIndexShopPages` re-indexes a legal page when the merchant edits it**, off by default because
+each change costs an embedding call. It queues the work, so it needs a running `messenger:consume`
+worker — without one, editing a page appears to do nothing.
+
+> **The chat model is a safety control for this feature, not only a quality one.** Shop-information
+> answers are prose the model writes from retrieved document text, and whether it declines when the
+> text does not answer the question is model-dependent. Measured 2026-08-26 on the same corpus:
+> `claude-sonnet-5` declined every one of eight questions designed to provoke an invented deadline,
+> while `llama-3.1-8b-instruct` answered three of them — one stating a statutory warranty period found
+> in no document, and one stating the *opposite* of the source, that custom-made goods carry a
+> fourteen-day cooling-off period when the document excludes them from withdrawal entirely.
+> `claims.audit` catches the invented figure; it cannot catch a real figure attached to the wrong
+> claim. Choose the chat model accordingly.
 
 ## Eval slice (v0)
 
