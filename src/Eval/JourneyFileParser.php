@@ -10,14 +10,14 @@ namespace Swag\AssistantStarterKit\Eval;
  * focused validator so no single class here approaches this project's
  * cyclomatic-complexity budget.
  *
- * @phpstan-type ParsedJourney array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>, page: JourneyPage}
+ * @phpstan-type ParsedJourney array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>, page: JourneyPage, catalogue: JourneyCatalogue}
  */
 final class JourneyFileParser
 {
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>, page: JourneyPage}
+     * @return array{id: string, category: string, runs: int, archetypes: array<string, ?string>, config: array<string, mixed>, turns: list<string>, assertions: array<string, array{assertion: Assertion, expectations: array<string, mixed>}>, page: JourneyPage, catalogue: JourneyCatalogue}
      */
     public static function parse(array $data, string $path): array
     {
@@ -32,6 +32,10 @@ final class JourneyFileParser
             'turns' => JourneyTurns::parse($data['turns'] ?? null, $id),
             'assertions' => JourneyAssertions::parse($data['assertions'] ?? null, $id),
             'page' => JourneyPage::parse($data['page'] ?? null, $id),
+            // The journey-file key is `catalog`, matching ASSISTANT_EVAL_CATALOG's own spelling: a
+            // journey file is read beside that variable. The parsed field is `catalogue`, matching the
+            // rest of this namespace.
+            'catalogue' => JourneyCatalogue::parse($data['catalog'] ?? null, $id),
         ];
     }
 }

@@ -6,20 +6,24 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
 use Shopware\Core\Content\Product\SalesChannel\SalesChannelProductEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Bucket\TermsAggregation;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\CountAggregation;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\StatsAggregation;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\AggregationResult\Metric\CountResult;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepository;
 use Swag\AssistantStarterKit\Core\Commerce\BatchProductLookup;
+use Swag\AssistantStarterKit\Core\Commerce\CategoryTreeReader;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
+use Swag\AssistantStarterKit\Core\Commerce\MatchCountReader;
 
 /**
  * {@see CommerceGatewayInterface} over the Shopware DAL — the implementation that makes this
@@ -34,13 +38,29 @@ use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
  * `SalesChannelContext` and `Criteria` may appear inside this namespace and nowhere else in the
  * plugin. Only DTOs leave.
  */
-final readonly class DalCommerceGateway implements BatchProductLookup, CommerceGatewayInterface, FamilyVariantLookup
+// @mago-expect lint:too-many-methods
+// Every public method here is mandated by an interface this class implements: six by
+// CommerceGatewayInterface, one each by BatchProductLookup, CategoryTreeReader, FamilyVariantLookup
+// and MatchCountReader.
+// The count is the sum of those obligations plus a constructor and one small private mapper, not
+// bloat, and four interfaces cannot be implemented in fewer methods. The alternative is extracting
+// `mapAll()` into a pass-through class, which the constructor's own carve-out below already argues
+// against: indirection whose only purpose is satisfying a linter.
+final readonly class DalCommerceGateway implements
+    BatchProductLookup,
+    CategoryTreeReader,
+    CommerceGatewayInterface,
+    FamilyVariantLookup,
+    MatchCountReader
 {
     /**
      * Facet probing needs one product's worth of rows at most — the values come from the
      * aggregations, which are computed over the whole matching set regardless of this limit.
      */
     private const FACET_ROW_LIMIT = 1;
+
+    /** The name `countMatches()` registers its {@see CountAggregation} under and reads it back by. */
+    private const MATCH_COUNT_AGGREGATION = 'matches';
 
     /**
      * Bounds how much catalogue vocabulary reaches the model. Ruling R54 already caps the prompt
@@ -74,6 +94,7 @@ final readonly class DalCommerceGateway implements BatchProductLookup, CommerceG
         private SalesChannelContextProvider $contextProvider,
         private DalVariantFinder $variantFinder,
         private DalCartAdapter $cartAdapter,
+        private DalCategoryTreeReader $categoryTreeReader,
     ) {}
 
     public function facets(CatalogScope $scope): FacetSet
@@ -128,6 +149,49 @@ final readonly class DalCommerceGateway implements BatchProductLookup, CommerceG
             $this->productRepository->search($criteria, $context)->getElements(),
             $context->getCurrency()->getIsoCode(),
         );
+    }
+
+    /**
+     * How many products the query matches, without fetching them.
+     *
+     * **Not `TOTAL_COUNT_MODE_EXACT` — measured wrong on a real shop.** That was this method's first
+     * implementation, and it reads correctly against `FixtureCommerceGateway`'s in-memory count, which
+     * is exactly why nothing here caught the defect: `TOTAL_COUNT_MODE_EXACT` plus `limit(1)` returned
+     * `1` for every non-empty search on this project's Shopware 6.7 instance, regardless of the true
+     * match count — confirmed live against 1,355 seeded dresses, 60 occasion suits and 24 yoga pieces,
+     * all reported as `1` (`docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md`, "Match-
+     * count finding"). A `CountAggregation` is computed over the whole matching set independently of
+     * pagination — the same reasoning `facets()` above already relies on for its own aggregations — and
+     * the same report measured it both correct and faster (down to ~130 ms warm) against the same live
+     * shop for every term that broke the old approach.
+     *
+     * The row limit stays at 1 for the same reason `FACET_ROW_LIMIT` does: an aggregation is computed
+     * over the whole matching set regardless of how many rows `search()` would return alongside it, so
+     * asking for none beyond the minimum costs nothing and fetches nothing extra.
+     *
+     * Built from `$query->withoutLimits()` so the criteria carry the predicate and none of the bounds,
+     * and from the same `criteriaBuilder` `search()` uses, so the number describes the set the search
+     * describes — including the scope, which is what stops it advertising products the shopper may not
+     * see.
+     */
+    public function countMatches(ProductQuery $query, CatalogScope $scope): int
+    {
+        $context = $this->contextProvider->current();
+        $criteria = $this->criteriaBuilder->build($query->withoutLimits(), $scope, $context->getSalesChannelId());
+        $criteria->setLimit(1);
+        $criteria->addAggregation(new CountAggregation(self::MATCH_COUNT_AGGREGATION, 'id'));
+
+        $result = $this->productRepository->aggregate($criteria, $context)->get(self::MATCH_COUNT_AGGREGATION);
+
+        return $result instanceof CountResult ? $result->getCount() : 0;
+    }
+
+    /**
+     * @return list<CategoryNode>
+     */
+    public function categories(?string $parentId, CatalogScope $scope): array
+    {
+        return $this->categoryTreeReader->read($parentId, $scope, $this->contextProvider->current());
     }
 
     public function product(string $productId, CatalogScope $scope): ?ProductCard

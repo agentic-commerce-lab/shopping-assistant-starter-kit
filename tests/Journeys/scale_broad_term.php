@@ -19,10 +19,9 @@ declare(strict_types=1);
 // invented, and no price the cards do not back. Whether five-of-500 is an acceptable *answer* is a
 // product question for the Task 5 report, not something an assertion can settle — which is why there
 // is deliberately no `rendered_ids_exactly` here.
-//
-// REQUIRES `ASSISTANT_EVAL_CATALOG=large`.
 return [
     'id' => 'scale_broad_term',
+    'catalog' => 'large',
     'category' => 'grounding',
     'runs' => 3,
     'archetypes' => [

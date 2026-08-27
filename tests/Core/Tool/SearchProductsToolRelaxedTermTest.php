@@ -14,6 +14,7 @@ use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\RelaxedTermRetry;
+use Swag\AssistantStarterKit\Core\Tool\NoMatchOrientation;
 use Swag\AssistantStarterKit\Core\Tool\SearchProductsTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
@@ -121,7 +122,12 @@ final class SearchProductsToolRelaxedTermTest extends TestCase
         $result = $this->tool()(term: 'snowboard');
 
         self::assertSame([], self::ids($result));
-        self::assertSame(SearchProductsTool::NO_MATCH_NOTE, $result['note'] ?? null);
+        // The orientation note, not NO_MATCH_NOTE: this gateway can read its own tree, so the
+        // empty reply carries the shop's departments and the note that refers to them. Both notes
+        // forbid concluding the shop has none of a thing — asserted below — and NO_MATCH_NOTE is
+        // still what a gateway without a tree reader gets.
+        self::assertSame(NoMatchOrientation::NOTE, $result['note'] ?? null);
+        self::assertStringContainsString('NOT that the shop has none', (string) ($result['note'] ?? ''));
         self::assertStringNotContainsStringIgnoringCase('does not sell', self::ids($result)[0] ?? '');
         // Says what was learned, and says out loud what must not be concluded from it.
         self::assertStringContainsString('NOT that the shop has none', SearchProductsTool::NO_MATCH_NOTE);

@@ -1,6 +1,7 @@
 import './component/swag-assistant-escalation-preview';
 import './component/swag-assistant-status-switch';
 import './module/swag-assistant-trace';
+import './module/swag-assistant-shop-info';
 import deDE from './snippet/de-DE.json';
 import enGB from './snippet/en-GB.json';
 

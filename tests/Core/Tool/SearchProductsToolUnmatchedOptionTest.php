@@ -13,6 +13,7 @@ use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\UnmatchedOptionRetry;
+use Swag\AssistantStarterKit\Core\Tool\NoMatchOrientation;
 use Swag\AssistantStarterKit\Core\Tool\SearchProductsTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
@@ -88,7 +89,11 @@ final class SearchProductsToolUnmatchedOptionTest extends TestCase
         $result = $this->tool()(term: 'bottle cage', priceMax: 5.0, options: [['Colour', 'Blue']]);
 
         self::assertSame([], self::ids($result));
-        self::assertSame(SearchProductsTool::NO_MATCH_NOTE, $result['note'] ?? null);
+        // The orientation note, not NO_MATCH_NOTE: this gateway can read its own tree, so the
+        // empty reply carries the shop's departments and the note that refers to them. Both notes
+        // forbid concluding the shop has none of a thing — asserted below — and NO_MATCH_NOTE is
+        // still what a gateway without a tree reader gets.
+        self::assertSame(NoMatchOrientation::NOTE, $result['note'] ?? null);
     }
 
     /**
@@ -132,7 +137,11 @@ final class SearchProductsToolUnmatchedOptionTest extends TestCase
         $result = $this->tool()(term: 'nonexistent gizmo');
 
         self::assertSame([], self::ids($result));
-        self::assertSame(SearchProductsTool::NO_MATCH_NOTE, $result['note'] ?? null);
+        // The orientation note, not NO_MATCH_NOTE: this gateway can read its own tree, so the
+        // empty reply carries the shop's departments and the note that refers to them. Both notes
+        // forbid concluding the shop has none of a thing — asserted below — and NO_MATCH_NOTE is
+        // still what a gateway without a tree reader gets.
+        self::assertSame(NoMatchOrientation::NOTE, $result['note'] ?? null);
     }
 
     /**

@@ -41,9 +41,37 @@
             <name>llmModel</name>
             <label>Model</label>
             <placeholder>gpt-4o-mini</placeholder>
-            <helpText>The assistant is inert until this is set. Choose a model that handles tool
-                calling reliably — a weak model here reads to your shoppers as a bad product, not
-                as a configuration choice.</helpText>
+            <helpText>The assistant is inert until this is set. A weak model reads as a bad
+                product: prefer a model with reliable tool calling. If you index shop documents, this
+                is also a safety setting — answers about your terms are written by this model from the
+                document text, and whether it declines when a document does not answer the question
+                depends on the model. Measured: a small 8B model stated a warranty period no document
+                contained, and said custom-made goods have a 14-day cooling-off period when the
+                document excludes them from withdrawal entirely.</helpText>
+        </input-field>
+
+        <input-field type="text">
+            <name>embeddingModel</name>
+            <label>Embedding model</label>
+            <helpText>Used to index shop documents and to match a question against them. Uses the
+                same provider URL and API key as the chat model, so it must be a model your provider
+                serves at /v1/embeddings. Measured working on OpenRouter: baai/bge-m3 (1024
+                dimensions, multilingual — the one this plugin was calibrated against),
+                openai/text-embedding-3-small (1536) and openai/text-embedding-3-large (3072). Leave
+                empty to switch shop information off entirely: no tool is offered to the model at all.
+                Changing it makes every indexed document unusable — delete and index them again after
+                a change, which the shop information screen will tell you.</helpText>
+        </input-field>
+
+        <input-field type="bool">
+            <name>autoIndexShopPages</name>
+            <label>Re-index shop pages automatically on change</label>
+            <helpText>When on, editing the imprint, privacy, withdrawal, terms or shipping page
+                re-indexes that page in the background and replaces its previous passages. This costs
+                one embedding call per changed page, so it is off by default. With it off, use "Index
+                shop pages" on the Assistant shop information screen after editing a page — otherwise
+                the assistant keeps answering from the wording it last indexed.</helpText>
+            <defaultValue>false</defaultValue>
         </input-field>
 
         <input-field type="password">

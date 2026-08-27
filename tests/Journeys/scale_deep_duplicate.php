@@ -19,10 +19,9 @@ declare(strict_types=1);
 // fx-008 is missed by the verbatim name because its "750 ml" contains no "750ml" substring. That is
 // the fixture matcher's tokenisation, not a product defect — spec section *What phase A cannot test*
 // names exactly this as the alternative cause to rule out first.
-//
-// REQUIRES `ASSISTANT_EVAL_CATALOG=large`.
 return [
     'id' => 'scale_deep_duplicate',
+    'catalog' => 'large',
     'category' => 'grounding',
     'runs' => 3,
     'archetypes' => [

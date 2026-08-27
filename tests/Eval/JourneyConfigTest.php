@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Eval;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Eval\Journey;
+use Swag\AssistantStarterKit\Eval\JourneyCatalogue;
 use Swag\AssistantStarterKit\Eval\JourneyConfig;
 use Swag\AssistantStarterKit\Eval\JourneyPage;
 
@@ -79,6 +80,7 @@ final class JourneyConfigTest extends TestCase
             turns: ['archetype'],
             assertions: [],
             page: JourneyPage::parse(null, 'test_journey'),
+            catalogue: JourneyCatalogue::parse(null, 'test_journey'),
         );
     }
 }

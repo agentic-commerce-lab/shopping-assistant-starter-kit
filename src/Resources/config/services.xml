@@ -57,6 +57,16 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
+        </service>
+
+        <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper
+             somewhere real instead of asking them to guess better words. Measured on the lab shop: "what
+             to wear to a wedding" against a cycling catalogue answered "could you share more details...
+             so I can try different search terms", which cannot succeed. See NoMatchOrientation. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader">
+            <argument type="service" id="sales_channel.category.repository"/>
+            <argument type="service" id="sales_channel.product.repository"/>
         </service>
 
         <!-- Conversation and trace persistence. This lands before the widget because of
@@ -296,6 +306,49 @@
             <tag name="console.command"/>
         </service>
 
+        <!-- Task A of the fashion-scale-sweep handoff: writes the fashion taxonomy into a real shop
+             through the DAL, so the fashion evals can finally run against real Shopware search
+             instead of FixtureCommerceGateway. Dev-only; SeedGuard makes a second run refuse itself. -->
+        <service id="Swag\AssistantStarterKit\Command\Seed\DalMarkerCategoryStore">
+            <argument type="service" id="category.repository"/>
+        </service>
+
+        <!-- Aliased to the interface above, the same way CommerceGatewayInterface aliases to
+             DalCommerceGateway. -->
+        <service id="Swag\AssistantStarterKit\Command\Seed\MarkerCategoryStore"
+                 alias="Swag\AssistantStarterKit\Command\Seed\DalMarkerCategoryStore"/>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedGuard">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\MarkerCategoryStore"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedCompletion">
+            <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Indexing\EntityIndexerRegistry"/>
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedGuard"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedWriter">
+            <argument type="service" id="category.repository"/>
+            <argument type="service" id="property_group.repository"/>
+            <argument type="service" id="product.repository"/>
+            <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Indexing\InheritanceUpdater"/>
+            <argument type="service" id="Shopware\Core\Content\Product\DataAbstractionLayer\StatesUpdater"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedGuard"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedWriter"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedCompletion"/>
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\SeedFashionCatalogueCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedRunner"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
+            <tag name="console.command"/>
+        </service>
+
         <!-- Inside a shop the DAL gateway is the gateway. FixtureCommerceGateway stays
              constructible for the eval suite, which builds it directly and needs no container. -->
         <service id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"
@@ -334,6 +387,159 @@
             <argument type="service" id="logger"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner"/>
             <tag name="messenger.message_handler"/>
+        </service>
+
+        <!-- Shop information retrieval. The vector table lives in the shop's own database and is
+             created on the first write, at the width the configured embedding model produces — see
+             ShopInfoVectorTable for why that is not a migration. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\ShopInfoVectorTable">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoVectorTable"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"
+                 alias="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore"/>
+
+        <!-- One extractor per format behind one interface (spec R10). Tagged rather than injected as
+             a list so a merchant with an in-house format adds a service and changes nothing else. -->
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\PlainExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\MarkdownExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\HtmlExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\PdfExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Extractor\DocxExtractor">
+            <tag name="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\ExtractorChain">
+            <argument type="tagged_iterator" tag="swag_assistant.text_extractor"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\Chunker"/>
+
+        <service id="Swag\AssistantStarterKit\Entity\AssistantDocument\AssistantDocumentDefinition">
+            <tag name="shopware.entity.definition"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\DalDocumentRecords">
+            <argument type="service" id="swag_assistant_document.repository"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"
+                 alias="Swag\AssistantStarterKit\ShopInfo\DalDocumentRecords"/>
+
+        <!-- Embeddings go to the same provider as the chat model, over a platform that can only
+             embed — see PlatformFactory::createEmbeddings() for why it is a second platform. -->
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\ExtractorChain"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\Chunker"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\SearchShopInfoToolFactory">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"/>
+            <tag name="swag_assistant.tool_factory"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\PassageLookup">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\SalesChannelLanguage">
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <!-- The shop's own legal pages, which spec R1 deferred to its own plan. HTML extraction was
+             built for exactly this path, which is why it existed before anything uploaded HTML. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\LegalPageConfig">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\CmsLegalPages">
+            <argument type="service" id="cms_page.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\SalesChannelLanguage"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\LegalPageConfig"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\CmsLegalPages"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+        </service>
+
+        <!-- Automatic re-indexing when a merchant edits a legal page. Off unless the merchant
+             switched it on: every change would otherwise spend an embedding call. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\ChangedCmsPages">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\AutoIndexPolicy">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\LegalPageConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\CmsPageChangeSubscriber">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ChangedCmsPages"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\AutoIndexPolicy"/>
+            <argument type="service" id="messenger.default_bus"/>
+            <argument type="service" id="logger"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\ReindexShopPageHandler">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="logger"/>
+            <tag name="messenger.message_handler"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\CmsLegalPages"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Controller\ShopInfoDocumentController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\PassageLookup"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Controller\ShopInfoSyncController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\ShopInfoCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\PassageLookup"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <tag name="console.command"/>
         </service>
     </services>
 </container>

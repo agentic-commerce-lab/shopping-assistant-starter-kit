@@ -26,7 +26,10 @@ mago (format/lint/analyze).
   fails the build. Carve-outs use `// @mago-expect lint:<rule>` **with a reason comment**, as every
   existing one does.
 - `php scripts/check_file_length.php src` caps files under `src/` at **400 physical lines**.
-- `composer run quality:dupes` (jscpd) fails on copy-paste. Task 2 exists partly because of it.
+- **mago's `[source] paths` is `["src", "tests"]`** — the analyzer and linter cover test code too. A
+  `json_decode` result is `mixed` there as everywhere: annotate with an imported `@phpstan-type`, the
+  way `LargeCatalogGeneratorTest` does, rather than reaching for a suppression.
+- `composer run quality:dupes` (jscpd) scans **`src` only** — `.jscpd.json` ignores `**/tests/**`. So it will not catch duplication in the fixture code; Task 2's extraction is justified on drift, not on the gate.
 - Fast suite: `vendor/bin/phpunit --exclude-group eval`. Eval suite: `vendor/bin/phpunit --group eval`,
   needs `ASSISTANT_LLM_BASE_URL`, `ASSISTANT_LLM_API_KEY`, `ASSISTANT_LLM_MODEL`.
 - **Never add a method to `CommerceGatewayInterface`.** It is `@api`; `BatchProductLookup` and
@@ -69,7 +72,7 @@ covers the negative control. Spec §Evals says "four new assertions"; it is four
 |---|---|
 | `tests/Fixtures/Fashion/FashionCatalogGenerator.php` | Seeded generation of ~15,000 units across ~1,028 category nodes. Owns volume and the tree |
 | `tests/Fixtures/Fashion/FashionTrapProducts.php` | The four named traps, no seeded state shared with the generator |
-| `tests/Fixtures/GeneratedCatalogue.php` | Write-to-`var/`-with-a-content-stamp mechanics, extracted from `LargeCatalogFile` so `FashionCatalogFile` does not copy it past jscpd |
+| `tests/Fixtures/GeneratedCatalogue.php` | Write-to-`var/`-with-a-content-stamp mechanics, extracted from `LargeCatalogFile` so the staleness logic has one home |
 | `tests/Fixtures/Fashion/FashionCatalogFile.php` | Where the fashion catalogue lives, and generating it when stale |
 | `tests/Fixtures/EvalCatalogue.php` | Resolves `ASSISTANT_EVAL_CATALOG` to one of three paths |
 | `src/Eval/JourneyCatalogue.php` | A journey's declared catalogue requirement |
@@ -111,6 +114,7 @@ change what the assistant answers. Nothing under `src/Core/` is touched before t
 **Files:**
 - Create: `tests/Fixtures/Fashion/FashionCatalogGenerator.php`
 - Create: `tests/Fixtures/Fashion/FashionTrapProducts.php`
+- Create: `tests/Fixtures/Fashion/FashionCatalogQuery.php`
 - Test: `tests/Fixtures/Fashion/FashionCatalogGeneratorTest.php`
 - Test: `tests/Fixtures/Fashion/FashionTrapPresenceTest.php`
 
@@ -118,10 +122,14 @@ change what the assistant answers. Nothing under `src/Core/` is touched before t
 - Consumes: `tests/Fixtures/catalog.json` (the twelve `fx-*` products), read verbatim.
 - Produces:
   - `FashionCatalogGenerator::__construct(string $smallCatalogPath, int $seed = 20_260_826)`
-  - `FashionCatalogGenerator::toArray(): array{products: list<FashionProduct>}`
+  - `FashionCatalogGenerator::build(): array{products: list<FashionProduct>}` — `build()`, not
+    `toArray()`: `LargeCatalogGenerator` names it that and `LargeCatalogQuery` calls it that
   - `FashionCatalogGenerator::toJson(): string`
   - `FashionCatalogGenerator::CATEGORY_NODES` (int), `::GENERATED_PARENTS` (int), `::SELLABLE_UNITS` (int)
   - `FashionTrapProducts::all(): list<FashionProduct>`
+  - `FashionCatalogQuery::built()`, `::generator()`, `::smallCatalogPath()`, `::find()`, `::require()`,
+    `::sellableUnits()`, `::categoryNodes()` — the shared lookups both fashion test classes need,
+    mirroring `Large\LargeCatalogQuery`, which exists for exactly this reason
   - `FashionTrapProducts::OCCASION_DRESS_PREFIX = 'fw-occ-dress-'`
   - `FashionTrapProducts::OCCASION_SUIT_PREFIX = 'fw-occ-suit-'`
   - `FashionTrapProducts::FALSE_FRIEND_ID = 'fw-false-friend'`
@@ -161,7 +169,7 @@ final class FashionCatalogGeneratorTest extends TestCase
             flags: \JSON_THROW_ON_ERROR,
         );
 
-        $generated = $this->catalogue()['products'];
+        $generated = FashionCatalogQuery::built()['products'];
 
         foreach ($small['products'] as $index => $original) {
             self::assertSame($original['id'], $generated[$index]['id']);
@@ -175,7 +183,7 @@ final class FashionCatalogGeneratorTest extends TestCase
     {
         $units = 0;
 
-        foreach ($this->catalogue()['products'] as $product) {
+        foreach (FashionCatalogQuery::built()['products'] as $product) {
             $units += $product['variants'] === [] ? 1 : \count($product['variants']);
         }
 
@@ -186,7 +194,7 @@ final class FashionCatalogGeneratorTest extends TestCase
     {
         $nodes = [];
 
-        foreach ($this->catalogue()['products'] as $product) {
+        foreach (FashionCatalogQuery::built()['products'] as $product) {
             $path = [];
 
             foreach ($product['categoryPath'] as $segment) {
@@ -201,7 +209,7 @@ final class FashionCatalogGeneratorTest extends TestCase
 
     public function testItIsDeterministicForOneSeed(): void
     {
-        self::assertSame($this->generator()->toJson(), $this->generator()->toJson());
+        self::assertSame(FashionCatalogQuery::generator()->toJson(), FashionCatalogQuery::generator()->toJson());
     }
 
     /** @return array{products: list<array<string, mixed>>} */
@@ -249,9 +257,16 @@ namespace Swag\AssistantStarterKit\Tests\Fixtures\Fashion;
  * **Seeded arithmetic, not `random_int()`** — same reasoning as `LargeCatalogGenerator`: a fixture
  * that differs between runs turns a red eval into a coin toss.
  *
- * **The twelve real products are copied verbatim** (spec O10), first and in order, so all fifteen
- * existing journeys run against this catalogue unchanged. They land under `Sport > Cycling`, which is
- * a plausible department for a fashion shop to have and keeps them out of every trap's subtree.
+ * **The twelve real products are copied verbatim** (spec O10), first, in order, and INCLUDING their
+ * category paths — so all fifteen existing journeys run against this catalogue unchanged. Their
+ * departments (`Apparel`, `Accessories`, `Maintenance`, …) therefore appear beside `Women`/`Men`/`Kids`
+ * at the top level, which is a slightly odd shop and the correct trade.
+ *
+ * An earlier draft re-pathed them under `Sport > Cycling`. That would have broken
+ * `page_context_not_a_cage`, which stands the shopper in the category `Jerseys` and expects the
+ * Commuter Glove out of `Apparel > Gloves`: re-pathing deletes both names, and the P9 journey with
+ * them. A category path is not decoration in this fixture — `FixtureCategoryFilter` matches on the
+ * names in it.
  *
  * **The word "wedding" appears in exactly one product in this catalogue, and it is not wearable.**
  * That is trap `fw-occasion-word` and trap `fw-false-friend` seen from either side; see
@@ -293,8 +308,9 @@ final class FashionCatalogGenerator
 
     /**
      * 3 departments × 14 garment types × 22 cuts = 924 leaves, plus 42 garment-type nodes and 3
-     * department nodes = 969. Plus the Brand branch (1 + 40), Season (1 + 4), Occasion (1 + 10) and
-     * Sport (1 + 1) = 59. Total 1,028.
+     * department nodes = 969. Plus the Brand branch (1 + 40), Season (1 + 4) and Occasion (1 + 10)
+     * = 57. Plus the trap products' own paths, plus whatever nodes the twelve real products bring with
+     * them verbatim. Take the total from the measurement in Step 6, not from this sum.
      *
      * Asserted rather than described: a tree the generator quietly halves is a measurement about a
      * catalogue nobody has.
@@ -348,15 +364,15 @@ final class FashionCatalogGenerator
     }
 
     /**
-     * The twelve real products, re-pathed under `Sport > Cycling` and otherwise untouched.
+     * The twelve real products, byte-for-byte as the committed fixture holds them.
      *
-     * Re-pathing is the ONE change made to them, and it is safe: no existing journey asserts a
-     * category path. `CategoryConstraintTest` reads `categoryPath[0]` from whatever the small
-     * catalogue holds, and runs against the small catalogue, not this one.
+     * NOT re-pathed. `page_context_not_a_cage` stands the shopper in `Jerseys` and expects
+     * `fx-004-black` out of `Apparel > Gloves`, and `FixtureCategoryFilter::apply()` matches on the
+     * names in `categoryPath` — so moving them silently breaks the one journey that proves P9.
      *
      * @return list<FashionProduct>
      */
-    private function realProducts(): array { /* decode $smallCatalogPath, map categoryPath to ['Sport', 'Cycling'] */ }
+    private function realProducts(): array { /* decode $smallCatalogPath, return $decoded['products'] unchanged */ }
 
     /** @return list<FashionProduct> */
     private function generated(): array { /* GENERATED_PARENTS products, see below */ }
@@ -386,11 +402,10 @@ The `generated()` loop, stated precisely so it can be written without re-derivin
 - **The name must never contain "wedding".** `singular()` and the word lists above contain no
   occasion words at all, which is what makes that true by construction rather than by filtering.
 
-`Brand`, `Season`, `Occasion` and `Sport` nodes are reached by re-pathing: every 90th generated
-product also gets a second path — no. **One path per product**, and the extra 59 nodes come from the
-trap products and from 59 dedicated generated products whose `categoryPath` is
-`['Brand', $brandName]`, `['Season', $season]` or `['Occasion', $occasion]`. Take them from the front
-of the generated loop (`$i < 59`) so the count is exact and the arithmetic above still holds.
+**One path per product.** The extra `Brand` / `Season` / `Occasion` nodes come from 57 dedicated
+generated products whose `categoryPath` is `['Brand', $brandName]`, `['Season', $season]` or
+`['Occasion', $occasion]`. Take them from the front of the generated loop (`$i < 57`) so the unit
+arithmetic above still holds.
 
 **The `Occasion` branch must not contain the word "wedding".** Its ten values are `Party`, `Evening`,
 `Cocktail`, `Black Tie`, `Garden Party`, `Christening`, `Graduation`, `Prom`, `Race Day`, `Festival`.
@@ -483,7 +498,7 @@ final class FashionTrapPresenceTest extends TestCase
     {
         $mentions = [];
 
-        foreach ($this->catalogue()['products'] as $product) {
+        foreach (FashionCatalogQuery::built()['products'] as $product) {
             $haystack = strtolower($product['name'] . ' ' . ($product['description'] ?? '')
                 . ' ' . implode(' ', $product['categoryPath'])
                 . ' ' . implode(' ', array_merge(...array_values($product['properties']) ?: [[]])));
@@ -505,7 +520,7 @@ final class FashionTrapPresenceTest extends TestCase
         self::assertNotSame([], $suits);
         self::assertSame([], array_intersect($dresses, $suits));
 
-        foreach ($this->catalogue()['products'] as $product) {
+        foreach (FashionCatalogQuery::built()['products'] as $product) {
             if (\in_array($product['id'], $dresses, strict: true)) {
                 self::assertSame(['Women', 'Occasion & Party', 'Occasion Dresses'], $product['categoryPath']);
             }
@@ -520,7 +535,7 @@ final class FashionTrapPresenceTest extends TestCase
     {
         $departments = [];
 
-        foreach ($this->catalogue()['products'] as $product) {
+        foreach (FashionCatalogQuery::built()['products'] as $product) {
             if (\in_array('Yoga', $product['categoryPath'], strict: true)) {
                 $departments[$product['categoryPath'][0]] = true;
             }
@@ -534,7 +549,7 @@ final class FashionTrapPresenceTest extends TestCase
     {
         $ids = [];
 
-        foreach ($this->catalogue()['products'] as $product) {
+        foreach (FashionCatalogQuery::built()['products'] as $product) {
             if (str_starts_with($product['id'], $prefix)) {
                 $ids[] = $product['id'];
             }
@@ -771,9 +786,13 @@ git commit -m "test(eval): a journey declares which catalogue it was written aga
 - [ ] **Step 7: Extract the generated-catalogue writer**
 
 `LargeCatalogFile` owns three things: the env switch, the write-with-stamp mechanics, and the paths.
-Only the middle one is worth sharing, and it must be shared rather than copied — `composer run
-quality:dupes` runs jscpd over the tree and a second copy of `write()`/`sourceStamp()`/`readStamp()`
-is exactly what it catches.
+Only the middle one is worth sharing.
+
+**The gate will NOT catch a copy here** — `.jscpd.json` scans `src` only and ignores `**/tests/**`, so
+a second copy of `write()`/`sourceStamp()`/`readStamp()` would pass every check. Extract it anyway, on
+the merit: the staleness rule is subtle (content-stamped, not mtime-keyed, because `git checkout`
+rewrites mtimes) and a silently diverged second copy means one catalogue is stale while its report
+names the new generator. That is the failure the original comment was written about.
 
 Create `tests/Fixtures/GeneratedCatalogue.php` holding, verbatim from `LargeCatalogFile`, the
 `write()`, `sourceStamp()`, `readStamp()` and `stampPath()` logic, parameterised:

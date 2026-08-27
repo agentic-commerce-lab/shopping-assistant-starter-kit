@@ -101,13 +101,30 @@ Shopware.Component.register('swag-assistant-trace-list', {
             return this.$t(key, { count: this.exportCount });
         },
 
+        /**
+         * Every outcome `TurnOutcomeResolver` can actually produce, and nothing else.
+         *
+         * **Two of the four previous entries matched nothing.** It offered `escalate` where the
+         * resolver emits `escalated`, and `refused`, which the resolver has never produced — so
+         * filtering by either returned an empty list that read as "no such conversations" rather than
+         * "no such value". Found on 2026-08-26 while adding `shop_info_answered`; a filter that
+         * silently matches nothing is the same defect class as an empty blocklist reporting itself as
+         * configured (D5).
+         *
+         * Labels are the raw values on purpose: they are what the column shows and what an export
+         * contains, so translating them here would leave a merchant filtering by one word and reading
+         * another.
+         */
         outcomeOptions() {
             return [
-                { value: 'product_shown', label: 'product_shown' },
-                { value: 'tool_limit_exceeded', label: 'tool_limit_exceeded' },
-                { value: 'escalate', label: 'escalate' },
-                { value: 'refused', label: 'refused' },
-            ];
+                'product_shown',
+                'shop_info_retrieved',
+                'cart_added',
+                'escalated',
+                'no_result',
+                'tool_limit_exceeded',
+                'error',
+            ].map((value) => ({ value, label: value }));
         },
     },
 

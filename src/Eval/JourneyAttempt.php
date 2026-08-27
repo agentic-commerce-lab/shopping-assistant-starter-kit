@@ -10,6 +10,7 @@ use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Agent\BoundedToolbox;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
+use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -63,6 +64,10 @@ final class JourneyAttempt
         private readonly LlmSettings $llm,
         private readonly string $catalogFixturePath,
         private readonly ?HttpClientInterface $http = null,
+        // The shop document a `shop_info_*` journey retrieves from, or null when none is configured.
+        // Null makes such a journey FAIL rather than pass vacuously — see shopInfoFactories(). A
+        // journey that goes green because it tested nothing is the one outcome worse than a red one.
+        private readonly ?string $shopInfoFixturePath = null,
     ) {}
 
     /**
@@ -88,14 +93,16 @@ final class JourneyAttempt
             ? null
             : $gateway->product($journey->page->productId, $config->scope);
 
-        $bundle = AssistantAgentFactory::withCoreToolsOnly($this->http)->create(
-            $gateway,
-            $config,
-            true,
-            $this->llm,
-            viewing: $viewing,
-            browsingCategoryId: $journey->page->categoryId,
-        );
+        $bundle = AssistantAgentFactory::withCoreToolsOnly($this->http)
+            ->withAdditionalFactories($this->shopInfoFactories($config->embeddingModel), [])
+            ->create(
+                $gateway,
+                $config,
+                true,
+                $this->llm,
+                viewing: $viewing,
+                browsingCategoryId: $journey->page->categoryId,
+            );
 
         // Recorded before any turn runs, as production records it, so a journey can assert on it.
         $bundle->trace->record('page.context', [
@@ -136,6 +143,40 @@ final class JourneyAttempt
         }
 
         return [TurnAggregate::of($turns), $bundle->trace];
+    }
+
+    /**
+     * The shop-info tool, for the journeys that ask for it, and nothing for the rest.
+     *
+     * **An unavailable fixture throws instead of returning nothing.** Returning `[]` would leave the
+     * journey running without the tool it is about: the model would decline every question for want
+     * of a tool, `shop_info_not_in_documents` would go green for entirely the wrong reason, and the
+     * suite would report that the assistant correctly refuses to invent when in fact it never
+     * retrieved anything to be tempted by. The plan named that exact failure mode as the one to
+     * avoid, so this fails loudly and names what is missing.
+     *
+     * @return list<ToolFactoryInterface>
+     */
+    private function shopInfoFactories(string $embeddingModel): array
+    {
+        if ($embeddingModel === '') {
+            return [];
+        }
+
+        if ($this->shopInfoFixturePath === null) {
+            throw new \RuntimeException(
+                'This journey configures an embeddingModel, so it needs a shop information document '
+                . 'to retrieve from, and none was given to JourneyAttempt. Without one the journey '
+                . 'would pass by testing nothing.',
+            );
+        }
+
+        return [new ShopInfoFixtureToolFactory(ShopInfoFixture::indexed(
+            $this->shopInfoFixturePath,
+            $this->llm,
+            $embeddingModel,
+            $this->http,
+        ))];
     }
 
     private function resolveArchetypePhrase(Journey $journey, ?string $phrase): string

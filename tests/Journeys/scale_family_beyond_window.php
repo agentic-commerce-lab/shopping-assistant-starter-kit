@@ -18,6 +18,7 @@ declare(strict_types=1);
 // and the journey fails for the wrong reason.
 return [
     'id' => 'scale_family_beyond_window',
+    'catalog' => 'large',
     'category' => 'grounding',
     'runs' => 3,
     'archetypes' => [

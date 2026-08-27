@@ -41,6 +41,29 @@ final class TurnOutcomeResolver
     public const TOOL_LIMIT_EXCEEDED = 'tool_limit_exceeded';
 
     /**
+     * The turn was handed a passage from one of the shop's own documents.
+     *
+     * **Added because `no_result` had quietly become false.** That value meant "no product cards were
+     * rendered", which was the same thing as "nothing happened" right up until shop-information
+     * retrieval existed. Measured on the lab shop afterwards: a correct revocation period, a correct
+     * imprint and a correct shipping cost were all recorded as `no_result`, and a merchant reading the
+     * trace list would have seen three failures where there were three good answers.
+     *
+     * **`retrieved`, not `answered`, and the distinction is the whole point.** Under spec R3a passages
+     * above the recall floor reach the model even when none of them answers the question — that is the
+     * design, and the model is expected to decline. Measured: "what warranty period applies to frame
+     * breakage?" retrieves withdrawal passages and is correctly declined. Whether the model *used* a
+     * passage is not something the server can know, and the only way to guess would be to read the
+     * prose — which is the one thing this pipeline refuses to trust. So the name claims exactly what
+     * the trace proves: passages were retrieved and given to the model.
+     *
+     * It ranks below `product_shown` on purpose. Cards are grounded facts the server rendered; this is
+     * text the server retrieved and the model may or may not have used. When a turn produced both, the
+     * stronger claim is the one worth recording.
+     */
+    public const SHOP_INFO_RETRIEVED = 'shop_info_retrieved';
+
+    /**
      * @param list<ProductCard> $cards
      */
     public function outcome(TraceRecorder $trace, array $cards): string
@@ -55,6 +78,10 @@ final class TurnOutcomeResolver
 
         if ($cards !== []) {
             return 'product_shown';
+        }
+
+        if (ShopInfoAnswer::isIn($trace)) {
+            return self::SHOP_INFO_RETRIEVED;
         }
 
         return 'no_result';

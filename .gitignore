@@ -16,3 +16,5 @@ var/
 # Playwright run output (dev-only e2e)
 /test-results/
 /playwright-report/
+
+.superpowers/
