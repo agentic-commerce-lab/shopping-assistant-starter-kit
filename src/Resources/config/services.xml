@@ -57,6 +57,16 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
+        </service>
+
+        <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper
+             somewhere real instead of asking them to guess better words. Measured on the lab shop: "what
+             to wear to a wedding" against a cycling catalogue answered "could you share more details...
+             so I can try different search terms", which cannot succeed. See NoMatchOrientation. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader">
+            <argument type="service" id="sales_channel.category.repository"/>
+            <argument type="service" id="sales_channel.product.repository"/>
         </service>
 
         <!-- Conversation and trace persistence. This lands before the widget because of

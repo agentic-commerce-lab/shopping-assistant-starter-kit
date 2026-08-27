@@ -12,9 +12,11 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepository;
 use Swag\AssistantStarterKit\Core\Commerce\BatchProductLookup;
+use Swag\AssistantStarterKit\Core\Commerce\CategoryTreeReader;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
@@ -37,13 +39,15 @@ use Swag\AssistantStarterKit\Core\Commerce\MatchCountReader;
  */
 // @mago-expect lint:too-many-methods
 // Every public method here is mandated by an interface this class implements: six by
-// CommerceGatewayInterface, one each by BatchProductLookup, FamilyVariantLookup and MatchCountReader.
+// CommerceGatewayInterface, one each by BatchProductLookup, CategoryTreeReader, FamilyVariantLookup
+// and MatchCountReader.
 // The count is the sum of those obligations plus a constructor and one small private mapper, not
 // bloat, and four interfaces cannot be implemented in fewer methods. The alternative is extracting
 // `mapAll()` into a pass-through class, which the constructor's own carve-out below already argues
 // against: indirection whose only purpose is satisfying a linter.
 final readonly class DalCommerceGateway implements
     BatchProductLookup,
+    CategoryTreeReader,
     CommerceGatewayInterface,
     FamilyVariantLookup,
     MatchCountReader
@@ -86,6 +90,7 @@ final readonly class DalCommerceGateway implements
         private SalesChannelContextProvider $contextProvider,
         private DalVariantFinder $variantFinder,
         private DalCartAdapter $cartAdapter,
+        private DalCategoryTreeReader $categoryTreeReader,
     ) {}
 
     public function facets(CatalogScope $scope): FacetSet
@@ -162,6 +167,14 @@ final readonly class DalCommerceGateway implements
         $criteria->setTotalCountMode(Criteria::TOTAL_COUNT_MODE_EXACT);
 
         return $this->productRepository->search($criteria, $context)->getTotal();
+    }
+
+    /**
+     * @return list<CategoryNode>
+     */
+    public function categories(?string $parentId, CatalogScope $scope): array
+    {
+        return $this->categoryTreeReader->read($parentId, $scope, $this->contextProvider->current());
     }
 
     public function product(string $productId, CatalogScope $scope): ?ProductCard

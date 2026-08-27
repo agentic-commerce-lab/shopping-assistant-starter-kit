@@ -15,6 +15,7 @@ use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Retrieval\CandidateInterleave;
+use Swag\AssistantStarterKit\Core\Retrieval\ExactMatchCount;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentCandidates;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentRetrieval;
@@ -175,6 +176,8 @@ final class SearchProductsTool
      *         options_truncated?: bool,
      *     }>,
      *     terms_without_results?: list<string>,
+     *     shop_sells?: list<string>,
+     *     shop_sells_note?: string,
      *     note?: string,
      * }
      */
@@ -327,7 +330,7 @@ final class SearchProductsTool
             'more' => $windowSaturated,
         ];
 
-        $exact = $this->exactMatchCount($candidates, $scope);
+        $exact = ExactMatchCount::of($this->gateway, $candidates, $scope);
 
         if ($exact !== null) {
             // `more` keeps meaning what T4 gave it — *`matched` is a floor rather than a census* — so
@@ -361,38 +364,15 @@ final class SearchProductsTool
         }
 
         if ($returned === []) {
-            $result['note'] = self::NO_MATCH_NOTE;
+            // The shop's own departments, so an empty result can point the shopper somewhere real
+            // instead of asking them to guess better words. Measured on the local shop: "what to wear to
+            // a wedding" against a cycling catalogue produced "could you share more details… so I can
+            // try different search terms", which cannot succeed. See NoMatchOrientation.
+            $result = [...$result, ...NoMatchOrientation::replyFor($this->gateway, $scope, self::NO_MATCH_NOTE)];
         } elseif ($optionNote !== null) {
             $result['note'] = $optionNote;
         }
 
         return $result;
-    }
-
-    /**
-     * The exact number of products this search matched, or null when the gateway cannot count.
-     *
-     * **The largest single term's count, not a sum.** Counts alone cannot be de-duplicated, and two
-     * terms usually overlap — summing them would double every product both matched. Overstating the
-     * catalogue is the one direction this number must never err in, because the whole point of it is
-     * to tell "all six occasion dresses" from "four of three hundred". With one term, the ordinary
-     * case, it is simply exact.
-     *
-     * @param list<IntentCandidates> $candidates
-     */
-    private function exactMatchCount(array $candidates, CatalogScope $scope): ?int
-    {
-        if (!$this->gateway instanceof MatchCountReader) {
-            return null;
-        }
-
-        $largest = null;
-
-        foreach ($candidates as $one) {
-            $count = $this->gateway->countMatches($one->buildResult->query, $scope);
-            $largest = $largest === null ? $count : max($largest, $count);
-        }
-
-        return $largest;
     }
 }
