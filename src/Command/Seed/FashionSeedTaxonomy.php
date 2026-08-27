@@ -97,6 +97,14 @@ final class FashionSeedTaxonomy
         'Slim',
     ];
 
+    /**
+     * Exactly 40 — the same number as
+     * {@see \Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader::MAX_NODES}. Coincidence,
+     * locked in deliberately by
+     * {@see \Swag\AssistantStarterKit\Tests\Core\Commerce\Dal\DalCategoryTreeReaderBoundsTest} — see
+     * that reader's own docblock for why the coincidence is harmless today and what would need to be
+     * true for it to stop being harmless.
+     */
     public const BRANDS = [
         'Aurelia',
         'Bergfeld',

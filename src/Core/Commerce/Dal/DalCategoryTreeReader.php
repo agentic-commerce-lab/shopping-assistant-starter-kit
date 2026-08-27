@@ -38,8 +38,12 @@ final readonly class DalCategoryTreeReader
      *
      * Forty. The local shop's top level has seven children and the generated fashion tree fourteen, so
      * this truncates neither; it exists to stop a pathological tree turning one read into a catalogue
-     * dump. **Not yet measured against a shop with a wide level** — recorded as a bound chosen for
-     * headroom rather than from data, which is the honest description of it.
+     * dump. **Measured against a shop with a wide level, 2026-08-27**: the seeded fashion catalogue's
+     * `Brand` branch has exactly 40 children — this bound, not from data. It is currently harmless only
+     * because {@see \Swag\AssistantStarterKit\Core\Tool\NoMatchOrientation::of()}, the sole caller of
+     * {@see self::read()}, always passes `$parentId = null` (the navigation root, 7 children) — nothing
+     * in this codebase reads a deeper level yet. {@see \Swag\AssistantStarterKit\Tests\Core\Commerce\Dal\DalCategoryTreeReaderBoundsTest}
+     * locks the coincidence in so a future non-root reader doesn't discover it via silent truncation.
      */
     private const MAX_NODES = 40;
 
