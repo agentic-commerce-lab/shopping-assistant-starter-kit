@@ -27,8 +27,8 @@ final class SeedWriterTest extends TestCase
             ->method('create')
             ->willReturn(EntityWrittenContainerEvent::createWithWrittenEvents([], $context, []));
 
-        $writer = new SeedWriter($this->createStub(InheritanceUpdater::class), $this->createStub(StatesUpdater::class));
-        $writer->writeCategories($this->createStub(SymfonyStyle::class), $repository, [], $context);
+        $writer = $this->writer(categoryRepository: $repository);
+        $writer->writeCategories($this->createStub(SymfonyStyle::class), [], $context);
 
         self::assertTrue($context->hasState(EntityIndexerRegistry::DISABLE_INDEXING));
     }
@@ -40,10 +40,10 @@ final class SeedWriterTest extends TestCase
         $failure = new \RuntimeException('write failed');
         $repository = $this->createMock(EntityRepository::class);
         $repository->method('create')->willThrowException($failure);
-        $writer = new SeedWriter($this->createStub(InheritanceUpdater::class), $this->createStub(StatesUpdater::class));
+        $writer = $this->writer(categoryRepository: $repository);
 
         try {
-            $writer->writeCategories($this->createStub(SymfonyStyle::class), $repository, [], $context);
+            $writer->writeCategories($this->createStub(SymfonyStyle::class), [], $context);
             self::fail('Expected the repository failure to propagate.');
         } catch (\RuntimeException $exception) {
             self::assertSame($failure, $exception);
@@ -66,10 +66,10 @@ final class SeedWriterTest extends TestCase
                 throw $failure;
             });
 
-        $writer = new SeedWriter($this->createStub(InheritanceUpdater::class), $this->createStub(StatesUpdater::class));
+        $writer = $this->writer(categoryRepository: $repository);
 
         try {
-            $writer->writeCategories($this->createStub(SymfonyStyle::class), $repository, [], $context);
+            $writer->writeCategories($this->createStub(SymfonyStyle::class), [], $context);
             self::fail('Expected the repository failure to propagate.');
         } catch (\RuntimeException $exception) {
             self::assertSame($failure, $exception);
@@ -125,10 +125,30 @@ final class SeedWriterTest extends TestCase
                 $calls[] = 'states';
             });
 
-        $writer = new SeedWriter($inheritanceUpdater, $statesUpdater);
-        $writer->writeProducts($this->createStub(SymfonyStyle::class), $repository, $products, $context);
+        $writer = $this->writer(
+            productRepository: $repository,
+            inheritanceUpdater: $inheritanceUpdater,
+            statesUpdater: $statesUpdater,
+        );
+        $writer->writeProducts($this->createStub(SymfonyStyle::class), $products, $context);
 
         self::assertSame(['create', 'inheritance', 'states'], $calls);
         self::assertFalse($context->hasState(EntityIndexerRegistry::DISABLE_INDEXING));
+    }
+
+    private function writer(
+        ?EntityRepository $categoryRepository = null,
+        ?EntityRepository $propertyGroupRepository = null,
+        ?EntityRepository $productRepository = null,
+        ?InheritanceUpdater $inheritanceUpdater = null,
+        ?StatesUpdater $statesUpdater = null,
+    ): SeedWriter {
+        return new SeedWriter(
+            $categoryRepository ?? $this->createStub(EntityRepository::class),
+            $propertyGroupRepository ?? $this->createStub(EntityRepository::class),
+            $productRepository ?? $this->createStub(EntityRepository::class),
+            $inheritanceUpdater ?? $this->createStub(InheritanceUpdater::class),
+            $statesUpdater ?? $this->createStub(StatesUpdater::class),
+        );
     }
 }

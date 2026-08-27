@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Command\Seed;
 
 use Doctrine\DBAL\Connection;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -14,22 +13,17 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * ({@see SeedWriter}), then synchronous catalogue completion ({@see SeedCompletion}). The completion
  * writes the marker last, so a run that fails partway through is visibly unfinished on the next
  * invocation rather than silently guarded.
+ *
+ * A thin orchestrator, deliberately: it holds no `EntityRepository` itself — those live on
+ * {@see SeedWriter}, which owns every DAL write — and keeps only the `Connection` its own tax lookup
+ * reads.
  */
 final readonly class SeedRunner
 {
-    // @mago-expect lint:excessive-parameter-list
-    // Standing-constraints carve-out 2, same shape as DalCommerceGateway's: an orchestrator
-    // constructor injecting the guard, writer, completion boundary and the three repositories it
-    // hands to the writer, plus the connection the tax lookup reads. Seven collaborators named in
-    // this class's own docblock — the alternative is a parameter object that exists only to satisfy
-    // the linter, not to mean anything on its own.
     public function __construct(
         private SeedGuard $guard,
         private SeedWriter $writer,
         private SeedCompletion $completion,
-        private EntityRepository $categoryRepository,
-        private EntityRepository $propertyGroupRepository,
-        private EntityRepository $productRepository,
         private Connection $connection,
     ) {}
 
@@ -49,7 +43,9 @@ final readonly class SeedRunner
             );
         }
 
-        $taxId = $this->connection->fetchOne('SELECT LOWER(HEX(id)) FROM tax LIMIT 1');
+        // ORDER BY makes which tax rate the whole catalogue gets deterministic, matching SeedId's and
+        // ProductFillerBuilder's LCG determinism elsewhere in this feature.
+        $taxId = $this->connection->fetchOne('SELECT LOWER(HEX(id)) FROM tax ORDER BY tax_rate DESC, id LIMIT 1');
         if (!\is_string($taxId) || $taxId === '') {
             throw new \RuntimeException('No tax rule exists in this shop — cannot price seeded products.');
         }
@@ -67,9 +63,9 @@ final readonly class SeedRunner
             $salesChannelContext->getSalesChannelId(),
         );
 
-        $this->writer->writeCategories($io, $this->categoryRepository, $categoryPlan['tree'], $context);
-        $this->writer->writePropertyGroups($io, $this->propertyGroupRepository, $propertyPlan['groups'], $context);
-        $this->writer->writeProducts($io, $this->productRepository, $products, $context);
+        $this->writer->writeCategories($io, $categoryPlan['tree'], $context);
+        $this->writer->writePropertyGroups($io, $propertyPlan['groups'], $context);
+        $this->writer->writeProducts($io, $products, $context);
 
         $this->completion->complete($navigationRootId, $context);
 

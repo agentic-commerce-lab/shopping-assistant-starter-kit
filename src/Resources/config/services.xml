@@ -329,6 +329,9 @@
         </service>
 
         <service id="Swag\AssistantStarterKit\Command\Seed\SeedWriter">
+            <argument type="service" id="category.repository"/>
+            <argument type="service" id="property_group.repository"/>
+            <argument type="service" id="product.repository"/>
             <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Indexing\InheritanceUpdater"/>
             <argument type="service" id="Shopware\Core\Content\Product\DataAbstractionLayer\StatesUpdater"/>
         </service>
@@ -337,9 +340,6 @@
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedGuard"/>
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedWriter"/>
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedCompletion"/>
-            <argument type="service" id="category.repository"/>
-            <argument type="service" id="property_group.repository"/>
-            <argument type="service" id="product.repository"/>
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
 
