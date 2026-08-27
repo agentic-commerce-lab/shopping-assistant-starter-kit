@@ -73,20 +73,36 @@ final readonly class ProseAudit
      * The cost of the looser scan: a shopper writing "size 40" exempts a model claiming "€40" as a
      * price. Narrow, and the ceiling itself is still owned by `price_matches_source`.
      *
+     * **A figure the shop's own retrieved document contains is not a claim by the model either**, and
+     * that exemption is `$givenPassages`. Measured 2026-08-27 through the real endpoint: *"what are
+     * your shipping costs?"* answered correctly out of the shop's shipping document and came back with
+     * `unbackedPrices: ["4.95","29.00","9.95","14.95"]` — every figure right. A shop-information turn
+     * renders no cards, and spec R6 lets the model paraphrase passage text, so every legitimate figure
+     * in such an answer was unbacked by construction and the widget annotated a correct answer as
+     * suspect. That is the same failure R85 above exists to prevent, arriving from the documents
+     * instead of from the shopper.
+     *
+     * **The passages GIVEN, not every passage retrieved.** The caller passes what the model was
+     * actually handed ({@see \Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages}). Exempting
+     * a figure that only appears in a passage scored below the threshold — one the model never saw —
+     * would weaken the single thing this check is for. The tighter reading costs nothing, because that
+     * is the set already available.
+     *
+     * Note the asymmetry this closes: a *period* no passage supports was already audited, by
+     * {@see PassageAudit::unsupportedPeriods()}. Currency figures had no equivalent.
+     *
      * @param list<ProductCard> $rendered
+     * @param list<string>      $givenPassages the shop-information passages this run handed the model
      *
      * @return list<string>
      */
-    public function unbackedPrices(string $prose, array $rendered, string $shopperMessage = ''): array
-    {
-        $cents = [];
-        foreach ($rendered as $card) {
-            $cents[self::toCents($card->price)] = true;
-        }
-
-        foreach (self::numbersIn($shopperMessage) as $shopperFigure) {
-            $cents[self::toCents($shopperFigure)] = true;
-        }
+    public function unbackedPrices(
+        string $prose,
+        array $rendered,
+        string $shopperMessage = '',
+        array $givenPassages = [],
+    ): array {
+        $cents = BackedFigures::inCents($rendered, $shopperMessage, $givenPassages);
 
         $figures = $this->currencyFigures->extract($prose);
 
@@ -97,7 +113,7 @@ final readonly class ProseAudit
                 return true;
             }
 
-            return !\array_key_exists(self::toCents((float) $figure), $cents);
+            return !\array_key_exists(BackedFigures::toCents((float) $figure), $cents);
         }));
     }
 
@@ -139,33 +155,5 @@ final readonly class ProseAudit
         }
 
         return $claims;
-    }
-
-    /**
-     * Every number in a piece of text, however written.
-     *
-     * Deliberately not {@see CurrencyFigureExtractor}: that class answers "is this a stated price?",
-     * and this answers "did the shopper mention this number?". Comma decimals are normalised because
-     * a shopper writing "39,90" means the same as "39.90".
-     *
-     * @return list<float>
-     */
-    private static function numbersIn(string $text): array
-    {
-        if (preg_match_all('/\\d+(?:[.,]\\d+)?/', $text, $matches) === false) {
-            return [];
-        }
-
-        $numbers = [];
-        foreach ($matches[0] as $raw) {
-            $numbers[] = (float) str_replace(',', '.', $raw);
-        }
-
-        return $numbers;
-    }
-
-    private static function toCents(float $amount): int
-    {
-        return (int) round($amount * 100);
     }
 }

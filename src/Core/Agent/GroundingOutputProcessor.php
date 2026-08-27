@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Output;
 use Symfony\AI\Agent\OutputProcessorInterface;
@@ -117,7 +118,10 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         $this->groundedTurn = $turn;
 
         $this->renderer->render($toRender);
-        $this->renderer->unbackedPricesInProse($text);
+        // The passages this run handed the model, so a figure the shop's own document contains is not
+        // reported as an unbacked claim. Measured 2026-08-27: a correct shipping answer came back with
+        // four unbacked prices and the widget annotated it as suspect.
+        $this->renderer->unbackedPricesInProse($text, RetrievedPassages::from($this->trace));
 
         // The second half of the prose audit. Prices were covered from the start; availability was
         // not, and a live turn told a shopper a sold-out variant was available (ruling R75).

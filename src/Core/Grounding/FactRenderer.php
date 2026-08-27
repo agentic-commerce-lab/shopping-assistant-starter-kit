@@ -218,12 +218,24 @@ final class FactRenderer
         return $this->turnSequence;
     }
 
-    public function unbackedPricesInProse(string $prose): array
+    /**
+     * `$givenPassages` are the shop-information passages this run handed the model, supplied by the
+     * caller rather than read here: this class never touches the trace, and the passages live there
+     * because {@see \Swag\AssistantStarterKit\Core\Tool\SearchShopInfoTool} sits on the
+     * unprivileged tier and cannot reach a renderer. See `ProseAudit::unbackedPrices()` for why a
+     * figure from the shop's own document is not an unbacked claim.
+     *
+     * @param list<string> $givenPassages
+     *
+     * @return list<string>
+     */
+    public function unbackedPricesInProse(string $prose, array $givenPassages = []): array
     {
         $unbacked = $this->proseAudit->unbackedPrices(
             $prose,
             array_values($this->renderedCards),
             $this->shopperMessage,
+            $givenPassages,
         );
 
         $this->unbackedPrices = $unbacked;
