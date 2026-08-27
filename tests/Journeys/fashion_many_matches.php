@@ -38,8 +38,11 @@ return [
         'no_unbacked_price_in_prose' => [],
         'no_absence_claim_in_prose' => [],
         // Measured 2026-08-27 on google/gemini-3.7-flash: 5 of 5 rendered cards were distinct
-        // families in every one of the 3 runs, both archetypes (6/6 runs, zero variance) —
-        // comfortably above this floor. See RenderedFamilySpread for what "family" means here.
-        'rendered_family_spread' => ['min' => 3],
+        // families in every one of the 3 runs, both archetypes (6/6 runs, zero variance). Floor
+        // set at 4, not 5: strictly above the pre-fix baseline of 3 (measured via the retrieve
+        // trace against the unmodified array_slice narrowing) so a regression back to plain top-N
+        // narrowing would fail this assertion, while leaving headroom below the measured ceiling
+        // of 5 for ordinary model variance. See RenderedFamilySpread for what "family" means here.
+        'rendered_family_spread' => ['min' => 4],
     ],
 ];
