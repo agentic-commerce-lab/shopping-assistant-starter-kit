@@ -306,6 +306,39 @@
             <tag name="console.command"/>
         </service>
 
+        <!-- Task A of the fashion-scale-sweep handoff: writes the fashion taxonomy into a real shop
+             through the DAL, so the fashion evals can finally run against real Shopware search
+             instead of FixtureCommerceGateway. Dev-only; SeedGuard makes a second run refuse itself. -->
+        <service id="Swag\AssistantStarterKit\Command\Seed\DalMarkerCategoryStore">
+            <argument type="service" id="category.repository"/>
+        </service>
+
+        <!-- Aliased to the interface above, the same way CommerceGatewayInterface aliases to
+             DalCommerceGateway. -->
+        <service id="Swag\AssistantStarterKit\Command\Seed\MarkerCategoryStore"
+                 alias="Swag\AssistantStarterKit\Command\Seed\DalMarkerCategoryStore"/>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedGuard">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\MarkerCategoryStore"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedWriter"/>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedGuard"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedWriter"/>
+            <argument type="service" id="category.repository"/>
+            <argument type="service" id="property_group.repository"/>
+            <argument type="service" id="product.repository"/>
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\SeedFashionCatalogueCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedRunner"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
+            <tag name="console.command"/>
+        </service>
+
         <!-- Inside a shop the DAL gateway is the gateway. FixtureCommerceGateway stays
              constructible for the eval suite, which builds it directly and needs no container. -->
         <service id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"
