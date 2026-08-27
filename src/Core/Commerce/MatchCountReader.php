@@ -53,6 +53,11 @@ interface MatchCountReader
      * Returns the exact count. An implementation that cannot be exact should not implement this
      * interface at all: a second inexact number beside `matched` would be worse than one, because a
      * caller could not tell which of them to trust.
+     *
+     * Caveat for a merchant running Shopware's Elasticsearch adapter: it maps `CountAggregation` onto
+     * an approximate `cardinality` aggregation once the match set exceeds ES's precision threshold, so
+     * `DalCommerceGateway`'s implementation of this method may stop being exact there. `shopware/
+     * elasticsearch` is not installed in this repository, so that path is unverified here.
      */
     public function countMatches(ProductQuery $query, CatalogScope $scope): int;
 }

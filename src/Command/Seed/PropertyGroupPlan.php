@@ -70,8 +70,10 @@ final class PropertyGroupPlan
             self::group('Pattern', self::PATTERNS, $optionIds),
         ];
 
-        $ignored = [];
-        $groups[] = self::group('Size', self::SIZES, $ignored);
+        // Size is deliberately excluded from the returned optionIds: it has its own sizeOptionIds
+        // return value below, so this by-ref argument only exists to discard Size's entry here.
+        $ignoredSizeOptionIds = [];
+        $groups[] = self::group('Size', self::SIZES, $ignoredSizeOptionIds);
 
         $sizeOptionIds = [];
         foreach (self::SIZES as $size) {
