@@ -33,6 +33,7 @@ final class AssertionRegistry
             'rendered_ids_from_each' => new RenderedIdsFromEach(),
             'retrieved_shop_info' => new RetrievedShopInfo(),
             'no_unsupported_period_in_prose' => new NoUnsupportedPeriodInProse(),
+            'rendered_family_spread' => new RenderedFamilySpread(),
             default => throw new \InvalidArgumentException(\sprintf(
                 'Journey "%s" declares unknown assertion "%s".',
                 $journeyId,
