@@ -164,3 +164,64 @@ merchant's real terms.
   not a measurement.
 - **The occasion behaviour on a real shop**, for the same reason: this shop sells cycling gear, so
   "what to wear to a wedding" correctly returns nothing and tests only the absence rule.
+
+---
+
+## Re-verified after the narrowing work
+
+Same shop, same eight turns, after the exact-match-count work, the price-audit exemption and the new
+assertions landed. `plugin:update` clean, cache cleared, `google/gemini-3.7-flash`.
+
+**Eight of eight still correct**, and two turns confirm the day's fixes on the production path:
+
+| Turn | Confirms |
+|---|---|
+| "what are your shipping costs?" | **No `unbackedPrices` warning.** Same correct figures that produced `["4.95","29.00","9.95","14.95"]` before the exemption |
+| "show me jerseys and gloves" | *"The search found no results for gloves."* The half that matched nothing is still disclosed, so the prose and the cards agree |
+| "do you have the trail jersey in blue, size M?" | 1 card, Blue/M, 74.90, **stock 0** — and the prose says *"I found"*, never *"we have"* |
+| "what to wear to a wedding" | Honest empty plus a request for detail. Zero cards is correct here: this shop sells cycling gear |
+| warranty / order status / injection | Declined, escalated with handoff, refused — unchanged |
+
+## The narrowing behaviour, measured on the fashion fixture
+
+| Journey | Result |
+|---|---|
+| `fashion_many_matches` (1,133 units match `dress`) | **PASS 3/3** both archetypes — products shown, at most one question |
+| `fashion_not_interrogated` (3 turns) | **PASS 3/3** — at most two questions across the whole conversation |
+| `fashion_small_match_no_question` (20 units match `yoga`) | **PASS 3/3** after the bound was corrected from 0 to 1 — see below |
+| `fashion_wedding_occasion` · `rendered_ids_from_each` | **RED on gemini, 0–1/3** — fixture-matcher artefact, documented in the journey |
+| `fashion_false_friend`, `fashion_undivided_occasion` | PASS |
+
+Observed and deliberately not asserted: the assistant now uses the exact count in its prose — *"There
+are many styles available across the collection"* — where before it had a capped `matched: 32` and
+presented eight of 1,133 as though they were the answer.
+
+### One assertion was wrong, and the model was right
+
+`questions_at_most: 0` on the small-match journey failed 0/3 on both archetypes. Reading what actually
+happened shows the fault was the assertion's:
+
+```
+renders_at_least  3/3   showed all four yoga products
+questions_at_most 0/3   "Are you looking for a particular size or type of piece?"
+```
+
+It answered first and offered to refine second. That question costs the shopper nothing — they can
+ignore it and click a card — and size genuinely narrows here, because four products carry five sizes
+each. Forbidding it built a control that fires on correct behaviour, which is precisely what
+`ProseAudit`'s docblock calls unaffordable. The bound is now 1, and `renders_at_least` carries the
+friction that actually matters: a question asked *instead of* showing products.
+
+## What is still open
+
+- **Diversification.** At 1,133 matching dresses the assistant now knows it is showing a sample and
+  says so, but those eight are still the top eight by relevance — on near-identical products, eight
+  near-identical cards. This is the deeper half of the shortlist problem and it is untouched.
+- **`rendered_ids_from_each` red on gemini.** `FixtureTermMatcher` has no stemming, so `Occasion Suits`
+  fails its all-token pass and the any-token pass returns the *dresses* on "occasion" alone — and that
+  wrong-but-non-empty result also stops `RelaxedTermRetry` firing. A keyword index resolves this; the
+  fixture cannot, so the fixture is what needs fixing.
+- **Nothing has run at 15,000 products against real Shopware search.** The shop has 135. The DAL
+  seeder does not exist, so every fashion-scale number in these reports is a fixture number — and the
+  point above shows the fixture's matcher is measurably weaker than the real index.
+- **The integration branch is not merged.** Only the migration fix is on `main`.
