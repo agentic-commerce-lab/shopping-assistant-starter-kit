@@ -24,7 +24,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureVariantMatcher;
  * with no shop and no database. Plan 2 later adds a Shopware DAL implementation
  * behind the same interface.
  */
-final class FixtureCommerceGateway implements CommerceGatewayInterface, FamilyVariantLookup
+final class FixtureCommerceGateway implements CommerceGatewayInterface, FamilyVariantLookup, MatchCountReader
 {
     /** @var array<string, CartLine> keyed by variant id */
     private array $cartLines = [];
@@ -73,6 +73,24 @@ final class FixtureCommerceGateway implements CommerceGatewayInterface, FamilyVa
         $units = FixtureCategoryFilter::apply($units, $query->categoryId);
 
         return FixtureQueryFilter::apply($units, $query);
+    }
+
+    /**
+     * Everything the query matches, ignoring its limits.
+     *
+     * The same filters `search()` applies, in the same order — scope, then the shopper's aisle, then
+     * the query's own clauses — with the limit removed. Reusing the query rather than re-deriving the
+     * predicate is the point: a count that disagreed with the search it describes would be worse than
+     * no count.
+     */
+    public function countMatches(ProductQuery $query, CatalogScope $scope): int
+    {
+        $units = FixtureScopeFilter::apply($this->index->units(), $scope);
+        $units = FixtureCategoryFilter::apply($units, $query->categoryId);
+
+        // A very large limit rather than a separate predicate: FixtureQueryFilter owns what "matches"
+        // means, and a second implementation of that here is the copy that drifts.
+        return \count(FixtureQueryFilter::apply($units, $query->withoutLimits()));
     }
 
     public function product(string $productId, CatalogScope $scope): ?ProductCard

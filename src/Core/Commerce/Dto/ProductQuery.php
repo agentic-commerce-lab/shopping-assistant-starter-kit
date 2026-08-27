@@ -47,6 +47,24 @@ final readonly class ProductQuery
     }
 
     /**
+     * The same query with every limit removed, for {@see \Swag\AssistantStarterKit\Core\Commerce\MatchCountReader}.
+     *
+     * A counting caller needs the predicate and none of the bounds. Expressed here rather than at the
+     * call site so "the same query, uncapped" means one thing across implementations — the fixture
+     * counts rows and the DAL asks the database, and they must agree about what they are counting.
+     */
+    public function withoutLimits(): self
+    {
+        return new self(
+            term: $this->term,
+            filters: $this->filters,
+            limit: \PHP_INT_MAX,
+            sort: $this->sort,
+            categoryId: $this->categoryId,
+        );
+    }
+
+    /**
      * The same query without the shopper's location, for the retry P9 mandates: a category is a
      * helpful default, not a cage, and asking for gloves in the jersey aisle must return gloves.
      */

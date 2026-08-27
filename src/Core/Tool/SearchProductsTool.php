@@ -8,6 +8,7 @@ use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
+use Swag\AssistantStarterKit\Core\Commerce\MatchCountReader;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\RedundantParentFilter;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
@@ -58,7 +59,14 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'If your answer covers more than one KIND of product — an occasion needing either a dress or '
     . 'a suit, say — do NOT search twice: pass both words in "terms" in this one call, and the '
     . 'shop will show some of each. Searching twice shows the shopper only the second one, so '
-    . 'anything you named from the first search would be described but not shown.',
+    . 'anything you named from the first search would be described but not shown. '
+    . 'The reply also tells you how many products MATCHED, which is often far more than the few it '
+    . 'returns. If it matched only a handful, show them and do not ask anything — a question buys '
+    . 'nothing. If it matched many more than you are showing, do not present those few as if they '
+    . 'were the whole answer: say plainly that there are many and ask ONE question that would narrow '
+    . 'them (dress code, season, budget, size), or name what you are showing as a few examples. '
+    . 'Always show products alongside such a question — never reply with a question and no products, '
+    . 'and never ask a narrowing question twice in one conversation.',
 )]
 final class SearchProductsTool
 {
@@ -312,9 +320,23 @@ final class SearchProductsTool
             // superseded parents: RedundantParentFilter removed them because their own variants are
             // present, and counting one back in would report a product twice.
             'matched' => \count($survivors),
-            // `matched` is a floor, not a census, whenever the candidate window filled up (T4).
+            // `matched` is a floor, not a census, whenever the candidate window filled up (T4) — UNLESS
+            // the gateway can count, in which case it is exact and `more` means what it says. See
+            // MatchCountReader for why the difference matters: at the 50-unit window the assistant
+            // could not tell "all six occasion dresses" from "four of three hundred".
             'more' => $windowSaturated,
         ];
+
+        $exact = $this->exactMatchCount($candidates, $scope);
+
+        if ($exact !== null) {
+            // `more` keeps meaning what T4 gave it — *`matched` is a floor rather than a census* — so
+            // an exact count makes it false rather than "there are more than I showed". That second
+            // fact is already in the reply: `matched` against `total`. Redefining a field the model has
+            // learned is how something else quietly breaks (the same argument T3 makes for `total`).
+            $result['matched'] = $exact;
+            $result['more'] = false;
+        }
 
         // Only when there is something to disclose. A family returned whole is already fully
         // described by `products`, and an empty array is context the model pays to read.
@@ -345,5 +367,32 @@ final class SearchProductsTool
         }
 
         return $result;
+    }
+
+    /**
+     * The exact number of products this search matched, or null when the gateway cannot count.
+     *
+     * **The largest single term's count, not a sum.** Counts alone cannot be de-duplicated, and two
+     * terms usually overlap — summing them would double every product both matched. Overstating the
+     * catalogue is the one direction this number must never err in, because the whole point of it is
+     * to tell "all six occasion dresses" from "four of three hundred". With one term, the ordinary
+     * case, it is simply exact.
+     *
+     * @param list<IntentCandidates> $candidates
+     */
+    private function exactMatchCount(array $candidates, CatalogScope $scope): ?int
+    {
+        if (!$this->gateway instanceof MatchCountReader) {
+            return null;
+        }
+
+        $largest = null;
+
+        foreach ($candidates as $one) {
+            $count = $this->gateway->countMatches($one->buildResult->query, $scope);
+            $largest = $largest === null ? $count : max($largest, $count);
+        }
+
+        return $largest;
     }
 }

@@ -20,6 +20,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
+use Swag\AssistantStarterKit\Core\Commerce\MatchCountReader;
 
 /**
  * {@see CommerceGatewayInterface} over the Shopware DAL — the implementation that makes this
@@ -34,7 +35,18 @@ use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
  * `SalesChannelContext` and `Criteria` may appear inside this namespace and nowhere else in the
  * plugin. Only DTOs leave.
  */
-final readonly class DalCommerceGateway implements BatchProductLookup, CommerceGatewayInterface, FamilyVariantLookup
+// @mago-expect lint:too-many-methods
+// Every public method here is mandated by an interface this class implements: six by
+// CommerceGatewayInterface, one each by BatchProductLookup, FamilyVariantLookup and MatchCountReader.
+// The count is the sum of those obligations plus a constructor and one small private mapper, not
+// bloat, and four interfaces cannot be implemented in fewer methods. The alternative is extracting
+// `mapAll()` into a pass-through class, which the constructor's own carve-out below already argues
+// against: indirection whose only purpose is satisfying a linter.
+final readonly class DalCommerceGateway implements
+    BatchProductLookup,
+    CommerceGatewayInterface,
+    FamilyVariantLookup,
+    MatchCountReader
 {
     /**
      * Facet probing needs one product's worth of rows at most — the values come from the
@@ -128,6 +140,28 @@ final readonly class DalCommerceGateway implements BatchProductLookup, CommerceG
             $this->productRepository->search($criteria, $context)->getElements(),
             $context->getCurrency()->getIsoCode(),
         );
+    }
+
+    /**
+     * How many products the query matches, without fetching them.
+     *
+     * `TOTAL_COUNT_MODE_EXACT` with a limit of 1: Shopware answers the count from the same filtered
+     * query it would run anyway, so this costs one cheap round trip rather than a page of rows. The
+     * limit cannot be 0 — the DAL treats that as "no limit" and would fetch the lot.
+     *
+     * Built from `$query->withoutLimits()` so the criteria carry the predicate and none of the bounds,
+     * and from the same `criteriaBuilder` `search()` uses, so the number describes the set the search
+     * describes — including the scope, which is what stops it advertising products the shopper may not
+     * see.
+     */
+    public function countMatches(ProductQuery $query, CatalogScope $scope): int
+    {
+        $context = $this->contextProvider->current();
+        $criteria = $this->criteriaBuilder->build($query->withoutLimits(), $scope, $context->getSalesChannelId());
+        $criteria->setLimit(1);
+        $criteria->setTotalCountMode(Criteria::TOTAL_COUNT_MODE_EXACT);
+
+        return $this->productRepository->search($criteria, $context)->getTotal();
     }
 
     public function product(string $productId, CatalogScope $scope): ?ProductCard
