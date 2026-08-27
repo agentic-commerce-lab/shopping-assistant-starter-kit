@@ -1,5 +1,10 @@
 # Handoff — 2026-08-20: what the widget saw, for whoever owns the backend
 
+> **HISTORICAL. Not the current handoff — see `HANDOFF.md` in the repository root.**
+>
+> Kept because `docs/HANDOFF.md` calls it "the source for several items below", so deleting it would
+> leave that document's findings unverifiable. Describes branch `feat/grounded-core`.
+
 **From:** the session that built the storefront widget (commits `7196257` → `9517461`).
 **For:** the session working on the pipeline behind it.
 **Branch:** `feat/grounded-core`. We were both committing to it; nothing here is merged anywhere else.

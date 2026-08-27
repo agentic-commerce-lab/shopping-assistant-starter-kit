@@ -1,5 +1,12 @@
 # Handoff — 2026-08-20: the technical gaps, for the next session
 
+> **HISTORICAL. Not the current handoff — see `HANDOFF.md` in the repository root.**
+>
+> Kept because thirteen committed documents cite it as the record of specific measurements: §1 for the
+> interrogative-phrasing defect (since verified fixed, at fashion scale and on the real shop), §8 for the
+> lab environment and the demo product's trap variants. Its forward-looking sections describe branch
+> `feat/grounded-core` and are spent.
+
 **Branch:** `feat/grounded-core`. Two sessions committed to it in parallel today — the backend
 pipeline and the storefront widget. Nothing is merged anywhere else.
 
@@ -14,7 +21,6 @@ order:
 | Document | What it gives you |
 |---|---|
 | `docs/HANDOFF-widget-to-backend.md` | The widget session's findings, from the side that watches people wait. **Read it fully — it is not superseded by this file, it is the source for several items below.** |
-| `docs/old-HANDOFF.md` | This morning's handoff. Its "state" section is now history; its endpoint contract and environment notes are still accurate |
 | `ARCHITECTURE.md` | Architecture of record, with five dated corrections that live runs forced |
 | `.superpowers/sdd/2026-08-19-shopware-plugin/progress.md` | Rulings R56–R91, each with its reasoning and what it costs if wrong |
 | `docs/superpowers/specs/2026-08-18-shopping-assistant-design.md` | The spec. D1–D16, A1–A7, Must/Should/Cut |
@@ -128,8 +134,9 @@ six deliberately-quiet cases are the part actually exercised.
 
 ## 5. A correction to this document's predecessor, and to my own evidence
 
-`docs/old-HANDOFF.md`'s evidence table claimed *"merchant config reaches the pipeline —
-`system:config:set` → `system:config:get` round-trips"*. **That proved storage, not interpretation.**
+This document's predecessor (`docs/old-HANDOFF.md`, deleted 2026-08-27 as spent) claimed in its
+evidence table that *"merchant config reaches the pipeline — `system:config:set` →
+`system:config:get` round-trips"*. **That proved storage, not interpretation.**
 
 The widget session found why it mattered: `system:config:set` stores every value as a **string**, and
 `(bool) "false"` is `true` in PHP. So `SystemConfigAssistantConfig::boolOr()` read a kill switch
