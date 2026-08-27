@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Migration;
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Uuid\Uuid;
+use Swag\AssistantStarterKit\Migration\Support\RenameSystemConfigKey;
 
 /**
  * Carries `killSwitch` across to `assistantEnabled`, inverted.

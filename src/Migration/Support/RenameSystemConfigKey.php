@@ -2,13 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Swag\AssistantStarterKit\Migration;
+namespace Swag\AssistantStarterKit\Migration\Support;
 
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Framework\Migration\MigrationStep;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 
 /**
+ * **Lives in `Migration/Support/`, not beside the migrations, and that placement is load-bearing.**
+ * `MigrationCollection::loadMigrationSteps()` `scandir()`s the migration directory, keeps every file
+ * whose class `is_subclass_of(MigrationStep::class)` and calls `new` on it. An abstract base passes
+ * that check and fatals on construction, which stops EVERY migration in the plugin from running — see
+ * `MigrationDirectoryTest`. `scandir()` is not recursive and a directory entry fails the `.php`
+ * extension check, so a subdirectory is invisible to it.
+ *
  * The shape every "this setting became that setting" migration has.
  *
  * Retiring a `config.xml` field is always the same three steps, and getting any of them wrong is
