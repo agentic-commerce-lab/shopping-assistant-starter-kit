@@ -82,6 +82,8 @@ final class PropertyGroupPlan
     }
 
     /**
+     * One property group's write payload, plus its option ids recorded into `$optionIds` by reference.
+     *
      * @param list<string>                          $values
      * @param array<string, array<string, string>>  $optionIds
      *

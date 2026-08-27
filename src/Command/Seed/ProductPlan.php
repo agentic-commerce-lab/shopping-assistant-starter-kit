@@ -25,8 +25,13 @@ final class ProductPlan
      * Forwards straight to {@see self::trapToPayload()} and {@see ProductFillerBuilder::build()} —
      * both declare the full `CategoryIdsByPath`/`PropertyOptionIds`/`SizeOptionIds` parameter shapes
      * on their own signatures (this method never indexes into any of the three itself), so repeating
-     * them here would only restate what those two already say.
+     * them here would only restate what those two already say — but this signature still has to
+     * declare the same three shapes itself, otherwise mago only sees plain `array` here and cannot
+     * prove the two forwarding calls below satisfy the stricter shapes those methods require.
      *
+     * @param CategoryIdsByPath  $categoryIdsByPath
+     * @param PropertyOptionIds  $optionIds
+     * @param SizeOptionIds      $sizeOptionIds
      * @return list<array<string, mixed>> one DAL write payload per top-level product, traps first
      */
     public static function build(array $categoryIdsByPath, array $optionIds, array $sizeOptionIds, string $taxId): array

@@ -20,6 +20,9 @@ final class ProductPlanTest extends TestCase
 {
     private const TAX_ID = 'tax00000000000000000000000000000';
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     private function plan(): array
     {
         $categories = CategoryTreePlan::build('root0000000000000000000000000000')['idsByPath'];
@@ -38,6 +41,7 @@ final class ProductPlanTest extends TestCase
     {
         $units = 0;
         foreach ($this->plan() as $product) {
+            /** @var list<array<string, mixed>> $children shape written by `SizeFamily::build()` */
             $children = $product['children'] ?? [];
             $units += $children !== [] ? \count($children) : 1;
         }
@@ -58,8 +62,12 @@ final class ProductPlanTest extends TestCase
     public function testEveryProductIsAssignedToAResolvedCategory(): void
     {
         foreach ($this->plan() as $product) {
-            self::assertNotEmpty($product['categories']);
-            self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $product['categories'][0]['id']);
+            /** @var list<array{id: string}> $categories shape written by `ProductPlan`/`ProductFillerBuilder` */
+            $categories = $product['categories'];
+            self::assertNotEmpty($categories);
+            /** @var array{id: string} $category every seeded product carries exactly one category, asserted non-empty above */
+            $category = $categories[0];
+            self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $category['id']);
         }
     }
 
@@ -67,6 +75,7 @@ final class ProductPlanTest extends TestCase
     {
         $products = $this->plan();
         $falseFriendId = SeedId::forPath('product', FashionSeedTraps::FALSE_FRIEND_ID);
+        /** @var array<string, mixed> $falseFriend the false-friend trap is always present in the plan */
         $falseFriend = array_values(array_filter(
             $products,
             static fn(array $p): bool => $p['id'] === $falseFriendId,

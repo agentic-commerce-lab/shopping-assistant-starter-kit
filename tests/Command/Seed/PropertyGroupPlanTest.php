@@ -39,8 +39,11 @@ final class PropertyGroupPlanTest extends TestCase
 
         foreach (FashionSeedTraps::all() as $product) {
             foreach ($product['properties'] as $group => $values) {
+                /** @var array<string, string> $optionIdsForGroup every trap's colour/material group has a matching entry here, per this test's own assertion */
+                $optionIdsForGroup = $result['optionIds'][$group];
+
                 foreach ($values as $value) {
-                    self::assertArrayHasKey($value, $result['optionIds'][$group], "$group:$value");
+                    self::assertArrayHasKey($value, $optionIdsForGroup, "$group:$value");
                 }
             }
         }
@@ -55,6 +58,7 @@ final class PropertyGroupPlanTest extends TestCase
     {
         $result = PropertyGroupPlan::build();
 
+        /** @var array{name: string, options: list<array{id: string, name: string}>} $sizeGroup shape written by `PropertyGroupPlan::group()` */
         $sizeGroup = $result['groups'][3];
         self::assertSame('Size', $sizeGroup['name']);
 

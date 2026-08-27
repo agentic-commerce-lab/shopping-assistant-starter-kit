@@ -32,10 +32,11 @@ final class ProductFillerBuilder
     private function __construct() {}
 
     /**
+     * The generator loop below is what actually walks these three shapes; {@see ProductPlan::build()}
+     * just forwards them here unread.
      * @param CategoryIdsByPath  $categoryIdsByPath
      * @param PropertyOptionIds  $optionIds
      * @param SizeOptionIds      $sizeOptionIds
-     *
      * @return list<array<string, mixed>>
      */
     public static function build(array $categoryIdsByPath, array $optionIds, array $sizeOptionIds, string $taxId): array
@@ -48,8 +49,13 @@ final class ProductFillerBuilder
             return $state = (($state * 1_103_515_245) + 12_345) & 0x7FFF_FFFF;
         };
 
-        $colours = array_keys($optionIds['Colour']);
-        $materials = array_keys($optionIds['Material']);
+        /** @var array<string, string> $colourOptionIds `PropertyGroupPlan::build()` always populates a `Colour` group. */
+        $colourOptionIds = $optionIds['Colour'];
+        /** @var array<string, string> $materialOptionIds `PropertyGroupPlan::build()` always populates a `Material` group. */
+        $materialOptionIds = $optionIds['Material'];
+
+        $colours = array_keys($colourOptionIds);
+        $materials = array_keys($materialOptionIds);
         $sideLeaves = FashionSeedTaxonomy::sideLeafCount();
 
         $products = [];
@@ -77,7 +83,7 @@ final class ProductFillerBuilder
                 'active' => true,
                 'stock' => $next() % 12,
                 'categories' => [['id' => $categoryId]],
-                'properties' => [['id' => $optionIds['Colour'][$colour]], ['id' => $optionIds['Material'][$material]]],
+                'properties' => [['id' => $colourOptionIds[$colour]], ['id' => $materialOptionIds[$material]]],
             ];
 
             if (($index % 5) !== 0) {

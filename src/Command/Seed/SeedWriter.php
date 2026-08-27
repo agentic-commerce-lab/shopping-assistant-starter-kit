@@ -33,9 +33,7 @@ final readonly class SeedWriter
         Context $context,
     ): void {
         $io->writeln('Writing category tree…');
-        $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
-        $categoryRepository->create($tree, $context);
-        $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
+        self::withIndexingDisabled($context, static fn() => $categoryRepository->create($tree, $context));
     }
 
     /**
@@ -48,9 +46,7 @@ final readonly class SeedWriter
         Context $context,
     ): void {
         $io->writeln('Writing property groups…');
-        $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
-        $propertyGroupRepository->create($groups, $context);
-        $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
+        self::withIndexingDisabled($context, static fn() => $propertyGroupRepository->create($groups, $context));
     }
 
     /**
@@ -65,12 +61,22 @@ final readonly class SeedWriter
         $io->progressStart(\count($products));
 
         foreach (array_chunk($products, self::PRODUCT_BATCH_SIZE) as $batch) {
-            $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
-            $productRepository->create($batch, $context);
-            $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
+            self::withIndexingDisabled($context, static fn() => $productRepository->create($batch, $context));
             $io->progressAdvance(\count($batch));
         }
 
         $io->progressFinish();
+    }
+
+    /**
+     * Every DAL write in this class runs inside this same window, matching how
+     * `vendor/shopware/core/Framework/Demodata/Generator/{ProductGenerator,CategoryGenerator}.php`
+     * toggle indexing around their own writes.
+     */
+    private static function withIndexingDisabled(Context $context, callable $write): void
+    {
+        $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
+        $write();
+        $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
     }
 }

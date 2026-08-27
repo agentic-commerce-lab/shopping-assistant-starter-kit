@@ -168,8 +168,16 @@ final class FashionSeedTaxonomy
     }
 
     /**
+     * The garment-tree leaf at `$index`: department, garment type and cut, deterministically.
      * @return array{path: list<string>, name: string}
      */
+    // The two `intdiv()` calls below divide by `\count()` of non-empty class constants (never
+    // zero, never overflowing `intdiv()`'s bounds), so `ArithmeticError`/`DivisionByZeroError`
+    // can never actually be thrown here. A `@throws` tag would suppress this finding too, but
+    // it would also make every caller of `garmentLeaf()` responsible for catching or declaring
+    // an exception this method can never really raise — a worse trade than expecting the
+    // finding once, at its source.
+    // @mago-expect analysis:unhandled-thrown-type
     public static function garmentLeaf(int $index): array
     {
         $perDepartment = \count(self::GARMENT_TYPES) * \count(self::CUTS);
@@ -186,6 +194,7 @@ final class FashionSeedTaxonomy
     }
 
     /**
+     * The Brand/Season/Occasion leaf at `$index`, cycling through the three side branches in turn.
      * @return array{path: list<string>, name: string}
      */
     public static function sideLeaf(int $index): array
