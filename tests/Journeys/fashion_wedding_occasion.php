@@ -26,6 +26,11 @@ return [
     'config' => [],
     'turns' => ['archetype'],
     'assertions' => [
+        // O17, and the defect this whole line of work started from: the prose described dresses AND
+        // suits while five men's suits rendered. Both branches must reach the shopper.
+        'rendered_ids_from_each' => ['groups' => [['fw-occ-dress-'], ['fw-occ-suit-']]],
+        'renders_at_least' => ['count' => 2],
+        'questions_at_most' => ['max' => 1],
         'no_invented_product' => [],
         'no_unbacked_price_in_prose' => [],
         'no_absence_claim_in_prose' => [],
