@@ -27,18 +27,20 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * fewer cards than a plain `array_slice($survivors, 0, $limit)` would have shown — diversifying never
  * makes the shortlist smaller, only more varied.
  *
- * A single-family input is a true no-op: pass one keeps every card in its original order (one key,
- * nothing to interleave), so the output equals `array_slice($survivors, 0, $limit)` exactly.
+ * A single-family input still produces the plain-prefix result, but not because pass one keeps
+ * everything: only the first card is a first-occurrence (`$firstPass` holds one element), and pass
+ * two's backfill immediately recovers the rest from `$leftover` in their original order — so the
+ * two-pass split is invisible in the output, even though it's exercised internally.
  *
  * ## Where this runs, and why it must be here
  *
  * After variant resolution, the blocklist, and {@see \Swag\AssistantStarterKit\Core\Grounding\RedundantParentFilter}
  * — never earlier. Diversifying before those would risk selecting a "diverse" set that then loses
  * members to blocklisting or redundant-parent removal, undermining the diversity work before the
- * shopper ever sees it (spec decision F4). It is the last reordering step before
- * {@see \Swag\AssistantStarterKit\Core\Tool\SearchProductsTool} slices to the model's requested limit —
- * see that class and {@see \Swag\AssistantStarterKit\Core\Retrieval\CandidateInterleave}'s docblocks,
- * both updated alongside this class for exactly that reason.
+ * shopper ever sees it (spec decision F4). This class performs the actual narrowing to the model's
+ * requested limit; {@see \Swag\AssistantStarterKit\Core\Tool\SearchProductsTool} no longer slices
+ * separately — see that class and {@see \Swag\AssistantStarterKit\Core\Retrieval\CandidateInterleave}'s
+ * docblocks, both updated alongside this class for exactly that reason.
  */
 final class FamilyDiversifier
 {

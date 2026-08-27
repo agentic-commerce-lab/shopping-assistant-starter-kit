@@ -18,19 +18,21 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * the first term's family fills the limit before the second term is reached.
  *
  * Interleaving is what makes the bound shared instead of first-come: a limit of six over
- * `["occasion dress", "occasion suit"]` returns three of each. Narrowing happens much later, after
- * resolution and the blocklist, and it slices from the front — so the balance created here is the
- * balance the shopper sees.
+ * `["occasion dress", "occasion suit"]` returns three of each **going into narrowing** — see the note
+ * below on what `FamilyDiversifier` can do to that balance afterward.
  *
  * ## Order was the whole contract — until FamilyDiversifier
  *
  * `VariantResolver` substitutes in place, `BlocklistFilter` and `RedundantParentFilter` only remove —
  * neither re-sorts, so the order this class produces survives both untouched. The one exception, added
- * 2026-08-27: {@see \Swag\AssistantStarterKit\Core\Tool\FamilyDiversifier}, the step right before the
- * final slice, deliberately reorders survivors by family. It still treats this class's per-term balance
- * as its *starting* order — it only demotes same-family duplicates behind other families' cards, never
- * reorders across terms on its own initiative — but "the order this produces is the order of the cards"
- * is no longer literally true past that point. See `FamilyDiversifier`'s own docblock for why and how.
+ * 2026-08-27: {@see \Swag\AssistantStarterKit\Core\Tool\FamilyDiversifier}, the narrowing step itself,
+ * deliberately reorders survivors by family. It still treats this class's per-term balance as its
+ * *starting* order, and it demotes same-family duplicates behind other families' cards regardless of
+ * which search term produced them — it has no notion of term at all. When one term contributes many
+ * distinct families and another contributes few (or one large family with many variants), this can skew
+ * the rendered set toward the richer term; `FamilyDiversifier` cannot correct for that because it never
+ * sees which term a card came from. So "the order this produces is the order of the cards" is no longer
+ * literally true past that point. See `FamilyDiversifier`'s own docblock for why and how.
  */
 final class CandidateInterleave
 {

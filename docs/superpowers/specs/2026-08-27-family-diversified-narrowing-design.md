@@ -84,10 +84,12 @@ FamilyDiversifier::of(survivors: list<ProductCard>, limit: int): list<ProductCar
 Properties worth stating explicitly, because they are what make this safe to insert without breaking the
 pinned tests above:
 
-- **Single-family input is a true no-op.** `first_pass` becomes exactly `survivors` (one key, every card
-  keeps the same relative order it already had — the loop never reorders within a family, only
-  interleaves *across* families that happen to share the prefix), so the output for a single-family
-  search is identical to `array_slice(survivors, 0, limit)` today.
+- **Single-family input still produces today's result, but not via `first_pass` alone.** With one key,
+  only the first card is a first-occurrence, so `first_pass` holds exactly one element and every
+  subsequent card falls into `leftover`. The backfill (`first_pass + leftover[0:needed]`) then recovers
+  the rest in their original order, so the two-pass split is invisible in the output — the result is
+  identical to `array_slice(survivors, 0, limit)` today, but because pass two recovers what pass one
+  didn't keep, not because pass one kept everything.
 - **Never returns more cards than `array_slice` would have, and never fewer than it would have** —
   `first_pass + leftover` together are a permutation of `survivors`, so the same `limit` bound applies,
   and (per F2) the backfill guarantees the count only drops below `limit` when `survivors` itself has
