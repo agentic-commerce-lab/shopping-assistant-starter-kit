@@ -6,8 +6,9 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
 use Shopware\Core\Content\Product\SalesChannel\SalesChannelProductEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Bucket\TermsAggregation;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\CountAggregation;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\StatsAggregation;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\AggregationResult\Metric\CountResult;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepository;
@@ -57,6 +58,9 @@ final readonly class DalCommerceGateway implements
      * aggregations, which are computed over the whole matching set regardless of this limit.
      */
     private const FACET_ROW_LIMIT = 1;
+
+    /** The name `countMatches()` registers its {@see CountAggregation} under and reads it back by. */
+    private const MATCH_COUNT_AGGREGATION = 'matches';
 
     /**
      * Bounds how much catalogue vocabulary reaches the model. Ruling R54 already caps the prompt
@@ -150,9 +154,20 @@ final readonly class DalCommerceGateway implements
     /**
      * How many products the query matches, without fetching them.
      *
-     * `TOTAL_COUNT_MODE_EXACT` with a limit of 1: Shopware answers the count from the same filtered
-     * query it would run anyway, so this costs one cheap round trip rather than a page of rows. The
-     * limit cannot be 0 — the DAL treats that as "no limit" and would fetch the lot.
+     * **Not `TOTAL_COUNT_MODE_EXACT` — measured wrong on a real shop.** That was this method's first
+     * implementation, and it reads correctly against `FixtureCommerceGateway`'s in-memory count, which
+     * is exactly why nothing here caught the defect: `TOTAL_COUNT_MODE_EXACT` plus `limit(1)` returned
+     * `1` for every non-empty search on this project's Shopware 6.7 instance, regardless of the true
+     * match count — confirmed live against 1,355 seeded dresses, 60 occasion suits and 24 yoga pieces,
+     * all reported as `1` (`docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md`, "Match-
+     * count finding"). A `CountAggregation` is computed over the whole matching set independently of
+     * pagination — the same reasoning `facets()` above already relies on for its own aggregations — and
+     * the same report measured it both correct and faster (down to ~130 ms warm) against the same live
+     * shop for every term that broke the old approach.
+     *
+     * The row limit stays at 1 for the same reason `FACET_ROW_LIMIT` does: an aggregation is computed
+     * over the whole matching set regardless of how many rows `search()` would return alongside it, so
+     * asking for none beyond the minimum costs nothing and fetches nothing extra.
      *
      * Built from `$query->withoutLimits()` so the criteria carry the predicate and none of the bounds,
      * and from the same `criteriaBuilder` `search()` uses, so the number describes the set the search
@@ -164,9 +179,11 @@ final readonly class DalCommerceGateway implements
         $context = $this->contextProvider->current();
         $criteria = $this->criteriaBuilder->build($query->withoutLimits(), $scope, $context->getSalesChannelId());
         $criteria->setLimit(1);
-        $criteria->setTotalCountMode(Criteria::TOTAL_COUNT_MODE_EXACT);
+        $criteria->addAggregation(new CountAggregation(self::MATCH_COUNT_AGGREGATION, 'id'));
 
-        return $this->productRepository->search($criteria, $context)->getTotal();
+        $result = $this->productRepository->aggregate($criteria, $context)->get(self::MATCH_COUNT_AGGREGATION);
+
+        return $result instanceof CountResult ? $result->getCount() : 0;
     }
 
     /**
