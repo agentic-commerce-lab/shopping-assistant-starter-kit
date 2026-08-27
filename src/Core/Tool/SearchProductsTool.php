@@ -17,10 +17,12 @@ use Swag\AssistantStarterKit\Core\Retrieval\CandidateInterleave;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentCandidates;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentRetrieval;
+use Swag\AssistantStarterKit\Core\Retrieval\MergedCandidates;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuildResult;
 use Swag\AssistantStarterKit\Core\Retrieval\RetrievalPass;
 use Swag\AssistantStarterKit\Core\Retrieval\ShopperIntent;
+use Swag\AssistantStarterKit\Core\Retrieval\TermContribution;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
@@ -164,6 +166,7 @@ final class SearchProductsTool
      *         options: array<string, list<string>>,
      *         options_truncated?: bool,
      *     }>,
+     *     terms_without_results?: list<string>,
      *     note?: string,
      * }
      */
@@ -244,8 +247,8 @@ final class SearchProductsTool
         // — only the term varies — so every buildResult resolved the same selections against the same
         // catalogue spelling.
         $buildResult = $candidates[0]->buildResult;
-        $optionNote = self::firstNote($candidates);
-        $windowSaturated = self::anySaturated($candidates);
+        $optionNote = MergedCandidates::firstNote($candidates);
+        $windowSaturated = MergedCandidates::anySaturated($candidates);
 
         // Canonical selections, not $intent->selections: QueryBuilder already resolved
         // each one against the catalog's own spelling — see
@@ -325,6 +328,16 @@ final class SearchProductsTool
             $result['families'] = $families;
         }
 
+        // Which of the model's own terms put nothing DISTINCT on screen. Undisclosed, a model that
+        // searched ["Occasion Dresses", "Occasion Suits"] writes "here are dresses and suits" while
+        // only dresses render — the exact prose/cards mismatch `terms` was added to remove, arriving
+        // through a different door. Measured 2026-08-27; see TermContribution.
+        $barren = TermContribution::termsWithoutResults(MergedCandidates::byTerm($candidates), $returned);
+
+        if ($barren !== []) {
+            $result['terms_without_results'] = $barren;
+        }
+
         if ($returned === []) {
             $result['note'] = self::NO_MATCH_NOTE;
         } elseif ($optionNote !== null) {
@@ -332,41 +345,5 @@ final class SearchProductsTool
         }
 
         return $result;
-    }
-
-    /**
-     * The first option/term retry note any pass produced.
-     *
-     * First rather than concatenated: the notes are instructions to the model about how to read a
-     * result, and two of them in one reply is how a model starts ignoring both.
-     *
-     * @param list<IntentCandidates> $candidates
-     */
-    private static function firstNote(array $candidates): ?string
-    {
-        foreach ($candidates as $one) {
-            if (null !== $one->note) {
-                return $one->note;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Whether ANY pass filled its window, which is what makes `matched` a floor rather than a census
-     * (T4). Any, not all: one saturated term is already enough for the count to be incomplete.
-     *
-     * @param list<IntentCandidates> $candidates
-     */
-    private static function anySaturated(array $candidates): bool
-    {
-        foreach ($candidates as $one) {
-            if ($one->windowSaturated) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
