@@ -37,10 +37,18 @@ final class ProductFillerBuilder
      * @param CategoryIdsByPath  $categoryIdsByPath
      * @param PropertyOptionIds  $optionIds
      * @param SizeOptionIds      $sizeOptionIds
+     * @param list<string>       $unresolvedPaths appended to, never read, when a filler product's
+     *     category path does not resolve — {@see ProductPlan::build()} throws once every trap and
+     *     filler product has been checked, rather than failing on the first one found.
      * @return list<array<string, mixed>>
      */
-    public static function build(array $categoryIdsByPath, array $optionIds, array $sizeOptionIds, string $taxId): array
-    {
+    public static function build(
+        array $categoryIdsByPath,
+        array $optionIds,
+        array $sizeOptionIds,
+        string $taxId,
+        array &$unresolvedPaths,
+    ): array {
         $state = self::SEED;
         // Intentionally not `return (($state * ...) & ...)` (mago's `inline-variable-return`
         // literal suggestion) — that would drop the mutation of the by-reference `$state` and
@@ -66,7 +74,9 @@ final class ProductFillerBuilder
 
             $path = implode('/', $leaf['path']);
             $categoryId = $categoryIdsByPath[$path] ?? null;
-            \assert($categoryId !== null, $path);
+            if ($categoryId === null) {
+                $unresolvedPaths[] = $path;
+            }
 
             $id = SeedId::forPath('product', 'filler/' . $index);
             $price = round(19.0 + ((float) ($next() % 28_000) / 100.0), precision: 2);

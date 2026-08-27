@@ -43,15 +43,35 @@ final class ProductPlan
         string $taxId,
         string $salesChannelId,
     ): array {
-        $traps = array_map(static fn(array $trap): array => self::trapToPayload(
-            $trap,
-            $categoryIdsByPath,
-            $optionIds,
-            $sizeOptionIds,
-            $taxId,
-        ), FashionSeedTraps::all());
+        // Collected, not thrown-on-first-hit: every unresolved path is named in one error below,
+        // before writeCategories()/writePropertyGroups()/writeProducts() ever run, rather than a
+        // future trap's bad path surfacing mid-batch after some products are already written.
+        $unresolvedPaths = [];
 
-        $products = [...$traps, ...ProductFillerBuilder::build($categoryIdsByPath, $optionIds, $sizeOptionIds, $taxId)];
+        $traps = [];
+        foreach (FashionSeedTraps::all() as $trap) {
+            $built = self::trapToPayload($trap, $categoryIdsByPath, $optionIds, $sizeOptionIds, $taxId);
+            $traps[] = $built['product'];
+            if ($built['unresolvedPath'] !== null) {
+                $unresolvedPaths[] = $built['unresolvedPath'];
+            }
+        }
+
+        $filler = ProductFillerBuilder::build($categoryIdsByPath, $optionIds, $sizeOptionIds, $taxId, $unresolvedPaths);
+
+        if ($unresolvedPaths !== []) {
+            $distinct = array_values(array_unique($unresolvedPaths));
+
+            throw new \RuntimeException(\sprintf(
+                'The fashion seed plan references %d unresolved category path(s) — no write has '
+                . 'started. Check FashionSeedTraps/FashionSeedTaxonomy against '
+                . 'CategoryTreePlan::TRAP_LEAF_NAMES: %s',
+                \count($distinct),
+                implode(', ', $distinct),
+            ));
+        }
+
+        $products = [...$traps, ...$filler];
 
         return array_map(static function (array $product) use ($salesChannelId): array {
             $product['visibilities'] = [[
@@ -64,12 +84,17 @@ final class ProductPlan
     }
 
     /**
+     * Returns the payload alongside `$trap`'s category path, only when that path failed to resolve —
+     * a tuple rather than a by-reference collector parameter, to keep this method's own parameter
+     * count under the same limit `SeedRunner`'s constructor was just brought under. {@see self::build()}
+     * collects every trap's and filler product's unresolved path before deciding whether to throw.
+     *
      * @param array{id: string, name: string, description: string, price: float, categoryPath: list<string>, properties: array<string, list<string>>, sizes: bool} $trap
      * @param CategoryIdsByPath  $categoryIdsByPath
      * @param PropertyOptionIds  $optionIds
      * @param SizeOptionIds      $sizeOptionIds
      *
-     * @return array<string, mixed>
+     * @return array{product: array<string, mixed>, unresolvedPath: ?string}
      */
     private static function trapToPayload(
         array $trap,
@@ -80,7 +105,6 @@ final class ProductPlan
     ): array {
         $path = implode('/', $trap['categoryPath']);
         $categoryId = $categoryIdsByPath[$path] ?? null;
-        \assert($categoryId !== null, $path);
 
         $properties = [];
         foreach ($trap['properties'] as $group => $values) {
@@ -108,6 +132,6 @@ final class ProductPlan
             $product['configuratorSettings'] = $family['configuratorSettings'];
         }
 
-        return $product;
+        return ['product' => $product, 'unresolvedPath' => $categoryId === null ? $path : null];
     }
 }

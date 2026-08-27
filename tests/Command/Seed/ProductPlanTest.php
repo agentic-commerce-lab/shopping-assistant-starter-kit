@@ -93,6 +93,32 @@ final class ProductPlanTest extends TestCase
         }
     }
 
+    /**
+     * The safety-gap fix: a category path that does not resolve to an id must throw a real,
+     * guaranteed-to-fire exception — not an `assert()` that `zend.assertions=-1`/`APP_ENV=prod`
+     * (the mode the seed command itself requires) compiles out entirely — and it must do so from
+     * `ProductPlan::build()` itself, before `SeedRunner::run()` ever reaches a writer call. Removing
+     * one trap leaf's id from `$categoryIdsByPath` here proves both: the call throws instead of
+     * silently returning a `['id' => null]` payload, and it names the unresolved path.
+     */
+    public function testAnUnresolvedCategoryPathThrowsBeforeAnyProductIsReturned(): void
+    {
+        $categories = CategoryTreePlan::build('root0000000000000000000000000000')['idsByPath'];
+        unset($categories['Women/Occasion & Party/Occasion Dresses']);
+        $properties = PropertyGroupPlan::build();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/Women\/Occasion & Party\/Occasion Dresses/');
+
+        ProductPlan::build(
+            $categories,
+            $properties['optionIds'],
+            $properties['sizeOptionIds'],
+            self::TAX_ID,
+            self::SALES_CHANNEL_ID,
+        );
+    }
+
     public function testTheFalseFriendCarriesNoSizeVariants(): void
     {
         $products = $this->plan();
