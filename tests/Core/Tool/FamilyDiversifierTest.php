@@ -49,7 +49,7 @@ final class FamilyDiversifierTest extends TestCase
         $result = FamilyDiversifier::of($cards, 5);
 
         self::assertCount(5, $result);
-        self::assertSame(['parent-a-0', 'parent-b-0', 'parent-a-1', 'parent-b-1', 'parent-a-2'], ids($result));
+        self::assertSame(['parent-a-0', 'parent-b-0', 'parent-a-1', 'parent-a-2', 'parent-b-1'], ids($result));
     }
 
     public function testStandaloneProductsAreEachTheirOwnFamily(): void

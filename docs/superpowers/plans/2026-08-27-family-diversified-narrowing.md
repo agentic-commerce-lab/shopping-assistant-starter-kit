@@ -103,13 +103,19 @@ final class FamilyDiversifierTest extends TestCase
         // Only two distinct families exist. Asking for 5 must still return 5 — the shopper
         // never sees fewer cards than plain top-N would have shown just because diversity
         // ran out (spec F2's explicit requirement).
+        //
+        // The backfill itself is NOT interleaved across families — it appends leftover cards
+        // in their original relative scan order (spec F2: "in their original relative
+        // order"). Family A's leftover (a-1, a-2) both appear before family B's leftover
+        // (b-1) in the original survivor list, so the backfill exhausts A's remaining slot(s)
+        // before ever reaching B's — it does not alternate a-1, b-1, a-2.
         $cards = [...self::family('parent-a', 3), ...self::family('parent-b', 3)];
 
         $result = FamilyDiversifier::of($cards, 5);
 
         self::assertCount(5, $result);
         self::assertSame(
-            ['parent-a-0', 'parent-b-0', 'parent-a-1', 'parent-b-1', 'parent-a-2'],
+            ['parent-a-0', 'parent-b-0', 'parent-a-1', 'parent-a-2', 'parent-b-1'],
             self::ids($result),
         );
     }

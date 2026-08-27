@@ -51,47 +51,30 @@ final class FamilyDiversifier
      */
     public static function of(array $survivors, int $limit): array
     {
-        if ($survivors === [] || $limit <= 0) {
-            return [];
-        }
-
-        // Group cards by family while preserving order
-        $familiesByKey = [];
-        $familyOrder = [];
+        $seenFamilies = [];
+        $firstPass = [];
+        $leftover = [];
 
         foreach ($survivors as $card) {
             $key = self::familyKey($card);
 
-            if (!array_key_exists($key, $familiesByKey)) {
-                $familiesByKey[$key] = [];
-                $familyOrder[] = $key;
+            if (isset($seenFamilies[$key])) {
+                $leftover[] = $card;
+
+                continue;
             }
 
-            $familiesByKey[$key][] = $card;
+            $seenFamilies[$key] = true;
+            $firstPass[] = $card;
         }
 
-        // Round-robin through families to build result
-        $result = [];
-        $indices = array_fill_keys($familyOrder, 0);
-        $familyIdx = 0;
-
-        while (\count($result) < $limit) {
-            $key = $familyOrder[$familyIdx % \count($familyOrder)];
-
-            if (array_key_exists($indices[$key], $familiesByKey[$key])) {
-                $result[] = $familiesByKey[$key][$indices[$key]];
-                $indices[$key]++;
-            }
-
-            $familyIdx++;
-
-            // If we've cycled through all families without finding a card, we're done
-            if (($familyIdx - \count($familyOrder)) > \count($familiesByKey)) {
-                break;
-            }
+        if (\count($firstPass) >= $limit) {
+            return \array_slice($firstPass, offset: 0, length: $limit);
         }
 
-        return \array_slice($result, offset: 0, length: $limit);
+        $needed = $limit - \count($firstPass);
+
+        return [...$firstPass, ...\array_slice($leftover, offset: 0, length: $needed)];
     }
 
     /**
