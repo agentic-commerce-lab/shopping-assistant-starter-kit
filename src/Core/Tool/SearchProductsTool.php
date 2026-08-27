@@ -292,7 +292,13 @@ final class SearchProductsTool
         // Narrowing happens HERE, not in retrieval. Everything above needed the full
         // candidate window to be correct — VariantResolver cannot disambiguate a set of
         // one — and nothing below can recover a unit that retrieval already dropped.
-        $returned = \array_slice($survivors, offset: 0, length: $requestedLimit);
+        //
+        // FamilyDiversifier, not a plain array_slice: relevance ranking clusters same-family
+        // variants adjacently (they share a name/description), so a plain prefix here could
+        // be one product's whole size run rather than a spread of styles. See its own
+        // docblock, and CandidateInterleave's — this is the reordering step that class's
+        // docblock now names explicitly.
+        $returned = FamilyDiversifier::of($survivors, $requestedLimit);
 
         // Recorded rather than silent: a bounded result that nobody wrote down reads as
         // complete coverage. This is its own stage because `retrieve` keeps meaning "what

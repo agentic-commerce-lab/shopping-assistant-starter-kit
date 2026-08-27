@@ -22,11 +22,15 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * resolution and the blocklist, and it slices from the front — so the balance created here is the
  * balance the shopper sees.
  *
- * ## Order is the contract
+ * ## Order was the whole contract — until FamilyDiversifier
  *
- * Nothing downstream re-sorts: `VariantResolver` substitutes in place, `BlocklistFilter` and
- * `RedundantParentFilter` only remove, and narrowing takes a prefix. So the order this produces is the
- * order of the cards.
+ * `VariantResolver` substitutes in place, `BlocklistFilter` and `RedundantParentFilter` only remove —
+ * neither re-sorts, so the order this class produces survives both untouched. The one exception, added
+ * 2026-08-27: {@see \Swag\AssistantStarterKit\Core\Tool\FamilyDiversifier}, the step right before the
+ * final slice, deliberately reorders survivors by family. It still treats this class's per-term balance
+ * as its *starting* order — it only demotes same-family duplicates behind other families' cards, never
+ * reorders across terms on its own initiative — but "the order this produces is the order of the cards"
+ * is no longer literally true past that point. See `FamilyDiversifier`'s own docblock for why and how.
  */
 final class CandidateInterleave
 {
