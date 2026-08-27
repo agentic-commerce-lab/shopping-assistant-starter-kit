@@ -146,20 +146,25 @@ category nodes through the DAL, matching the fixture's taxonomy (`src/Command/Se
 
 ---
 
-# Task B — a diverse sample, not the top N (open, next)
+# Task B — a diverse sample, not the top N (done)
+
+**Status: complete.** Built, unit tested (including a pinned skew case — see below), run against a real
+local Docker Shopware shop, measured, and reviewed (including a final whole-branch review and its fix
+pass). Nothing below is prescriptive any more — it is kept as the record of why this was built and what
+it found. For the implementation record, `docs/superpowers/plans/2026-08-27-family-diversified-narrowing.md`,
+`docs/superpowers/specs/2026-08-27-family-diversified-narrowing-design.md`, and
+`.superpowers/sdd/2026-08-27-family-diversified-narrowing/progress.md`.
 
 **The finding, in the merchant's words:** *"what if the shop has hundreds of dresses and we just show
 them 4 because those are the first 4 results."*
 
-He is right, and it is the half of the shortlist problem that is still open — the one piece of work left
-from this handoff. It was explicitly blocked on Task A ("do not do this before Task A" — see below), and
-Task A's real-shop measurement now supports why: the seeded-shop report
-(`docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md`) records real assistant turns where
+He was right. Task A's real-shop measurement confirmed why: the seeded-shop report
+(`docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md`) recorded real assistant turns where
 the rendered shortlist for `show me dresses` and `show me yoga clothes` contained **duplicate family
 variants of the same product** — not a fixture artefact, but the real-Shopware ranking behaviour this
-task exists to fix.
+task existed to fix.
 
-## What already exists
+## What already existed
 
 `MatchCountReader` (added 2026-08-27) gives the model the **exact** match count instead of a floor
 capped at the candidate window. Measured on the fashion fixture:
@@ -170,36 +175,41 @@ capped at the candidate window. Measured on the fashion fixture:
 | `dress` + `suit` | 8 | 50 → **2,152** |
 | `Occasion Dress` | 8 | 25 → **25** |
 
-So the assistant can now tell *"all six occasion dresses"* from *"eight of eleven hundred"*, and
+So the assistant can tell *"all six occasion dresses"* from *"eight of eleven hundred"*, and
 `fashion_many_matches` asserts it shows products and asks at most one question. Observed on gemini:
 *"There are many styles available across the collection."*
 
-## What is missing
+## What was built
 
-The eight it shows are still the **top eight by relevance**. On 1,133 near-identical generated dresses
-that is eight near-identical cards. Telling the shopper there are many and then showing them eight of
-the same thing is a weak answer, and no amount of counting fixes it.
+`FamilyDiversifier` (`src/Core/Tool/FamilyDiversifier.php`): a two-pass narrowing step that replaces the
+plain `array_slice($survivors, 0, $limit)` that used to run at the end of `SearchProductsTool`. Pass one
+keeps the first card of every distinct family (parent id, or own id for a standalone product) until the
+limit is reached or `$survivors` runs out; pass two backfills from already-represented families if pass
+one didn't fill the limit. `FamilyDiversifier::of()` **is** the narrowing step now — `SearchProductsTool`
+no longer slices separately. See its docblock and `CandidateInterleave`'s for the full mechanism,
+including a known, deliberate limitation: the diversifier has no notion of which search term produced a
+card, so when one term contributes many distinct families and another contributes one large family with
+many variants, the rendered set can skew toward the many-family term. That skew is pinned as a unit test
+(`FamilyDiversifierTest::testOneTermsManyFamiliesSkewsThePastAnotherTermsOneLargeFamily`), not just
+documented in prose.
 
-## The shape of the work, and the open question
+## What was measured
 
-Interleaving already gives diversity **across** search terms (`CandidateInterleave`). This is the same
-idea **within** one term, and the open question is what "different" means:
-
-- **Which dimension?** Price, colour, style, category. The candidate window carries `properties`, so a
-  facet-based spread is available without new queries — but which facet matters depends on the product
-  kind, and picking one for all of them is the guess to avoid.
-- **Where in the pipeline?** Narrowing is `array_slice($survivors, 0, $limit)` in `SearchProductsTool`.
-  Diversifying means choosing a spread from `$survivors` instead of a prefix. Note that
-  `CandidateInterleave`'s ordering contract says nothing downstream re-sorts — a diversifier would be the
-  first thing that does, so read its docblock before changing the order.
-- **Do not do this before Task A.** At real scale the ranking is Shopware's, not the fixture's
-  insertion order plus an in-stock bias. The problem may look different, or smaller, and building
-  against fixture ranking risks solving an artefact.
-
-## How to know it worked
-
-A journey on a large branch asserting the rendered set spans more than one value of some facet.
-`rendered_ids_from_each` already does this shape for id prefixes and is the model to copy.
+- **Fixture**, measured directly by the final code reviewer against the real tool pipeline: a genuine
+  **3 → 8 family-spread improvement** on a fuzz-tested scenario, with the known duplicate-family-variant
+  bug (1 family / 100 cards / limit 50 still correctly returning 50 cards) confirmed fixed.
+- **Real seeded Docker shop** (not the fixture), live turn on `google/gemini-3.7-flash`, prompt *"show me
+  dresses"*: rendered exactly **5 distinct dress styles among 5 rendered cards** — Pleated Midi Occasion
+  Dress, Tiered Chiffon Occasion Dress, Silk Slip Occasion Dress, Embroidered Tulle Occasion Dress,
+  Cape-Back Occasion Dress. Trace confirmed the full production pipeline ran (`search_products` tool call
+  → `retrieve` (20 hits) → `retrieve.narrow` (18 survivors, 13 truncated, returnLimit 5, all 5 returned
+  ids from 5 different product families) → `render`). This closes the gap the design spec's own "What
+  this cannot test" section had flagged as outstanding: the fix works against the real DAL ranking, not
+  just the fixture.
+- `fashion_many_matches`'s `rendered_family_spread` assertion: `min: 4` — strictly above the measured
+  pre-fix baseline of 3 (reconstructed via the retrieve trace against the unmodified `array_slice`
+  narrowing), comfortably below the measured ceiling of 5 (5-of-5 across all 6 fixture runs, zero
+  variance), so the assertion actually distinguishes fixed from broken instead of passing either way.
 
 ---
 
