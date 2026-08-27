@@ -66,7 +66,9 @@ final class FamilyDiversifierTest extends TestCase
 
     public function testFamilyKeyIsParentIdOrOwnId(): void
     {
-        $variant = family('parent-a', 1)[0];
+        $familyCards = family('parent-a', 1);
+        $variant = $familyCards[0] ?? null;
+        \assert($variant instanceof ProductCard, 'family() must return at least one card when count > 0.');
         $standaloneCard = standalone('fx-001');
 
         self::assertSame('parent-a', FamilyDiversifier::familyKey($variant));
