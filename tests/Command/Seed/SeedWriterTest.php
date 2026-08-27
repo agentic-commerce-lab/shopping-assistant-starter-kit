@@ -17,6 +17,32 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 final class SeedWriterTest extends TestCase
 {
+    public function testWriteExceptionPropagatesAfterTheIndexingStateIsRemoved(): void
+    {
+        $context = Context::createDefaultContext();
+        $failure = new \RuntimeException('write failed');
+        $repository = $this->createMock(EntityRepository::class);
+        $repository
+            ->expects(self::once())
+            ->method('create')
+            ->willReturnCallback(static function () use ($context, $failure): never {
+                self::assertTrue($context->hasState(EntityIndexerRegistry::DISABLE_INDEXING));
+
+                throw $failure;
+            });
+
+        $writer = new SeedWriter($this->createStub(InheritanceUpdater::class), $this->createStub(StatesUpdater::class));
+
+        try {
+            $writer->writeCategories($this->createStub(SymfonyStyle::class), $repository, [], $context);
+            self::fail('Expected the repository failure to propagate.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame($failure, $exception);
+        }
+
+        self::assertFalse($context->hasState(EntityIndexerRegistry::DISABLE_INDEXING));
+    }
+
     public function testProductWriteBackfillsEveryParentAndChildWhileIndexingIsDisabled(): void
     {
         $context = Context::createDefaultContext();

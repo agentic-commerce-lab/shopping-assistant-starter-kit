@@ -128,7 +128,10 @@ final readonly class SeedWriter
     private static function withIndexingDisabled(Context $context, callable $write): void
     {
         $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
-        $write();
-        $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
+        try {
+            $write();
+        } finally {
+            $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
+        }
     }
 }
