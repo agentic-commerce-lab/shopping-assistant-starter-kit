@@ -11,21 +11,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * Orchestrates the seed: guard check, tax lookup, the three plan builders (Tasks 4–6), the three writes
- * ({@see SeedWriter}), then synchronous indexing and the marker ({@see SeedGuard::markSeeded()}) —
- * the marker is written last, deliberately, so a run that fails partway through is visibly
- * unfinished on the next invocation rather than silently guarded.
+ * ({@see SeedWriter}), then synchronous catalogue completion ({@see SeedCompletion}). The completion
+ * writes the marker last, so a run that fails partway through is visibly unfinished on the next
+ * invocation rather than silently guarded.
  */
 final readonly class SeedRunner
 {
     // @mago-expect lint:excessive-parameter-list
     // Standing-constraints carve-out 2, same shape as DalCommerceGateway's: an orchestrator
-    // constructor injecting the guard, the writer and the three repositories it hands to that
-    // writer, plus the connection the tax lookup reads. Six collaborators for six responsibilities
-    // named in this class's own docblock — the alternative is a parameter object that exists only
-    // to satisfy the linter, not to mean anything on its own.
+    // constructor injecting the guard, writer, completion boundary and the three repositories it
+    // hands to the writer, plus the connection the tax lookup reads. Seven collaborators named in
+    // this class's own docblock — the alternative is a parameter object that exists only to satisfy
+    // the linter, not to mean anything on its own.
     public function __construct(
         private SeedGuard $guard,
         private SeedWriter $writer,
+        private SeedCompletion $completion,
         private EntityRepository $categoryRepository,
         private EntityRepository $propertyGroupRepository,
         private EntityRepository $productRepository,
@@ -70,7 +71,7 @@ final readonly class SeedRunner
         $this->writer->writePropertyGroups($io, $this->propertyGroupRepository, $propertyPlan['groups'], $context);
         $this->writer->writeProducts($io, $this->productRepository, $products, $context);
 
-        $this->guard->markSeeded($navigationRootId, $context);
+        $this->completion->complete($navigationRootId, $context);
 
         $sellableUnits = 0;
         foreach ($products as $product) {

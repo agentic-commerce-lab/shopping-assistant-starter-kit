@@ -73,6 +73,7 @@ final readonly class SeedWriter
 
                 $productIds = self::productIds($batch);
                 $this->inheritanceUpdater->update(ProductDefinition::ENTITY_NAME, $productIds, $context);
+                // Mirrors Shopware 6.7's ProductGenerator; StatesUpdater removal is a 6.8 migration point.
                 $this->statesUpdater->update($productIds, $context);
             });
             $io->progressAdvance(\count($batch));
@@ -127,11 +128,18 @@ final readonly class SeedWriter
      */
     private static function withIndexingDisabled(Context $context, callable $write): void
     {
+        $indexingWasDisabled = $context->hasState(EntityIndexerRegistry::DISABLE_INDEXING);
         $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
         try {
             $write();
         } finally {
-            $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
+            if ($indexingWasDisabled) {
+                $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
+            }
+
+            if (!$indexingWasDisabled) {
+                $context->removeState(EntityIndexerRegistry::DISABLE_INDEXING);
+            }
         }
     }
 }

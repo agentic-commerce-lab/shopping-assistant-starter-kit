@@ -17,6 +17,41 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 final class SeedWriterTest extends TestCase
 {
+    public function testSuccessfulWritePreservesAPreExistingDisabledIndexingState(): void
+    {
+        $context = Context::createDefaultContext();
+        $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
+        $repository = $this->createMock(EntityRepository::class);
+        $repository
+            ->expects(self::once())
+            ->method('create')
+            ->willReturn(EntityWrittenContainerEvent::createWithWrittenEvents([], $context, []));
+
+        $writer = new SeedWriter($this->createStub(InheritanceUpdater::class), $this->createStub(StatesUpdater::class));
+        $writer->writeCategories($this->createStub(SymfonyStyle::class), $repository, [], $context);
+
+        self::assertTrue($context->hasState(EntityIndexerRegistry::DISABLE_INDEXING));
+    }
+
+    public function testWriteExceptionPreservesAPreExistingDisabledIndexingState(): void
+    {
+        $context = Context::createDefaultContext();
+        $context->addState(EntityIndexerRegistry::DISABLE_INDEXING);
+        $failure = new \RuntimeException('write failed');
+        $repository = $this->createMock(EntityRepository::class);
+        $repository->method('create')->willThrowException($failure);
+        $writer = new SeedWriter($this->createStub(InheritanceUpdater::class), $this->createStub(StatesUpdater::class));
+
+        try {
+            $writer->writeCategories($this->createStub(SymfonyStyle::class), $repository, [], $context);
+            self::fail('Expected the repository failure to propagate.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame($failure, $exception);
+        }
+
+        self::assertTrue($context->hasState(EntityIndexerRegistry::DISABLE_INDEXING));
+    }
+
     public function testWriteExceptionPropagatesAfterTheIndexingStateIsRemoved(): void
     {
         $context = Context::createDefaultContext();
