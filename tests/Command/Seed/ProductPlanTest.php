@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Command\Seed;
 
 use PHPUnit\Framework\TestCase;
+use Shopware\Core\Content\Product\Aggregate\ProductVisibility\ProductVisibilityDefinition;
 use Swag\AssistantStarterKit\Command\Seed\CategoryTreePlan;
 use Swag\AssistantStarterKit\Command\Seed\FashionSeedTraps;
 use Swag\AssistantStarterKit\Command\Seed\ProductPlan;
@@ -20,6 +21,8 @@ final class ProductPlanTest extends TestCase
 {
     private const TAX_ID = 'tax00000000000000000000000000000';
 
+    private const SALES_CHANNEL_ID = 'saleschannel0000000000000000000';
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -28,7 +31,13 @@ final class ProductPlanTest extends TestCase
         $categories = CategoryTreePlan::build('root0000000000000000000000000000')['idsByPath'];
         $properties = PropertyGroupPlan::build();
 
-        return ProductPlan::build($categories, $properties['optionIds'], $properties['sizeOptionIds'], self::TAX_ID);
+        return ProductPlan::build(
+            $categories,
+            $properties['optionIds'],
+            $properties['sizeOptionIds'],
+            self::TAX_ID,
+            self::SALES_CHANNEL_ID,
+        );
     }
 
     public function testProductCountMatchesTheMeasuredConstant(): void
@@ -68,6 +77,19 @@ final class ProductPlanTest extends TestCase
             /** @var array{id: string} $category every seeded product carries exactly one category, asserted non-empty above */
             $category = $categories[0];
             self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $category['id']);
+        }
+    }
+
+    public function testEveryTopLevelProductIsVisibleInTheSelectedSalesChannel(): void
+    {
+        foreach ($this->plan() as $product) {
+            self::assertSame(
+                [[
+                    'salesChannelId' => self::SALES_CHANNEL_ID,
+                    'visibility' => ProductVisibilityDefinition::VISIBILITY_ALL,
+                ]],
+                $product['visibilities'] ?? null,
+            );
         }
     }
 

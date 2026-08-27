@@ -11,9 +11,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * Orchestrates the seed: guard check, tax lookup, the three plan builders (Tasks 4–6), the three writes
- * ({@see SeedWriter}), then the marker ({@see SeedGuard::markSeeded()}) — written last, deliberately,
- * so a run that fails partway through is visibly unfinished on the next invocation rather than
- * silently guarded.
+ * ({@see SeedWriter}), then synchronous indexing and the marker ({@see SeedGuard::markSeeded()}) —
+ * the marker is written last, deliberately, so a run that fails partway through is visibly
+ * unfinished on the next invocation rather than silently guarded.
  */
 final readonly class SeedRunner
 {
@@ -63,6 +63,7 @@ final readonly class SeedRunner
             $propertyPlan['optionIds'],
             $propertyPlan['sizeOptionIds'],
             $taxId,
+            $salesChannelContext->getSalesChannelId(),
         );
 
         $this->writer->writeCategories($io, $this->categoryRepository, $categoryPlan['tree'], $context);

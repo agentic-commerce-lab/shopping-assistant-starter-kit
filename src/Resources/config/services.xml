@@ -320,9 +320,14 @@
 
         <service id="Swag\AssistantStarterKit\Command\Seed\SeedGuard">
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\MarkerCategoryStore"/>
+            <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Indexing\EntityIndexerRegistry"/>
+            <argument type="service" id="event_dispatcher"/>
         </service>
 
-        <service id="Swag\AssistantStarterKit\Command\Seed\SeedWriter"/>
+        <service id="Swag\AssistantStarterKit\Command\Seed\SeedWriter">
+            <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Indexing\InheritanceUpdater"/>
+            <argument type="service" id="Shopware\Core\Content\Product\DataAbstractionLayer\StatesUpdater"/>
+        </service>
 
         <service id="Swag\AssistantStarterKit\Command\Seed\SeedRunner">
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedGuard"/>

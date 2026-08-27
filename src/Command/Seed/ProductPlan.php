@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Command\Seed;
 
+use Shopware\Core\Content\Product\Aggregate\ProductVisibility\ProductVisibilityDefinition;
+
 /**
  * The full seeded product list: the 17 named traps (Task 2) plus 3,600 generated filler products
  * ({@see ProductFillerBuilder}). Counts are measured (see the seeder plan's Context table) and
@@ -34,8 +36,13 @@ final class ProductPlan
      * @param SizeOptionIds      $sizeOptionIds
      * @return list<array<string, mixed>> one DAL write payload per top-level product, traps first
      */
-    public static function build(array $categoryIdsByPath, array $optionIds, array $sizeOptionIds, string $taxId): array
-    {
+    public static function build(
+        array $categoryIdsByPath,
+        array $optionIds,
+        array $sizeOptionIds,
+        string $taxId,
+        string $salesChannelId,
+    ): array {
         $traps = array_map(static fn(array $trap): array => self::trapToPayload(
             $trap,
             $categoryIdsByPath,
@@ -44,7 +51,16 @@ final class ProductPlan
             $taxId,
         ), FashionSeedTraps::all());
 
-        return [...$traps, ...ProductFillerBuilder::build($categoryIdsByPath, $optionIds, $sizeOptionIds, $taxId)];
+        $products = [...$traps, ...ProductFillerBuilder::build($categoryIdsByPath, $optionIds, $sizeOptionIds, $taxId)];
+
+        return array_map(static function (array $product) use ($salesChannelId): array {
+            $product['visibilities'] = [[
+                'salesChannelId' => $salesChannelId,
+                'visibility' => ProductVisibilityDefinition::VISIBILITY_ALL,
+            ]];
+
+            return $product;
+        }, $products);
     }
 
     /**
