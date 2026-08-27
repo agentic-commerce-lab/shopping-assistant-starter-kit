@@ -8,6 +8,10 @@ namespace Swag\AssistantStarterKit\Command\Seed;
  * The full seeded product list: the 17 named traps (Task 2) plus 3,600 generated filler products
  * ({@see ProductFillerBuilder}). Counts are measured (see the seeder plan's Context table) and
  * asserted as constants below, not computed inline and trusted.
+ *
+ * @phpstan-import-type CategoryIdsByPath from ProductFillerBuilder
+ * @phpstan-import-type PropertyOptionIds from ProductFillerBuilder
+ * @phpstan-import-type SizeOptionIds from ProductFillerBuilder
  */
 final class ProductPlan
 {
@@ -18,11 +22,12 @@ final class ProductPlan
     private function __construct() {}
 
     /**
-     * @param array<string, string>                $categoryIdsByPath
-     * @param array<string, array<string, string>>  $optionIds
-     * @param array<string, string>                 $sizeOptionIds
+     * Forwards straight to {@see self::trapToPayload()} and {@see ProductFillerBuilder::build()} —
+     * both declare the full `CategoryIdsByPath`/`PropertyOptionIds`/`SizeOptionIds` parameter shapes
+     * on their own signatures (this method never indexes into any of the three itself), so repeating
+     * them here would only restate what those two already say.
      *
-     * @return list<array<string, mixed>>
+     * @return list<array<string, mixed>> one DAL write payload per top-level product, traps first
      */
     public static function build(array $categoryIdsByPath, array $optionIds, array $sizeOptionIds, string $taxId): array
     {
@@ -39,9 +44,9 @@ final class ProductPlan
 
     /**
      * @param array{id: string, name: string, description: string, price: float, categoryPath: list<string>, properties: array<string, list<string>>, sizes: bool} $trap
-     * @param array<string, string>                                                                                                                                 $categoryIdsByPath
-     * @param array<string, array<string, string>>                                                                                                                 $optionIds
-     * @param array<string, string>                                                                                                                                $sizeOptionIds
+     * @param CategoryIdsByPath  $categoryIdsByPath
+     * @param PropertyOptionIds  $optionIds
+     * @param SizeOptionIds      $sizeOptionIds
      *
      * @return array<string, mixed>
      */
@@ -68,12 +73,7 @@ final class ProductPlan
             'productNumber' => 'FW-' . strtoupper($trap['id']),
             'name' => $trap['name'],
             'description' => $trap['description'],
-            'price' => [[
-                'currencyId' => \Shopware\Core\Defaults::CURRENCY,
-                'gross' => $trap['price'],
-                'net' => $trap['price'],
-                'linked' => true,
-            ]],
+            'price' => SizeFamily::grossPrice($trap['price']),
             'taxId' => $taxId,
             'active' => true,
             'stock' => 6,
@@ -82,13 +82,7 @@ final class ProductPlan
         ];
 
         if ($trap['sizes']) {
-            $family = SizeFamily::build(
-                ['id' => $product['id'], 'number' => $product['productNumber']],
-                $trap['price'],
-                $taxId,
-                $sizeOptionIds,
-                3,
-            );
+            $family = SizeFamily::build($product['id'], $product['productNumber'], $trap['price'], $sizeOptionIds, 3);
             $product['children'] = $family['children'];
             $product['configuratorSettings'] = $family['configuratorSettings'];
         }

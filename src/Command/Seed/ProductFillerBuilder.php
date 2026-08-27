@@ -12,6 +12,16 @@ namespace Swag\AssistantStarterKit\Command\Seed;
  *
  * A glibc-constants LCG, not `random_int()` — same reasoning `FashionCatalogGenerator` gives: a
  * deterministic sequence keeps two runs of this plan (and its test) identical.
+ *
+ * Declares the three repeated parameter shapes this class and {@see ProductPlan} both take
+ * (`CategoryTreePlan::build()['idsByPath']`, `PropertyGroupPlan::build()['optionIds' |
+ * 'sizeOptionIds']`) once, as named aliases `ProductPlan` imports — rather than each `@param` block
+ * spelling out the same nested generics twice, which is what previously made `jscpd` flag this
+ * file's `build()` docblock+signature as a near-verbatim clone of `ProductPlan::build()`'s.
+ *
+ * @phpstan-type CategoryIdsByPath array<string, string>
+ * @phpstan-type PropertyOptionIds array<string, array<string, string>>
+ * @phpstan-type SizeOptionIds array<string, string>
  */
 final class ProductFillerBuilder
 {
@@ -22,9 +32,9 @@ final class ProductFillerBuilder
     private function __construct() {}
 
     /**
-     * @param array<string, string>                $categoryIdsByPath
-     * @param array<string, array<string, string>>  $optionIds
-     * @param array<string, string>                 $sizeOptionIds
+     * @param CategoryIdsByPath  $categoryIdsByPath
+     * @param PropertyOptionIds  $optionIds
+     * @param SizeOptionIds      $sizeOptionIds
      *
      * @return list<array<string, mixed>>
      */
@@ -62,12 +72,7 @@ final class ProductFillerBuilder
                 'productNumber' => 'FW-' . strtoupper(substr($id, offset: 0, length: 12)),
                 'name' => \sprintf('%s %04d', $leaf['name'], $index),
                 'description' => \sprintf('%s in a considered cut.', $leaf['name']),
-                'price' => [[
-                    'currencyId' => \Shopware\Core\Defaults::CURRENCY,
-                    'gross' => $price,
-                    'net' => $price,
-                    'linked' => true,
-                ]],
+                'price' => SizeFamily::grossPrice($price),
                 'taxId' => $taxId,
                 'active' => true,
                 'stock' => $next() % 12,
@@ -76,13 +81,7 @@ final class ProductFillerBuilder
             ];
 
             if (($index % 5) !== 0) {
-                $family = SizeFamily::build(
-                    ['id' => $id, 'number' => $product['productNumber']],
-                    $price,
-                    $taxId,
-                    $sizeOptionIds,
-                    $next(),
-                );
+                $family = SizeFamily::build($id, $product['productNumber'], $price, $sizeOptionIds, $next());
                 $product['children'] = $family['children'];
                 $product['configuratorSettings'] = $family['configuratorSettings'];
             }

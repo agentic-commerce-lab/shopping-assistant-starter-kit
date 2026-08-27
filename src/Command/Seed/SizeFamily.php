@@ -15,19 +15,14 @@ final class SizeFamily
     private function __construct() {}
 
     /**
-     * @param array{id: string, number: string} $parent Bundled to keep the parameter count at
-     *   this repo's `mago.toml` `excessive-parameter-list` threshold (5) — the brief's literal
-     *   signature (`string $parentId, string $parentNumber, ...`) is 6 positional parameters and
-     *   fails that gate at `error` level. `$parentId` and `$parentNumber` were already always
-     *   passed together by both call sites, so bundling them is behavior-preserving.
      * @param array<string, string> $sizeOptionIds `PropertyGroupPlan::build()['sizeOptionIds']`.
      *
      * @return array{children: list<array<string, mixed>>, configuratorSettings: list<array<string, mixed>>}
      */
     public static function build(
-        array $parent,
+        string $parentId,
+        string $parentNumber,
         float $price,
-        string $taxId,
         array $sizeOptionIds,
         int $stockSeed,
     ): array {
@@ -36,16 +31,11 @@ final class SizeFamily
         $offset = 0;
 
         foreach ($sizeOptionIds as $size => $optionId) {
-            $childId = SeedId::forPath('product-variant', $parent['id'] . '/' . $size);
+            $childId = SeedId::forPath('product-variant', $parentId . '/' . $size);
             $children[] = [
                 'id' => $childId,
-                'productNumber' => $parent['number'] . '-' . strtolower($size),
-                'price' => [[
-                    'currencyId' => \Shopware\Core\Defaults::CURRENCY,
-                    'gross' => $price,
-                    'net' => $price,
-                    'linked' => true,
-                ]],
+                'productNumber' => $parentNumber . '-' . strtolower($size),
+                'price' => self::grossPrice($price),
                 'stock' => ($stockSeed + $offset) % 9,
                 'options' => [['id' => $optionId]],
             ];
@@ -54,5 +44,23 @@ final class SizeFamily
         }
 
         return ['children' => $children, 'configuratorSettings' => $configuratorSettings];
+    }
+
+    /**
+     * The one-price-entry `price` array every product and variant payload in this catalogue
+     * carries — shared here (rather than repeated in {@see ProductFillerBuilder} and
+     * {@see ProductPlan}, both of which build a top-level product's own price the same way) to
+     * keep the shape written once.
+     *
+     * @return list<array{currencyId: string, gross: float, net: float, linked: bool}>
+     */
+    public static function grossPrice(float $price): array
+    {
+        return [[
+            'currencyId' => \Shopware\Core\Defaults::CURRENCY,
+            'gross' => $price,
+            'net' => $price,
+            'linked' => true,
+        ]];
     }
 }
