@@ -1,10 +1,16 @@
 # Handoff — 2026-08-27
 
-You are picking up two pieces of work on `integration/fashion-scale-sweep`. Read this file, then
-the two reports it names. Everything below is measured; where something is a guess it says so.
+**Task A is done.** The fashion catalogue is seeded, measured, and reviewed — see
+`docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md` for the real-shop measurements, and
+its "Resolved after this report" note for the two things it originally left open (the second-run guard,
+and the `countMatches()` fix — see below) that have since been closed. **Task B, below, is the one piece
+of work still open on this branch.** Read this file, then the reports it names. Everything below is
+measured; where something is a guess it says so.
 
-**Branch:** `integration/fashion-scale-sweep` (33 commits ahead of `main`). Nothing is pushed.
-**State:** `vendor/bin/phpunit --exclude-group eval` → **900 tests / 5742 assertions OK**.
+**Branch:** `integration/fashion-scale-sweep`, worked on directly (no worktree — the local Docker shop
+bind-mounts this exact directory, so a worktree elsewhere would not be visible to it). Nothing is pushed,
+nothing merged to `main`.
+**State:** `vendor/bin/phpunit --exclude-group eval` → **938 tests / 18,768 assertions OK**.
 `composer run quality` → **exit 0**.
 
 ## Read these first, in this order
@@ -12,7 +18,9 @@ the two reports it names. Everything below is measured; where something is a gue
 | Document | Why |
 |---|---|
 | `docs/superpowers/reports/2026-08-26-occasion-queries-baseline.md` | The original defect, and Finding 1 — why fixture results for this query class cannot be trusted |
-| `docs/superpowers/reports/2026-08-27-end-to-end-on-the-real-shop.md` | Everything measured on a real shop, including what could not be measured |
+| `docs/superpowers/reports/2026-08-27-end-to-end-on-the-real-shop.md` | Everything measured on a real shop, including what could not be measured, before the seeder existed |
+| `docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md` | Task A's own measurement: the seeded shop, the `countMatches()` defect it found and that has since been fixed, and the duplicate-family-variant evidence that keeps Task B blocked no longer, just next |
+| `docs/superpowers/plans/2026-08-27-fashion-catalogue-seeder.md` | The plan Task A was executed from, task by task |
 | `docs/superpowers/specs/2026-08-26-occasion-queries-at-fashion-scale-design.md` | The spec. **Several of its decisions were refuted by measurement — see "What the spec got wrong" below.** |
 | `ARCHITECTURE.md` | Architecture of record |
 
@@ -67,13 +75,22 @@ the reset rather than debugging the code.
 
 ---
 
-# Task A — seed the fashion catalogue into the real shop
+# Task A — seed the fashion catalogue into the real shop (done)
 
-**Why this is first.** Every scale number produced so far is a **fixture** number, and the fixture is
-demonstrably weaker than real Shopware search in ways that flatter the results. Until this exists,
-nothing about 15,000 products across 1,000 categories has been verified.
+**Status: complete.** Built, unit tested, run against a real local Docker Shopware shop, measured, and
+reviewed (including a final whole-branch review and its fix pass). Nothing below is prescriptive any
+more — it is kept as the record of why this was built and what it found, for anyone reading this after
+the fact. For the actual measurements, read
+`docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md`; for the implementation record,
+`docs/superpowers/plans/2026-08-27-fashion-catalogue-seeder.md` and
+`.superpowers/sdd/2026-08-27-fashion-catalogue-seeder/progress.md`.
 
-The two divergences, both measured:
+**Why this was first.** Every scale number produced before this existed was a **fixture** number, and
+the fixture is demonstrably weaker than real Shopware search in ways that flatter the results. Until
+this existed, nothing about 15,000 products across 1,000 categories had been verified.
+
+The two divergences, both measured before Task A, both confirmed still real once real Shopware was in
+the loop:
 
 1. **`FixtureFacetBuilder` emits a `categoryPath` Terms facet**, so the prompt's vocabulary block
    literally contains `Occasion Dresses` and `Occasion Suits`. `DalCommerceGateway::facets()` registers
@@ -81,46 +98,66 @@ The two divergences, both measured:
    model was reading category names off a list production does not have.
 2. **`FixtureTermMatcher` has no stemming.** `Occasion Suits` fails its all-token pass, so the any-token
    pass matches "occasion" alone and returns the **dresses**. That wrong-but-non-empty result also stops
-   `RelaxedTermRetry` firing. This is why `fashion_wedding_occasion`'s `rendered_ids_from_each` is red
-   on gemini — documented in the journey file.
+   `RelaxedTermRetry` firing. This is why `fashion_wedding_occasion`'s `rendered_ids_from_each` was red
+   on gemini against the fixture — documented in the journey file. **Real Shopware search does not have
+   this defect**: the seeded-shop report shows `Occasion Suits` correctly returning suits.
 
-## What to build
+## What was built
 
-A dev-only console command that writes ~15,000 products across ~1,000 categories into a shop, matching
-the fixture's taxonomy.
+`swag:assistant:seed-fashion-catalogue`, a dev-only console command
+(`src/Command/SeedFashionCatalogueCommand.php`) that writes ~15,200 sellable units across ~1,031
+category nodes through the DAL, matching the fixture's taxonomy (`src/Command/Seed/*`:
+`FashionSeedTaxonomy`, `FashionSeedTraps`, `CategoryTreePlan`, `PropertyGroupPlan`, `ProductPlan` /
+`ProductFillerBuilder`, `SeedId`, `SeedGuard`, `SeedWriter`, `SeedRunner`, `SeedCompletion`).
 
 - The fixture generator is `tests/Fixtures/Fashion/FashionCatalogGenerator.php` and its taxonomy is
   `FashionTaxonomy.php` (3 departments × 14 garment types × 22 cuts, plus Brand / Season / Occasion).
-  **Measured output: 3,629 products, 15,218 sellable units, 1,043 category nodes, 5.7 MB.**
-- **`tests/` is not autoloaded inside a running Shopware installation**, so the command cannot use the
-  generator. Duplicate the word lists and assert the duplication away — a test comparing the two
-  classes' constants, or the two catalogues genuinely differ and Task A measures a different shop.
-- Read `vendor/shopware/core/Framework/Demodata/Generator/ProductGenerator.php` and `CategoryGenerator.php`
-  for the minimal payloads and batch sizes. **Do not guess a payload**; a `create()` that throws halfway
-  leaves a shop nobody can describe.
-- Guard against running twice. A marker category and a non-zero exit is enough. Do not add `--force`:
-  the recovery for "I seeded twice" is a database restore either way.
+  **Measured fixture output: 3,629 products, 15,218 sellable units, 1,043 category nodes, 5.7 MB.**
+- **`tests/` is not autoloaded inside a running Shopware installation**, so the command could not use
+  the generator directly. The word lists are duplicated in `src/Command/Seed/`, and
+  `FashionSeedTaxonomyParityTest`/`FashionSeedTrapsParityTest` assert the duplication away.
+- Guard against running twice: `SeedGuard` checks for a marker category before any write and refuses a
+  second run with a non-zero exit. There is deliberately no `--force`: the recovery for "I seeded
+  twice" is a database restore either way. **Verified live**, on this shop, after the seeded-shop report
+  was written: the guard correctly refuses a second run.
 - `mariadb-dump` before seeding. `APP_ENV=prod` when seeding and when measuring — `dev` runs the
   profiler and inflates every number.
 
-## What to measure once it exists
+## What the seed measured (see the report for full detail)
 
-- Does the vocabulary block still lack category names? (It must — that is the point.)
-- **Re-run the whole eval suite against the seeded shop.** The interesting comparison is not pass/fail;
-  it is which fixture results do not survive real search. Expect `Occasion Suits` to behave differently.
-- The `MatchCountReader` counts, now against a real index — `TOTAL_COUNT_MODE_EXACT` on 15,000 products.
-  Report the latency; it runs on every search.
-- `DalCategoryTreeReader`'s two queries at 1,000 categories, and whether `MAX_NODES = 40` truncates
-  anything. **That bound was chosen for headroom, not from data** — its docblock says so.
+- The vocabulary block still lacks category names, as expected — seeding changed the catalogue behind
+  `DalCommerceGateway`, not the shape of its vocabulary.
+- The full eval suite against the seeded shop: `Occasion Suits` behaves correctly under real Shopware
+  search, resolving the fixture-only defect above.
+- **`MatchCountReader`'s `countMatches()` was measured wrong on a real index**: its original
+  `TOTAL_COUNT_MODE_EXACT` implementation returned `1` for every non-empty search on this Shopware 6.7
+  instance regardless of the true count (confirmed against 1,355 seeded dresses, 60 occasion suits, 24
+  yoga pieces, all reported as `1`). **This is fixed on this branch**, in commit `7c57e56` (docblock
+  corrected in `1d65f3f`): `DalCommerceGateway::countMatches()` now uses a `CountAggregation`, which the
+  same report measured both correct and faster (down to ~130 ms warm) for every term that broke the old
+  approach.
+- `DalCategoryTreeReader`'s two queries at 1,031 categories are inexpensive (single-digit to
+  low-double-digit milliseconds per level), and `MAX_NODES = 40` truncates nothing in this shop — Brand
+  is the widest branch at exactly 40 children, so it has no headroom, but nothing is cut.
+- Real assistant turns against the seeded shop returned dresses **and** suits for occasion queries, but
+  also surfaced **duplicate family variants in the rendered shortlist** (e.g. multiple sizes/colours of
+  the same dress shown as if they were different products) — real-shop evidence that Task B, below,
+  remains real, open work, not a speculative concern.
 
 ---
 
-# Task B — a diverse sample, not the top N
+# Task B — a diverse sample, not the top N (open, next)
 
 **The finding, in the merchant's words:** *"what if the shop has hundreds of dresses and we just show
 them 4 because those are the first 4 results."*
 
-He is right, and it is the half of the shortlist problem that is still open.
+He is right, and it is the half of the shortlist problem that is still open — the one piece of work left
+from this handoff. It was explicitly blocked on Task A ("do not do this before Task A" — see below), and
+Task A's real-shop measurement now supports why: the seeded-shop report
+(`docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md`) records real assistant turns where
+the rendered shortlist for `show me dresses` and `show me yoga clothes` contained **duplicate family
+variants of the same product** — not a fixture artefact, but the real-Shopware ranking behaviour this
+task exists to fix.
 
 ## What already exists
 
@@ -197,9 +234,12 @@ eval goes red, read the prose before believing the assertion.
   measurement. **Passes 4 runs / 24 samples on gemini-3.7-flash**, which is new information: the
   weakness looks model-specific rather than a limit of the prompt. Not proof — that file records a 3/3
   run followed by 2/3 on unchanged code.
-- `fashion_wedding_occasion · rendered_ids_from_each` — 0–1/3 on gemini, for the `FixtureTermMatcher`
-  reason above. Left red because the assertion is right and the fixture is wrong. **Task A is what
-  settles it.**
+- `fashion_wedding_occasion · rendered_ids_from_each` — 0–1/3 on gemini against
+  `FixtureCommerceGateway`, for the `FixtureTermMatcher` reason above. Left red because the assertion is
+  right and the fixture is wrong, and it will stay red against the fixture — the fixture itself was not
+  changed. **Task A has since settled it**: the seeded-shop report confirms real Shopware's `Occasion
+  Suits` search correctly returns suits, so the assertion's expectation is validated against real search,
+  not just argued for.
 
 # Not merged
 
