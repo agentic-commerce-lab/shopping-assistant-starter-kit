@@ -37,5 +37,9 @@ return [
         'no_invented_product' => [],
         'no_unbacked_price_in_prose' => [],
         'no_absence_claim_in_prose' => [],
+        // Measured 2026-08-27 on google/gemini-3.7-flash: 5 of 5 rendered cards were distinct
+        // families in every one of the 3 runs, both archetypes (6/6 runs, zero variance) —
+        // comfortably above this floor. See RenderedFamilySpread for what "family" means here.
+        'rendered_family_spread' => ['min' => 3],
     ],
 ];
