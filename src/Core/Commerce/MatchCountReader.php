@@ -35,9 +35,15 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
  * everything the scope allows, before the candidate window and before the model's own limit. A count
  * that included blocked products would tell the model the shop is bigger than the shopper may see.
  *
- * It must be cheap. Shopware can answer it without fetching rows
- * (`Criteria::setTotalCountMode(TOTAL_COUNT_MODE_EXACT)`), which is the only reason this is worth
- * asking on every search rather than only when something looks large.
+ * It must be cheap. Shopware can answer it without fetching rows via a
+ * `Criteria::addAggregation(new CountAggregation(...))`, read back through
+ * `AggregationResultCollection::get()`, which is the only reason this is worth asking on every
+ * search rather than only when something looks large. **Not `Criteria::setTotalCountMode
+ * (TOTAL_COUNT_MODE_EXACT)`** — that read as correct against an in-memory fixture and returned `1`
+ * for every non-empty match on a real Shopware 6.7 instance regardless of the true count, measured
+ * in `docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md` ("Match-count finding") and
+ * fixed the same way in {@see \Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway}, the
+ * one implementation of this `@api` interface this project ships.
  */
 interface MatchCountReader
 {
