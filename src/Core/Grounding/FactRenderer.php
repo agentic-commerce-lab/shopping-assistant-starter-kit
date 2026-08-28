@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
@@ -57,6 +58,9 @@ final class FactRenderer
 
     /** @var list<string> */
     private array $unbackedAvailability = [];
+
+    /** @var list<string> */
+    private array $unbackedProperties = [];
 
     /**
      * The shopper's own message for this turn.
@@ -293,6 +297,39 @@ final class FactRenderer
                 'unbackedAvailabilityClaims' => $unbacked,
                 'renderedCardCount' => \count($this->renderedCards),
             ]);
+        }
+
+        return $unbacked;
+    }
+
+    /**
+     * @return list<string> the values the last {@see self::unbackedPropertiesInProse()} call found
+     */
+    public function unbackedProperties(): array
+    {
+        return $this->unbackedProperties;
+    }
+
+    /**
+     * Attribute claims in the prose that no rendered card's own `properties` backs — the
+     * {@see self::unbackedPricesInProse()} analogue for {@see \Swag\AssistantStarterKit\Core\Grounding\PropertyClaimExtractor}'s
+     * closed vocabulary.
+     *
+     * @return list<string>
+     */
+    public function unbackedPropertiesInProse(string $prose, FacetSet $facets): array
+    {
+        $unbacked = $this->proseAudit->unbackedProperties(
+            $prose,
+            array_values($this->renderedCards),
+            $this->shopperMessage,
+            $facets,
+        );
+
+        $this->unbackedProperties = $unbacked;
+
+        if ($unbacked !== []) {
+            $this->trace->record('claims.audit', ['unbackedPropertyClaims' => $unbacked]);
         }
 
         return $unbacked;
