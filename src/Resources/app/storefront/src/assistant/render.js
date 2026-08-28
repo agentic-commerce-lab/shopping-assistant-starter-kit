@@ -78,6 +78,31 @@ export function formatPriceBasis(card, locale, translations = {}) {
         .replace('%count%', String(quantity));
 }
 
+/** Two is enough to differentiate at a glance without crowding a 176px card. */
+const MAX_SPEC_CHIPS = 2;
+
+/**
+ * A short "Merino · Waterproof" line for a card, built entirely from the `properties` the server
+ * already sent — nothing here is read from the model's prose, same rule `formatPriceBasis` follows.
+ */
+export function formatSpecChips(card, maxChips = MAX_SPEC_CHIPS) {
+    const properties = card?.properties;
+
+    if (properties === null || typeof properties !== 'object' || Array.isArray(properties)) {
+        return '';
+    }
+
+    const values = Object.values(properties)
+        .flat()
+        .filter((value) => typeof value === 'string' && value !== '');
+
+    if (values.length === 0) {
+        return '';
+    }
+
+    return values.slice(0, maxChips).join(' · ');
+}
+
 /**
  * @param {HTMLElement} log
  * @param {{

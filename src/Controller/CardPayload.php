@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Controller;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Tool\BoundedProperties;
 
 /**
  * Serialises rendered cards for the wire.
@@ -46,6 +47,7 @@ final readonly class CardPayload
                 'url' => $card->url,
                 'imageUrl' => $card->imageUrl,
                 'options' => $card->options,
+                'properties' => BoundedProperties::of($card->properties),
             ],
             $cards,
         );

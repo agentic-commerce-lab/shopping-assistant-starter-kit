@@ -6,7 +6,7 @@
  * easily. If a value you want is not on the card, the answer is to render it on the server, not to
  * parse it out of a sentence.
  */
-import { formatPriceBasis } from './render.js';
+import { formatPriceBasis, formatSpecChips } from './render.js';
 
 /** Below this, "in stock" is true but reassuring a shopper with a bare "In stock" overstates it. */
 const STOCK_LOW_THRESHOLD = 5;
@@ -69,6 +69,11 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
     const options = Object.values(card.options ?? {});
     if (options.length > 0) {
         info.appendChild(text('p', 'swag-assistant-card__options', options.join(' · ')));
+    }
+
+    const specs = formatSpecChips(card);
+    if (specs !== '') {
+        info.appendChild(text('p', 'swag-assistant-card__specs', specs));
     }
 
     if (card.deliveryTime && translations.delivery) {
