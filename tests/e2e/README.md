@@ -9,7 +9,12 @@ real model call.
 ```bash
 npx playwright install chromium     # once
 SHOP_URL=http://127.0.0.1:8000 npx playwright test tests/e2e/widget.spec.js
+SHOP_URL=http://127.0.0.1:8000 npx playwright test tests/e2e/pricing.spec.js
 ```
+
+`pricing.spec.js` is the cheaper of the two: no model call, seconds rather than minutes, safe to run on
+every change. See its docblock for what it checks and why. `widget.spec.js` is the one that spends
+real money.
 
 The shop must have the plugin installed and activated, a model configured, and the theme compiled:
 
@@ -57,6 +62,27 @@ more real-turn tests makes that worse, not linearly.
 
 The suite fires **three live model calls**, so it costs money and takes minutes. It is not in CI for
 exactly that reason.
+
+## Shop data these checks assume
+
+`pricing.spec.js` needs at least one product carrying advanced (tiered/rule-based) prices, and its
+"quantity" assertion needs one product sold in fixed steps. On the local demo shop, product
+`01a01b4f981c70eabd51f14e553875ec` (Aerodynamic Concrete PortGear) was seeded for the latter:
+
+```sql
+UPDATE product SET min_purchase = 4, purchase_steps = 4
+WHERE id = UNHEX('01a01b4f981c70eabd51f14e553875ec');
+```
+
+Revert with:
+
+```sql
+UPDATE product SET min_purchase = 1, purchase_steps = 1
+WHERE id = UNHEX('01a01b4f981c70eabd51f14e553875ec');
+```
+
+The SQL that finds candidate tier-priced products for the other assertion is in `pricing.spec.js`'s
+own docblock — see there rather than here, so the query and the test it serves cannot drift apart.
 
 ## What is not covered here
 
