@@ -155,6 +155,16 @@ final class AddToCartTool
 
         $cart = $this->gateway->addToCart($variantId, $quantity);
 
+        // What Shopware ACCEPTED, not what was asked for. `ProductCartProcessor` raises an
+        // under-minimum line to `minPurchase`, rounds an off-step line onto its step, caps a line
+        // at available stock and removes a line with nothing available — recording each as a cart
+        // error rather than refusing the call. Reporting the argument instead of the result told a
+        // shopper "Added 10 to the cart" over a cart holding 8, and they found out at checkout.
+        //
+        // The difference, not the line total: the shopper may already have had some of this
+        // variant, and `$existingQuantity` was read from the live cart before the write.
+        $stored = max(0, CartCorrectionNote::lineQuantity($cart, $variantId) - $existingQuantity);
+
         // Register the variant that was ACTUALLY added, so it is the card the shopper sees beside
         // the confirmation. Without this, `FactRenderer`'s last registered set is whatever the
         // previous search left behind — measured against the real shop: a turn that added Black/M
@@ -172,7 +182,10 @@ final class AddToCartTool
             'policyVerdict' => 'allow',
             'policyReasonCode' => 'allowed',
             'variantId' => $variantId,
+            // Requested, and kept under its original key so existing trace readers do not shift
+            // meaning underneath them. What the cart holds is the new key beside it.
             'quantity' => $quantity,
+            'storedQuantity' => $stored,
         ]);
 
         return [
@@ -182,7 +195,7 @@ final class AddToCartTool
                 'currency' => $cart->currency,
                 'checkoutUrl' => $cart->checkoutUrl,
             ],
-            'note' => sprintf('Added %d to the cart.', $quantity),
+            'note' => CartCorrectionNote::text($stored, $quantity, CartCorrectionNote::reasonFor($cart, $variantId)),
         ];
     }
 
