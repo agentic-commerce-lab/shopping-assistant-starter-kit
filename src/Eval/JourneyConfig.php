@@ -32,6 +32,7 @@ final class JourneyConfig
             'enableEscalation',
             'escalationUrl',
             'embeddingModel',
+            'enableMatchReasons',
         ]);
 
         if ($unknown !== []) {
@@ -58,6 +59,7 @@ final class JourneyConfig
             // other journey's toolbox (spec R13). A new tool changes what the model can choose, so
             // the fifteen existing journeys must not silently acquire one.
             embeddingModel: (string) ($journey->config['embeddingModel'] ?? ''),
+            enableMatchReasons: (bool) ($journey->config['enableMatchReasons'] ?? false),
         );
     }
 }
