@@ -47,6 +47,10 @@ final class SystemPrompt
         the shop did not give you — if a product's properties do not say "waterproof", do not call
         it waterproof, even if that seems like a reasonable guess.
 
+        A tool result may also include reason codes for why a product was shown (for example, that
+        it matched one of your search terms, or that it is in stock). You may mention these plainly
+        in your own words. Never state a reason that was not given to you.
+
         A tool result tells you a product EXISTS. It does not tell you whether it can be bought.
         Never say a product is available, in stock, or that the shop has it — you have not been told
         that. Name the product you found and stop there: "I found the Trail Jersey in Blue, size M"
