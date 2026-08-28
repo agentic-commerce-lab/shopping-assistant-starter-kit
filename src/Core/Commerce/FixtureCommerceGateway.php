@@ -6,7 +6,6 @@ namespace Swag\AssistantStarterKit\Core\Commerce;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartLine;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNotice;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNoticeReason;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
@@ -17,6 +16,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureCategoryFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureCategoryTree;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureFacetBuilder;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureIndex;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQuantityCorrection;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQueryFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureScopeFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureVariantMatcher;
@@ -173,14 +173,13 @@ final class FixtureCommerceGateway implements
         // Shopware does not refuse a quantity that breaks a product's purchase rules — it changes
         // it and records why (`ProductCartProcessor::validateStock()`). A fixture that stored the
         // requested quantity could not reproduce that, which is exactly why the tool's
-        // misreporting survived every fixture test this project has.
-        $corrected = self::fixQuantity($unit->minPurchase, $quantity, $unit->purchaseSteps);
+        // misreporting survived every fixture test this project has. The two-phase arithmetic
+        // itself lives in FixtureQuantityCorrection — see that class's docblock for why it is not
+        // inline here.
+        $corrected = FixtureQuantityCorrection::corrected($unit->minPurchase, $quantity, $unit->purchaseSteps);
         $notices = $corrected === $quantity
             ? []
-            : [new CartNotice(
-                $variantId,
-                $quantity < $unit->minPurchase ? CartNoticeReason::MinimumQuantity : CartNoticeReason::PurchaseSteps,
-            )];
+            : [new CartNotice($variantId, FixtureQuantityCorrection::reasonFor($unit->minPurchase, $quantity))];
 
         $existing = $this->cartLines[$variantId] ?? null;
         $newQuantity = ($existing === null ? 0 : $existing->quantity) + $corrected;
@@ -195,15 +194,6 @@ final class FixtureCommerceGateway implements
         );
 
         return $this->cart($notices);
-    }
-
-    /**
-     * Shopware's own rounding, from `ProductCartProcessor::fixQuantity()`: raise to the minimum,
-     * then step down to the nearest legal multiple above it.
-     */
-    private static function fixQuantity(int $min, int $quantity, int $steps): int
-    {
-        return (int) ($min + (floor(($quantity - $min) / $steps) * $steps));
     }
 
     /** @param list<CartNotice> $notices */

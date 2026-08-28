@@ -23,6 +23,7 @@ final class AssertionRegistry
             'blocklist_respected' => new BlocklistRespected(),
             'no_unbacked_price_in_prose' => new NoUnbackedPriceInProse(),
             'cart_contains' => new CartContains(),
+            'cart_quantity_stored' => new CartQuantityStored(),
             'rendered_ids_exactly' => new RenderedIdsExactly(),
             'no_absence_claim_in_prose' => new NoAbsenceClaimInProse(),
             'no_handoff_claim_in_prose' => new NoHandoffClaimInProse(),

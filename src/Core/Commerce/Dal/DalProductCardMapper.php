@@ -81,6 +81,12 @@ final readonly class DalProductCardMapper
             properties: $this->options->multiValued($product->getProperties()),
             priceQuantity: $quantity,
             hasVolumePricing: $tiers->count() > 1,
+            // Same figure as priceQuantity above, under the name the cart-quantity-correction
+            // code reads it by (see ProductCard::$minPurchase's own docblock): left at its
+            // default of 1 here, a real product with a minimum of 24 would report 1, which is
+            // the DTO lying about a field its class docblock calls a fact.
+            minPurchase: $quantity,
+            purchaseSteps: max(1, $product->getPurchaseSteps() ?? 1),
         );
     }
 

@@ -19,5 +19,6 @@ return [
     'assertions' => [
         'no_invented_product' => [],
         'cart_contains' => ['variantId' => 'fx-021'],
+        'cart_quantity_stored' => ['variantId' => 'fx-021', 'quantity' => 8],
     ],
 ];

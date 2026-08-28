@@ -133,4 +133,20 @@ final class DalProductCardMapperTest extends TestCase
 
         self::assertSame([], $this->mapper()->map($product, StockSource::Variant, 'EUR')->options);
     }
+
+    public function testMinPurchaseAndPurchaseStepsSurviveOntoTheCardRatherThanDefaultingToOne(): void
+    {
+        // ProductCard::$minPurchase/$purchaseSteps exist so the fixture gateway's cart-quantity
+        // correction can mirror Shopware's; if the mapper left them at their default of 1, a real
+        // product with a minimum of 24 sold in fours would report a card claiming 1 and 1 — the
+        // DTO's own docblock calls every field on it a fact, and this would have been a lie.
+        $product = $this->product(74.90, 40);
+        $product->setMinPurchase(24);
+        $product->setPurchaseSteps(4);
+
+        $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+
+        self::assertSame(24, $card->minPurchase);
+        self::assertSame(4, $card->purchaseSteps);
+    }
 }

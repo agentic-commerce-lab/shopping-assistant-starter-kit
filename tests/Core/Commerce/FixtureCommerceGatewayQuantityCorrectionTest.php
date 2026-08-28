@@ -28,4 +28,19 @@ final class FixtureCommerceGatewayQuantityCorrectionTest extends TestCase
         self::assertSame(CartNoticeReason::PurchaseSteps, $cart->notices[0]?->reason);
         self::assertSame('fx-021', $cart->notices[0]?->variantId);
     }
+
+    public function testAQuantityBelowTheMinimumIsRaisedToItRatherThanRoundedThroughZero(): void
+    {
+        // The two-phase mistake this test guards against: feeding a below-minimum ask through the
+        // same step-rounding formula used above returns 0, not the minimum — floor((1 - 4) / 4) * 4
+        // + 4 is negative. Shopware's own `validateStock()` never lets a below-minimum quantity reach
+        // the step rounding at all; it is raised straight to `minPurchase` and stops there.
+        $gateway = FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
+
+        $cart = $gateway->addToCart('fx-021', 1);
+
+        self::assertSame(4, $cart->lineItems[0]?->quantity);
+        self::assertSame(CartNoticeReason::MinimumQuantity, $cart->notices[0]?->reason);
+        self::assertSame('fx-021', $cart->notices[0]?->variantId);
+    }
 }
