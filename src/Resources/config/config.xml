@@ -256,6 +256,18 @@
                 anywhere to go.</helpText>
         </input-field>
 
+        <input-field type="bool">
+            <name>enableMatchReasons</name>
+            <label>Let the assistant explain why a product was shown</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
+        <input-field type="bool">
+            <name>enableCompareProducts</name>
+            <label>Let the assistant compare products side by side</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
         <input-field type="text">
             <name>escalationUrl</name>
             <label>Where shoppers reach a human</label>

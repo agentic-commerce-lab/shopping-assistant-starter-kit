@@ -47,10 +47,6 @@ final class SystemPrompt
         the shop did not give you — if a product's properties do not say "waterproof", do not call
         it waterproof, even if that seems like a reasonable guess.
 
-        A tool result may also include reason codes for why a product was shown (for example, that
-        it matched one of your search terms, or that it is in stock). You may mention these plainly
-        in your own words. Never state a reason that was not given to you.
-
         A tool result tells you a product EXISTS. It does not tell you whether it can be bought.
         Never say a product is available, in stock, or that the shop has it — you have not been told
         that. Name the product you found and stop there: "I found the Trail Jersey in Blue, size M"
@@ -122,6 +118,21 @@ final class SystemPrompt
             . 'Do not suggest that someone will get back to them.';
 
     /**
+     * Appended only when {@see AssistantConfig::$enableMatchReasons} is on.
+     *
+     * Kept out of {@see self::RULES} for the same reason {@see self::ESCALATION_AVAILABLE} is: the
+     * capability is off by default (design spec Phase 2a), and a tool result carries no `reasons` at
+     * all when it is off — an unconditional instruction to narrate reason codes the model will
+     * usually never receive is at best dead weight, and at worst invites the model to invent one.
+     * When the flag is off, nothing is said about reason codes; the model simply never sees them.
+     */
+    private const MATCH_REASONS_AVAILABLE = <<<'PROMPT'
+        A tool result may also include reason codes for why a product was shown (for example, that
+        it matched one of your search terms, or that it is in stock). You may mention these plainly
+        in your own words. Never state a reason that was not given to you.
+        PROMPT;
+
+    /**
      * `$viewing` is appended after the rules and the vocabulary, in the same position the merchant's
      * voice guidance occupies: it is context, and context never outranks the rules block above it.
      */
@@ -132,9 +143,13 @@ final class SystemPrompt
         $prompt =
             self::RULES
             . "\n"
-            . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE)
-            . "\n\n"
-            . self::CLOSING;
+            . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE);
+
+        if ($config->enableMatchReasons) {
+            $prompt .= "\n\n" . self::MATCH_REASONS_AVAILABLE;
+        }
+
+        $prompt .= "\n\n" . self::CLOSING;
 
         if ($vocabulary !== '') {
             $prompt .= "\n\n" . $vocabulary;

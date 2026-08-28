@@ -85,6 +85,8 @@ final readonly class SystemConfigAssistantConfig
             enableEscalation: $this->stored->bool('enableEscalation', true, $salesChannelId),
             escalationUrl: $this->safeUrl('escalationUrl', $salesChannelId),
             escalationMessage: trim($this->stored->string('escalationMessage', $salesChannelId)),
+            enableMatchReasons: $this->stored->bool('enableMatchReasons', false, $salesChannelId),
+            enableCompareProducts: $this->stored->bool('enableCompareProducts', false, $salesChannelId),
             logTraces: $this->stored->bool('logTraces', true, $salesChannelId),
             salesChannelId: $salesChannelId,
             embeddingModel: trim($this->stored->string('embeddingModel', $salesChannelId)),
