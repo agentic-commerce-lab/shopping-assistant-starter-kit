@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Agent;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -83,6 +84,7 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
     public function __construct(
         private readonly FactRenderer $renderer,
         private readonly TraceRecorder $trace,
+        private readonly FacetSet $facets = new FacetSet(),
     ) {}
 
     public function processOutput(Output $output): void
@@ -126,6 +128,8 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // The second half of the prose audit. Prices were covered from the start; availability was
         // not, and a live turn told a shopper a sold-out variant was available (ruling R75).
         $this->renderer->unbackedAvailabilityInProse($text);
+
+        $this->renderer->unbackedPropertiesInProse($text, $this->facets);
     }
 
     /**

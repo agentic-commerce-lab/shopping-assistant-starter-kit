@@ -43,7 +43,8 @@
     },
     "warning": {
       "availability": "Dieser Artikel ist nicht auf Lager. Die Karte unten ist korrekt.",
-      "price": "Es gelten die Preise auf den Karten."
+      "price": "Es gelten die Preise auf den Karten.",
+      "property": "Es gelten die Material- und Merkmalsangaben auf der Karte unten."
     },
     "error": {
       "network": "Das kam nicht durch. Nochmal versuchen?",

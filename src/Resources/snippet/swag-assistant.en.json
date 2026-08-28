@@ -43,7 +43,8 @@
     },
     "warning": {
       "availability": "This is currently out of stock. The card below is correct.",
-      "price": "The prices on the cards are the ones that apply."
+      "price": "The prices on the cards are the ones that apply.",
+      "property": "The material and attribute details on the card below are the ones that apply."
     },
     "error": {
       "network": "That didn't get through. Try again?",

@@ -7,6 +7,9 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\GroundingOutputProcessor;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\Facet;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetType;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
@@ -17,6 +20,11 @@ use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
 
+// @mago-expect lint:too-many-methods
+// Task 9 added the eleventh method (the property-claim test) and the brief that introduced it
+// pins this test into this exact file rather than a split-out one — this class's own two
+// existing call-site helpers (process(), processBatches()) already document why every other
+// file in this suite that hit this finding split instead: they didn't have that constraint.
 final class GroundingOutputProcessorTest extends TestCase
 {
     /**
@@ -173,5 +181,24 @@ final class GroundingOutputProcessorTest extends TestCase
         self::assertNotNull($payload);
         self::assertSame('prose', $payload['source']);
         self::assertSame(['fx-017'], $payload['selectedIds']);
+    }
+
+    public function testFlagsAnUnbackedPropertyClaimWhenFacetsAreProvided(): void
+    {
+        $gateway = FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
+        $trace = new TraceRecorder();
+        $renderer = new FactRenderer($trace);
+
+        $product = $gateway->product('fx-017', new CatalogScope());
+        self::assertNotNull($product);
+        $renderer->registerRetrieved([$product]);
+
+        // fx-017's own properties (per the fixture) do not include "Nylon" — see catalog.json.
+        $facets = new FacetSet([new Facet('properties.Material', FacetType::Terms, ['Nylon'])]);
+        $output = new Output('gpt-x', new TextResult('It is made of Nylon.'), new MessageBag());
+
+        (new GroundingOutputProcessor($renderer, $trace, $facets))->processOutput($output);
+
+        self::assertSame(['Nylon'], $renderer->unbackedProperties());
     }
 }

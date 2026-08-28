@@ -176,7 +176,8 @@ final readonly class AssistantAgentFactory
         // With $facetCache wired, "this one probe" is a cache read rather than a ~560 ms
         // aggregation over the whole catalogue — which is what made that accepted cost
         // acceptable in the first place. Phase B measured it at 558–578 ms on 10k products.
-        $vocabularyStats = CatalogVocabulary::renderWithStats($facetProbe->probe($config->scope));
+        $facets = $facetProbe->probe($config->scope);
+        $vocabularyStats = CatalogVocabulary::renderWithStats($facets);
         $trace->record('vocabulary.render', [
             'fieldCount' => $vocabularyStats['fieldCount'],
             'valueCount' => $vocabularyStats['valueCount'],
@@ -237,7 +238,7 @@ final readonly class AssistantAgentFactory
             $this->platform->of($llm),
             $llm->model,
             inputProcessors: [new SlidingWindowInputProcessor(), $toolProcessor],
-            outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace)],
+            outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace, $facets)],
         );
 
         return new Bundle(

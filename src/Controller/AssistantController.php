@@ -213,8 +213,9 @@ class AssistantController extends StorefrontController
     private static function warnings(AssistantTurn $turn): array
     {
         return [
-            'unbackedPrices' => $turn->unbackedPrices,
-            'unbackedAvailabilityClaims' => $turn->unbackedAvailabilityClaims,
+            'unbackedPrices' => $turn->warnings->unbackedPrices,
+            'unbackedAvailabilityClaims' => $turn->warnings->unbackedAvailabilityClaims,
+            'unbackedPropertyClaims' => $turn->warnings->unbackedPropertyClaims,
         ];
     }
 

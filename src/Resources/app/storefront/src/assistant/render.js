@@ -198,8 +198,9 @@ function buildProse(prose) {
 function buildWarning(warnings, translations) {
     const availability = warnings?.unbackedAvailabilityClaims ?? [];
     const prices = warnings?.unbackedPrices ?? [];
+    const properties = warnings?.unbackedPropertyClaims ?? [];
 
-    if (availability.length === 0 && prices.length === 0) {
+    if (availability.length === 0 && prices.length === 0 && properties.length === 0) {
         return null;
     }
 
@@ -209,11 +210,16 @@ function buildWarning(warnings, translations) {
     // interruption, and an assertive live region would talk over the reply itself.
     el.setAttribute('role', 'note');
 
-    // Availability outranks price. Being told a sold-out item is available is the failure that
-    // cancels an order; a restated number is a smaller sin.
-    el.textContent = availability.length > 0
-        ? (translations.warningAvailability ?? '')
-        : (translations.warningPrice ?? '');
+    // Availability outranks price outranks property. Being told a sold-out item is available is
+    // the failure that cancels an order; a restated number is a smaller sin; a wrong material or
+    // attribute claim is smaller still.
+    if (availability.length > 0) {
+        el.textContent = translations.warningAvailability ?? '';
+    } else if (prices.length > 0) {
+        el.textContent = translations.warningPrice ?? '';
+    } else {
+        el.textContent = translations.warningProperty ?? '';
+    }
 
     return el;
 }
