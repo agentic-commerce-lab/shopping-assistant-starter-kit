@@ -6,6 +6,8 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
 use Shopware\Core\Checkout\Cart\Cart;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartLine;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNotice;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNoticeReason;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 
 /**
@@ -15,6 +17,11 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
  * objects with no mocking at all. That matters here more than usual: this is the class whose
  * mistakes show a shopper a number that disagrees with the cart page they are about to open,
  * and a test needing four mocks is a test nobody trusts.
+ *
+ * It also carries Shopware's own complaints about the cart: {@see ProductCartProcessor} does not
+ * refuse a quantity it dislikes, it silently changes it and records why as a cart error. Reading
+ * only the line items would let a caller report the quantity it asked for over a cart holding
+ * something else.
  */
 final readonly class DalCartSummariser
 {
@@ -50,6 +57,40 @@ final readonly class DalCartSummariser
             currency: $currency,
             itemCount: $itemCount,
             checkoutUrl: $checkoutUrl,
+            notices: self::notices($cart),
         );
+    }
+
+    /**
+     * Shopware's own complaints about this cart.
+     *
+     * `ProductCartProcessor` does not refuse a quantity it dislikes — it raises an under-minimum
+     * line to `minPurchase`, rounds an off-step line onto its step, caps a line at available stock
+     * and **removes** a line with nothing available, recording each as a cart error. Until
+     * 2026-08-28 this class read only the line items, so a caller could report the quantity it had
+     * asked for over a cart holding something else.
+     *
+     * The variant is recovered from the error id: all four of those errors are constructed with the
+     * line's `referencedId` and implement `getId()` as `getMessageKey() . $id`, so stripping the key
+     * leaves the variant. An error shaped otherwise yields an empty variant id rather than a wrong
+     * one — an unattributed notice is still true; a misattributed one is not.
+     *
+     * @return list<CartNotice>
+     */
+    private static function notices(Cart $cart): array
+    {
+        $notices = [];
+
+        foreach ($cart->getErrors() as $error) {
+            $key = $error->getMessageKey();
+            $id = $error->getId();
+
+            $notices[] = new CartNotice(
+                variantId: str_starts_with($id, $key) ? substr($id, \strlen($key)) : '',
+                reason: CartNoticeReason::fromMessageKey($key),
+            );
+        }
+
+        return $notices;
     }
 }

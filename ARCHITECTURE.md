@@ -266,6 +266,7 @@ final readonly class CartSummary
         public string $currency,
         public int $itemCount,
         public string $checkoutUrl,
+        /** @var CartNotice[] */ public array $notices,   // where Shopware's cart differs from the request
     ) {}
 }
 ```
