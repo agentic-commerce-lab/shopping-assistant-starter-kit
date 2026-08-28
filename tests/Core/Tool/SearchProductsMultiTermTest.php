@@ -148,7 +148,7 @@ final class SearchProductsMultiTermTest extends TestCase
      * `families` and `note` keys, and a narrower parameter type would make every call site an
      * analyzer error for no benefit.
      *
-     * @param list<array{id: string, name: string, options: array<string, string>}> $products
+     * @param list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>}> $products
      *
      * @return list<string>
      */
