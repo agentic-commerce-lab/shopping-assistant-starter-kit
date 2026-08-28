@@ -727,10 +727,10 @@ Two items in this design are corrections to **current, shipped, non-B2B behavior
 shopper-visible today, they need no Commercial installation, and every B2B guarantee is built on top
 of them. They land first, as their own change, with their own regression tests:
 
-1. **Price precedence** (section 7.1). `DalProductCardMapper` reads `calculatedPrice`
+1. **Done 2026-08-28.** **Price precedence** (section 7.1). `DalProductCardMapper` reads `calculatedPrice`
    unconditionally, so every rule-priced product is quoted at a figure its own product page
    contradicts. The class docblock asserts the opposite and is corrected with the code.
-2. **Cart read-back** (section 7.3). `DalCartSummariser` discards `Cart::getErrors()` and
+2. **Done 2026-08-28.** **Cart read-back** (section 7.3). `DalCartSummariser` discards `Cart::getErrors()` and
    `AddToCartTool` reports the requested quantity, so a silently corrected line is misreported.
 
 Only then does the B2B work proper begin: context contract and employee-aware conversation scoping,

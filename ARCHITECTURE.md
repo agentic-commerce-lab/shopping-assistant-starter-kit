@@ -199,6 +199,8 @@ final readonly class ProductCard
         /** @var array<string,string[]> */ public array $properties,
         public int $priceQuantity,               // the quantity $price assumes; 1 unless minPurchase says otherwise
         public bool $hasVolumePricing,           // Shopware calculated more than one tier
+        public int $minPurchase,                 // smallest quantity Shopware will add to the cart
+        public int $purchaseSteps,               // multiple of minPurchase the cart quantity must land on
     ) {}
 }
 
