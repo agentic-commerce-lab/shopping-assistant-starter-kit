@@ -197,6 +197,8 @@ final readonly class ProductCard
         /** @var array<string,string> */ public array $options,
         /** @var string[] */            public array $categoryPath,
         /** @var array<string,string[]> */ public array $properties,
+        public int $priceQuantity,               // the quantity $price assumes; 1 unless minPurchase says otherwise
+        public bool $hasVolumePricing,           // Shopware calculated more than one tier
     ) {}
 }
 

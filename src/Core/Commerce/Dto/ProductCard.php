@@ -38,6 +38,20 @@ final readonly class ProductCard
         public array $options = [],
         public array $categoryPath = [],
         public array $properties = [],
+        /**
+         * The quantity the `$price` above assumes.
+         *
+         * A graduated product priced at its `minPurchase` is quoted honestly only if the quantity
+         * that unlocks the figure travels with it. One means "per unit, no minimum worth stating".
+         */
+        public int $priceQuantity = 1,
+        /**
+         * Whether Shopware calculated more than one price tier for this product.
+         *
+         * The card says so rather than implying its figure is the only one, and never computes
+         * what the other tiers cost.
+         */
+        public bool $hasVolumePricing = false,
     ) {}
 
     public function isInStock(): bool

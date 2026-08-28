@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
+use Shopware\Core\Checkout\Cart\Price\Struct\PriceCollection;
 use Shopware\Core\Content\Product\SalesChannel\SalesChannelProductEntity;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
@@ -19,11 +20,15 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *
  * Two reads are deliberate rather than obvious:
  *
- * 1. **Price comes from `getCalculatedPrice()`, never a raw price column.** The DAL has already
- *    resolved inheritance, customer group and rule prices there. Four of the seven seeded
- *    TRAIL-JERSEY variants carry no own price and inherit the parent's, so a raw read returns
- *    null for them — and a null price in front of a shopper is the failure this whole project
- *    is about.
+ * 1. **Price comes from the tier that applies, not from `getCalculatedPrice()`.** That accessor
+ *    returns the product's own price at quantity one. Rule Builder prices, customer-group prices
+ *    expressed as rules, and every volume tier live in `calculatedPrices`, and Shopware's own
+ *    storefront prefers that collection whenever it is non-empty — the listing card overrides
+ *    `calculatedPrice` with `calculatedPrices.last`, the buy widget takes `calculatedPrices.first`
+ *    for a single tier. Until 2026-08-28 this class read `getCalculatedPrice()` unconditionally and
+ *    claimed the DAL had "already resolved customer group and rule prices there". It had not, and
+ *    every rule-priced product was quoted at a figure its own product page contradicted.
+ *    `calculatedPrice` remains the fallback, and is correct only when no advanced price exists.
  * 2. **Translated fields are read through `translated`, not through the own-value getter.** A
  *    variant normally has no name or description of its own — Shopware resolves both from the
  *    parent by inheritance and puts the result in `translated`. `getName()` returns the *own*
@@ -40,6 +45,7 @@ final readonly class DalProductCardMapper
     public function __construct(
         private ProductUrlResolver $urls,
         private PropertyGroupOptionReader $options = new PropertyGroupOptionReader(),
+        private DalApplicablePrice $prices = new DalApplicablePrice(),
     ) {}
 
     /**
@@ -51,12 +57,19 @@ final readonly class DalProductCardMapper
      */
     public function map(SalesChannelProductEntity $product, StockSource $source, string $currency): ProductCard
     {
+        // The smallest order this shopper may actually place. Pricing a case-of-24 product at one
+        // unit quotes a figure nobody can buy at; see spec 7.1 for why this differs from the
+        // storefront's cheapest-tier "from" price.
+        $quantity = max(1, $product->getMinPurchase() ?? 1);
+        $tiers = self::tiers($product);
+        $applicable = $this->prices->forQuantity($tiers, $quantity);
+
         return new ProductCard(
             id: $product->getId(),
             parentId: $product->getParentId(),
             name: $this->inherited($product->getTranslation('name'), $product->getName()) ?? '',
             description: $this->inherited($product->getTranslation('description'), $product->getDescription()),
-            price: $product->getCalculatedPrice()->getUnitPrice(),
+            price: $applicable?->getUnitPrice() ?? $product->getCalculatedPrice()->getUnitPrice(),
             currency: $currency,
             stock: $product->getStock(),
             stockSource: $source,
@@ -66,7 +79,27 @@ final readonly class DalProductCardMapper
             options: $this->options->singleValued($product->getOptions()),
             categoryPath: [],
             properties: $this->options->multiValued($product->getProperties()),
+            priceQuantity: $quantity,
+            hasVolumePricing: $tiers->count() > 1,
         );
+    }
+
+    /**
+     * The product's calculated tiers, or an empty collection.
+     *
+     * `SalesChannelProductEntity::$calculatedPrices` is a non-nullable typed property with **no
+     * default**, so reading it on an entity the price calculator never touched throws an `Error`
+     * rather than returning null. In the shop that cannot happen — `ProductSubscriber` calculates
+     * on every `sales_channel.product.loaded` — but a partially hydrated entity must degrade to
+     * "no advanced prices" instead of ending a shopper's turn (rulings R48, R49).
+     */
+    private static function tiers(SalesChannelProductEntity $product): PriceCollection
+    {
+        try {
+            return $product->getCalculatedPrices();
+        } catch (\Error) {
+            return new PriceCollection();
+        }
     }
 
     /**
