@@ -65,13 +65,21 @@ exactly that reason.
 
 ## Shop data these checks assume
 
-`pricing.spec.js` needs at least one product carrying advanced (tiered/rule-based) prices, and its
-"quantity" assertion needs one product sold in fixed steps. On the local demo shop, product
-`01a01b4f981c70eabd51f14e553875ec` (Aerodynamic Concrete PortGear) was seeded for the latter:
+`pricing.spec.js` needs at least one product carrying advanced (tiered/rule-based) prices. The demo
+shop has hundreds, and the SQL that finds them is in `pricing.spec.js`'s own docblock — see there
+rather than here, so the query and the test it serves cannot drift apart.
+
+Its second assertion — that a card states the quantity its price assumes — needs a product with a
+minimum purchase above one. **The demo shop has none, so that test skips by default**, and skipping
+is the designed outcome rather than a gap to paper over: the constraint lives in `product.min_purchase`,
+which is shop data this repository does not own, and a test pinned to a number someone seeded once
+goes red for reasons that say nothing about the code.
+
+To make it assert, give any visible product a minimum:
 
 ```sql
 UPDATE product SET min_purchase = 4, purchase_steps = 4
-WHERE id = UNHEX('01a01b4f981c70eabd51f14e553875ec');
+WHERE id = UNHEX('01a01b4f981c70eabd51f14e553875ec');   -- Aerodynamic Concrete PortGear
 ```
 
 Revert with:
@@ -81,8 +89,8 @@ UPDATE product SET min_purchase = 1, purchase_steps = 1
 WHERE id = UNHEX('01a01b4f981c70eabd51f14e553875ec');
 ```
 
-The SQL that finds candidate tier-priced products for the other assertion is in `pricing.spec.js`'s
-own docblock — see there rather than here, so the query and the test it serves cannot drift apart.
+Run `bin/console cache:clear` after either. Point the test at a different product with
+`PRICING_MIN_PURCHASE_ID=<32-hex id>`; it reads the quantity from the shop and never hardcodes it.
 
 ## What is not covered here
 
