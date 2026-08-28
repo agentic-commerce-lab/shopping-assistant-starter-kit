@@ -38,8 +38,8 @@ final class MatchReasonsTest extends TestCase
             'occasion suit' => [$suit],
         ]);
 
-        self::assertContains('matched_term:occasion dress', $reasons['fx-dress']);
-        self::assertContains('matched_term:occasion suit', $reasons['fx-suit']);
+        self::assertContains('matched_term:occasion dress', $reasons['fx-dress'] ?? []);
+        self::assertContains('matched_term:occasion suit', $reasons['fx-suit'] ?? []);
     }
 
     public function testAddsNoTermReasonForASingleTermSearch(): void
@@ -48,7 +48,7 @@ final class MatchReasonsTest extends TestCase
 
         $reasons = MatchReasons::of([$card], ['jersey' => [$card]]);
 
-        self::assertNotContains('matched_term:jersey', $reasons['fx-001']);
+        self::assertNotContains('matched_term:jersey', $reasons['fx-001'] ?? []);
     }
 
     public function testFlagsInStockProducts(): void
@@ -58,8 +58,8 @@ final class MatchReasonsTest extends TestCase
 
         $reasons = MatchReasons::of([$inStock, $outOfStock], []);
 
-        self::assertContains('in_stock', $reasons['fx-in']);
-        self::assertNotContains('in_stock', $reasons['fx-out']);
+        self::assertContains('in_stock', $reasons['fx-in'] ?? []);
+        self::assertNotContains('in_stock', $reasons['fx-out'] ?? []);
     }
 
     public function testFlagsTheOnlyMatchWhenExactlyOneProductWasReturned(): void
@@ -68,6 +68,6 @@ final class MatchReasonsTest extends TestCase
 
         $reasons = MatchReasons::of([$card], []);
 
-        self::assertContains('only_match', $reasons['fx-001']);
+        self::assertContains('only_match', $reasons['fx-001'] ?? []);
     }
 }

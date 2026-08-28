@@ -49,23 +49,37 @@ final class ToolProductSummary
     private function __construct() {}
 
     /**
-     * @param list<ProductCard> $cards
+     * @param list<ProductCard>           $cards
+     * @param array<string, list<string>> $reasons reason codes keyed by product id, from
+     *                                              {@see MatchReasons::of()} — empty unless
+     *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, reasons?: list<string>}>
      */
-    public static function of(array $cards): array
+    public static function of(array $cards, array $reasons = []): array
     {
         return array_map(
-            static fn(ProductCard $card): array => [
-                'id' => $card->id,
-                'name' => $card->name,
-                'options' => $card->options,
-                // Structured, closed-vocabulary attributes only (material, and similar) — never
-                // `description`, which is free text with no closed vocabulary to audit against. See
-                // BoundedProperties for the per-product cap, and ProseAudit::unbackedProperties() for the
-                // audit this now requires: a value stated in prose must be backed by a rendered card.
-                'properties' => BoundedProperties::of($card->properties),
-            ],
+            static function (ProductCard $card) use ($reasons): array {
+                $summary = [
+                    'id' => $card->id,
+                    'name' => $card->name,
+                    'options' => $card->options,
+                    // Structured, closed-vocabulary attributes only (material, and similar) — never
+                    // `description`, which is free text with no closed vocabulary to audit against. See
+                    // BoundedProperties for the per-product cap, and ProseAudit::unbackedProperties() for
+                    // the audit this now requires: a value stated in prose must be backed by a rendered
+                    // card.
+                    'properties' => BoundedProperties::of($card->properties),
+                ];
+
+                $codes = $reasons[$card->id] ?? [];
+
+                if ($codes !== []) {
+                    $summary['reasons'] = $codes;
+                }
+
+                return $summary;
+            },
             $cards,
         );
     }

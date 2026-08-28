@@ -54,4 +54,46 @@ final class ToolProductSummaryTest extends TestCase
 
         self::assertSame([], $result[0]['properties']);
     }
+
+    public function testIncludesReasonsWhenProvided(): void
+    {
+        $card = new ProductCard(
+            id: 'fx-001',
+            parentId: null,
+            name: 'Trail Jersey',
+            description: 'A jersey.',
+            price: 54.90,
+            currency: 'EUR',
+            stock: 5,
+            stockSource: StockSource::Product,
+            deliveryTime: null,
+            url: '/p/fx-001',
+            imageUrl: null,
+        );
+
+        $result = ToolProductSummary::of([$card], ['fx-001' => ['in_stock']]);
+
+        self::assertSame(['in_stock'], $result[0]['reasons']);
+    }
+
+    public function testOmitsReasonsKeyWhenNoneProvided(): void
+    {
+        $card = new ProductCard(
+            id: 'fx-001',
+            parentId: null,
+            name: 'Trail Jersey',
+            description: 'A jersey.',
+            price: 54.90,
+            currency: 'EUR',
+            stock: 5,
+            stockSource: StockSource::Product,
+            deliveryTime: null,
+            url: '/p/fx-001',
+            imageUrl: null,
+        );
+
+        $result = ToolProductSummary::of([$card]);
+
+        self::assertArrayNotHasKey('reasons', $result[0] ?? []);
+    }
 }

@@ -164,7 +164,7 @@ final class SearchProductsTool
      * @param int $limit Maximum number of products to return (1-8, default 5). The shop renders these as a shortlist of cards, so ask for the few that answer the question rather than the maximum.
      *
      * @return array{
-     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>}>,
+     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, reasons?: list<string>}>,
      *     total: int,
      *     matched: int,
      *     more: bool,
@@ -300,6 +300,14 @@ final class SearchProductsTool
         // docblock now names explicitly.
         $returned = FamilyDiversifier::of($survivors, $requestedLimit);
 
+        $matchReasons = $this->config->enableMatchReasons
+            ? MatchReasons::of($returned, MergedCandidates::byTerm($candidates))
+            : [];
+
+        if ($matchReasons !== []) {
+            $this->trace->record('match_reasons', ['reasons' => $matchReasons]);
+        }
+
         // Recorded rather than silent: a bounded result that nobody wrote down reads as
         // complete coverage. This is its own stage because `retrieve` keeps meaning "what
         // retrieval returned" — BlocklistSurvivors diffs that set against the blocklist's
@@ -321,7 +329,7 @@ final class SearchProductsTool
         $result = [
             // id + name + options, never a figure — see ToolProductSummary for why bare ids made
             // variant identification cost one tool call per candidate.
-            'products' => ToolProductSummary::of($returned),
+            'products' => ToolProductSummary::of($returned, $matchReasons),
             // `total` deliberately keeps meaning "how many are in products" (T3). The model has
             // learned it; redefining a number in place is how something else quietly breaks.
             'total' => \count($returned),
