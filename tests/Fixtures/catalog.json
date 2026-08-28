@@ -50,6 +50,8 @@
       "id": "fx-021", "name": "Disc Brake Pad Set (Shimano)",
       "description": "Sintered disc brake pads for Shimano callipers.",
       "price": 22.00, "stock": 18, "url": "/detail/fx-021",
+      "minPurchase": 4,
+      "purchaseSteps": 4,
       "categoryPath": ["Merch"],
       "properties": { "Brake system": ["Disc"], "Manufacturer": ["Shimano"] },
       "variants": []

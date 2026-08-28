@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Commerce;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartLine;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNotice;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNoticeReason;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
@@ -61,7 +63,9 @@ final class FixtureCommerceGateway implements
          *     url: string,
          *     categoryPath: list<string>,
          *     properties: array<string, list<string>>,
-         *     variants: list<array{id: string, options: array<string, string>, price: float|int, stock: int}>,
+         *     variants: list<array{id: string, options: array<string, string>, price: float|int, stock: int, minPurchase?: int, purchaseSteps?: int}>,
+         *     minPurchase?: int,
+         *     purchaseSteps?: int,
          * }>} $decoded
          */
         $decoded = json_decode($json, associative: true, depth: 512, flags: \JSON_THROW_ON_ERROR);
@@ -166,8 +170,20 @@ final class FixtureCommerceGateway implements
             throw new \InvalidArgumentException(\sprintf('Unknown variant id "%s".', $variantId));
         }
 
+        // Shopware does not refuse a quantity that breaks a product's purchase rules — it changes
+        // it and records why (`ProductCartProcessor::validateStock()`). A fixture that stored the
+        // requested quantity could not reproduce that, which is exactly why the tool's
+        // misreporting survived every fixture test this project has.
+        $corrected = self::fixQuantity($unit->minPurchase, $quantity, $unit->purchaseSteps);
+        $notices = $corrected === $quantity
+            ? []
+            : [new CartNotice(
+                $variantId,
+                $quantity < $unit->minPurchase ? CartNoticeReason::MinimumQuantity : CartNoticeReason::PurchaseSteps,
+            )];
+
         $existing = $this->cartLines[$variantId] ?? null;
-        $newQuantity = ($existing === null ? 0 : $existing->quantity) + $quantity;
+        $newQuantity = ($existing === null ? 0 : $existing->quantity) + $corrected;
 
         $this->cartLines[$variantId] = new CartLine(
             lineId: $variantId,
@@ -178,10 +194,20 @@ final class FixtureCommerceGateway implements
             lineTotal: $newQuantity * $unit->price,
         );
 
-        return $this->cart();
+        return $this->cart($notices);
     }
 
-    public function cart(): CartSummary
+    /**
+     * Shopware's own rounding, from `ProductCartProcessor::fixQuantity()`: raise to the minimum,
+     * then step down to the nearest legal multiple above it.
+     */
+    private static function fixQuantity(int $min, int $quantity, int $steps): int
+    {
+        return (int) ($min + (floor(($quantity - $min) / $steps) * $steps));
+    }
+
+    /** @param list<CartNotice> $notices */
+    public function cart(array $notices = []): CartSummary
     {
         $lines = array_values($this->cartLines);
 
@@ -192,6 +218,6 @@ final class FixtureCommerceGateway implements
             $itemCount += $line->quantity;
         }
 
-        return new CartSummary(lineItems: $lines, total: $total, itemCount: $itemCount);
+        return new CartSummary(lineItems: $lines, total: $total, itemCount: $itemCount, notices: $notices);
     }
 }

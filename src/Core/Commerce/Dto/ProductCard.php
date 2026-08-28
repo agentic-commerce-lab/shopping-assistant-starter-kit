@@ -52,6 +52,18 @@ final readonly class ProductCard
          * what the other tiers cost.
          */
         public bool $hasVolumePricing = false,
+        /**
+         * The smallest quantity Shopware will add to the cart, mirroring `ProductEntity::minPurchase`.
+         *
+         * Not display copy — it exists so {@see \Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway::addToCart()}
+         * can reproduce the correction the real cart applies instead of storing whatever it was asked for.
+         */
+        public int $minPurchase = 1,
+        /**
+         * The multiple a cart quantity must land on above `$minPurchase`, mirroring
+         * `ProductEntity::purchaseSteps`. See {@see self::$minPurchase}.
+         */
+        public int $purchaseSteps = 1,
     ) {}
 
     public function isInStock(): bool

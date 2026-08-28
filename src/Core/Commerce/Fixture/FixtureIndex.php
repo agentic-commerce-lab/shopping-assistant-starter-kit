@@ -26,6 +26,8 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *     options: array<string, string>,
  *     price: float|int,
  *     stock: int,
+ *     minPurchase?: int,
+ *     purchaseSteps?: int,
  * }
  * @phpstan-type FixtureProduct array{
  *     id: string,
@@ -37,6 +39,8 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *     categoryPath: list<string>,
  *     properties: array<string, list<string>>,
  *     variants: list<FixtureVariant>,
+ *     minPurchase?: int,
+ *     purchaseSteps?: int,
  * }
  */
 final class FixtureIndex
@@ -94,6 +98,8 @@ final class FixtureIndex
             options: [],
             categoryPath: $product['categoryPath'],
             properties: $product['properties'],
+            minPurchase: $product['minPurchase'] ?? 1,
+            purchaseSteps: $product['purchaseSteps'] ?? 1,
         );
     }
 
@@ -118,6 +124,8 @@ final class FixtureIndex
             options: $variant['options'],
             categoryPath: $product['categoryPath'],
             properties: $product['properties'],
+            minPurchase: $variant['minPurchase'] ?? 1,
+            purchaseSteps: $variant['purchaseSteps'] ?? 1,
         );
     }
 
