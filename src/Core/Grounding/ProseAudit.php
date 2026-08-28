@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 
 /**
@@ -36,6 +37,7 @@ final readonly class ProseAudit
     public function __construct(
         private CurrencyFigureExtractor $currencyFigures = new CurrencyFigureExtractor(),
         private AvailabilityClaimExtractor $availabilityClaims = new AvailabilityClaimExtractor(),
+        private PropertyClaimExtractor $propertyClaims = new PropertyClaimExtractor(),
     ) {}
 
     /**
@@ -155,5 +157,30 @@ final readonly class ProseAudit
         }
 
         return $claims;
+    }
+
+    /**
+     * Attribute claims (material, and similar) in the prose that no rendered card's own `properties`
+     * backs — the {@see self::unbackedPrices()} analogue for {@see PropertyClaimExtractor}'s closed
+     * vocabulary. Same R85-style exemption: a value the shopper introduced themselves is not a claim
+     * by the model.
+     *
+     * @param list<ProductCard> $rendered
+     *
+     * @return list<string>
+     */
+    public function unbackedProperties(string $prose, array $rendered, string $shopperMessage, FacetSet $facets): array
+    {
+        $backed = BackedPropertyValues::of($rendered);
+        $claims = $this->propertyClaims->extract($prose, $facets);
+        $shopperLower = mb_strtolower($shopperMessage);
+
+        return array_values(array_filter($claims, static function (string $claim) use ($backed, $shopperLower): bool {
+            if (\array_key_exists(mb_strtolower($claim), $backed)) {
+                return false;
+            }
+
+            return !str_contains($shopperLower, mb_strtolower($claim));
+        }));
     }
 }
