@@ -22,6 +22,7 @@ final class AssertionRegistry
             'stock_matches_source' => new StockMatchesSource(),
             'blocklist_respected' => new BlocklistRespected(),
             'no_unbacked_price_in_prose' => new NoUnbackedPriceInProse(),
+            'no_unbacked_property_claim_in_prose' => new NoUnbackedPropertyClaimInProse(),
             'cart_contains' => new CartContains(),
             'cart_quantity_stored' => new CartQuantityStored(),
             'rendered_ids_exactly' => new RenderedIdsExactly(),
