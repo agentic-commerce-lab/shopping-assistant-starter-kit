@@ -184,6 +184,10 @@
             <tag name="swag_assistant.grounded_tool_factory"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\CompareProductsToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider"/>
 
         <service id="Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface"

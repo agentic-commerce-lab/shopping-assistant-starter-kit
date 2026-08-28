@@ -22,6 +22,7 @@ use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\SharedFacetCache;
 use Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\CompareProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\EscalateToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GetProductToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolContext;
@@ -95,7 +96,12 @@ final readonly class AssistantAgentFactory
     {
         return new self(
             [new EscalateToolFactory()],
-            [new SearchProductsToolFactory(), new GetProductToolFactory(), new AddToCartToolFactory()],
+            [
+                new SearchProductsToolFactory(),
+                new GetProductToolFactory(),
+                new AddToCartToolFactory(),
+                new CompareProductsToolFactory(),
+            ],
             new SystemPromptProvider(),
             new SymfonyAiPlatform($http),
         );
