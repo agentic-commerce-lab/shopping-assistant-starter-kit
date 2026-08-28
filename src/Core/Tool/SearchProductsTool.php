@@ -164,7 +164,7 @@ final class SearchProductsTool
      * @param int $limit Maximum number of products to return (1-8, default 5). The shop renders these as a shortlist of cards, so ask for the few that answer the question rather than the maximum.
      *
      * @return array{
-     *     products: list<array{id: string, name: string, options: array<string, string>}>,
+     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>}>,
      *     total: int,
      *     matched: int,
      *     more: bool,
