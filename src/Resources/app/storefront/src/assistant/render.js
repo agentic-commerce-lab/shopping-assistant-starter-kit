@@ -84,6 +84,17 @@ const MAX_SPEC_CHIPS = 2;
 /**
  * A short "Merino · Waterproof" line for a card, built entirely from the `properties` the server
  * already sent — nothing here is read from the model's prose, same rule `formatPriceBasis` follows.
+ *
+ * Two rules keep this from contradicting the options line directly above it on the same card:
+ *
+ * 1. **Skip any property group already shown in `card.options`** (case-insensitive key match). A
+ *    variant commonly carries its whole property list even though it is itself only one specific
+ *    colour/size — a Trail Jersey in Blue/M can still have `properties: {Colour: [Blue, Black]}` —
+ *    so showing that group again as a "spec chip" can print a sibling's value right under an options
+ *    line that already states this unit's own value for the same group.
+ * 2. **At most one value per remaining group.** The same sprawling-variant data means a group can
+ *    carry several values; only the first is this unit's own attribute the way `options` states one
+ *    value per group, never a list.
  */
 export function formatSpecChips(card, maxChips = MAX_SPEC_CHIPS) {
     const properties = card?.properties;
@@ -92,8 +103,11 @@ export function formatSpecChips(card, maxChips = MAX_SPEC_CHIPS) {
         return '';
     }
 
-    const values = Object.values(properties)
-        .flat()
+    const shownGroups = new Set(Object.keys(card?.options ?? {}).map((group) => group.toLowerCase()));
+
+    const values = Object.entries(properties)
+        .filter(([group]) => !shownGroups.has(group.toLowerCase()))
+        .map(([, groupValues]) => (Array.isArray(groupValues) ? groupValues[0] : undefined))
         .filter((value) => typeof value === 'string' && value !== '');
 
     if (values.length === 0) {
