@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Eval;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
+use Swag\AssistantStarterKit\Core\Agent\Warnings;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Eval\TurnAggregate;
@@ -29,13 +30,13 @@ final class TurnAggregateMergeTest extends TestCase
             prose: 'Turn one prose.',
             cards: [$earlyCard],
             outcome: 'product_shown',
-            unbackedPrices: ['9.99'],
+            warnings: new Warnings(unbackedPrices: ['9.99']),
         );
         $turnTwo = new AssistantTurn(
             prose: 'Turn two prose.',
             cards: [$laterCard],
             outcome: 'cart_added',
-            unbackedPrices: ['9.99', '5.00'],
+            warnings: new Warnings(unbackedPrices: ['9.99', '5.00']),
         );
 
         $merged = TurnAggregate::of([$turnOne, $turnTwo]);
@@ -59,7 +60,7 @@ final class TurnAggregateMergeTest extends TestCase
 
         // Unbacked prices are unioned across every turn, de-duplicated, first
         // occurrence order preserved.
-        self::assertSame(['9.99', '5.00'], $merged->unbackedPrices);
+        self::assertSame(['9.99', '5.00'], $merged->warnings->unbackedPrices);
     }
 
     public function testAggregatingASingleTurnIsTrivial(): void

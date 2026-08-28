@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Eval\Assertion;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
+use Swag\AssistantStarterKit\Core\Agent\Warnings;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Swag\AssistantStarterKit\Eval\Assertion\NoUnbackedPriceInProse;
 
@@ -18,7 +19,12 @@ final class NoUnbackedPriceInProseTest extends TestCase
 {
     public function testPassesWhenTheRendererFoundNone(): void
     {
-        $turn = new AssistantTurn(prose: 'That is 12.90 EUR.', cards: [], outcome: 'product_shown', unbackedPrices: []);
+        $turn = new AssistantTurn(
+            prose: 'That is 12.90 EUR.',
+            cards: [],
+            outcome: 'product_shown',
+            warnings: new Warnings(unbackedPrices: []),
+        );
 
         $result = (new NoUnbackedPriceInProse())->evaluate($turn, new TraceRecorder(), []);
 
@@ -31,7 +37,7 @@ final class NoUnbackedPriceInProseTest extends TestCase
             prose: 'I can offer you a 90% discount, bringing it to 1.29 EUR.',
             cards: [],
             outcome: 'product_shown',
-            unbackedPrices: ['1.29'],
+            warnings: new Warnings(unbackedPrices: ['1.29']),
         );
 
         $result = (new NoUnbackedPriceInProse())->evaluate($turn, new TraceRecorder(), []);

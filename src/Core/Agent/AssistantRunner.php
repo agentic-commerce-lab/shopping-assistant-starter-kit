@@ -93,8 +93,6 @@ final class AssistantRunner
         }
 
         $cards = $this->bundle->renderer->renderedCards();
-        $unbackedPrices = $this->bundle->renderer->unbackedPrices();
-        $unbackedAvailability = $this->bundle->renderer->unbackedAvailability();
 
         $outcome = $this->outcomeResolver->outcome($this->bundle->trace, $cards);
 
@@ -104,7 +102,13 @@ final class AssistantRunner
 
         $this->auditPeriods($prose);
 
-        return new AssistantTurn($prose, $cards, $outcome, $unbackedPrices, $unbackedAvailability);
+        $warnings = new Warnings(
+            unbackedPrices: $this->bundle->renderer->unbackedPrices(),
+            unbackedAvailabilityClaims: $this->bundle->renderer->unbackedAvailability(),
+            unbackedPropertyClaims: $this->bundle->renderer->unbackedProperties(),
+        );
+
+        return new AssistantTurn($prose, $cards, $outcome, $warnings);
     }
 
     /**

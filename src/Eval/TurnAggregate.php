@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Eval;
 
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
+use Swag\AssistantStarterKit\Core\Agent\Warnings;
 
 /**
  * Ruling R42: a multi-turn journey's assertions must see every turn's cards, prose and
@@ -40,6 +41,8 @@ final class TurnAggregate
         $cardsById = [];
         $proseParts = [];
         $unbackedPrices = [];
+        $unbackedAvailability = [];
+        $unbackedProperties = [];
         $lastTurn = null;
 
         foreach ($turns as $turn) {
@@ -50,8 +53,16 @@ final class TurnAggregate
                 $cardsById[$card->id] = $card;
             }
 
-            foreach ($turn->unbackedPrices as $price) {
+            foreach ($turn->warnings->unbackedPrices as $price) {
                 $unbackedPrices[] = $price;
+            }
+
+            foreach ($turn->warnings->unbackedAvailabilityClaims as $claim) {
+                $unbackedAvailability[] = $claim;
+            }
+
+            foreach ($turn->warnings->unbackedPropertyClaims as $claim) {
+                $unbackedProperties[] = $claim;
             }
         }
 
@@ -64,7 +75,11 @@ final class TurnAggregate
             prose: implode("\n", $proseParts),
             cards: array_values($cardsById),
             outcome: $lastTurn->outcome,
-            unbackedPrices: array_values(array_unique($unbackedPrices)),
+            warnings: new Warnings(
+                unbackedPrices: array_values(array_unique($unbackedPrices)),
+                unbackedAvailabilityClaims: array_values(array_unique($unbackedAvailability)),
+                unbackedPropertyClaims: array_values(array_unique($unbackedProperties)),
+            ),
         );
     }
 }

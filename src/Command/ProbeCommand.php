@@ -184,8 +184,11 @@ final class ProbeCommand extends Command
         $io->section('outcome');
         $io->writeln($turn->outcome);
 
-        if ($turn->unbackedPrices !== []) {
-            $io->warning(\sprintf('Prices in the prose no card backs: %s', implode(', ', $turn->unbackedPrices)));
+        if ($turn->warnings->unbackedPrices !== []) {
+            $io->warning(\sprintf('Prices in the prose no card backs: %s', implode(
+                ', ',
+                $turn->warnings->unbackedPrices,
+            )));
         }
 
         $io->section('trace');
