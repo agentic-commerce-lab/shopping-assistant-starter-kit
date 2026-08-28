@@ -115,12 +115,17 @@ final class AssistantRunner
      * Records any period the reply states that no retrieved passage supports.
      *
      * **Recorded, not yet shown to the shopper**, and that is a deliberate stopping point rather than
-     * an oversight. `AssistantTurn` sits at Mago's five-parameter bound, so carrying a third warning
-     * out to the endpoint needs a value object across 29 construction sites and a change to the
-     * payload the widget reads — a separate piece of work. Writing it to `claims.audit` costs none of
-     * that and buys the thing that matters most for this class of error: an invented revocation
-     * deadline or warranty term becomes **visible and auditable** in the trace view a merchant already
-     * reads, in the phase already labelled "answer".
+     * an oversight — though the cost that originally justified deferring it is gone. `AssistantTurn`
+     * used to sit at Mago's five-parameter bound, so a third warning field would have needed a new
+     * value object across every construction site and a change to the payload the widget reads. That
+     * value object now exists ({@see Warnings}, carrying `unbackedPrices`, `unbackedAvailabilityClaims`
+     * and `unbackedPropertyClaims`) precisely so a further claim type is a field on it rather than a
+     * constructor parameter. Surfacing period claims as a shopper-facing warning is therefore now a
+     * one-line `Warnings` field addition away, should someone want to do it — this class still only
+     * writes `claims.audit` and does not wire that field itself; that remains a deliberate choice, not
+     * a limitation. Writing it to `claims.audit` costs none of that and buys the thing that matters most
+     * for this class of error: an invented revocation deadline or warranty term becomes **visible and
+     * auditable** in the trace view a merchant already reads, in the phase already labelled "answer".
      *
      * Why it needs its own check at all, given escalation exists: handoff fires when the model *knows*
      * it cannot help. This fires when it does not know — it states a deadline confidently and wrongly,

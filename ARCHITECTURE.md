@@ -447,10 +447,21 @@ tools register their cards with `FactRenderer` — the request-scoped authority 
 > `add_to_cart` is ever reachable.
 >
 > `ToolProductSummary` is now the return shape for `search_products` and `get_product`:
-> `{id, name, options}` — **no price, no stock, no delivery time, no availability.** D3's substance
-> is untouched, because D3's substance is that *the model never supplies a figure*, and none of
-> those three is a figure. Option values are not new information to the model either: since ruling
-> R54 the system prompt already carries the catalogue's whole vocabulary. **Never widen it further.**
+> `{id, name, options, properties, reasons?}` — **still no price, no stock, no delivery time, no
+> availability, no free text.** D3's substance is untouched, because D3's substance is that *the
+> model never supplies a figure*, and none of those fields is a figure. Option values were never new
+> information to the model either: since ruling R54 the system prompt already carries the
+> catalogue's whole vocabulary.
+>
+> The shape has widened twice since, and both widenings are deliberate, audited exceptions rather
+> than a reversal of "never widen it further": `properties` is closed-vocabulary (drawn from the
+> shop's own facet values) and audited by
+> `Core\Grounding\ProseAudit::unbackedProperties()`, the same way a price claim is audited against
+> what was actually rendered. `reasons` (behind `enableMatchReasons`, off by default) are closed,
+> code-computed signals the pipeline itself derived — not open claims the model could misstate — so
+> they need no audit at all. **What must never be added is a figure or free text:** no price, no
+> stock, no delivery time, no availability, and no `description` — description has no closed
+> vocabulary to audit against.
 >
 > Measured on the same question after the change: 3 tool calls instead of 6, `selectionCount: 2`
 > (the model now passes the option values in its first call), one rendered card —
@@ -486,6 +497,7 @@ Note the trust boundary: **tools are trusted code the merchant installed; the mo
 | `search_products` | read | always |
 | `get_product` | read | always |
 | `add_to_cart` | write | `enableAddToCart && cartAvailable` |
+| `compare_products` | read | `enableCompareProducts` |
 | `escalate` | terminal | always |
 
 **Capability control is toolbox construction, never a prompt instruction.** An unavailable tool
@@ -925,7 +937,8 @@ eyeball diff.
 Shopware system config has no real secret storage) · `agentVoice` ·
 `blockedProducts` · `blockedCategories` · `enableAddToCart` · `maxItemQuantity` ·
 `maxCartValue` · `assistantEnabled` · `maxToolCallsPerTurn` · `requestsPerMinute` ·
-`dailyRequestCap` · `traceRetentionDays` · `embeddingModel` · `autoIndexShopPages`
+`dailyRequestCap` · `traceRetentionDays` · `embeddingModel` · `autoIndexShopPages` ·
+`enableMatchReasons` · `enableCompareProducts`
 
 **`embeddingModel` switches shop information on.** Empty is off, and off means the model is offered no
 shop-information tool at all rather than one that fails. It must be a model the configured provider

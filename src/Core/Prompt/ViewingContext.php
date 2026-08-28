@@ -11,11 +11,14 @@ use Swag\AssistantStarterKit\Core\Tool\ToolProductSummary;
  * Tells the model which product the shopper currently has open.
  *
  * **Built through {@see ToolProductSummary} rather than from the card directly, and that is the
- * point of this class existing at all.** The summary is an allowlist of id, name and option values;
- * reading the card here would put a price and a stock level one property access away from the
- * system prompt, and a figure in the prompt is a figure the model can quote without earning it.
- * Option values are already in the prompt via the catalogue vocabulary, so this opens no
- * fabrication surface that was not already open.
+ * point of this class existing at all.** The summary is an allowlist of id, name, option values and
+ * bounded `properties`; reading the card here would put a price and a stock level one property
+ * access away from the system prompt, and a figure in the prompt is a figure the model can quote
+ * without earning it. Option and property values are already in the prompt via the catalogue
+ * vocabulary, so this opens no fabrication surface that was not already open. `reasons` is part of
+ * the same allowlisted shape (behind `enableMatchReasons`) but never appears here: this class calls
+ * {@see ToolProductSummary::of()} with no reason codes, since match reasons are computed only for a
+ * `search_products` result, not for the product the shopper happens to be viewing.
  *
  * Since the prompt is recorded as a trace event and shown in the Administration, the model is no
  * longer the only reader of this line — which is a second reason it carries no figures.
