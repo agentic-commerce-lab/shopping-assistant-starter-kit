@@ -301,11 +301,11 @@ final class SearchProductsTool
         $returned = FamilyDiversifier::of($survivors, $requestedLimit);
 
         $matchReasons = $this->config->enableMatchReasons
-            ? MatchReasons::of($returned, MergedCandidates::byTerm($candidates))
+            ? MatchReasons::of($returned, MergedCandidates::byTerm($candidates), \count($survivors))
             : [];
 
-        if ($matchReasons !== []) {
-            $this->trace->record('match_reasons', ['reasons' => $matchReasons]);
+        if ($matchReasons !== [] && array_filter($matchReasons) !== []) {
+            $this->trace->record('retrieve.match_reasons', ['reasons' => $matchReasons]);
         }
 
         // Recorded rather than silent: a bounded result that nobody wrote down reads as
