@@ -40,17 +40,19 @@ final readonly class DalApplicablePrice
         $quantity = max(1, $quantity);
 
         $selected = $entries[0];
+        $previous = $entries[0];
 
         foreach ($entries as $index => $entry) {
             if ($index === 0) {
                 continue;
             }
 
-            if (($entries[$index - 1]->getQuantity() + 1) > $quantity) {
+            if (($previous->getQuantity() + 1) > $quantity) {
                 break;
             }
 
             $selected = $entry;
+            $previous = $entry;
         }
 
         return $selected;
