@@ -37,8 +37,12 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * fabrication surface that was not already open; it only lets the model tell two retrieved products
  * apart without paying a round trip for each.
  *
- * **Never widen this.** A price or stock number here would let the model quote a figure it did not
- * have to earn, which is the one thing this whole pipeline exists to prevent.
+ * **Never widen this with a figure or free text.** A price or stock number here would let the model
+ * quote a figure it did not have to earn — the one thing this whole pipeline exists to prevent.
+ * `properties` is the one deliberate exception: it is closed-vocabulary (drawn from the shop's own
+ * facet values) and audited by {@see \Swag\AssistantStarterKit\Core\Grounding\ProseAudit::unbackedProperties()},
+ * the same way price is audited. `description` must never be added here — it is free text with no
+ * closed vocabulary to audit against.
  */
 final class ToolProductSummary
 {
@@ -47,14 +51,22 @@ final class ToolProductSummary
     /**
      * @param list<ProductCard> $cards
      *
-     * @return list<array{id: string, name: string, options: array<string, string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>}>
      */
     public static function of(array $cards): array
     {
-        return array_map(static fn(ProductCard $card): array => [
-            'id' => $card->id,
-            'name' => $card->name,
-            'options' => $card->options,
-        ], $cards);
+        return array_map(
+            static fn(ProductCard $card): array => [
+                'id' => $card->id,
+                'name' => $card->name,
+                'options' => $card->options,
+                // Structured, closed-vocabulary attributes only (material, and similar) — never
+                // `description`, which is free text with no closed vocabulary to audit against. See
+                // BoundedProperties for the per-product cap, and ProseAudit::unbackedProperties() for the
+                // audit this now requires: a value stated in prose must be backed by a rendered card.
+                'properties' => BoundedProperties::of($card->properties),
+            ],
+            $cards,
+        );
     }
 }
