@@ -211,6 +211,15 @@ whether it can be bought is two lookups for a decision that is a single thought.
     font-variant-numeric: tabular-nums;
 }
 
+// Qualifies the figure beside it; it must never be allowed to outweigh it. Left unstyled it
+// inherits Bootstrap Reboot's 1rem paragraph margin and the storefront's body font-size, becoming
+// the largest text on the card and breaking the price/stock baseline `__facts` exists to hold.
+.swag-assistant-card__price-note {
+    margin: 0;
+    color: $swag-assistant-meta;
+    font-size: $swag-assistant-font-micro;
+}
+
 .swag-assistant-card__stock {
     display: flex;
     gap: 5px;

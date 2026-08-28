@@ -14,6 +14,7 @@ use Shopware\Core\Content\Property\Aggregate\PropertyGroupOption\PropertyGroupOp
 use Shopware\Core\Content\Property\PropertyGroupEntity;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
 /**
@@ -75,6 +76,7 @@ final class DalProductCardMapperTest extends TestCase
         // raw `price` read returns null for them. getCalculatedPrice() is what the DAL has
         // already resolved against inheritance, customer group and rules.
         $card = $this->mapper()->map($this->product(74.90, 0), StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(74.90, $card->price);
         self::assertSame('EUR', $card->currency);
@@ -85,6 +87,7 @@ final class DalProductCardMapperTest extends TestCase
         // The parent claims available with stock 35 while Blue/M is sold out. Answering
         // "is the blue M in stock?" with the parent's number is the failure D4 exists for.
         $card = $this->mapper()->map($this->product(74.90, 0), StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(0, $card->stock);
         self::assertFalse($card->isInStock());
@@ -94,6 +97,7 @@ final class DalProductCardMapperTest extends TestCase
     public function testOptionsAreKeyedByGroupNameSoAVariantQuestionCanBeAnswered(): void
     {
         $card = $this->mapper()->map($this->product(74.90, 0), StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(['Colour' => 'Blue', 'Size' => 'M'], $card->options);
     }
@@ -101,6 +105,7 @@ final class DalProductCardMapperTest extends TestCase
     public function testTheParentIdSurvivesSoVariantResolutionKnowsWhereToLook(): void
     {
         $card = $this->mapper()->map($this->product(79.90, 12), StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(self::PARENT_ID, $card->parentId);
         self::assertSame('/detail/' . self::BLUE_M_ID, $card->url);
@@ -116,6 +121,7 @@ final class DalProductCardMapperTest extends TestCase
         $parent->setParentId(null);
 
         $card = $this->mapper()->map($parent, StockSource::Parent, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(StockSource::Parent, $card->stockSource);
         self::assertNull($card->parentId);
@@ -131,7 +137,10 @@ final class DalProductCardMapperTest extends TestCase
         $orphan->setName('Wide');
         $product->setOptions(new PropertyGroupOptionCollection([$orphan]));
 
-        self::assertSame([], $this->mapper()->map($product, StockSource::Variant, 'EUR')->options);
+        $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
+
+        self::assertSame([], $card->options);
     }
 
     public function testMinPurchaseAndPurchaseStepsSurviveOntoTheCardRatherThanDefaultingToOne(): void
@@ -145,6 +154,7 @@ final class DalProductCardMapperTest extends TestCase
         $product->setPurchaseSteps(4);
 
         $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(24, $card->minPurchase);
         self::assertSame(4, $card->purchaseSteps);

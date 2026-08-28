@@ -199,15 +199,14 @@ final class AddToCartTool
         ];
     }
 
+    /**
+     * Delegates to {@see CartCorrectionNote::lineQuantity()} rather than repeating its loop —
+     * this class already depends on that one for the note text, and a second copy of the same
+     * "find the line for this variant" search is one more place to fix the next time it changes.
+     */
     private function existingLineQuantity(string $variantId): int
     {
-        foreach ($this->gateway->cart()->lineItems as $line) {
-            if ($line->variantId === $variantId) {
-                return $line->quantity;
-            }
-        }
-
-        return 0;
+        return CartCorrectionNote::lineQuantity($this->gateway->cart(), $variantId);
     }
 
     /** @return array{note: string} */

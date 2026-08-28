@@ -320,11 +320,20 @@ final readonly class DalCommerceGateway implements
                 continue;
             }
 
-            $cards[] = $this->mapper->map(
+            $card = $this->mapper->map(
                 $entity,
                 StockSource::forProductRow($entity->getParentId(), $entity->getChildCount()),
                 $currency,
             );
+
+            // A product whose price the calculator never touched: the mapper already decided this
+            // is not a card that can be built rather than one priced at a fabricated 0.0. Skipped
+            // the same way a non-entity row above is — not returned, not substituted.
+            if ($card === null) {
+                continue;
+            }
+
+            $cards[] = $card;
         }
 
         return $cards;

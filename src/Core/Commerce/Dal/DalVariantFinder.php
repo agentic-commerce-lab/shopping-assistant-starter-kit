@@ -82,6 +82,12 @@ final readonly class DalVariantFinder
             // every card carries its own stock and price by construction.
             $card = $this->mapper->map($entity, StockSource::Variant, $currency);
 
+            // A variant the mapper could not price is not a candidate match — it is not a card at
+            // all, the same treatment DalCommerceGateway::mapAll() gives it.
+            if ($card === null) {
+                continue;
+            }
+
             if (VariantSelectionMatcher::matchesAll($card, $selections)) {
                 $matches[] = $card;
             }

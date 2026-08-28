@@ -29,18 +29,30 @@ final class CartCorrectionNote
         return 0;
     }
 
+    /**
+     * The LAST matching notice, not the first.
+     *
+     * `Processor::runProcessors()` copies a cart's persistent errors into the next cart *before*
+     * its processors run, and `CartService` caches the processed cart per token — so within one
+     * HTTP request handling two tool calls, errors accumulate rather than reset. A stale notice
+     * from an earlier call therefore sorts before the fresh one this call actually produced, and
+     * taking the first would explain the right quantity with the wrong, carried-over reason.
+     * Fresh errors are appended after carried-over ones, so the last match is the current one.
+     */
     public static function reasonFor(CartSummary $cart, string $variantId): ?CartNoticeReason
     {
+        $reason = null;
+
         foreach ($cart->notices as $notice) {
             // An unattributed notice ('' variant id) is not claimed for this variant: a cart
             // carries every line's complaints, and explaining one product's result with another
             // product's problem is a new lie in place of the old one.
             if ($notice->variantId === $variantId) {
-                return $notice->reason;
+                $reason = $notice->reason;
             }
         }
 
-        return null;
+        return $reason;
     }
 
     /**

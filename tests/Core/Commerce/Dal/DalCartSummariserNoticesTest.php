@@ -6,12 +6,15 @@ namespace Swag\AssistantStarterKit\Tests\Core\Commerce\Dal;
 
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Cart\Cart;
+use Shopware\Core\Checkout\Cart\Error\Error;
+use Shopware\Core\Checkout\Cart\Error\GenericCartError;
 use Shopware\Core\Checkout\Cart\LineItem\LineItem;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Content\Product\Cart\MinOrderQuantityError;
+use Shopware\Core\Content\Product\Cart\ProductNotFoundError;
 use Shopware\Core\Content\Product\Cart\ProductOutOfStockError;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartSummariser;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNoticeReason;
@@ -85,10 +88,12 @@ final class DalCartSummariserNoticesTest extends TestCase
         self::assertSame(CartNoticeReason::MinimumQuantity, $notice->reason);
     }
 
-    public function testAnErrorThisPluginDoesNotKnowIsCarriedRatherThanDropped(): void
+    public function testAKnownOutOfStockErrorMapsToItsOwnReasonRatherThanOther(): void
     {
-        // An unknown reason still means "the cart is not what was asked for". Dropping it would
-        // let the tool report a clean add over a cart Shopware complained about.
+        // `product-out-of-stock` is one of the four keys CartNoticeReason::fromMessageKey() maps
+        // explicitly, so ProductOutOfStockError must resolve to CartNoticeReason::OutOfStock, not
+        // to the Other fallback. Previously named/commented as if this covered an UNKNOWN reason —
+        // it does not; see testAnUnmappedMessageKeyBecomesOther() below for that case.
         $cart = $this->cart(0.0);
         $cart->addErrors(new ProductOutOfStockError(self::BLACK_M_ID, 'Trail Jersey'));
 
@@ -96,6 +101,47 @@ final class DalCartSummariserNoticesTest extends TestCase
 
         self::assertCount(1, $summary->notices);
         self::assertSame(CartNoticeReason::OutOfStock, $summary->notices[0]?->reason);
+    }
+
+    public function testAnUnmappedMessageKeyBecomesOther(): void
+    {
+        // A genuinely unrecognised key — `product-not-found` is not one of the four
+        // CartNoticeReason::fromMessageKey() maps explicitly — still means "the cart is not what
+        // was asked for". Dropping it would let the tool report a clean add over a cart Shopware
+        // complained about; `Other` is what CartCorrectionNote::because()'s default arm depends on.
+        $cart = $this->cart(0.0);
+        $cart->addErrors(new ProductNotFoundError(self::BLACK_M_ID));
+
+        $summary = (new DalCartSummariser())->summarise($cart, 'EUR', '/checkout/confirm');
+
+        self::assertCount(1, $summary->notices);
+        self::assertSame(CartNoticeReason::Other, $summary->notices[0]?->reason);
+        self::assertSame(self::BLACK_M_ID, $summary->notices[0]?->variantId);
+    }
+
+    public function testAnErrorIdNotPrefixedByItsMessageKeyYieldsAnEmptyVariantIdRatherThanAWrongOne(): void
+    {
+        // notices() recovers the variant by stripping the message key off the front of the error's
+        // id, on the assumption every cart error is built that way. GenericCartError is not: its id
+        // and message key are independent, so an id that does not start with the key exercises the
+        // branch every product-cart error happens to avoid — an unattributed notice is still true;
+        // a misattributed one is not.
+        $cart = $this->cart(0.0);
+        $cart->addErrors(new GenericCartError(
+            id: 'line-1',
+            messageKey: 'min-order-quantity',
+            parameters: [],
+            level: Error::LEVEL_WARNING,
+            blockOrder: true,
+            persistent: true,
+            blockResubmit: true,
+        ));
+
+        $summary = (new DalCartSummariser())->summarise($cart, 'EUR', '/checkout/confirm');
+
+        self::assertCount(1, $summary->notices);
+        self::assertSame('', $summary->notices[0]?->variantId);
+        self::assertSame(CartNoticeReason::MinimumQuantity, $summary->notices[0]?->reason);
     }
 
     public function testACleanCartCarriesNoNotices(): void

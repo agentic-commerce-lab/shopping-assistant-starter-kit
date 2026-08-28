@@ -46,10 +46,13 @@ final readonly class ProductCard
          */
         public int $priceQuantity = 1,
         /**
-         * Whether Shopware calculated more than one price tier for this product.
+         * Whether a CHEAPER tier than the one `$price` quotes applies at a higher quantity.
          *
-         * The card says so rather than implying its figure is the only one, and never computes
-         * what the other tiers cost.
+         * Not "Shopware calculated more than one price tier" — a product already quoted at its
+         * cheapest tier (the ordinary case when `minPurchase` sits at the top of the ladder) has
+         * no lower price to promise, and saying so would be a claim Shopware did not calculate.
+         * True only when the tier `$price` came from is not the last one in `calculatedPrices`.
+         * The card never computes what that other tier costs.
          */
         public bool $hasVolumePricing = false,
         /**

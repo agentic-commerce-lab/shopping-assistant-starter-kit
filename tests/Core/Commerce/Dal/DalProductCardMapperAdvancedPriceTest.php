@@ -12,6 +12,7 @@ use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Content\Product\SalesChannel\SalesChannelProductEntity;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
 /**
@@ -83,6 +84,7 @@ final class DalProductCardMapperAdvancedPriceTest extends TestCase
         $product = $this->withTiers($this->product(79.90, 12), [[59.90, 1]]);
 
         $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(59.90, $card->price);
         self::assertSame(1, $card->priceQuantity);
@@ -95,12 +97,33 @@ final class DalProductCardMapperAdvancedPriceTest extends TestCase
         // shopper can buy at. The card states the quantity it assumes so the figure is not
         // stated bare — see spec 7.1, the one place this deliberately differs from the
         // storefront's cheapest-tier "from" price.
+        //
+        // `hasVolumePricing` is FALSE here on purpose: 70.00 is already the last, cheapest tier
+        // Shopware calculated. Until 2026-08-28 this asserted true, which told a shopper "lower
+        // unit prices at higher quantities" about a product with none — the flag meant "more than
+        // one tier exists" rather than "a cheaper tier still applies above this one".
         $product = $this->withTiers($this->product(79.90, 500), [[79.90, 23], [70.00, 24]], 24);
 
         $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(70.00, $card->price);
         self::assertSame(24, $card->priceQuantity);
+        self::assertFalse($card->hasVolumePricing);
+    }
+
+    public function testALowerTierAboveTheQuotedOneSetsHasVolumePricing(): void
+    {
+        // The other polarity, pinned beside the one above: minPurchase 1 with tiers 1-9 / 10+
+        // quotes the first tier, and a cheaper one genuinely sits above it — the case the note
+        // is supposed to describe.
+        $product = $this->withTiers($this->product(79.90, 500), [[79.90, 9], [70.00, 10]], 1);
+
+        $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
+
+        self::assertSame(79.90, $card->price);
+        self::assertSame(1, $card->priceQuantity);
         self::assertTrue($card->hasVolumePricing);
     }
 
@@ -110,9 +133,28 @@ final class DalProductCardMapperAdvancedPriceTest extends TestCase
         // has an empty `calculatedPrices`, and the only figure Shopware calculated for it is
         // `calculatedPrice`.
         $card = $this->mapper()->map($this->product(74.90, 3), StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(74.90, $card->price);
         self::assertSame(1, $card->priceQuantity);
         self::assertFalse($card->hasVolumePricing);
+    }
+
+    public function testAProductWhoseCalculatedPriceWasNeverAssignedYieldsNoCardRatherThanAFabricatedZero(): void
+    {
+        // The realistic shape of the degradation guard, not the one `tiers()` itself guards
+        // against: `ProductPriceCalculator::calculateAdvancePrices()` assigns `calculatedPrices`
+        // unconditionally (an empty collection here, never uninitialised), while
+        // `calculatePrice()` returns early when `price` or `taxId` is null and leaves
+        // `calculatedPrice` untouched. Unguarded, reading it throws an `Error` and ends the
+        // shopper's turn; guarded, the mapper returns null rather than fabricating a €0.00 card.
+        $product = new SalesChannelProductEntity();
+        $product->setId(self::BLUE_M_ID);
+        $product->setParentId(self::PARENT_ID);
+        $product->setName('Trail Jersey');
+        $product->setCalculatedPrices(new PriceCollection());
+        // $product->calculatedPrice is deliberately left uninitialised.
+
+        self::assertNull($this->mapper()->map($product, StockSource::Variant, 'EUR'));
     }
 }

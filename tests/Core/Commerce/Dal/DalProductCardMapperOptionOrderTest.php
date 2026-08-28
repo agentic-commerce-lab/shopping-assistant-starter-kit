@@ -15,6 +15,7 @@ use Shopware\Core\Content\Property\PropertyGroupEntity;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\PropertyGroupOptionOrder;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
 /**
@@ -94,6 +95,7 @@ final class DalProductCardMapperOptionOrderTest extends TestCase
         $product->setOptions(new PropertyGroupOptionCollection([$size, $colour]));
 
         $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame(['Colour' => 'Blue', 'Size' => 'M'], $card->options);
     }
@@ -108,9 +110,9 @@ final class DalProductCardMapperOptionOrderTest extends TestCase
         $product = $this->product(74.90, 3);
         $product->setOptions(new PropertyGroupOptionCollection([$colour, $size]));
 
-        self::assertSame(
-            ['Size' => 'M', 'Colour' => 'Blue'],
-            $this->mapper()->map($product, StockSource::Variant, 'EUR')->options,
-        );
+        $card = $this->mapper()->map($product, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
+
+        self::assertSame(['Size' => 'M', 'Colour' => 'Blue'], $card->options);
     }
 }

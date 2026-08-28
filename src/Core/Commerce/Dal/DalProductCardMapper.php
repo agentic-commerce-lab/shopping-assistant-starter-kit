@@ -39,6 +39,13 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *    is the caller's knowledge (it knows whether it fetched a variant or a parent), and
  *    labelling a parent's aggregate stock as `variant` is the defect that cancels orders (D4).
  *    This class will not upgrade the source it is handed.
+ * 4. **A card with no resolvable price is not built at all — `map()` returns null.** Every field
+ *    on {@see ProductCard} is documented as a fact, and a fabricated 0.0 would be the one this
+ *    whole pipeline exists to prevent: a shopper reading "free" or a merchant reading a €0 order.
+ *    Mirrors {@see DalCommerceGateway::mapAll()}'s own treatment of a row it cannot map — that
+ *    method already skips anything that is not a `SalesChannelProductEntity` rather than
+ *    inventing a card for it; a product whose price the calculator never touched gets the same
+ *    "not built" treatment, not a different one.
  */
 final readonly class DalProductCardMapper
 {
@@ -55,7 +62,7 @@ final readonly class DalProductCardMapper
      *        card in one of them labelled with the other's code. A wrong currency beside a right
      *        number is a fabricated fact, which is the one thing this pipeline exists to prevent.
      */
-    public function map(SalesChannelProductEntity $product, StockSource $source, string $currency): ProductCard
+    public function map(SalesChannelProductEntity $product, StockSource $source, string $currency): ?ProductCard
     {
         // The smallest order this shopper may actually place. Pricing a case-of-24 product at one
         // unit quotes a figure nobody can buy at; see spec 7.1 for why this differs from the
@@ -64,12 +71,17 @@ final readonly class DalProductCardMapper
         $tiers = self::tiers($product);
         $applicable = $this->prices->forQuantity($tiers, $quantity);
 
+        $price = $applicable?->getUnitPrice() ?? self::fallbackPrice($product);
+        if ($price === null) {
+            return null;
+        }
+
         return new ProductCard(
             id: $product->getId(),
             parentId: $product->getParentId(),
             name: $this->inherited($product->getTranslation('name'), $product->getName()) ?? '',
             description: $this->inherited($product->getTranslation('description'), $product->getDescription()),
-            price: $applicable?->getUnitPrice() ?? $product->getCalculatedPrice()->getUnitPrice(),
+            price: $price,
             currency: $currency,
             stock: $product->getStock(),
             stockSource: $source,
@@ -80,7 +92,13 @@ final readonly class DalProductCardMapper
             categoryPath: [],
             properties: $this->options->multiValued($product->getProperties()),
             priceQuantity: $quantity,
-            hasVolumePricing: $tiers->count() > 1,
+            // NOT "more than one tier exists" — that let a case-of-24 product with tiers 1-23 /
+            // 24+ and `minPurchase = 24` (quoted at the last, cheapest tier) tell a shopper there
+            // were lower prices further up, when there are none. True only when `$applicable` is
+            // not the collection's last entry, i.e. a cheaper tier still sits above the one quoted.
+            // Both are the same `CalculatedPrice` instance when they agree, and `PriceCollection`
+            // has no value equality, so this is an identity comparison on purpose.
+            hasVolumePricing: $applicable !== $tiers->last(),
             // Same figure as priceQuantity above, under the name the cart-quantity-correction
             // code reads it by (see ProductCard::$minPurchase's own docblock): left at its
             // default of 1 here, a real product with a minimum of 24 would report 1, which is
@@ -105,6 +123,27 @@ final readonly class DalProductCardMapper
             return $product->getCalculatedPrices();
         } catch (\Error) {
             return new PriceCollection();
+        }
+    }
+
+    /**
+     * The product's own price at quantity one, or null when it cannot be read.
+     *
+     * `getCalculatedPrice()` has the identical hazard `tiers()` above guards `getCalculatedPrices()`
+     * against — a typed property with no default, so reading it before the calculator runs throws
+     * an `Error` — but with the realistic failure the other way round.
+     * `ProductPriceCalculator::calculateAdvancePrices()` assigns `calculatedPrices` unconditionally
+     * (an empty `PriceCollection` on a product with no advanced prices, never an uninitialised one),
+     * while `calculatePrice()` returns early when `price` or `taxId` is null, leaving
+     * `calculatedPrice` uninitialised while `calculatedPrices` is a valid empty collection — exactly
+     * the product that reaches this fallback. Unguarded, that product ended the shopper's whole turn.
+     */
+    private static function fallbackPrice(SalesChannelProductEntity $product): ?float
+    {
+        try {
+            return $product->getCalculatedPrice()->getUnitPrice();
+        } catch (\Error) {
+            return null;
         }
     }
 

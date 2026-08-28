@@ -14,6 +14,7 @@ use Shopware\Core\Content\Property\Aggregate\PropertyGroupOption\PropertyGroupOp
 use Shopware\Core\Content\Property\PropertyGroupEntity;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductCardMapper;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\ProductUrlResolver;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
 /**
@@ -83,6 +84,7 @@ final class DalProductCardMapperInheritanceTest extends TestCase
         $variant->setTranslated(['name' => 'Trail Jersey', 'description' => 'Lightweight jersey.']);
 
         $card = $this->mapper()->map($variant, StockSource::Variant, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
 
         self::assertSame('Trail Jersey', $card->name);
         self::assertSame('Lightweight jersey.', $card->description);
@@ -93,6 +95,9 @@ final class DalProductCardMapperInheritanceTest extends TestCase
         $product = $this->product(79.90, 35);
         $product->setTranslated([]);
 
-        self::assertSame('Trail Jersey', $this->mapper()->map($product, StockSource::Parent, 'EUR')->name);
+        $card = $this->mapper()->map($product, StockSource::Parent, 'EUR');
+        \assert($card instanceof ProductCard, 'map() must return a card for a product with a calculated price.');
+
+        self::assertSame('Trail Jersey', $card->name);
     }
 }
