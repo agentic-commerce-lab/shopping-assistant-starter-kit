@@ -20,7 +20,7 @@
 - **mago's `excessive-parameter-list` is `error`-level at threshold 5** (`mago.toml`) — a CI-failing gate, not a style nit. Any new constructor must stay at or under 5 parameters; `AssistantTurn` is handled explicitly in Task 1.
 - **New tools/fields are capability-gated**, never prompt-instructed: a disabled capability is simply never constructed (mirrors `enableAddToCart`/`enableEscalation`), so it never appears in what the model sees.
 - **Reason codes, not new claim shapes.** Match reasons reuse the `reasonCode` convention `BlocklistFilter` already established (`blocked_product`, `blocked_category`), not a new ad hoc structure.
-- **Verification bar:** `composer test` (984 tests, 18854 assertions, baseline captured 2026-08-28) and `composer quality` must stay green throughout. `composer test:eval` makes real LLM calls against `ASSISTANT_LLM_BASE_URL` — run it deliberately at named checkpoints (Tasks 13, 17, 22), never incidentally.
+- **Verification bar:** `composer test` (984 tests, 18854 assertions, baseline captured 2026-08-28) and `composer quality` must stay green throughout. `composer test:eval` makes real LLM calls against `ASSISTANT_LLM_BASE_URL` — run it deliberately at named checkpoints (Tasks 13, 17, 22), never incidentally. **Real baseline captured 2026-08-28, default catalogue: 29 journeys, 18 ran, 18 passed, 11 skipped (the `scale_*`/`fashion_*` journeys, which need `ASSISTANT_EVAL_CATALOG=large`/`=fashion`), 0 failures.** Tasks 13 and 22 additionally run the large and fashion catalogues — not just the default one — since this plan's own Task 5 finding (`PropertyClaimExtractor` must exclude the `categoryPath` facet, and must treat `options` as backing too, both confirmed by measuring the real `large`/`fashion` facet sets: 62 fields/623 values on `large`, `properties.Material` genuinely present on `fashion`) is exactly the kind of gap that stays invisible on the twelve-product default catalogue alone.
 
 ---
 
@@ -628,6 +628,8 @@ git commit -m "feat: expose bounded product properties to the model via search_p
 - Consumes: `FacetSet`/`Facet` (`src/Core/Commerce/Dto/{FacetSet,Facet}.php`) — `Facet::$values` is `list<string>`.
 - Produces: `PropertyClaimExtractor::extract(string $prose, FacetSet $facets): list<string>` — known facet values found verbatim (case-insensitive, whole-token) in the prose, deduplicated, in the shop's own casing.
 
+**A real, verified constraint on this class, found by measuring the actual `large`/`fashion` eval catalogues before writing this task:** `FacetSet` carries more than product attributes. `FixtureFacetBuilder::build()` (`src/Core/Commerce/Fixture/FixtureFacetBuilder.php`) and `DalFacetReader` (`src/Core/Commerce/Dal/DalFacetReader.php`, production) both also emit a `categoryPath` Terms facet with real string values — measured at 399 values on the fashion catalogue — and a `price` Range facet. Neither is a product property, and `categoryPath` in particular has genuine string values that could coincidentally appear in prose. Both builders namespace true property-group facets under a shared `properties.` prefix (`FixtureFacetBuilder`: `sprintf('properties.%s', $group)`; `DalFacetReader::GROUP_PREFIX = 'properties.'`) — so this class must only scan facets whose field starts with that prefix, or every category-name mention becomes a false "unbacked property claim."
+
 - [ ] **Step 1: Write the failing test**
 
 ```php
@@ -648,8 +650,11 @@ final class PropertyClaimExtractorTest extends TestCase
     private function facets(): FacetSet
     {
         return new FacetSet([
-            new Facet('Material', FacetType::Terms, ['Merino', 'Nylon']),
-            new Facet('Colour', FacetType::Terms, ['Blue', 'Black']),
+            new Facet('properties.Material', FacetType::Terms, ['Merino', 'Nylon']),
+            new Facet('properties.Colour', FacetType::Terms, ['Blue', 'Black']),
+            // Not a property — must never be scanned. Real value taken from the fashion catalogue
+            // measurement above, so this test fails honestly if the exclusion is ever dropped.
+            new Facet('categoryPath', FacetType::Terms, ['Dresses']),
         ]);
     }
 
@@ -681,6 +686,15 @@ final class PropertyClaimExtractorTest extends TestCase
 
         self::assertSame(['Merino'], $found);
     }
+
+    public function testNeverScansACategoryPathFacet(): void
+    {
+        // "Dresses" is a real categoryPath value in this fixture set, and appears in the prose —
+        // it must not be extracted as a property claim, since it is not one.
+        $found = (new PropertyClaimExtractor())->extract('We have lovely Dresses in stock.', $this->facets());
+
+        self::assertSame([], $found);
+    }
 }
 ```
 
@@ -711,9 +725,18 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
  * literal, exact value from this turn's own facets is ever extracted, never an inferred or synonymous
  * one. A property value that also happens to be an ordinary English word can still produce a false
  * positive; accepted for v1 per the design spec, revisit if it proves noisy.
+ *
+ * **Only `properties.*` facets are scanned.** `FacetSet` also carries `categoryPath` (a real Terms
+ * facet, not a product attribute — measured at 399 values on the fashion eval catalogue) and `price`
+ * (a Range facet already excluded by requiring `properties.` prefix, belt-and-braces with the type
+ * check below). Both `FixtureFacetBuilder` and the production `DalFacetReader` namespace true
+ * property-group facets under this same `properties.` prefix — see either class's own docblock —
+ * so filtering on it is the shop's own convention, not one invented here.
  */
 final class PropertyClaimExtractor
 {
+    private const PROPERTY_FIELD_PREFIX = 'properties.';
+
     /**
      * @return list<string> known facet values found in the prose, in the shop's own casing, deduplicated
      */
@@ -723,6 +746,10 @@ final class PropertyClaimExtractor
         $found = [];
 
         foreach ($facets->facets as $facet) {
+            if (FacetType::Terms !== $facet->type || !str_starts_with($facet->field, self::PROPERTY_FIELD_PREFIX)) {
+                continue;
+            }
+
             foreach ($facet->values as $value) {
                 if ($value === '' || \in_array($value, $found, true)) {
                     continue;
@@ -740,6 +767,10 @@ final class PropertyClaimExtractor
     }
 }
 ```
+
+Add `use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetType;` to this file's imports.
+
+**This also changes Task 4 and Task 15's shape slightly**, worth noting here since it is easy to miss: `ToolProductSummary`'s exposed `properties` key (Task 4) is unaffected — it reads `ProductCard::$properties` directly, not facets, so it already only ever carries true properties. Only the *audit* needed the prefix filter, because only the audit reads the wider `FacetSet`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -762,7 +793,9 @@ git commit -m "feat: add PropertyClaimExtractor, closed-vocabulary attribute det
 - Test: covered inline by Task 7's `ProseAuditPropertyTest.php` (this class has no independent public contract worth testing separately from the audit that consumes it — mirrors how `BackedFigures` is exercised only through `ProseAuditTest`/`FactRendererUnbackedPricesTest`, not its own dedicated test file).
 
 **Interfaces:**
-- Produces: `BackedPropertyValues::of(list<ProductCard> $rendered): array<string, true>` — every property value any rendered card carries, lowercased, as a lookup set.
+- Produces: `BackedPropertyValues::of(list<ProductCard> $rendered): array<string, true>` — every value any rendered card's `properties` **or** `options` carries, lowercased, as a lookup set.
+
+**Why `options` too, confirmed against the same production source Task 5 checked:** `DalFacetReader::GROUPED_AGGREGATIONS = ['properties', 'options']` — a real shop's facet layer folds variant-defining option values (Colour, Size) into the *same* `properties.<Group>` namespace `PropertyClaimExtractor` scans, because both come from Shopware's property-group system. `PropertyClaimExtractor` therefore can and will extract a genuine option value (e.g. "Blue") as a candidate claim. If this class checked only `$card->properties`, a model correctly restating a real option value — something it already legitimately knows via `ToolProductSummary`'s `options` key — would be flagged as an invented attribute: the exact "assertion fires on correct behaviour" failure ruling R85 exists to prevent, arriving through a new door. Checking both fields is what keeps that door closed.
 
 - [ ] **Step 1: Implement directly (no separate test — see note above; Task 7 exercises it)**
 
@@ -776,13 +809,16 @@ namespace Swag\AssistantStarterKit\Core\Grounding;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 
 /**
- * Every property value a reply is entitled to state, lowercased for a case-insensitive lookup —
- * the {@see ProseAudit::unbackedProperties()} analogue of {@see BackedFigures::inCents()}.
+ * Every value a reply is entitled to state as a product attribute, lowercased for a
+ * case-insensitive lookup — the {@see ProseAudit::unbackedProperties()} analogue of
+ * {@see BackedFigures::inCents()}.
  *
- * Simpler than `BackedFigures`: an attribute claim has only one legitimate source, the rendered
- * cards' own `properties`, not three. A value the shopper introduced themselves is exempted
- * separately, directly in {@see ProseAudit::unbackedProperties()}, because that check needs the
- * original claimed string rather than a pre-built set.
+ * Checks both `properties` and `options`, not `properties` alone: a real shop's facet layer
+ * (`DalFacetReader::GROUPED_AGGREGATIONS`) merges variant option values (Colour, Size) into the same
+ * `properties.<Group>` namespace {@see PropertyClaimExtractor} scans, so a genuine option value is a
+ * candidate claim {@see PropertyClaimExtractor} can and will extract. A value the shopper introduced
+ * themselves is exempted separately, directly in {@see ProseAudit::unbackedProperties()}, because
+ * that check needs the original claimed string rather than a pre-built set.
  */
 final class BackedPropertyValues
 {
@@ -802,6 +838,10 @@ final class BackedPropertyValues
                 foreach ($groupValues as $value) {
                     $values[mb_strtolower($value)] = true;
                 }
+            }
+
+            foreach ($card->options as $value) {
+                $values[mb_strtolower($value)] = true;
             }
         }
 
@@ -845,12 +885,20 @@ final class ProseAuditPropertyTest extends TestCase
 {
     private function facets(): FacetSet
     {
+        // `properties.` prefix, matching the real convention PropertyClaimExtractor now requires
+        // (Task 5) — both FixtureFacetBuilder and DalFacetReader namespace true property-group
+        // facets this way.
         return new FacetSet([
-            new Facet('Material', FacetType::Terms, ['Merino', 'Nylon']),
+            new Facet('properties.Material', FacetType::Terms, ['Merino', 'Nylon']),
+            new Facet('properties.Colour', FacetType::Terms, ['Blue']),
         ]);
     }
 
-    private function card(array $properties): ProductCard
+    /**
+     * @param array<string, list<string>> $properties
+     * @param array<string, string>       $options
+     */
+    private function card(array $properties, array $options = []): ProductCard
     {
         return new ProductCard(
             id: 'fx-001',
@@ -864,6 +912,7 @@ final class ProseAuditPropertyTest extends TestCase
             deliveryTime: null,
             url: '/p/fx-001',
             imageUrl: null,
+            options: $options,
             properties: $properties,
         );
     }
@@ -900,6 +949,22 @@ final class ProseAuditPropertyTest extends TestCase
             'I searched for Nylon items as you asked, but found none in stock.',
             [$this->card(['Material' => ['Merino']])],
             'do you have anything in Nylon?',
+            $this->facets(),
+        );
+
+        self::assertSame([], $unbacked);
+    }
+
+    public function testARealOptionValueIsNotFlagged(): void
+    {
+        // "Blue" lives in this card's `options` (a variant selection), not its `properties` — but a
+        // real shop's facet layer merges both under the same properties.* namespace (Task 6's
+        // finding, DalFacetReader::GROUPED_AGGREGATIONS), so PropertyClaimExtractor can extract it as
+        // a candidate claim. Correctly restating a real option value must never be flagged.
+        $unbacked = (new ProseAudit())->unbackedProperties(
+            'It comes in Blue.',
+            [$this->card(properties: [], options: ['Colour' => 'Blue'])],
+            '',
             $this->facets(),
         );
 
@@ -1026,7 +1091,7 @@ final class FactRendererUnbackedPropertiesTest extends TestCase
         $renderer->registerRetrieved([$card]);
         $renderer->render(['fx-001']);
 
-        $facets = new FacetSet([new Facet('Material', FacetType::Terms, ['Merino', 'Nylon'])]);
+        $facets = new FacetSet([new Facet('properties.Material', FacetType::Terms, ['Merino', 'Nylon'])]);
         $unbacked = $renderer->unbackedPropertiesInProse('It is Nylon.', $facets);
 
         self::assertSame(['Nylon'], $unbacked);
@@ -1056,7 +1121,7 @@ final class FactRendererUnbackedPropertiesTest extends TestCase
         $renderer->registerRetrieved([$card]);
         $renderer->render(['fx-001']);
 
-        $facets = new FacetSet([new Facet('Material', FacetType::Terms, ['Merino'])]);
+        $facets = new FacetSet([new Facet('properties.Material', FacetType::Terms, ['Merino'])]);
 
         self::assertSame([], $renderer->unbackedPropertiesInProse('It is Merino.', $facets));
     }
@@ -1165,7 +1230,7 @@ This is one plumbing deliverable end to end — the warning reaching the browser
         $renderer->registerRetrieved([$product]);
 
         // fx-017's own properties (per the fixture) do not include "Nylon" — see catalog.json.
-        $facets = new FacetSet([new Facet('Material', FacetType::Terms, ['Nylon'])]);
+        $facets = new FacetSet([new Facet('properties.Material', FacetType::Terms, ['Nylon'])]);
         $output = new Output('gpt-x', new TextResult('It is made of Nylon.'), new MessageBag());
 
         (new GroundingOutputProcessor($renderer, $trace, $facets))->processOutput($output);
@@ -1592,16 +1657,24 @@ Expected: every test green, including all Phase 1 additions. Compare the total t
 Run: `composer quality`
 Expected: clean, same as the plan's captured baseline (format/lint/typecheck pass; jscpd's pre-existing 92 clones and the one ignored security advisory are accepted baseline noise, not new failures — if jscpd's clone count grew because of duplication this plan introduced, that is a real finding to fix, not to wave through).
 
-- [ ] **Step 3: Run the full eval suite, including the two new journeys, and compare against a pre-Phase-1 baseline**
+- [ ] **Step 3: Run the full eval suite against the default catalogue, and compare against the real captured baseline**
 
-This is the before/after check: if a baseline `composer test:eval` run was captured before Task 1 started (per the spec's own "Implementation-time sequence"), run it again now and diff journey-by-journey. If no such baseline run exists yet, run it now as both the first and only measurement, and record the full pass/fail table (all existing journeys plus the two new ones) in the PR description or commit message for Task 13, since this is real money/time spent and the result should not be thrown away.
+**Baseline already captured, 2026-08-28, before Task 1 started:** `composer test:eval` → **29 journeys, 18 ran, 18 passed, 11 skipped, 0 failures.** The 11 skips are the `scale_*`/`fashion_*` journeys, which require `ASSISTANT_EVAL_CATALOG=large`/`=fashion` and are correctly skipped when that's unset — not a gap for this comparison, since every journey this plan adds also targets the default catalogue.
 
 Run: `composer test:eval`
-Expected: every journey that passed before Phase 1 still passes (no regression in retrieval, grounding, or existing behavior); `property_grounded_claim` passes; `property_claim_unbacked` passes (or, per Task 12 Step 2's note, its result is understood and acted on rather than ignored).
+Expected: **18 ran, 18 passed, 11 skipped still — plus the two new journeys, so 20 ran / 20 passed / 11 skipped.** Any journey that passed in the captured baseline and does not pass now is a real regression in retrieval, grounding, or existing behavior — not something to explain away. `property_claim_unbacked`'s result specifically needs a human read per Task 12 Step 2's note, not just a green checkmark.
 
-- [ ] **Step 4: N/A** (verification-only checkpoint, no code change)
+- [ ] **Step 4: Run the eval suite against the large and fashion catalogues too**
 
-- [ ] **Step 5: N/A** (nothing to commit — if Step 3 surfaces a regression, fix it as its own small commit before proceeding to Phase 2)
+These were the 11 skipped journeys above, plus this plan's own new journeys re-run against real scale and real attribute diversity — the gap identified after measuring `PropertyClaimExtractor`'s actual target data (`docs/superpowers/plans/2026-08-28-recommendation-explanation-and-comparison.md`'s own Task 5 finding: 62 facet fields / 623 values on `large`, `properties.Material` genuinely present with 13 values on `fashion`). This is real evidence Phase 1 works at scale and against richer attribute data, not just against the one brake-pad product the default catalogue happens to have.
+
+Run: `ASSISTANT_EVAL_CATALOG=large composer test:eval`
+Expected: the `scale_*` journeys (previously skipped) now run and pass, same as they did before this plan touched anything — Phase 1's changes must not regress large-catalogue retrieval. `property_grounded_claim`/`property_claim_unbacked` also run against `large` (they declare no catalogue requirement, so they are not skipped here) — confirm they still pass against real scale, not just the twelve-product fixture they were written against.
+
+Run: `ASSISTANT_EVAL_CATALOG=fashion composer test:eval`
+Expected: the `fashion_*` journeys (previously skipped) still pass. The two new property journeys also run here — this is the run that actually exercises a `properties.Material`-bearing product, the richer case the default catalogue's single brake pad only thinly covers.
+
+- [ ] **Step 5: N/A** (verification-only checkpoint, no code change; nothing to commit unless Steps 3-4 surface a regression, in which case fix it as its own small commit before proceeding to Phase 2)
 
 ---
 
@@ -2043,7 +2116,7 @@ git commit -m "feat: let the model explain retrieval reasons in plain words, wit
 
 - [ ] **Step 1: `composer test`** — expect green, count grows by Tasks 14-16's new tests.
 - [ ] **Step 2: `composer quality`** — expect clean, same baseline as Task 13.
-- [ ] **Step 3: `composer test:eval`**, full suite including `why_matched_term` — expect every previously-passing journey still passing, `why_matched_term` passing. Record the pass/fail table.
+- [ ] **Step 3: `composer test:eval`**, default catalogue, including `why_matched_term` — expect **19 ran / 19 passed / 11 skipped** (Task 13's 18+2 baseline, plus this task's one new journey). Record the pass/fail table. Deliberately narrower than Tasks 13/22: this checkpoint stays on the default catalogue only, since `MatchReasons` is pure retrieval-result post-processing with no new facet-scanning code path (unlike Task 5's `PropertyClaimExtractor`) — the large/fashion sweep at Task 13 already covers the shared foundation this task builds on, and re-running it here would be cost without new risk to catch.
 - [ ] **Step 4/5: N/A** — fix inline as its own commit if Step 3 regresses anything.
 
 ---
@@ -2568,13 +2641,24 @@ Expected: green. Report the final count against the plan's captured baseline (98
 
 Expected: clean, matching the captured baseline exactly (format/lint/typecheck pass, same pre-existing jscpd/security-advisory noise, no new duplication or issues introduced by this plan's own new files).
 
-- [ ] **Step 3: `composer test:eval`, the complete suite**
+- [ ] **Step 3: `composer test:eval`, the default catalogue**
 
-Every pre-existing journey (`blocked_item`, `cart_add`, ..., `vocabulary_not_inventory` — the full list from `tests/Journeys/`) plus all four new ones (`property_grounded_claim`, `property_claim_unbacked`, `why_matched_term`, `compare_two_products`). This is the definitive before/after: every journey that passed before Task 1 must still pass now, and all four new journeys must pass (or their genuine failure understood and either fixed or explicitly accepted as a known limitation, per Task 12 Step 2's note — never silently ignored).
+**Real captured baseline, 2026-08-28, before Task 1 started: 29 journeys, 18 ran, 18 passed, 11 skipped, 0 failures.** Every pre-existing journey (`blocked_item`, `cart_add`, ..., `vocabulary_not_inventory` — the full list from `tests/Journeys/`) plus all four new ones (`property_grounded_claim`, `property_claim_unbacked`, `why_matched_term`, `compare_two_products`).
 
-- [ ] **Step 4: N/A**
+Run: `composer test:eval`
+Expected: **20 ran / 20 passed / 11 skipped.** This is the definitive before/after on the default catalogue: every journey that passed before Task 1 must still pass now, and all four new journeys must pass (or their genuine failure understood and either fixed or explicitly accepted as a known limitation, per Task 12 Step 2's note — never silently ignored).
 
-- [ ] **Step 5: N/A** — if this checkpoint is fully green, the feature is done. If anything regressed, fix it as its own commit and re-run Steps 1-3 before considering the work finished.
+- [ ] **Step 4: `composer test:eval`, large and fashion catalogues**
+
+Closes the coverage gap the default-catalogue run leaves open: the 11 journeys skipped in Step 3 above, plus this plan's own new journeys, actually exercised against scale and against real attribute diversity — not assumed to work there.
+
+Run: `ASSISTANT_EVAL_CATALOG=large composer test:eval`
+Expected: the previously-skipped `scale_*` journeys now run and pass — no regression from anything Phase 1/2 touched (`PropertyClaimExtractor`'s facet scan, `FacetProbe`'s caching path, `MatchReasons`' extra pass over candidates). `property_grounded_claim`, `property_claim_unbacked`, `why_matched_term`, and `compare_two_products` also run here (they declare no catalogue requirement) — confirm they hold up against a real 62-field/623-value facet set, not just the twelve-product fixture they were written against.
+
+Run: `ASSISTANT_EVAL_CATALOG=fashion composer test:eval`
+Expected: the previously-skipped `fashion_*` journeys still pass, and the four new journeys run against a catalogue with genuine `properties.Material` diversity (confirmed present, 13 values, when this gap was first measured) — the strongest real evidence this feature does what Journeys 2 and 3 were asked to do, not just that it doesn't crash on one brake pad.
+
+- [ ] **Step 5: N/A** — if Steps 1-4 are fully green, the feature is done. If anything regressed on any catalogue, fix it as its own commit and re-run the affected steps before considering the work finished.
 
 ---
 
@@ -2582,4 +2666,4 @@ Every pre-existing journey (`blocked_item`, `cart_add`, ..., `vocabulary_not_inv
 
 - **Task ordering within Phase 1 matters mechanically**, not just logically: Task 2 references `FactRenderer::unbackedProperties()`, which does not exist until Task 8. This is called out explicitly in both tasks' steps — do not run the full suite between Task 2 and Task 8, only the targeted test files each step names.
 - **Two "N/A" steps appear repeatedly** (Tasks 10, 12, 16, 21, 22's Steps 3-5 in places) — these are journeys and checkpoints, which do not fit the write-test/implement/verify shape of a unit-level task. That is intentional, not a gap in the plan.
-- **Every `composer test:eval` run costs real API time and money.** Tasks 13, 17, and 22 are the only points this plan calls for a full eval run; do not run it more often than that while executing individual tasks — targeted `vendor/bin/phpunit --group eval --filter <journey-id>` runs (Tasks 12, 16, 21) are cheaper and sufficient for verifying one new journey in isolation.
+- **Every `composer test:eval` run costs real API time and money.** Tasks 13, 17, and 22 are the only points this plan calls for a full eval run; do not run it more often than that while executing individual tasks — targeted `vendor/bin/phpunit --group eval --filter <journey-id>` runs (Tasks 12, 16, 21) are cheaper and sufficient for verifying one new journey in isolation. **Tasks 13 and 22 each run three full sweeps** (default catalogue, `ASSISTANT_EVAL_CATALOG=large`, `ASSISTANT_EVAL_CATALOG=fashion`) — budget roughly 3x a single-catalogue run's time and cost for those two checkpoints specifically; Task 17 stays single-catalogue, see its own note for why.
