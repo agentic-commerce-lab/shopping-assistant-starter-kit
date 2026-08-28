@@ -48,6 +48,7 @@ final readonly class AssistantConfig
         public string $escalationUrl = '',
         public string $escalationMessage = '',
         public bool $enableMatchReasons = false,
+        public bool $enableCompareProducts = false,
         public bool $logTraces = true,
         /**
          * The sales channel this config was built for.

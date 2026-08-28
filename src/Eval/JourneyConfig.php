@@ -33,6 +33,7 @@ final class JourneyConfig
             'escalationUrl',
             'embeddingModel',
             'enableMatchReasons',
+            'enableCompareProducts',
         ]);
 
         if ($unknown !== []) {
@@ -60,6 +61,7 @@ final class JourneyConfig
             // the fifteen existing journeys must not silently acquire one.
             embeddingModel: (string) ($journey->config['embeddingModel'] ?? ''),
             enableMatchReasons: (bool) ($journey->config['enableMatchReasons'] ?? false),
+            enableCompareProducts: (bool) ($journey->config['enableCompareProducts'] ?? false),
         );
     }
 }
