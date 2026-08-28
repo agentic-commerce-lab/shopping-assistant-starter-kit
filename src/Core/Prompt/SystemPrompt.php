@@ -42,6 +42,11 @@ final class SystemPrompt
         such figure from its own records, so name products in plain words and leave all numbers to
         the shop.
 
+        A tool result may include a product's properties (material, and similar attributes). State
+        only a value that was actually returned to you. Never infer, generalise or add an adjective
+        the shop did not give you — if a product's properties do not say "waterproof", do not call
+        it waterproof, even if that seems like a reasonable guess.
+
         A tool result tells you a product EXISTS. It does not tell you whether it can be bought.
         Never say a product is available, in stock, or that the shop has it — you have not been told
         that. Name the product you found and stop there: "I found the Trail Jersey in Blue, size M"

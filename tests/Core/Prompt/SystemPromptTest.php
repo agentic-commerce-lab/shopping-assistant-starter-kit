@@ -101,4 +101,11 @@ final class SystemPromptTest extends TestCase
             $prompt,
         );
     }
+
+    public function testTellsTheModelToOnlyStateGivenProperties(): void
+    {
+        $prompt = SystemPrompt::build(new AssistantConfig());
+
+        self::assertStringContainsString('material', mb_strtolower($prompt));
+    }
 }
