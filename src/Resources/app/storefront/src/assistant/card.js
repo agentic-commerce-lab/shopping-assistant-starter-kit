@@ -6,7 +6,7 @@
  * easily. If a value you want is not on the card, the answer is to render it on the server, not to
  * parse it out of a sentence.
  */
-import { formatPrice } from './render';
+import { formatPriceBasis } from './render.js';
 
 /** Below this, "in stock" is true but reassuring a shopper with a bare "In stock" overstates it. */
 const STOCK_LOW_THRESHOLD = 5;
@@ -136,9 +136,15 @@ function buildFacts(card, { locale, translations }) {
     const facts = document.createElement('div');
     facts.className = 'swag-assistant-card__facts';
 
-    const price = formatPrice(card.price, card.currency, locale);
+    const price = formatPriceBasis(card, locale, translations);
     if (price !== '') {
         facts.appendChild(text('p', 'swag-assistant-card__price', price));
+    }
+
+    // Said once, next to the figure it qualifies. The card never computes what the other tiers
+    // cost — only the server may state a price, and it has stated the one that applies.
+    if (card.hasVolumePricing && translations.volumePricing) {
+        facts.appendChild(text('p', 'swag-assistant-card__price-note', translations.volumePricing));
     }
 
     facts.appendChild(buildStock(card, translations));

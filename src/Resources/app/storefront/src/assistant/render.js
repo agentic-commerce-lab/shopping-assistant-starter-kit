@@ -6,8 +6,8 @@
  * container at all. That reads as the shop speaking rather than as a peer in a group chat, which is
  * why no avatar or accent rule is added on top of it.
  */
-import { renderCards } from './card';
-import { toFragment } from './markdown';
+import { renderCards } from './card.js';
+import { toFragment } from './markdown.js';
 
 const ROLE_USER = 'user';
 
@@ -44,6 +44,38 @@ export function formatPrice(amount, currency, locale) {
     }
 
     return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount);
+}
+
+/**
+ * The price with the quantity it assumes, when that quantity is worth stating.
+ *
+ * The server chooses the figure; this only refuses to print it bare. A graduated product priced at
+ * its minimum order quantity is a true number attached to a condition, and dropping the condition
+ * makes it a false one.
+ *
+ * @param {{price?: number, currency?: string, priceQuantity?: number}} card
+ * @param {string} locale
+ * @param {{priceAt?: string}} translations
+ * @returns {string} the formatted price, or '' when there is nothing honest to print
+ */
+export function formatPriceBasis(card, locale, translations = {}) {
+    const price = formatPrice(card?.price, card?.currency, locale);
+
+    if (price === '') {
+        return '';
+    }
+
+    // A card written before this field existed, or a client that omits it, means one unit — never
+    // a guess at what the minimum might have been.
+    const quantity = Number.isInteger(card?.priceQuantity) ? card.priceQuantity : 1;
+
+    if (quantity <= 1) {
+        return price;
+    }
+
+    return (translations.priceAt ?? '%price% each at %count% units')
+        .replace('%price%', price)
+        .replace('%count%', String(quantity));
 }
 
 /**

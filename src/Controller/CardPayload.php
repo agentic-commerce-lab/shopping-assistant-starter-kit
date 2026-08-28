@@ -27,19 +27,27 @@ final readonly class CardPayload
      */
     public function of(array $cards): array
     {
-        return array_map(static fn(ProductCard $card): array => [
-            'id' => $card->id,
-            'name' => $card->name,
-            'description' => $card->description,
-            'price' => $card->price,
-            'currency' => $card->currency,
-            'stock' => $card->stock,
-            'stockSource' => $card->stockSource->value,
-            'inStock' => $card->isInStock(),
-            'deliveryTime' => $card->deliveryTime,
-            'url' => $card->url,
-            'imageUrl' => $card->imageUrl,
-            'options' => $card->options,
-        ], $cards);
+        return array_map(
+            static fn(ProductCard $card): array => [
+                'id' => $card->id,
+                'name' => $card->name,
+                'description' => $card->description,
+                'price' => $card->price,
+                'currency' => $card->currency,
+                // The quantity the price above assumes, and whether cheaper tiers exist. Both come
+                // from the rendered card, like every other figure here — nothing is parsed out of the
+                // model's prose (ruling R47).
+                'priceQuantity' => $card->priceQuantity,
+                'hasVolumePricing' => $card->hasVolumePricing,
+                'stock' => $card->stock,
+                'stockSource' => $card->stockSource->value,
+                'inStock' => $card->isInStock(),
+                'deliveryTime' => $card->deliveryTime,
+                'url' => $card->url,
+                'imageUrl' => $card->imageUrl,
+                'options' => $card->options,
+            ],
+            $cards,
+        );
     }
 }

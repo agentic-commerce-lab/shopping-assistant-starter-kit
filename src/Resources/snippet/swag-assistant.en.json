@@ -28,7 +28,9 @@
       "outOfStockReason": "Out of stock, so it cannot be added to the cart",
       "parentStock": "Total across all variants — choose one on the product page.",
       "delivery": "Delivery: %time%",
-      "addedToCart": "Added"
+      "addedToCart": "Added",
+      "priceAt": "%price% each at %count% units",
+      "volumePricing": "Lower unit prices at higher quantities"
     },
     "thinking": {
       "start": "Thinking…",

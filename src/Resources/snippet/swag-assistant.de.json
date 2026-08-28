@@ -28,7 +28,9 @@
       "outOfStockReason": "Nicht auf Lager und kann daher nicht hinzugefügt werden",
       "parentStock": "Bestand über alle Varianten zusammen — wähle eine auf der Produktseite.",
       "delivery": "Lieferung: %time%",
-      "addedToCart": "Hinzugefügt"
+      "addedToCart": "Hinzugefügt",
+      "priceAt": "%price% pro Stück bei %count% Stück",
+      "volumePricing": "Günstiger bei größeren Mengen"
     },
     "thinking": {
       "start": "Ich denke nach…",
