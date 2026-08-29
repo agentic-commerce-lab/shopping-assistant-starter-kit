@@ -860,6 +860,9 @@ assumption.
 | `id` | uuid |
 | `sales_channel_id` | uuid |
 | `customer_id` | uuid, **nullable**, `FOREIGN KEY … ON DELETE SET NULL` |
+| `scope_type` | string enum: `guest` \| `customer` — what a `ShoppingContext` compares on every read, not just what a customer id already implied |
+| `commercial_employee_id` | uuid, **nullable**, no `FOREIGN KEY` — would reference a Shopware Commercial table this shop's licence does not install |
+| `commercial_organisation_id` | uuid, **nullable**, no `FOREIGN KEY` — same reason, and always null until the Commercial bridge populates it |
 | `locale` | string |
 | `turn_count` | int |
 | `outcome` | enum: `product_shown` \| `cart_added` \| `no_result` \| `escalated` \| `error` |

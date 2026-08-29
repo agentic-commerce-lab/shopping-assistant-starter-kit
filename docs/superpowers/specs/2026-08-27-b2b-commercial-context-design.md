@@ -125,6 +125,8 @@ For this design, "commercially valid" means:
 
 ### 5.1 Shopping context
 
+**Done 2026-08-29 (core paths; Commercial columns present but never populated).**
+
 Add a Shopware-independent immutable `ShoppingContext` at the smallest shared core boundary. It
 contains:
 
@@ -145,6 +147,8 @@ The value object carries resolved facts. It does not query Shopware, calculate p
 products.
 
 ### 5.2 Context resolution
+
+**Done 2026-08-29 (core paths; Commercial columns present but never populated).**
 
 A `ShoppingContextResolver` resolves the value once per storefront request.
 
@@ -419,6 +423,8 @@ search.
 
 ### 9.1 Stored scope
 
+**Done 2026-08-29 (core paths; Commercial columns present but never populated).**
+
 Extend `swag_assistant_conversation` with:
 
 - `scope_type`: `guest`, `customer`, or `commercial`.
@@ -455,11 +461,15 @@ Administrative trace access remains ACL-controlled and does not use shopper scop
 
 ### 9.2 Deleted customers
 
+**Done 2026-08-29 (core paths; Commercial columns present but never populated).**
+
 `customer_id` retains its `ON DELETE SET NULL` behavior. `scope_type` remains `customer` or
 `commercial`, so the row cannot become a guest conversation after deletion. It remains available only
 to authorized merchant trace tooling until the existing retention process deletes it.
 
 ### 9.3 Browser token map
+
+**Done 2026-08-29 (core paths; Commercial columns present but never populated).**
 
 Replace the single `swagAssistantToken` session-storage entry with a JSON map keyed by the opaque
 shopping-context key. The key is an HMAC over the canonical server-side scope — scope type,
