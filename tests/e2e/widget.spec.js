@@ -169,6 +169,29 @@ test.describe('assistant widget', () => {
     });
 
     /**
+     * `token-store.js` keeps one conversation token per shopping context under a single
+     * `sessionStorage` key, `swagAssistantTokens`, rather than one token for the whole tab. A fresh
+     * browser context (Playwright gives every test its own) has never written that map, so after
+     * exactly one turn it must hold exactly one entry, and that entry's key is the opaque context key
+     * the server resolved — a 32-hex id — not the token itself.
+     */
+    test('the token map holds exactly one entry after one turn', async ({ page }) => {
+        await openPanel(page);
+        await page.locator('[data-swag-assistant-input]').fill('show me the trail jersey in blue, size M');
+        await page.locator('[data-swag-assistant-send]').click();
+
+        await expect(page.locator('.swag-assistant-card').first()).toBeVisible({ timeout: TURN_TIMEOUT });
+
+        const tokens = await page.evaluate(
+            () => JSON.parse(window.sessionStorage.getItem('swagAssistantTokens') ?? '{}'),
+        );
+
+        const keys = Object.keys(tokens);
+        expect(keys).toHaveLength(1);
+        expect(keys[0]).toMatch(/^[0-9a-f]{32}$/);
+    });
+
+    /**
      * Page context, from the client's half.
      *
      * It asserts the *outgoing request*, not the answer, so it does not wait on a model round trip —
