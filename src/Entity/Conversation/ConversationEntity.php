@@ -19,12 +19,13 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventCollection;
  */
 // @mago-expect lint:too-many-methods
 // @mago-expect lint:too-many-properties
-// One property and one getter/setter pair per column `ConversationDefinition` maps, not a choice
-// of shape: Shopware's DAL hydrates this entity by calling exactly these setters, so the count is
-// the sum of the table's columns. Task 4 added `scopeType`, `commercialEmployeeId` and
-// `commercialOrganisationId` beside the nine that were already here, which is what pushed the
-// class past both thresholds; splitting them out would need a custom Field type mapping to a
-// nested object, not a refactor of this class.
+// This class mirrors a database table, and its property and accessor count IS the table's column
+// count — not a design this class chose. Task 4 added `scopeType`, `commercialEmployeeId` and
+// `commercialOrganisationId` beside the nine columns that were already here, which is what pushed
+// it past both thresholds. A same-shape trait split is available, but that would move members
+// into a second file without reducing them: the total any reader has to hold in their head to
+// understand what this entity carries stays identical, and the trait would exist solely to make
+// the gate stop counting — evasion, not decomposition. The honest fix is the suppression.
 class ConversationEntity extends Entity
 {
     use EntityIdTrait;

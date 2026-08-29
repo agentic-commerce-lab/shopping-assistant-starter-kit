@@ -78,7 +78,14 @@ class ConversationDefinition extends EntityDefinition
             // The constraint is `ON DELETE SET NULL`: a customer who deletes their account takes
             // their link with them, and the conversation stays. See the migration.
             new FkField('customer_id', 'customerId', CustomerDefinition::class),
-            (new StringField('scope_type', 'scopeType'))->addFlags(new Required()),
+            // Deliberately NOT Required. A required StringField gets a NotBlank constraint that
+            // Shopware validates before it ever generates SQL, so it fires even for a payload that
+            // simply omits the key — which is exactly what `DalConversationStore::start()` does
+            // until Task 5 teaches it to write `scopeType`. The column itself is
+            // `NOT NULL DEFAULT 'guest'` (see the migration), so a write that omits this field
+            // still succeeds and still lands as a guest row; from Task 5 on, the store writes it
+            // explicitly on every call.
+            new StringField('scope_type', 'scopeType'),
             // No FkField and no association: these reference Shopware Commercial's tables, which
             // exist only when that optional extension is installed. Stored as plain ids.
             new IdField('commercial_employee_id', 'commercialEmployeeId'),
