@@ -5,10 +5,9 @@ import { createComposer } from './composer';
 import { createCreature } from './creature';
 import { markAdded } from './card';
 import { attachResize, restoreSize } from './resize';
+import { createTokenStore } from './token-store';
 
 const { PluginBaseClass } = window;
-
-const TOKEN_KEY = 'swagAssistantToken';
 
 const SIZE_KEY = 'swagAssistantPanelSize';
 
@@ -42,6 +41,11 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         this.orb = this.el.querySelector('[data-swag-assistant-orb]');
         this.log = this.el.querySelector('[data-swag-assistant-log]');
         this.avatar = this.el.querySelector('[data-swag-assistant-avatar]');
+
+        // The context key names this shopper's storage slot; it can legitimately be `''` when no
+        // sales-channel context resolves (see `token-store.js`'s docblock for why that is still
+        // safe). Built once here so every later token read or write goes through the same slot.
+        this.tokens = createTokenStore(window.sessionStorage, this.panel?.dataset.swagAssistantContextKey ?? '');
 
         this.locale = this.el.dataset.locale || 'en-GB';
         this.addToCartEnabled = this.el.dataset.addToCartEnabled === 'true';
@@ -313,7 +317,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
     }
 
     async _hydrateOnce() {
-        const token = window.sessionStorage.getItem(TOKEN_KEY);
+        const token = this.tokens.get();
         const { messages } = await this.transport.history(token);
 
         await this._renderHistory(messages);
@@ -424,7 +428,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
      * from the shopper's side and requires no endpoint that does not exist.
      */
     _reset() {
-        window.sessionStorage.removeItem(TOKEN_KEY);
+        this.tokens.clear();
         this.thinking.stop();
         // Before `clear()`, because a composer closed by an earlier failure has a disabled textarea
         // that `clear()` alone never re-enables — "start a new conversation" produced a fresh
@@ -460,7 +464,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         this.thinking.start();
 
         try {
-            const reply = await this.transport.send(message, window.sessionStorage.getItem(TOKEN_KEY), {
+            const reply = await this.transport.send(message, this.tokens.get(), {
                 productId: this.viewingProductId,
                 categoryId: this.browsingCategoryId,
             });
@@ -480,7 +484,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
             this.thinking.stop();
 
             if (reply.token) {
-                window.sessionStorage.setItem(TOKEN_KEY, reply.token);
+                this.tokens.set(reply.token);
             }
 
             renderMessage(this.log, {
@@ -593,7 +597,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         notice.remove();
         sentMessage.remove();
 
-        const { messages } = await this.transport.history(window.sessionStorage.getItem(TOKEN_KEY));
+        const { messages } = await this.transport.history(this.tokens.get());
         const last = Array.isArray(messages) ? messages[messages.length - 1] : undefined;
 
         // An assistant turn at the end means the server got there without us.
