@@ -45,7 +45,12 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         // The context key names this shopper's storage slot; it can legitimately be `''` when no
         // sales-channel context resolves (see `token-store.js`'s docblock for why that is still
         // safe). Built once here so every later token read or write goes through the same slot.
-        this.tokens = createTokenStore(window.sessionStorage, this.panel?.dataset.swagAssistantContextKey ?? '');
+        //
+        // `() => window.sessionStorage`, not `window.sessionStorage` itself: the property getter can
+        // throw in some browsers and embedded contexts, before any method on it is ever called, and
+        // passing a thunk lets `token-store.js` catch that inside the same try/catch it already wraps
+        // every other storage hazard in, rather than this file needing its own guard around it.
+        this.tokens = createTokenStore(() => window.sessionStorage, this.panel?.dataset.swagAssistantContextKey ?? '');
 
         this.locale = this.el.dataset.locale || 'en-GB';
         this.addToCartEnabled = this.el.dataset.addToCartEnabled === 'true';

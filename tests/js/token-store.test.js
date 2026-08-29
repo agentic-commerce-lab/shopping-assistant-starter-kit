@@ -26,7 +26,7 @@ function fakeStorage(initial = {}) {
     };
 }
 
-/** A storage stand-in that throws on every access, as a real one does in a private window. */
+/** A storage stand-in whose methods throw on every access, as a real one does in a private window. */
 function throwingStorage() {
     return {
         getItem: () => {
@@ -43,8 +43,9 @@ function throwingStorage() {
 
 test('a token stored for one context is not visible from another', () => {
     const storage = fakeStorage();
-    const storeA = createTokenStore(storage, 'context-a');
-    const storeB = createTokenStore(storage, 'context-b');
+    const getStorage = () => storage;
+    const storeA = createTokenStore(getStorage, 'context-a');
+    const storeB = createTokenStore(getStorage, 'context-b');
 
     storeA.set('token-a');
 
@@ -54,8 +55,9 @@ test('a token stored for one context is not visible from another', () => {
 
 test('reset clears only the current context slot', () => {
     const storage = fakeStorage();
-    const storeA = createTokenStore(storage, 'context-a');
-    const storeB = createTokenStore(storage, 'context-b');
+    const getStorage = () => storage;
+    const storeA = createTokenStore(getStorage, 'context-a');
+    const storeB = createTokenStore(getStorage, 'context-b');
 
     storeA.set('token-a');
     storeB.set('token-b');
@@ -68,7 +70,8 @@ test('reset clears only the current context slot', () => {
 
 test('a legacy single token is adopted once into the current slot', () => {
     const storage = fakeStorage({ swagAssistantToken: 'legacy-token' });
-    const store = createTokenStore(storage, 'context-a');
+    const getStorage = () => storage;
+    const store = createTokenStore(getStorage, 'context-a');
 
     assert.equal(store.get(), 'legacy-token');
     // Adopted, not merely read: the old key is gone and the value now lives under the map.
@@ -83,20 +86,41 @@ test('a legacy single token is adopted once into the current slot', () => {
 
 test('a legacy token is not adopted over an existing slot value', () => {
     const storage = fakeStorage({ swagAssistantToken: 'legacy-token' });
-    const store = createTokenStore(storage, 'context-a');
+    const getStorage = () => storage;
+    const store = createTokenStore(getStorage, 'context-a');
 
     store.set('fresh-token');
 
     // Re-create the store as the plugin would on the next page load, legacy key still present
     // because a first read never happened to consume it.
-    const storeAgain = createTokenStore(storage, 'context-a');
+    const storeAgain = createTokenStore(getStorage, 'context-a');
 
     assert.equal(storeAgain.get(), 'fresh-token');
 });
 
-test('a storage that throws degrades to no token rather than breaking the widget', () => {
-    const storage = throwingStorage();
-    const store = createTokenStore(storage, 'context-a');
+test('a storage whose methods throw degrades to no token rather than breaking the widget', () => {
+    const getStorage = () => throwingStorage();
+    const store = createTokenStore(getStorage, 'context-a');
+
+    assert.equal(store.get(), null);
+    assert.doesNotThrow(() => store.set('token'));
+    assert.doesNotThrow(() => store.clear());
+});
+
+/*
+ * Distinct from the case above: here the *acquisition* of the storage object throws — the
+ * `window.sessionStorage` property getter itself, in some browsers and embedded contexts, before
+ * `getItem`/`setItem`/`removeItem` is ever reached. This is the gap a Critical review finding named
+ * directly: `panel.plugin.js` used to resolve `window.sessionStorage` once, outside any try/catch,
+ * and hand the resolved value to `createTokenStore` — so a throwing getter broke `init()` before this
+ * module ever ran. The fix makes `createTokenStore` take a thunk instead of a resolved value, so the
+ * hazard of *getting* storage is caught by the same try/catch that already covers *using* it.
+ */
+test('a storage accessor that itself throws degrades to no token rather than breaking the widget', () => {
+    const getStorage = () => {
+        throw new Error('SecurityError');
+    };
+    const store = createTokenStore(getStorage, 'context-a');
 
     assert.equal(store.get(), null);
     assert.doesNotThrow(() => store.set('token'));
@@ -105,7 +129,8 @@ test('a storage that throws degrades to no token rather than breaking the widget
 
 test('a corrupt map value is discarded rather than parsed into nonsense', () => {
     const storage = fakeStorage({ swagAssistantTokens: 'not json' });
-    const store = createTokenStore(storage, 'context-a');
+    const getStorage = () => storage;
+    const store = createTokenStore(getStorage, 'context-a');
 
     assert.equal(store.get(), null);
 

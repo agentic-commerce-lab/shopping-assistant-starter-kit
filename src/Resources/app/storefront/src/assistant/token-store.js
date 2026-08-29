@@ -24,9 +24,12 @@
  * namely a conversation restart, never a leak of someone else's history (the server re-validates the
  * token against the actual context on every read).
  *
- * Every access is wrapped in try/catch. A private window makes `sessionStorage.getItem` itself throw
- * (not return null — throw), and a widget that breaks the storefront page it is embedded in is a
- * worse outcome than a widget that simply forgets the conversation between turns.
+ * Every access is wrapped in try/catch, and the *acquisition* of the storage object is wrapped along
+ * with it, not just the calls made on it. In some browsers and embedded contexts the property getter
+ * `window.sessionStorage` itself throws — before `getItem`/`setItem`/`removeItem` is ever reached —
+ * so `storage` is taken as a thunk (`getStorage()`) called freshly inside each try block rather than
+ * a value resolved once by the caller. A widget that breaks the storefront page it is embedded in is
+ * a worse outcome than a widget that simply forgets the conversation between turns.
  */
 
 const MAP_KEY = 'swagAssistantTokens';
@@ -35,12 +38,15 @@ const MAP_KEY = 'swagAssistantTokens';
 const LEGACY_KEY = 'swagAssistantToken';
 
 /**
+ * @param {Function} getStorage - see {@see createTokenStore}.
  * @returns {Record<string, string>} the token map, or `{}` for "absent, corrupt, or unreadable" —
  *   those three are indistinguishable to a caller and are handled identically: start empty.
  */
-function readMap(storage) {
+function readMap(getStorage) {
     try {
-        const raw = storage.getItem(MAP_KEY);
+        // `getStorage()` is inside the same try as `getItem`: acquiring the storage object can throw
+        // exactly as reading from it can, and both degrade to the same empty result.
+        const raw = getStorage().getItem(MAP_KEY);
 
         if (!raw) {
             return {};
@@ -61,22 +67,25 @@ function readMap(storage) {
     }
 }
 
-function writeMap(storage, map) {
+function writeMap(getStorage, map) {
     try {
-        storage.setItem(MAP_KEY, JSON.stringify(map));
+        getStorage().setItem(MAP_KEY, JSON.stringify(map));
     } catch {
-        // Private browsing and full quotas both throw here. Losing the token is the correct
-        // degradation — the next turn starts a fresh conversation — not an exception on every send.
+        // Private browsing and full quotas both throw here, and so does acquiring `storage` itself in
+        // some embedded contexts. Losing the token is the correct degradation — the next turn starts a
+        // fresh conversation — not an exception on every send.
     }
 }
 
 /**
- * @param {{getItem: Function, setItem: Function, removeItem: Function}} storage - anything
- *   `sessionStorage`-shaped; injected so a test can use a plain object and the private-window case
- *   without a real browser.
+ * @param {Function} getStorage - returns anything `sessionStorage`-shaped
+ *   (`{getItem, setItem, removeItem}`) each time it is called; a thunk rather than a resolved value so
+ *   this module — not its caller — owns the hazard of *acquiring* storage throwing, not only the
+ *   hazard of using it. In production this is `() => window.sessionStorage`. A test passes a thunk
+ *   returning a plain object, or one that itself throws to stand in for the private-window case.
  * @param {string} contextKey - the panel's `data-swag-assistant-context-key`, possibly `''`.
  */
-export function createTokenStore(storage, contextKey) {
+export function createTokenStore(getStorage, contextKey) {
     return {
         /**
          * Migrates the legacy single token exactly once, on the first read after this module shipped:
@@ -86,7 +95,7 @@ export function createTokenStore(storage, contextKey) {
          * worst case it is foreign and yields a fresh conversation, same as any other stale token.
          */
         get() {
-            const map = readMap(storage);
+            const map = readMap(getStorage);
 
             if (typeof map[contextKey] === 'string') {
                 return map[contextKey];
@@ -95,7 +104,7 @@ export function createTokenStore(storage, contextKey) {
             let legacy;
 
             try {
-                legacy = storage.getItem(LEGACY_KEY);
+                legacy = getStorage().getItem(LEGACY_KEY);
             } catch {
                 legacy = null;
             }
@@ -105,10 +114,10 @@ export function createTokenStore(storage, contextKey) {
             }
 
             map[contextKey] = legacy;
-            writeMap(storage, map);
+            writeMap(getStorage, map);
 
             try {
-                storage.removeItem(LEGACY_KEY);
+                getStorage().removeItem(LEGACY_KEY);
             } catch {
                 // Leaving the legacy key behind is harmless — the map now takes priority — so a
                 // throw here must not undo the adoption that already succeeded above.
@@ -118,18 +127,18 @@ export function createTokenStore(storage, contextKey) {
         },
 
         set(token) {
-            const map = readMap(storage);
+            const map = readMap(getStorage);
 
             map[contextKey] = token;
-            writeMap(storage, map);
+            writeMap(getStorage, map);
         },
 
         /** Drops only this context's slot. Every other context's token is untouched. */
         clear() {
-            const map = readMap(storage);
+            const map = readMap(getStorage);
 
             delete map[contextKey];
-            writeMap(storage, map);
+            writeMap(getStorage, map);
         },
     };
 }
