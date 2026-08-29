@@ -10,6 +10,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Uuid\Uuid;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
 use Swag\AssistantStarterKit\Entity\Conversation\ConversationEntity;
 use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
 
@@ -33,14 +34,17 @@ final readonly class DalConversationStore implements ConversationStore
         private JsonShape $shape = new JsonShape(),
     ) {}
 
-    public function start(string $salesChannelId, string $locale, ?string $customerId = null): string
+    public function start(ShoppingContext $context, string $locale): string
     {
         $id = Uuid::randomHex();
 
         $this->conversationRepository->create([[
             'id' => $id,
-            'salesChannelId' => $salesChannelId,
-            'customerId' => $customerId,
+            'salesChannelId' => $context->salesChannelId,
+            'customerId' => $context->customerId,
+            'scopeType' => $context->mode->value,
+            'commercialEmployeeId' => $context->employeeId,
+            'commercialOrganisationId' => $context->organisationId,
             'locale' => $locale,
             'turnCount' => 0,
             'outcome' => '',
@@ -51,11 +55,18 @@ final readonly class DalConversationStore implements ConversationStore
         return $id;
     }
 
-    public function append(#[\SensitiveParameter] string $token, ConversationTurn $turn, TraceRecorder $trace): void
-    {
+    public function append(
+        #[\SensitiveParameter]
+        string $token,
+        ShoppingContext $shoppingContext,
+        ConversationTurn $turn,
+        TraceRecorder $trace,
+    ): void {
         $context = Context::createDefaultContext();
 
         $conversation = $this->conversation($token, $context);
+        ConversationScope::assertMatches($conversation, $shoppingContext);
+
         $transcript = array_values($conversation?->getTranscript() ?? []);
         $transcript[] = $this->codec->encode($turn);
 
@@ -108,13 +119,11 @@ final readonly class DalConversationStore implements ConversationStore
         }
     }
 
-    public function history(#[\SensitiveParameter] string $token, int $limit = 20): array
+    public function history(#[\SensitiveParameter] string $token, ShoppingContext $context, int $limit = 20): array
     {
-        $turns = $this->codec->decodeAll($this->transcript($token, Context::createDefaultContext()));
+        $conversation = $this->conversation($token, Context::createDefaultContext());
 
-        // The tail, not the head: the context window is bounded so history has to be, and
-        // "add that to my cart" refers to the newest card set — so the OLDEST turns get dropped.
-        return \array_slice($turns, -$limit);
+        return ConversationScope::historyOrEmpty($conversation, $context, $this->codec, $limit);
     }
 
     public function traceEvents(#[\SensitiveParameter] string $token): array
@@ -156,20 +165,6 @@ final readonly class DalConversationStore implements ConversationStore
         $last = $this->eventRepository->search($criteria, $context)->first();
 
         return $last instanceof TraceEventEntity ? $last->getSeq() + 1 : 0;
-    }
-
-    /**
-     * The stored transcript, or an empty list.
-     *
-     * An unknown token yields `[]` rather than an error: a shopper with a stale `sessionStorage`
-     * token must get a fresh conversation, not a 500 on page load — and a widget that breaks the
-     * page it is embedded in is worse than no widget.
-     *
-     * @return array<int, mixed>
-     */
-    private function transcript(#[\SensitiveParameter] string $token, Context $context): array
-    {
-        return array_values($this->conversation($token, $context)?->getTranscript() ?? []);
     }
 
     private function conversation(#[\SensitiveParameter] string $token, Context $context): ?ConversationEntity

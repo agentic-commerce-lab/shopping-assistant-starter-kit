@@ -24,16 +24,19 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  */
 final class ConversationTotalMsTest extends TestCase
 {
+    use GuestShoppingContextFixture;
+
     private const CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
     public function testTurnDurationsAccumulateAcrossTurns(): void
     {
         $store = new InMemoryConversationStore();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         foreach ([8_132, 4_500] as $turnMs) {
             $store->append(
                 $token,
+                $this->guest(),
                 new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'),
                 self::traceLasting($turnMs),
             );
@@ -47,10 +50,11 @@ final class ConversationTotalMsTest extends TestCase
         // The controller appends the shopper's own turn with an empty `new TraceRecorder()`. If
         // that contributed, every total would drift upward by a stray offset.
         $store = new InMemoryConversationStore();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $store->append(
             $token,
+            $this->guest(),
             new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'hello'),
             new TraceRecorder(),
         );
@@ -63,10 +67,15 @@ final class ConversationTotalMsTest extends TestCase
         // The invariant the Administration depends on: the summary card's duration and the last row
         // of the timeline must agree, because they are the same number by construction.
         $store = new InMemoryConversationStore();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $trace = self::traceLasting(8_183);
-        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'), $trace);
+        $store->append(
+            $token,
+            $this->guest(),
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'),
+            $trace,
+        );
 
         $events = $store->traceEvents($token);
         $last = $events[array_key_last($events)] ?? null;

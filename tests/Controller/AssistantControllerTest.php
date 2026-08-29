@@ -49,7 +49,7 @@ final class AssistantControllerTest extends AssistantEndpointTestCase
 
         self::assertSame($token, $second['token']);
         // Two turns each: the shopper's message and the assistant's reply.
-        self::assertCount(4, $this->store->history($token));
+        self::assertCount(4, $this->store->history($token, $this->guestScope()));
     }
 
     public function testThePreviousTurnsAreHandedToTheRunnerSoThatStillResolves(): void

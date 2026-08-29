@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Core\Trace;
 
+use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
 use Swag\AssistantStarterKit\Core\Trace\ConversationStore;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 use Swag\AssistantStarterKit\Core\Trace\TraceEvent;
@@ -33,6 +34,16 @@ final class InMemoryConversationStore implements ConversationStore
     /** @var array<string, int> */
     private array $totalMs = [];
 
+    /**
+     * The scope each conversation was opened under, so `history()` and `append()` can apply the same
+     * match rule {@see \Swag\AssistantStarterKit\Core\Trace\ConversationScope} applies for the real
+     * store. Held separately from `$turns` rather than folded into it — nothing here is stored JSON,
+     * so there is no codec round-trip to mirror.
+     *
+     * @var array<string, ShoppingContext>
+     */
+    private array $scopes = [];
+
     private int $tokenCounter = 0;
 
     /**
@@ -47,21 +58,29 @@ final class InMemoryConversationStore implements ConversationStore
     /** The customer the last `start()` was given, so a controller test can assert what it passed. */
     public ?string $lastCustomerId = null;
 
-    public function start(string $salesChannelId, string $locale, ?string $customerId = null): string
+    public function start(ShoppingContext $context, string $locale): string
     {
-        $this->lastCustomerId = $customerId;
+        $this->lastCustomerId = $context->customerId;
         $this->tokenCounter++;
         $this->startedConversations++;
         $token = \sprintf('%032x', $this->tokenCounter);
 
         $this->turns[$token] = [];
         $this->events[$token] = [];
+        $this->scopes[$token] = $context;
 
         return $token;
     }
 
-    public function append(#[\SensitiveParameter] string $token, ConversationTurn $turn, TraceRecorder $trace): void
-    {
+    public function append(
+        #[\SensitiveParameter]
+        string $token,
+        ShoppingContext $context,
+        ConversationTurn $turn,
+        TraceRecorder $trace,
+    ): void {
+        FakeConversationScope::assertMatches($this->scopes[$token] ?? null, $context);
+
         // Encoded and decoded through the **same codec the DAL store uses**, rather than kept as an
         // object. Holding the object made the contract test pass by identity: it never touched
         // serialisation, so a field the real store silently dropped would still have looked stored.
@@ -89,9 +108,15 @@ final class InMemoryConversationStore implements ConversationStore
         }
     }
 
-    public function history(#[\SensitiveParameter] string $token, int $limit = 20): array
+    public function history(#[\SensitiveParameter] string $token, ShoppingContext $context, int $limit = 20): array
     {
-        return $this->codec->decodeAll(\array_slice($this->turns[$token] ?? [], -$limit));
+        return FakeConversationScope::historyOrEmpty(
+            $this->scopes[$token] ?? null,
+            $context,
+            $this->codec,
+            $this->turns[$token] ?? [],
+            $limit,
+        );
     }
 
     public function traceEvents(#[\SensitiveParameter] string $token): array

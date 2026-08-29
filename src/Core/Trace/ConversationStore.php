@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Trace;
 
+use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
+
 /**
  * Persistence for conversations and the traces of their turns.
  *
@@ -23,18 +25,24 @@ namespace Swag\AssistantStarterKit\Core\Trace;
  * `$token` is marked `#[\SensitiveParameter]` throughout: it is a bearer credential for someone
  * else's conversation transcript, so it must not appear in a stack trace. Same treatment
  * `LlmSettings::$apiKey` already has.
+ *
+ * **Scoping, added here rather than in the controller.** Presenting a token was never proof of
+ * ownership — the primary key is 128 bits of randomness, not a permission. Every method but
+ * {@see self::traceEvents()} now also takes the shopper's {@see ShoppingContext} and compares it
+ * against the scope the conversation was opened under. `history()` and `append()` disagree on what
+ * a mismatch does, deliberately: see their own docblocks.
  */
 interface ConversationStore
 {
     /**
      * Opens a conversation and returns the token the widget keeps in `sessionStorage`.
      *
-     * `$customerId` is the shopper if they are logged in, null if they are a guest. It is recorded
-     * **once, here**: a guest who logs in mid-conversation stays a guest on it, because the column
-     * answers "who produced this trace" and re-attributing would make it answer "who was last
-     * seen" — a different, and less useful, question.
+     * `$context` is recorded **once, here**: a guest who logs in mid-conversation stays a guest on
+     * it, because the column answers "who produced this trace" and re-attributing would make it
+     * answer "who was last seen" — a different, and less useful, question. Every later call to
+     * `history()` or `append()` compares its own context against what was written here.
      */
-    public function start(string $salesChannelId, string $locale, ?string $customerId = null): string;
+    public function start(ShoppingContext $context, string $locale): string;
 
     /**
      * Appends one turn and every event of its trace.
@@ -42,21 +50,39 @@ interface ConversationStore
      * The whole trace, not the last event per stage: `TraceRecorder::stages()` de-duplicates by
      * design (ruling R18), and a store built on it would drop the second tool round — which is
      * exactly where the tool-call budget failures live.
+     *
+     * @throws ForeignConversationException if `$context` does not match the scope the conversation
+     *                                       was opened under. This is a backstop, not a shopper-facing
+     *                                       path: the controller validates ownership before ever
+     *                                       calling this, so reaching the throw means that validation
+     *                                       was skipped. Failing loudly here is safer than silently
+     *                                       dropping a shopper's turn.
      */
-    public function append(#[\SensitiveParameter] string $token, ConversationTurn $turn, TraceRecorder $trace): void;
+    public function append(
+        #[\SensitiveParameter]
+        string $token,
+        ShoppingContext $context,
+        ConversationTurn $turn,
+        TraceRecorder $trace,
+    ): void;
 
     /**
      * The conversation so far, **oldest first**, so the widget can replay it in order.
      *
      * An unknown token yields an empty list rather than an error: a shopper with a stale
-     * `sessionStorage` token must get a fresh conversation, not a 500 on page load.
+     * `sessionStorage` token must get a fresh conversation, not a 500 on page load. A token that
+     * belongs to a *different* scope yields the same empty list, for the same reason and to avoid
+     * disclosing which case it was: a shopper-facing read must never say why it returned nothing.
      *
      * @return list<ConversationTurn>
      */
-    public function history(#[\SensitiveParameter] string $token, int $limit = 20): array;
+    public function history(#[\SensitiveParameter] string $token, ShoppingContext $context, int $limit = 20): array;
 
     /**
      * Every trace event recorded against this conversation, in sequence order.
+     *
+     * Deliberately **not** scope-checked: merchant trace access is gated by the Administration's own
+     * ACL, not by who the conversation belonged to, and scoping this would break that export.
      *
      * @return list<TraceEvent>
      */

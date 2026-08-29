@@ -253,6 +253,8 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Policy\RequestBudget"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\CardPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\HandoffPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher"/>

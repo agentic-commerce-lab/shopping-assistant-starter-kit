@@ -8,8 +8,11 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver;
 use Swag\AssistantStarterKit\Core\Policy\BudgetVerdict;
 use Swag\AssistantStarterKit\Core\Policy\RequestBudget;
 use Swag\AssistantStarterKit\Core\Trace\ConversationStore;
@@ -56,6 +59,13 @@ class AssistantController extends StorefrontController
         // public endpoint that spends money — and a control that quietly does nothing is the exact
         // defect {@see RequestBudget} was written to fix.
         private readonly RequestBudget $budget,
+        // Together, these rebuild the shopper's {@see ShoppingContext} from the `SalesChannelContext`
+        // Shopware already injected into this request — see `resolveScope()`. Task 5 added the scope
+        // check the store now enforces; Task 6 owns validating an unknown-or-foreign token instead of
+        // trusting it, which is why this controller still only *resolves* a scope and does not yet
+        // reject a mismatched one itself.
+        private readonly SalesChannelContextProvider $contexts,
+        private readonly ShoppingContextResolver $contextResolver,
         private readonly CardPayload $cardPayload = new CardPayload(),
         private readonly HandoffPayload $handoff = new HandoffPayload(),
         // Defaulted to an empty dispatcher so a shop with no sinks configured pays nothing and
@@ -72,6 +82,7 @@ class AssistantController extends StorefrontController
     public function chat(Request $request, SalesChannelContext $context): Response
     {
         $salesChannelId = $context->getSalesChannelId();
+        $shoppingContext = $this->resolveScope($context);
 
         $chat = ChatRequest::fromRequest($request);
         $message = $chat->message;
@@ -110,15 +121,11 @@ class AssistantController extends StorefrontController
             return $this->refuse($refusal);
         }
 
-        $token = $chat->token ?? $this->conversations->start(
-            $salesChannelId,
-            $context->getLanguageId(),
-            // Recorded once, on the turn that opens the conversation. A conversation resumed by
-            // token never re-reads this, so logging in mid-conversation does not rewrite who it
-            // belonged to — the column answers "who produced this trace", not "who was last seen".
-            $context->getCustomer()?->getId(),
-        );
-        $history = $this->conversations->history($token, self::MAX_HISTORY_TURNS);
+        // Recorded once, on the turn that opens the conversation. A conversation resumed by token
+        // never re-reads this, so logging in mid-conversation does not rewrite who it belonged to —
+        // the column answers "who produced this trace", not "who was last seen".
+        $token = $chat->token ?? $this->conversations->start($shoppingContext, $context->getLanguageId());
+        $history = $this->conversations->history($token, $shoppingContext, self::MAX_HISTORY_TURNS);
 
         $result = $this->turnRunner->run(
             $message,
@@ -142,11 +149,13 @@ class AssistantController extends StorefrontController
 
         $this->conversations->append(
             $token,
+            $shoppingContext,
             new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: $message, createdAt: $now),
             new TraceRecorder(),
         );
         $this->conversations->append(
             $token,
+            $shoppingContext,
             new ConversationTurn(
                 role: ConversationTurn::ROLE_ASSISTANT,
                 prose: $turn->prose,
@@ -180,6 +189,21 @@ class AssistantController extends StorefrontController
             // them is not, so the interface can annotate it, de-emphasise it, or drop it.
             'warnings' => self::warnings($turn),
         ]);
+    }
+
+    /**
+     * The shopper's {@see ShoppingContext} for this request, rebuilt from the `SalesChannelContext`
+     * Shopware already injected — not read a second time from anywhere else.
+     *
+     * `ShoppingContextResolver::current()` reads its `SalesChannelContext` back off the request via
+     * `SalesChannelContextProvider`, and in a real `frontend.*` request that is the very context this
+     * method already holds — Shopware populated the request attribute the resolver reads before the
+     * argument resolver ever produced `$context` for this controller. `use()` exists so a test can
+     * supply that context directly, without a request stack at all.
+     */
+    private function resolveScope(SalesChannelContext $context): ShoppingContext
+    {
+        return $this->contexts->use($context, fn(): ShoppingContext => $this->contextResolver->current());
     }
 
     /**
@@ -238,7 +262,8 @@ class AssistantController extends StorefrontController
         $config = $this->assistantConfig->forSalesChannel($context->getSalesChannelId());
 
         $messages = [];
-        foreach ($this->conversations->history($token, self::MAX_HISTORY_TURNS) as $turn) {
+        $shoppingContext = $this->resolveScope($context);
+        foreach ($this->conversations->history($token, $shoppingContext, self::MAX_HISTORY_TURNS) as $turn) {
             $messages[] = [
                 'role' => $turn->role,
                 'prose' => $turn->prose,

@@ -21,9 +21,10 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
     public function testHistoryReplaysAnExistingConversation(): void
     {
         $controller = $this->controller();
-        $token = $this->store->start(self::CHANNEL, 'en-GB');
+        $token = $this->store->start($this->guestScope(), 'en-GB');
         $this->store->append(
             $token,
+            $this->guestScope(),
             new ConversationTurn(
                 role: ConversationTurn::ROLE_ASSISTANT,
                 prose: 'The Trail Jersey in Blue / M.',
@@ -48,11 +49,12 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         // once displayed the current time for a four-minute-old message, and restored a claim of
         // availability with no correction beside the sold-out card.
         $controller = $this->controller();
-        $token = $this->store->start(self::CHANNEL, 'en-GB');
+        $token = $this->store->start($this->guestScope(), 'en-GB');
         $written = new \DateTimeImmutable('2026-08-20T09:41:07+00:00');
 
         $this->store->append(
             $token,
+            $this->guestScope(),
             new ConversationTurn(
                 role: ConversationTurn::ROLE_ASSISTANT,
                 prose: 'Yes, the Trail Jersey is available in Blue, size M.',
@@ -82,9 +84,10 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         // A client must render no timestamp for this, never the current time — that would present a
         // figure this server never produced as fact.
         $controller = $this->controller();
-        $token = $this->store->start(self::CHANNEL, 'en-GB');
+        $token = $this->store->start($this->guestScope(), 'en-GB');
         $this->store->append(
             $token,
+            $this->guestScope(),
             new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'show me the trail jersey'),
             new TraceRecorder(),
         );

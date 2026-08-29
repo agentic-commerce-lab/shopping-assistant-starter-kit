@@ -8,12 +8,17 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Swag\AssistantStarterKit\Controller\AssistantController;
+use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver;
+use Swag\AssistantStarterKit\Core\Context\ShoppingMode;
 use Swag\AssistantStarterKit\Core\Policy\RequestBudget;
 use Swag\AssistantStarterKit\Tests\Core\Config\FakeSystemConfigService;
 use Swag\AssistantStarterKit\Tests\Core\Trace\InMemoryConversationStore;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
@@ -95,6 +100,12 @@ abstract class AssistantEndpointTestCase extends TestCase
 
         $systemConfig = new FakeSystemConfigService($config);
 
+        // No request in these tests, so the controller's `use()` escape hatch supplies the per-call
+        // `SalesChannelContext` explicitly rather than reading one off a request stack — the same
+        // provider instance has to go to both arguments below, since `use()`'s override on one
+        // instance is invisible to a different instance's `current()`.
+        $contexts = new SalesChannelContextProvider(new RequestStack());
+
         return new AssistantController(
             $this->runner,
             $this->store,
@@ -103,6 +114,8 @@ abstract class AssistantEndpointTestCase extends TestCase
             // In-memory rather than a cache pool: one budget per controller, so a test's windows
             // start empty and cannot leak into the next test.
             new RequestBudget(new InMemoryStorage()),
+            $contexts,
+            new ShoppingContextResolver($contexts),
         );
     }
 
@@ -133,6 +146,16 @@ abstract class AssistantEndpointTestCase extends TestCase
         $context->method('getCustomer')->willReturn($customer);
 
         return $context;
+    }
+
+    /**
+     * The scope {@see self::context(null)} resolves to: a guest on {@see self::CHANNEL}. A test that
+     * writes directly to `$this->store` (bypassing the controller) needs this to read back what it
+     * wrote through `$this->context()`, since the store now refuses a mismatched scope.
+     */
+    protected function guestScope(): ShoppingContext
+    {
+        return new ShoppingContext(ShoppingMode::Guest, self::CHANNEL);
     }
 
     /**

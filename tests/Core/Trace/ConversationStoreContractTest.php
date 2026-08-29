@@ -19,6 +19,8 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  */
 final class ConversationStoreContractTest extends TestCase
 {
+    use GuestShoppingContextFixture;
+
     private const CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
     private const BLUE_L_ID = 'a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3';
@@ -31,15 +33,17 @@ final class ConversationStoreContractTest extends TestCase
     public function testAConversationRoundTripsSoTheWidgetCanRehydrateAfterAPageLoad(): void
     {
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $store->append(
             $token,
+            $this->guest(),
             new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'show me the trail jersey in blue, size L'),
             new TraceRecorder(),
         );
         $store->append(
             $token,
+            $this->guest(),
             new ConversationTurn(
                 role: ConversationTurn::ROLE_ASSISTANT,
                 prose: 'The Trail Jersey in Blue / L is available.',
@@ -49,7 +53,7 @@ final class ConversationStoreContractTest extends TestCase
             new TraceRecorder(),
         );
 
-        $history = $store->history($token);
+        $history = $store->history($token, $this->guest());
 
         // Oldest first: the widget replays them in order, and "add that to my cart" only resolves
         // if the assistant turn carrying the card id is still there and still last.
@@ -70,20 +74,25 @@ final class ConversationStoreContractTest extends TestCase
     {
         // A shopper with a stale sessionStorage token must get a fresh conversation, not a 500 on
         // page load — and a widget that breaks the page it is embedded in is worse than no widget.
-        self::assertSame([], $this->store()->history('deadbeefdeadbeefdeadbeefdeadbeef'));
+        self::assertSame([], $this->store()->history('deadbeefdeadbeefdeadbeefdeadbeef', $this->guest()));
     }
 
     public function testEveryTraceEventOfATurnIsPersistedInSequenceOrder(): void
     {
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $trace = new TraceRecorder();
         $trace->record('guard.check', ['verdict' => 'allow']);
         $trace->record('retrieve', ['hits' => 3]);
         $trace->record('render', ['stockSource' => 'variant']);
 
-        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'), $trace);
+        $store->append(
+            $token,
+            $this->guest(),
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'),
+            $trace,
+        );
 
         // A6: every turn produces a persisted trace with all pipeline stages. A store keeping only
         // the last event per stage would satisfy the letter and lose the turn.
@@ -99,13 +108,18 @@ final class ConversationStoreContractTest extends TestCase
         // stages() would drop the second tool round, which is exactly where the tool-call budget
         // failures live — and the budget being exhausted was a live pilot blocker (R52).
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $trace = new TraceRecorder();
         $trace->record('tool.call', ['name' => 'search_products']);
         $trace->record('tool.call', ['name' => 'get_product']);
 
-        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'), $trace);
+        $store->append(
+            $token,
+            $this->guest(),
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'ok'),
+            $trace,
+        );
 
         self::assertCount(2, $store->traceEvents($token));
     }
@@ -115,15 +129,25 @@ final class ConversationStoreContractTest extends TestCase
         // The multi-turn defect ruling R42 found in the eval harness, in its persistence form: if
         // turn 2 overwrote turn 1's events, an invention on turn 1 would be unreadable afterwards.
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $first = new TraceRecorder();
         $first->record('validate', ['inventedProductIds' => ['fx-999']]);
-        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'one'), $first);
+        $store->append(
+            $token,
+            $this->guest(),
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'one'),
+            $first,
+        );
 
         $second = new TraceRecorder();
         $second->record('validate', ['inventedProductIds' => []]);
-        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'two'), $second);
+        $store->append(
+            $token,
+            $this->guest(),
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'two'),
+            $second,
+        );
 
         self::assertCount(2, $store->traceEvents($token));
     }
@@ -131,18 +155,19 @@ final class ConversationStoreContractTest extends TestCase
     public function testTwoConversationsDoNotSeeEachOthersHistory(): void
     {
         $store = $this->store();
-        $first = $store->start(self::CHANNEL, 'en-GB');
-        $second = $store->start(self::CHANNEL, 'en-GB');
+        $first = $store->start($this->guest(), 'en-GB');
+        $second = $store->start($this->guest(), 'en-GB');
 
         $store->append(
             $first,
+            $this->guest(),
             new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'mine'),
             new TraceRecorder(),
         );
 
         self::assertNotSame($first, $second);
-        self::assertCount(1, $store->history($first));
-        self::assertSame([], $store->history($second));
+        self::assertCount(1, $store->history($first, $this->guest()));
+        self::assertSame([], $store->history($second, $this->guest()));
     }
 
     public function testHistoryIsBoundedAndKeepsTheMostRecentTurns(): void
@@ -150,17 +175,18 @@ final class ConversationStoreContractTest extends TestCase
         // The context window is bounded, so history has to be too — and it must drop the OLDEST,
         // since "add that to my cart" refers to the newest card set.
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         foreach (['one', 'two', 'three'] as $text) {
             $store->append(
                 $token,
+                $this->guest(),
                 new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: $text),
                 new TraceRecorder(),
             );
         }
 
-        $history = $store->history($token, 2);
+        $history = $store->history($token, $this->guest(), 2);
 
         self::assertCount(2, $history);
         self::assertSame(['two', 'three'], array_map(static fn($turn): string => $turn->prose, $history));
@@ -174,17 +200,27 @@ final class ConversationStoreContractTest extends TestCase
         // reading the trace in order was impossible. A store must make `seq` monotonic per
         // conversation.
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $first = new TraceRecorder();
         $first->record('guard.check', ['verdict' => 'allow']);
         $first->record('turn.end', ['outcome' => 'product_shown']);
-        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'one'), $first);
+        $store->append(
+            $token,
+            $this->guest(),
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'one'),
+            $first,
+        );
 
         $second = new TraceRecorder();
         $second->record('guard.check', ['verdict' => 'allow']);
         $second->record('turn.end', ['outcome' => 'cart_added']);
-        $store->append($token, new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'two'), $second);
+        $store->append(
+            $token,
+            $this->guest(),
+            new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'two'),
+            $second,
+        );
 
         $sequences = array_map(static fn($event): int => $event->seq, $store->traceEvents($token));
 
@@ -195,7 +231,7 @@ final class ConversationStoreContractTest extends TestCase
     public function testElapsedOffsetsSurviveStorageSoTheAdminCanShowATimeline(): void
     {
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $now = 0;
         $clock = static function () use (&$now): int {
@@ -210,6 +246,7 @@ final class ConversationStoreContractTest extends TestCase
 
         $store->append(
             $token,
+            $this->guest(),
             new ConversationTurn(role: ConversationTurn::ROLE_ASSISTANT, prose: 'Found it.'),
             $trace,
         );

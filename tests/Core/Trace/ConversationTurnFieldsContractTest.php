@@ -18,6 +18,8 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  */
 final class ConversationTurnFieldsContractTest extends TestCase
 {
+    use GuestShoppingContextFixture;
+
     private const CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
     private const BLUE_L_ID = 'a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3';
@@ -33,11 +35,12 @@ final class ConversationTurnFieldsContractTest extends TestCase
         // message, and restored "the Trail Jersey is available in Blue, size M" with no correction
         // beside the sold-out card.
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
         $written = new \DateTimeImmutable('2026-08-20T09:41:07+00:00');
 
         $store->append(
             $token,
+            $this->guest(),
             new ConversationTurn(
                 role: ConversationTurn::ROLE_ASSISTANT,
                 prose: 'Yes, the Trail Jersey is available in Blue, size M.',
@@ -49,7 +52,7 @@ final class ConversationTurnFieldsContractTest extends TestCase
             new TraceRecorder(),
         );
 
-        $turn = $this->onlyTurn($store->history($token, 20));
+        $turn = $this->onlyTurn($store->history($token, $this->guest(), 20));
 
         self::assertSame($written->format(\DATE_ATOM), $turn->createdAt?->format(\DATE_ATOM));
         self::assertSame(['is available'], $turn->warnings['unbackedAvailabilityClaims'] ?? []);
@@ -62,15 +65,16 @@ final class ConversationTurnFieldsContractTest extends TestCase
         // Rows written before these fields existed must not break a read. A shopper holding an older
         // token gets a message with no time — never an exception, and never a fabricated time.
         $store = $this->store();
-        $token = $store->start(self::CHANNEL, 'en-GB');
+        $token = $store->start($this->guest(), 'en-GB');
 
         $store->append(
             $token,
+            $this->guest(),
             new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'show me the trail jersey'),
             new TraceRecorder(),
         );
 
-        $turn = $this->onlyTurn($store->history($token, 20));
+        $turn = $this->onlyTurn($store->history($token, $this->guest(), 20));
 
         self::assertNull($turn->createdAt);
         self::assertSame([], $turn->warnings);
