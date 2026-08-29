@@ -13,6 +13,12 @@
             <argument type="service" id="request_stack"/>
         </service>
 
+        <!-- Resolves who is shopping (Core\Context\ShoppingContext) from the request-scoped
+             SalesChannelContext above, via that provider rather than a RequestStack of its own. -->
+        <service id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalBucketKeys"/>
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalGroupedFacetReader"/>
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader"/>
