@@ -8,6 +8,8 @@ use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings;
 use Swag\AssistantStarterKit\Core\Config\WidgetTheme;
+use Swag\AssistantStarterKit\Core\Context\ContextStorageKey;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -38,6 +40,8 @@ final class AssistantWidgetExtension extends AbstractExtension
         private readonly SystemConfigLlmSettings $llmSettings,
         private readonly SystemConfigAssistantConfig $assistantConfig,
         private readonly SystemConfigWidgetSettings $widgetSettings,
+        private readonly ShoppingContextResolver $shoppingContext,
+        private readonly ContextStorageKey $storageKey,
     ) {}
 
     /**
@@ -51,6 +55,7 @@ final class AssistantWidgetExtension extends AbstractExtension
             new TwigFunction('swag_assistant_greeting', $this->greeting(...)),
             new TwigFunction('swag_assistant_add_to_cart_enabled', $this->addToCartEnabled(...)),
             new TwigFunction('swag_assistant_theme', $this->theme(...)),
+            new TwigFunction('swag_assistant_context_key', $this->contextKey(...)),
         ];
     }
 
@@ -95,5 +100,29 @@ final class AssistantWidgetExtension extends AbstractExtension
     public function addToCartEnabled(string $salesChannelId): bool
     {
         return $this->assistantConfig->forSalesChannel($salesChannelId)->enableAddToCart;
+    }
+
+    /**
+     * The `sessionStorage` slot name the widget's JavaScript stores its conversation token under —
+     * see {@see ContextStorageKey} for what the 32 hex characters are and are not.
+     *
+     * **Degrades to `''` rather than propagating.** Every other function on this class is total: none
+     * of them can throw, because a Twig function that throws turns one broken assumption into an
+     * error page over the merchant's entire storefront, not just a missing widget feature.
+     * {@see ShoppingContextResolver::current()} is the one exception available to this class — it
+     * throws when called with no request-scoped sales-channel context, a state a real storefront
+     * request should never be in, but "should never happen" is exactly the case a template-rendering
+     * gate cannot afford to trust. An empty string is a slot name nothing will ever match, so the
+     * widget's JavaScript simply starts without a stored token rather than crashing the page around
+     * it — the same fail-open-to-nothing shape {@see self::isEnabled()} already uses for its own
+     * unmet preconditions.
+     */
+    public function contextKey(): string
+    {
+        try {
+            return $this->storageKey->for($this->shoppingContext->current());
+        } catch (\RuntimeException) {
+            return '';
+        }
     }
 }

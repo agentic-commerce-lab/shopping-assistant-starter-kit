@@ -380,7 +380,13 @@
              renders, and it reuses the config services rather than re-deriving their rules; the
              `twig.extension` tag comes from autoconfigure. -->
         <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings"/>
-        <service id="Swag\AssistantStarterKit\Storefront\AssistantWidgetExtension"/>
+        <service id="Swag\AssistantStarterKit\Storefront\AssistantWidgetExtension">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ContextStorageKey"/>
+        </service>
 
         <!-- Retention. Not optional: this table accumulates what shoppers typed, and the
              Administration trace view makes it prominent. -->

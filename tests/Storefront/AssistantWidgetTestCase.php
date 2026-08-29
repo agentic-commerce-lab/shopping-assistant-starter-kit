@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Storefront;
 
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings;
+use Swag\AssistantStarterKit\Core\Context\ContextStorageKey;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver;
 use Swag\AssistantStarterKit\Storefront\AssistantWidgetExtension;
 use Swag\AssistantStarterKit\Tests\Core\Config\FakeSystemConfigService;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Shared setup for the widget extension's tests.
@@ -70,6 +74,11 @@ abstract class AssistantWidgetTestCase extends TestCase
      * services themselves: all three are `final readonly`, and going through them means the
      * absent-key behaviour they document is what these assertions actually exercise.
      *
+     * The resolver is request-less on purpose: nothing in `AssistantWidgetGateTest` or
+     * `AssistantWidgetTemplateDataTest` calls `contextKey()`, so a provider with no request is enough
+     * to satisfy the constructor — {@see AssistantWidgetContextKeyTest} builds its own with a real
+     * sales-channel context where the resolved key is the point of the test.
+     *
      * @param array<string, string|int|float|bool|null> $values
      */
     protected function extension(array $values): AssistantWidgetExtension
@@ -80,6 +89,8 @@ abstract class AssistantWidgetTestCase extends TestCase
             new SystemConfigLlmSettings($config),
             new SystemConfigAssistantConfig($config),
             new SystemConfigWidgetSettings($config),
+            new ShoppingContextResolver(new SalesChannelContextProvider(new RequestStack())),
+            new ContextStorageKey('test-kernel-secret'),
         );
     }
 }
