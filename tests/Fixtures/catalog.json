@@ -25,7 +25,7 @@
       "categoryPath": ["Accessories", "Bottles"], "properties": {}, "variants": []
     },
     {
-      "id": "fx-011", "name": "Discontinued Rim Brake Pad", "description": "Legacy rim brake pad. No longer produced.",
+      "id": "fx-011", "name": "Discontinued Rim Brake Pad", "description": "Legacy rim brake pads. No longer produced.",
       "price": 6.90, "stock": 0, "url": "/detail/fx-011",
       "categoryPath": ["Brakes"], "properties": {}, "variants": []
     },
