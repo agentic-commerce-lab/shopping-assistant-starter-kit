@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Entity\Conversation;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Entity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
+use Swag\AssistantStarterKit\Core\Context\ShoppingMode;
 use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventCollection;
 
 /**
@@ -16,6 +17,14 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventCollection;
  * frozen at write time and wrong by the next page load; every figure is re-rendered from the
  * catalogue on read.
  */
+// @mago-expect lint:too-many-methods
+// @mago-expect lint:too-many-properties
+// One property and one getter/setter pair per column `ConversationDefinition` maps, not a choice
+// of shape: Shopware's DAL hydrates this entity by calling exactly these setters, so the count is
+// the sum of the table's columns. Task 4 added `scopeType`, `commercialEmployeeId` and
+// `commercialOrganisationId` beside the nine that were already here, which is what pushed the
+// class past both thresholds; splitting them out would need a custom Field type mapping to a
+// nested object, not a refactor of this class.
 class ConversationEntity extends Entity
 {
     use EntityIdTrait;
@@ -31,6 +40,13 @@ class ConversationEntity extends Entity
     protected ?string $customerId = null;
 
     protected ?CustomerEntity $customer = null;
+
+    /** Which kind of shopper this conversation belongs to, so it can be compared against a presented scope. */
+    protected string $scopeType = ShoppingMode::Guest->value;
+
+    protected ?string $commercialEmployeeId = null;
+
+    protected ?string $commercialOrganisationId = null;
 
     protected ?string $locale = null;
 
@@ -73,6 +89,36 @@ class ConversationEntity extends Entity
     public function setCustomer(?CustomerEntity $customer): void
     {
         $this->customer = $customer;
+    }
+
+    public function getScopeType(): string
+    {
+        return $this->scopeType;
+    }
+
+    public function setScopeType(string $scopeType): void
+    {
+        $this->scopeType = $scopeType;
+    }
+
+    public function getCommercialEmployeeId(): ?string
+    {
+        return $this->commercialEmployeeId;
+    }
+
+    public function setCommercialEmployeeId(?string $commercialEmployeeId): void
+    {
+        $this->commercialEmployeeId = $commercialEmployeeId;
+    }
+
+    public function getCommercialOrganisationId(): ?string
+    {
+        return $this->commercialOrganisationId;
+    }
+
+    public function setCommercialOrganisationId(?string $commercialOrganisationId): void
+    {
+        $this->commercialOrganisationId = $commercialOrganisationId;
     }
 
     public function getLocale(): ?string

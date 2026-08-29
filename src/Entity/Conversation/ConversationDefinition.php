@@ -78,6 +78,11 @@ class ConversationDefinition extends EntityDefinition
             // The constraint is `ON DELETE SET NULL`: a customer who deletes their account takes
             // their link with them, and the conversation stays. See the migration.
             new FkField('customer_id', 'customerId', CustomerDefinition::class),
+            (new StringField('scope_type', 'scopeType'))->addFlags(new Required()),
+            // No FkField and no association: these reference Shopware Commercial's tables, which
+            // exist only when that optional extension is installed. Stored as plain ids.
+            new IdField('commercial_employee_id', 'commercialEmployeeId'),
+            new IdField('commercial_organisation_id', 'commercialOrganisationId'),
             new StringField('locale', 'locale'),
             new IntField('turn_count', 'turnCount'),
             new StringField('outcome', 'outcome'),
