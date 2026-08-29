@@ -100,12 +100,6 @@ abstract class AssistantEndpointTestCase extends TestCase
 
         $systemConfig = new FakeSystemConfigService($config);
 
-        // No request in these tests, so the controller's `use()` escape hatch supplies the per-call
-        // `SalesChannelContext` explicitly rather than reading one off a request stack — the same
-        // provider instance has to go to both arguments below, since `use()`'s override on one
-        // instance is invisible to a different instance's `current()`.
-        $contexts = new SalesChannelContextProvider(new RequestStack());
-
         return new AssistantController(
             $this->runner,
             $this->store,
@@ -114,8 +108,10 @@ abstract class AssistantEndpointTestCase extends TestCase
             // In-memory rather than a cache pool: one budget per controller, so a test's windows
             // start empty and cannot leak into the next test.
             new RequestBudget(new InMemoryStorage()),
-            $contexts,
-            new ShoppingContextResolver($contexts),
+            // The controller calls `ShoppingContextResolver::of()` with the `SalesChannelContext` it
+            // already holds, never `current()` — so the provider this constructor still requires is
+            // never actually read here, and a request-less one is enough to satisfy the type.
+            new ShoppingContextResolver(new SalesChannelContextProvider(new RequestStack())),
         );
     }
 

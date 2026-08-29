@@ -22,21 +22,29 @@ use Swag\AssistantStarterKit\Entity\Conversation\ConversationEntity;
 final class ConversationScope
 {
     /**
-     * The scope a conversation row was opened under, rebuilt from its own stored columns.
+     * The scope a conversation row was opened under, rebuilt from its own stored columns — or null
+     * if `scope_type` does not name a case {@see ShoppingMode} currently has.
      *
-     * Built with `ShoppingMode::from()` rather than a stored enum: `scope_type` is a plain string
-     * column (see `ConversationDefinition`), and this is the one place that turns it back into the
-     * type {@see ShoppingContext::matches()} compares.
+     * Built with `ShoppingMode::tryFrom()` rather than `from()`: `scope_type` is a plain string
+     * column (see `ConversationDefinition`), not a value this code controls end to end, and
+     * `ShoppingMode`'s own docblock says a `commercial` case arrives with the Commercial bridge — so
+     * a row written by a newer version and read by an older one is a real case, not a hypothetical.
+     * `from()` would turn that shopper-facing read into a `\ValueError`, i.e. a 500; `tryFrom()` lets
+     * {@see self::matches()} treat an unrecognised value the same as any other mismatch.
      */
-    public static function of(ConversationEntity $conversation): ShoppingContext
+    public static function of(ConversationEntity $conversation): ?ShoppingContext
     {
-        return new ShoppingContext(
-            mode: ShoppingMode::from($conversation->getScopeType()),
-            salesChannelId: $conversation->getSalesChannelId(),
-            customerId: $conversation->getCustomerId(),
-            employeeId: $conversation->getCommercialEmployeeId(),
-            organisationId: $conversation->getCommercialOrganisationId(),
-        );
+        $mode = ShoppingMode::tryFrom($conversation->getScopeType());
+
+        return $mode === null
+            ? null
+            : new ShoppingContext(
+                mode: $mode,
+                salesChannelId: $conversation->getSalesChannelId(),
+                customerId: $conversation->getCustomerId(),
+                employeeId: $conversation->getCommercialEmployeeId(),
+                organisationId: $conversation->getCommercialOrganisationId(),
+            );
     }
 
     /**
@@ -44,11 +52,12 @@ final class ConversationScope
      *
      * A missing row is never a match: there is nothing to compare against, and both `history()`
      * (an unknown token) and `append()` (a backstop against a skipped validation) need exactly that
-     * answer for a null row.
+     * answer for a null row. An unrecognised `scope_type` — {@see self::of()} returning null — gets
+     * the same answer, for the same reason: no history and no reason, never an exception.
      */
     public static function matches(?ConversationEntity $conversation, ShoppingContext $context): bool
     {
-        return $conversation instanceof ConversationEntity && self::of($conversation)->matches($context);
+        return $conversation instanceof ConversationEntity && (self::of($conversation)?->matches($context) ?? false);
     }
 
     /**

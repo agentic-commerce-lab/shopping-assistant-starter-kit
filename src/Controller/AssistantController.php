@@ -8,7 +8,6 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
-use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
@@ -59,12 +58,11 @@ class AssistantController extends StorefrontController
         // public endpoint that spends money — and a control that quietly does nothing is the exact
         // defect {@see RequestBudget} was written to fix.
         private readonly RequestBudget $budget,
-        // Together, these rebuild the shopper's {@see ShoppingContext} from the `SalesChannelContext`
-        // Shopware already injected into this request — see `resolveScope()`. Task 5 added the scope
-        // check the store now enforces; Task 6 owns validating an unknown-or-foreign token instead of
-        // trusting it, which is why this controller still only *resolves* a scope and does not yet
-        // reject a mismatched one itself.
-        private readonly SalesChannelContextProvider $contexts,
+        // Rebuilds the shopper's {@see ShoppingContext} from the `SalesChannelContext` Shopware already
+        // injected into this request, via `ShoppingContextResolver::of()` — a pure mapping, not a
+        // second request lookup. Task 5 added the scope check the store now enforces and the branch
+        // in `chat()` that starts a fresh conversation rather than trusting a foreign or stale token;
+        // Task 6 keeps the storage-key template work.
         private readonly ShoppingContextResolver $contextResolver,
         private readonly CardPayload $cardPayload = new CardPayload(),
         private readonly HandoffPayload $handoff = new HandoffPayload(),
@@ -82,7 +80,7 @@ class AssistantController extends StorefrontController
     public function chat(Request $request, SalesChannelContext $context): Response
     {
         $salesChannelId = $context->getSalesChannelId();
-        $shoppingContext = $this->resolveScope($context);
+        $shoppingContext = $this->contextResolver->of($context);
 
         $chat = ChatRequest::fromRequest($request);
         $message = $chat->message;
@@ -121,11 +119,7 @@ class AssistantController extends StorefrontController
             return $this->refuse($refusal);
         }
 
-        // Recorded once, on the turn that opens the conversation. A conversation resumed by token
-        // never re-reads this, so logging in mid-conversation does not rewrite who it belonged to —
-        // the column answers "who produced this trace", not "who was last seen".
-        $token = $chat->token ?? $this->conversations->start($shoppingContext, $context->getLanguageId());
-        $history = $this->conversations->history($token, $shoppingContext, self::MAX_HISTORY_TURNS);
+        [$token, $history] = $this->resumeOrStart($shoppingContext, $chat->token, $context->getLanguageId());
 
         $result = $this->turnRunner->run(
             $message,
@@ -192,18 +186,42 @@ class AssistantController extends StorefrontController
     }
 
     /**
-     * The shopper's {@see ShoppingContext} for this request, rebuilt from the `SalesChannelContext`
-     * Shopware already injected — not read a second time from anywhere else.
+     * The token to persist this turn against, and the history already on it — resolved together
+     * because whether a fresh conversation is needed depends on reading the presented token first.
      *
-     * `ShoppingContextResolver::current()` reads its `SalesChannelContext` back off the request via
-     * `SalesChannelContextProvider`, and in a real `frontend.*` request that is the very context this
-     * method already holds — Shopware populated the request attribute the resolver reads before the
-     * argument resolver ever produced `$context` for this controller. `use()` exists so a test can
-     * supply that context directly, without a request stack at all.
+     * **The security-relevant line of this endpoint.** A token is a bearer credential, not proof of
+     * ownership (that is the whole reason `ConversationStore` now takes a `ShoppingContext` at all).
+     * Before this method existed, a stale token — or a guest token presented again after the shopper
+     * logged in — reached `append()` unchanged, and `DalConversationStore::append()` throws
+     * {@see \Swag\AssistantStarterKit\Core\Trace\ForeignConversationException} for exactly that
+     * mismatch: a 500 on every message until the shopper's `sessionStorage` was cleared. Guest-then-
+     * login is a normal flow, not a developer error, so `chat()` must not simply trust a presented
+     * token the way it used to.
+     *
+     * `history()` returning `[]` is the only signal available here, and it is deliberately ambiguous
+     * on purpose — {@see \Swag\AssistantStarterKit\Core\Trace\ConversationScope::historyOrEmpty()}'s
+     * own docblock explains why a shopper-facing read must never disclose *why* it found nothing. A
+     * stale token, a foreign one, and a genuine brand-new conversation are indistinguishable from
+     * here, and starting fresh is the correct answer to all three: there is nothing to resume, so
+     * nothing is lost by not resuming it.
+     *
+     * @return array{0: string, 1: list<\Swag\AssistantStarterKit\Core\Trace\ConversationTurn>}
      */
-    private function resolveScope(SalesChannelContext $context): ShoppingContext
-    {
-        return $this->contexts->use($context, fn(): ShoppingContext => $this->contextResolver->current());
+    private function resumeOrStart(
+        ShoppingContext $shoppingContext,
+        #[\SensitiveParameter]
+        ?string $token,
+        string $locale,
+    ): array {
+        if ($token !== null) {
+            $history = $this->conversations->history($token, $shoppingContext, self::MAX_HISTORY_TURNS);
+
+            if ($history !== []) {
+                return [$token, $history];
+            }
+        }
+
+        return [$this->conversations->start($shoppingContext, $locale), []];
     }
 
     /**
@@ -262,7 +280,7 @@ class AssistantController extends StorefrontController
         $config = $this->assistantConfig->forSalesChannel($context->getSalesChannelId());
 
         $messages = [];
-        $shoppingContext = $this->resolveScope($context);
+        $shoppingContext = $this->contextResolver->of($context);
         foreach ($this->conversations->history($token, $shoppingContext, self::MAX_HISTORY_TURNS) as $turn) {
             $messages[] = [
                 'role' => $turn->role,

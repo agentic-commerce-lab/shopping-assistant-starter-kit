@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Controller;
 
+use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
+use Swag\AssistantStarterKit\Core\Context\ShoppingMode;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\Component\HttpFoundation\Request;
@@ -108,5 +110,26 @@ final class AssistantControllerTest extends AssistantEndpointTestCase
         self::assertIsArray($warnings);
         self::assertArrayHasKey('unbackedPrices', $warnings);
         self::assertArrayHasKey('unbackedAvailabilityClaims', $warnings);
+    }
+
+    public function testAForeignTokenGetsAFreshConversationInsteadOfThrowing(): void
+    {
+        // The regression this branch exists to prevent: before it, a stale token — or a guest token
+        // presented again after the shopper logged in — reached append() unchanged, and
+        // DalConversationStore::append() throws ForeignConversationException on a scope mismatch,
+        // turning an ordinary "guest logs in mid-conversation" flow into a 500 on every message.
+        $controller = $this->controller();
+        $foreignToken = $this->store->start(
+            new ShoppingContext(ShoppingMode::Customer, self::CHANNEL, self::CUSTOMER),
+            'en-GB',
+        );
+
+        $response = $controller->chat($this->post(['message' => 'hi', 'token' => $foreignToken]), $this->context());
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+
+        $payload = $this->decode($response);
+        self::assertIsString($payload['token']);
+        self::assertNotSame($foreignToken, $payload['token']);
     }
 }

@@ -42,8 +42,20 @@ class ConversationEntity extends Entity
 
     protected ?CustomerEntity $customer = null;
 
-    /** Which kind of shopper this conversation belongs to, so it can be compared against a presented scope. */
-    protected string $scopeType = ShoppingMode::Guest->value;
+    /**
+     * Which kind of shopper this conversation belongs to, so it can be compared against a presented
+     * scope.
+     *
+     * Defaults to `''` rather than `ShoppingMode::Guest->value` — deliberately a value no live
+     * {@see ShoppingMode} case produces. An entity built directly (never through a DAL write) that
+     * skips this field must not silently read as a guest row: `ConversationScope::of()` uses
+     * `ShoppingMode::tryFrom()`, so an unpopulated column fails the match instead of admitting
+     * whichever guest happens to hold the token. The column itself still defaults to `'guest'` at the
+     * database level (see the migration) — this is the PHP-side default only, and `DalConversationStore::start()`
+     * has written `scopeType` explicitly since Task 5, so no real row is ever built through this
+     * default.
+     */
+    protected string $scopeType = '';
 
     protected ?string $commercialEmployeeId = null;
 
