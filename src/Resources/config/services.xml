@@ -19,6 +19,10 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Core\Context\ContextStorageKey">
+            <argument>%kernel.secret%</argument>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalBucketKeys"/>
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalGroupedFacetReader"/>
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader"/>
