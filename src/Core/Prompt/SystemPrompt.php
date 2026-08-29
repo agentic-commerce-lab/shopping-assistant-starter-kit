@@ -133,6 +133,24 @@ final class SystemPrompt
         PROMPT;
 
     /**
+     * Appended only when {@see AssistantConfig::$enableCompareProducts} is on, mirroring
+     * {@see self::MATCH_REASONS_AVAILABLE}'s own conditional-append mechanism.
+     *
+     * Added after a live eval run on Gemini 3.7 Flash (2026-08-29) showed the model searching each
+     * compared product in turn instead of calling `compare_products` with both ids — and the rule two
+     * paragraphs above this one ("the shop shows only your most recent search") then dropped the
+     * first product from the reply exactly as it is meant to for an unrelated later search. No
+     * grounding rule was broken; the model had simply never been told a comparison request needs the
+     * dedicated tool rather than two separate searches.
+     */
+    private const COMPARE_PRODUCTS_AVAILABLE = <<<'PROMPT'
+        If a shopper asks you to compare two or more specific products you can already identify, call
+        compare_products with all of their ids in one call. Do not search for them one at a time: the
+        shop shows only your most recent search, so searching for the second product would drop the
+        first one from the reply.
+        PROMPT;
+
+    /**
      * `$viewing` is appended after the rules and the vocabulary, in the same position the merchant's
      * voice guidance occupies: it is context, and context never outranks the rules block above it.
      */
@@ -147,6 +165,10 @@ final class SystemPrompt
 
         if ($config->enableMatchReasons) {
             $prompt .= "\n\n" . self::MATCH_REASONS_AVAILABLE;
+        }
+
+        if ($config->enableCompareProducts) {
+            $prompt .= "\n\n" . self::COMPARE_PRODUCTS_AVAILABLE;
         }
 
         $prompt .= "\n\n" . self::CLOSING;
