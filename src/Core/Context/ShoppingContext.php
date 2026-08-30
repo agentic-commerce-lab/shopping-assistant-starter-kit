@@ -11,9 +11,20 @@ namespace Swag\AssistantStarterKit\Core\Context;
  * {@see ShoppingContextResolver}, which is the only class here allowed to see a `SalesChannelContext`.
  *
  * **Two guests match, and that is not a hole.** There is no identity to compare, so what keeps one
- * guest out of another's transcript is the conversation token itself — 128 bits of randomness that
- * never leaves the browser that was issued it. Pretending otherwise would mean inventing a guest
- * identity, which is a tracking identifier with better manners and no better security.
+ * guest out of another's transcript is the conversation token itself — and that token is the
+ * conversation's own primary key, not a secret minted for this purpose. Shopware 6.7's
+ * `Uuid::randomHex()` is a UUIDv7: roughly 48 bits are a millisecond timestamp, so the unpredictable
+ * part is the remaining ~74 bits of CSPRNG output, not the full 128. It also does not stay in the
+ * browser that was issued it — this repository ships three places it leaves: {@see
+ * \Swag\AssistantStarterKit\Core\Trace\Sink\LoggerTraceSink} logs it, {@see
+ * \Swag\AssistantStarterKit\Core\Trace\Export\TraceExportSummary} writes it into every exported trace
+ * file, and the Administration's trace detail route carries it in the URL. A merchant running with
+ * trace logging enabled should treat conversation ids as sensitive. None of this is new in this
+ * branch — every row was reachable this way before it too, guest and customer alike; scoping narrows
+ * who a *valid* token lets in, it does not change what the token itself is. ~74 bits of unpredictable
+ * material is still what stands between one guest and another's transcript, and inventing a guest
+ * identity to do better would mean adding a tracking identifier with better manners and no better
+ * security.
  *
  * `employeeId` and `organisationId` are always null today. They are compared anyway so the
  * Commercial bridge only has to populate them: under Shopware's B2B Components every employee of one

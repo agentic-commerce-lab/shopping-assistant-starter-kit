@@ -81,8 +81,13 @@ interface ConversationStore
     /**
      * Every trace event recorded against this conversation, in sequence order.
      *
-     * Deliberately **not** scope-checked: merchant trace access is gated by the Administration's own
-     * ACL, not by who the conversation belonged to, and scoping this would break that export.
+     * Unscoped — and, as of this writing, that is not load-bearing for anything in production: the
+     * merchant export does not call this method. It goes through
+     * {@see \Swag\AssistantStarterKit\Controller\AssistantTraceExportController} →
+     * {@see \Swag\AssistantStarterKit\Core\Trace\Export\DalTraceExportSource::load()} → the `events`
+     * association, reading the table directly instead. This method has no caller outside the test
+     * suite today; it is a test-only affordance for exercising the contract, not something scoping it
+     * would break.
      *
      * @return list<TraceEvent>
      */

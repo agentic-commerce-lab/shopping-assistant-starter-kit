@@ -16,6 +16,15 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * {@see InMemoryConversationStore}, and if that double were only *plausible* those tests would pass
  * against behaviour the Shopware store does not have. A subclass can point this at the DAL store
  * once an integration harness exists — the spec cut that for v0.
+ *
+ * The harness now exists — {@see FakeConversationRepositories}, built for {@see ConversationScopeTest}
+ * — but this file does not run its other cases against `DalConversationStore` wholesale: doing so
+ * would also start exercising `DalConversationStore::traceEvents()`'s own pre-existing gap (it does
+ * not read `elapsedMs` back from the row), which is unrelated to this file's job and out of scope to
+ * fix here. The one case that genuinely needs both implementations —
+ * whether a foreign scope sees no history — lives in {@see ConversationStoreForeignScopeContractTest}
+ * instead, split into its own file for mago's `too-many-methods` budget (this file was already at ten
+ * methods) as much as for the different harness it needs.
  */
 final class ConversationStoreContractTest extends TestCase
 {

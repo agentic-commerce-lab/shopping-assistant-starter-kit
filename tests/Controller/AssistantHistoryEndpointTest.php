@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Controller;
 
+use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
+use Swag\AssistantStarterKit\Core\Context\ShoppingMode;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\Component\HttpFoundation\Request;
@@ -121,5 +123,32 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         ));
 
         self::assertSame([], $payload['messages']);
+    }
+
+    public function testAForeignTokenReadsAsAnEmptyConversationRatherThanDisclosingItExists(): void
+    {
+        // `chat()` has this case ({@see AssistantControllerTest::testAForeignTokenGetsAFreshConversationInsteadOfThrowing});
+        // this endpoint did not. A shopper who logs in mid-conversation, or who has a stale token
+        // from a different scope, must see the same empty history a token that was never issued
+        // gets — not an error, and nothing in the payload that would let a client tell the two cases
+        // apart.
+        $controller = $this->controller();
+        $foreignToken = $this->store->start(
+            new ShoppingContext(ShoppingMode::Customer, self::CHANNEL, self::CUSTOMER),
+            'en-GB',
+        );
+        $this->store->append(
+            $foreignToken,
+            new ShoppingContext(ShoppingMode::Customer, self::CHANNEL, self::CUSTOMER),
+            new ConversationTurn(role: ConversationTurn::ROLE_USER, prose: 'not yours'),
+            new TraceRecorder(),
+        );
+
+        $payload = $this->decode($controller->history(
+            Request::create('/assistant/history?token=' . $foreignToken),
+            $this->context(),
+        ));
+
+        self::assertSame(['messages' => []], $payload);
     }
 }
