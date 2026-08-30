@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
@@ -23,7 +24,12 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  * before the product is even loaded, so a bad quantity never costs a lookup;
  * the blocklist is checked immediately after the product loads, before any
  * money math, because a blocked product must never be priced for the
- * shopper, let alone added.
+ * shopper, let alone added. Right after it, before the cart-value check gets
+ * to multiply anything, this tool also refuses a product family — a parent
+ * whose `stockSource` is {@see \Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource::Parent}
+ * carries the family's aggregate stock and its cheapest variant's price, and
+ * pricing that for a cart line is exactly the money math this ordering
+ * exists to prevent.
  *
  * The blocklist check here is deliberately explicit, not merely inherited from
  * a scope-honouring gateway: {@see CommerceGatewayInterface::product()} takes a
@@ -138,6 +144,23 @@ final class AddToCartTool
             return $this->blocked(PolicyDecision::block(
                 'blocked_product',
                 'This product is not available for purchase.',
+            ));
+        }
+
+        // A family is not a sellable unit. Shopware's search returns family parents alongside their
+        // children, so `product()` answers for a parent id and the card that comes back carries the
+        // family's aggregate stock and its cheapest entry price — 19.31 across five variants, in the
+        // shop this was measured against. Adding that means a cart line whose colour nobody can name.
+        //
+        // `card.js` already refuses to render an add button for one. That is a courtesy in the
+        // browser; this is the write authority, and the same reasoning that makes this class re-check
+        // the blocklist rather than trust the gateway applies here. The reason code is its own, so a
+        // merchant reading a trace can tell this apart from a blocklist hit.
+        if ($card->stockSource === StockSource::Parent) {
+            return $this->blocked(PolicyDecision::block(
+                'variant_required',
+                'That is a product family rather than a single variant. Ask which options the shopper '
+                . 'wants, resolve them with get_product, and add the variant it returns.',
             ));
         }
 
