@@ -36,43 +36,47 @@ final class FakeConversationRepositories
     {
         $repository = self::mock();
 
-        $repository
-            ->method('create')
-            ->willReturnCallback(function (array $data) use (&$rows): EntityWrittenContainerEvent {
-                foreach ($data as $row) {
-                    $rows[(string) $row['id']] = $row;
-                }
+        /** @param list<array<string, mixed>> $data */
+        $create = function (array $data) use (&$rows): EntityWrittenContainerEvent {
+            foreach ($data as $row) {
+                /** @var array<string, mixed> $row */
+                $rows[(string) $row['id']] = $row;
+            }
 
-                return self::writtenEvent();
-            });
+            return self::writtenEvent();
+        };
 
-        $repository
-            ->method('update')
-            ->willReturnCallback(function (array $data) use (&$rows): EntityWrittenContainerEvent {
-                foreach ($data as $row) {
-                    $id = (string) $row['id'];
-                    $rows[$id] = [...($rows[$id] ?? []), ...$row];
-                }
+        $repository->method('create')->willReturnCallback($create);
 
-                return self::writtenEvent();
-            });
+        /** @param list<array<string, mixed>> $data */
+        $update = function (array $data) use (&$rows): EntityWrittenContainerEvent {
+            foreach ($data as $row) {
+                /** @var array<string, mixed> $row */
+                $id = (string) $row['id'];
+                $rows[$id] = [...($rows[$id] ?? []), ...$row];
+            }
 
-        $repository
-            ->method('search')
-            ->willReturnCallback(function (Criteria $criteria, Context $context) use (&$rows): EntitySearchResult {
-                $id = $criteria->getIds()[0] ?? null;
-                $row = $id !== null ? $rows[$id] ?? null : null;
-                $entities = $row === null ? [] : [FakeRepositoryRows::toConversationEntity($row)];
+            return self::writtenEvent();
+        };
 
-                return new EntitySearchResult(
-                    'swag_assistant_conversation',
-                    \count($entities),
-                    new EntityCollection($entities),
-                    null,
-                    $criteria,
-                    $context,
-                );
-            });
+        $repository->method('update')->willReturnCallback($update);
+
+        $search = function (Criteria $criteria, Context $context) use (&$rows): EntitySearchResult {
+            $id = $criteria->getIds()[0] ?? null;
+            $row = $id !== null ? $rows[$id] ?? null : null;
+            $entities = $row === null ? [] : [FakeRepositoryRows::toConversationEntity($row)];
+
+            return new EntitySearchResult(
+                'swag_assistant_conversation',
+                \count($entities),
+                new EntityCollection($entities),
+                null,
+                $criteria,
+                $context,
+            );
+        };
+
+        $repository->method('search')->willReturnCallback($search);
 
         return $repository;
     }
@@ -85,31 +89,37 @@ final class FakeConversationRepositories
     {
         $repository = self::mock();
 
-        $repository
-            ->method('create')
-            ->willReturnCallback(function (array $data) use (&$rows): EntityWrittenContainerEvent {
-                foreach ($data as $row) {
-                    $rows[] = $row;
-                }
+        /** @param list<array<string, mixed>> $data */
+        $create = function (array $data) use (&$rows): EntityWrittenContainerEvent {
+            foreach ($data as $row) {
+                /** @var array<string, mixed> $row */
+                $rows[] = $row;
+            }
 
-                return self::writtenEvent();
-            });
+            return self::writtenEvent();
+        };
 
-        $repository
-            ->method('search')
-            ->willReturnCallback(function (Criteria $criteria, Context $context) use (&$rows): EntitySearchResult {
-                return FakeTraceEventSearch::run($rows, $criteria, $context);
-            });
+        $repository->method('create')->willReturnCallback($create);
+
+        $search = function (Criteria $criteria, Context $context) use (&$rows): EntitySearchResult {
+            return FakeTraceEventSearch::run($rows, $criteria, $context);
+        };
+
+        $repository->method('search')->willReturnCallback($search);
 
         return $repository;
     }
 
-    private static function mock(): EntityRepository
+    /**
+     * The declared return type is an intersection rather than plain `EntityRepository`: every
+     * caller immediately chains `->method(...)`, which lives on `MockObject`, not on
+     * `EntityRepository` itself. Asserting the intersection here — once, in the one place the
+     * generator is called — is what lets every call site above type-check without its own cast.
+     */
+    private static function mock(): EntityRepository&MockObject
     {
+        /** @var EntityRepository&MockObject $mock */
         $mock = (new Generator())->testDouble(EntityRepository::class, true, true, callOriginalConstructor: false);
-
-        assert($mock instanceof EntityRepository);
-        assert($mock instanceof MockObject);
 
         return $mock;
     }
@@ -121,15 +131,13 @@ final class FakeConversationRepositories
      */
     private static function writtenEvent(): EntityWrittenContainerEvent
     {
+        /** @var EntityWrittenContainerEvent<string>&Stub $stub */
         $stub = (new Generator())->testDouble(
             EntityWrittenContainerEvent::class,
             true,
             false,
             callOriginalConstructor: false,
         );
-
-        assert($stub instanceof EntityWrittenContainerEvent);
-        assert($stub instanceof Stub);
 
         return $stub;
     }

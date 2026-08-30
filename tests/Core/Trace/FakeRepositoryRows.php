@@ -16,6 +16,9 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
  * The query-narrowing half of the same double lives in {@see FakeTraceEventSearch} instead of here —
  * a second split, not laziness: folding both back into one class merely relocated the same total
  * complexity mago's `cyclomatic-complexity` rule already flagged, rather than reducing it.
+ *
+ * The `mixed`-to-typed narrowing these two mapping methods lean on lives in a third sibling,
+ * {@see FakeRepositoryRowValues}, for the same reason again — see that class's docblock.
  */
 final class FakeRepositoryRows
 {
@@ -27,15 +30,17 @@ final class FakeRepositoryRows
         $entity = new ConversationEntity();
         $entity->setId((string) $row['id']);
         $entity->setSalesChannelId((string) $row['salesChannelId']);
-        $entity->setCustomerId($row['customerId'] ?? null);
+        $entity->setCustomerId(FakeRepositoryRowValues::nullableString($row['customerId'] ?? null));
         $entity->setScopeType((string) ($row['scopeType'] ?? ShoppingMode::Guest->value));
-        $entity->setCommercialEmployeeId($row['commercialEmployeeId'] ?? null);
-        $entity->setCommercialOrganisationId($row['commercialOrganisationId'] ?? null);
-        $entity->setLocale($row['locale'] ?? null);
+        $entity->setCommercialEmployeeId(FakeRepositoryRowValues::nullableString($row['commercialEmployeeId'] ?? null));
+        $entity->setCommercialOrganisationId(FakeRepositoryRowValues::nullableString(
+            $row['commercialOrganisationId'] ?? null,
+        ));
+        $entity->setLocale(FakeRepositoryRowValues::nullableString($row['locale'] ?? null));
         $entity->setTurnCount((int) ($row['turnCount'] ?? 0));
-        $entity->setOutcome($row['outcome'] ?? null);
+        $entity->setOutcome(FakeRepositoryRowValues::nullableString($row['outcome'] ?? null));
         $entity->setTotalMs((int) ($row['totalMs'] ?? 0));
-        $entity->setTranscript($row['transcript'] ?? []);
+        $entity->setTranscript(FakeRepositoryRowValues::nullableList($row['transcript'] ?? []));
 
         return $entity;
     }
@@ -51,7 +56,7 @@ final class FakeRepositoryRows
         $entity->setSeq((int) $row['seq']);
         $entity->setStage((string) $row['stage']);
         $entity->setElapsedMs((int) $row['elapsedMs']);
-        $entity->setPayload($row['payload'] ?? null);
+        $entity->setPayload(FakeRepositoryRowValues::nullableMap($row['payload'] ?? null));
 
         return $entity;
     }

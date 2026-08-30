@@ -35,6 +35,7 @@ final class AddConversationScopeTest extends TestCase
 
         self::assertNotSame([], $statements);
         $alter = $statements[0];
+        assert(\is_string($alter));
 
         self::assertStringContainsString('ALTER TABLE `swag_assistant_conversation`', $alter);
         self::assertStringContainsString("ADD `scope_type` VARCHAR(16) NOT NULL DEFAULT 'guest'", $alter);
@@ -51,9 +52,13 @@ final class AddConversationScopeTest extends TestCase
         $statements = $this->updateWithColumnMissing();
 
         self::assertCount(2, $statements, 'expected exactly the ALTER and the backfill UPDATE');
-        self::assertStringContainsString('ALTER TABLE', $statements[0]);
+
+        $alter = $statements[0];
+        assert(\is_string($alter));
+        self::assertStringContainsString('ALTER TABLE', $alter);
 
         $backfill = $statements[1];
+        assert(\is_string($backfill));
         self::assertStringContainsString("SET `scope_type` = 'customer'", $backfill);
         self::assertStringContainsString('WHERE `customer_id` IS NOT NULL', $backfill);
         self::assertStringNotContainsString("'guest'", $backfill);

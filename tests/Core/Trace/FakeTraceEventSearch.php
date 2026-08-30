@@ -43,9 +43,12 @@ final class FakeTraceEventSearch
         $sorting = $criteria->getSorting()[0] ?? null;
         if ($sorting instanceof FieldSorting) {
             $descending = $sorting->getDirection() === FieldSorting::DESCENDING;
-            usort($matches, static fn(array $a, array $b): int => $descending
-                ? $b['seq'] <=> $a['seq']
-                : $a['seq'] <=> $b['seq']);
+            usort($matches, static function (array $a, array $b) use ($descending): int {
+                $seqA = (int) $a['seq'];
+                $seqB = (int) $b['seq'];
+
+                return $descending ? $seqB <=> $seqA : $seqA <=> $seqB;
+            });
         }
 
         $limit = $criteria->getLimit();
