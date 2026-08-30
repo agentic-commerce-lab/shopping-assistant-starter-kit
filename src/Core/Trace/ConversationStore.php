@@ -27,7 +27,9 @@ use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
  * `LlmSettings::$apiKey` already has.
  *
  * **Scoping, added here rather than in the controller.** Presenting a token was never proof of
- * ownership — the primary key is 128 bits of randomness, not a permission. Every method but
+ * ownership — the primary key is a UUIDv7 (~74 bits of unpredictable material, not the 128 bits a
+ * fresh random secret would carry), not a permission. See {@see ShoppingContext}'s own docblock for
+ * the full accounting of what the token actually is and where it leaks. Every method but
  * {@see self::traceEvents()} now also takes the shopper's {@see ShoppingContext} and compares it
  * against the scope the conversation was opened under. `history()` and `append()` disagree on what
  * a mismatch does, deliberately: see their own docblocks.
@@ -88,6 +90,11 @@ interface ConversationStore
      * association, reading the table directly instead. This method has no caller outside the test
      * suite today; it is a test-only affordance for exercising the contract, not something scoping it
      * would break.
+     *
+     * Known defect in {@see DalConversationStore}'s implementation, left unfixed here as production
+     * behaviour and out of scope for this branch: it does not read `elapsed_ms` back from the row, so
+     * every event it returns reports `0` regardless of what was stored — which is why
+     * `ConversationStoreContractTest`'s elapsed-offset case runs only against `InMemoryConversationStore`.
      *
      * @return list<TraceEvent>
      */
