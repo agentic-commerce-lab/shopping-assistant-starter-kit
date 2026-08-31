@@ -1,8 +1,25 @@
 # A Portable Passage Store, and a Switch a Merchant Can Read — Design
 
 **Date:** 2026-08-31
-**Status:** design approved in conversation; the build/no-build decision is the last section and is
-still open
+**Status:** built, shipped and verified on both engines. The build decision was taken on
+2026-08-31 — see *Decision, 2026-08-31* — and both stores are in `main`.
+
+*Verified on MariaDB 11.8* (the local shop): the container accepts the chooser, the portable table is
+created by `Migration1788393600CreateShopInfoPassages`, and the shop still records
+`retrieve.shopinfo.store` as `{"store":"mariadb"}` — the fast path was not lost.
+
+*Verified on MySQL 8.0.46* (a throwaway shop stood up for the purpose, the same version the staging
+box runs, confirmed to have neither `VECTOR` nor `VEC_DISTANCE_COSINE`): the plugin installs, the
+migration creates `swag_assistant_shop_info_passage` with a native `json` vector column, three
+documents index through `DalPortablePassageStore::add()`, `query()` ranks them correctly in PHP
+(0.7418 / 0.5296 / 0.4578, right document first), a German shopper question is answered from the
+indexed text, and the turn records
+`{"store":"portable","reason":"…this shop runs 8.0.46…"}`. **This is the run that closes
+*What this cannot test* for the portable half** — its SQL had never touched a real database before,
+because every store test in the repo mocks `Connection`.
+
+**One thing stays open:** half of D6 — the line on the shop-information admin screen naming the
+active store, with its re-index notice — is not built.
 **Supersedes nothing.** The MariaDB store stays, and stays preferred where it works.
 
 ## Purpose
@@ -231,7 +248,30 @@ Shopper-visible behaviour is identical. The threshold, `MAX_PASSAGES = 3`, both 
 per-channel filter, the trace events and the prose audits all live in `SearchShopInfoTool` and above,
 and none of them move.
 
-## Is it worth building?
+## Decision, 2026-08-31
+
+**Both paths ship.** MariaDB where it is available, the portable store otherwise — D1 unchanged.
+Decided by the maintainer against the recommendation this section originally carried; the reasoning
+below is kept because a design that hides the argument it lost is worth less later, not more.
+
+The deciding evidence was operational rather than documentary: the MariaDB store has been exercised
+by hand on the local shop and does what it claims. That outweighs this repo's test coverage of it,
+which is nil — see *What this cannot test*, which is now a standing gap rather than an argument.
+
+Scope follows: A (the merchant-readable switch) first, then B (the portable store, chooser, D6 and
+D7's one line). A first because B's help text — which store is active, and the re-index notice below —
+belongs in the card A creates.
+
+**One consequence to carry into implementation.** The two stores do not share data: they write to
+different tables. The realistic case is not a database move — that leaves nothing behind to migrate —
+but the same database gaining or losing `symfony/ai-maria-db-store`, where both tables can coexist and
+the chooser switches between them. Nothing is copied. The shop-information screen states which store
+answered and, when the other holds passages, says they were indexed with a different store and need
+re-indexing. Building a copy between the two would be work for a case we would have to construct.
+
+## Why this was argued the other way
+
+### The case that was made against building B
 
 **Yes for requirement 3, and the argument is stronger than the storage one.**
 

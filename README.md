@@ -51,24 +51,41 @@ can replace that prompt from their own plugin.
 
 - Shopware **6.7** (`^6.7`), PHP 8.2+
 - An OpenAI-compatible chat-completions endpoint (`base_url` + `model` + `api_key`)
-- **MariaDB 11.7 or newer, if you want shop-information retrieval (RAG).** The passage store is
-  `Symfony\AI\Store\Bridge\MariaDb\Store`, which emits `VECTOR` columns, `VECTOR INDEX` and the
-  `VEC_DISTANCE_COSINE` / `VEC_FromText` functions — MariaDB's spelling of vector search.
-  **No MySQL version serves it**, and that is worth stating because the intuitive fix is the wrong
-  one: MySQL has no `VECTOR` type before 9.0, and MySQL 9's functions are named differently
-  (`STRING_TO_VECTOR`, `DISTANCE`), so upgrading MySQL does not help — the engine has to change.
-  Everything else in this plugin runs on whatever database Shopware itself supports; only shop
-  information needs this.
-- **`symfony/ai-store` and `symfony/ai-maria-db-store` installed in the SHOP's vendor tree**, again
-  only for shop information. They are `composer.json` requires of this plugin, but Shopware autoloads
-  a plugin's dependencies from the shop's own vendor directory — so a plugin deployed by symlink or
-  rsync can run with them absent.
+- **`symfony/ai-store` installed in the SHOP's vendor tree, if you want shop-information retrieval
+  (RAG).** This is the one hard requirement the feature has beyond a model: the package carries
+  `Symfony\AI\Store\Document\Vectorizer`, which is what turns a page or a question into a vector, so
+  without it there is nothing for any store to hold or to search. It is a `composer.json` require of
+  this plugin, but Shopware autoloads a plugin's dependencies from the shop's own vendor directory —
+  so a plugin deployed by symlink or by rsync can run with it absent.
 
-  Neither shortfall is fatal: `Core\ShopInfo\ShopInfoAvailability` probes for both at runtime, and a
-  shop missing either reads back with `embeddingModel` empty, which is this plugin's documented off
-  switch. The tool is never built, nothing changes in the model's schema, and the assistant keeps
-  answering product questions. Before that check existed, an embedding model configured on a shop
-  without the packages returned a 500 to every shopper.
+  Not fatal: `Core\ShopInfo\ShopInfoAvailability` probes for it at runtime, and a shop missing it
+  reads back with `embeddingModel` empty, which is this plugin's documented off switch. The tool is
+  never built, nothing changes in the model's schema, and the assistant keeps answering product
+  questions. Before that check existed, an embedding model configured on a shop without the package
+  returned a 500 to every shopper.
+- **MariaDB 11.7 or newer plus `symfony/ai-maria-db-store` — recommended for shop information, not
+  required.** Where both are present the passage store is
+  `Symfony\AI\Store\Bridge\MariaDb\Store`, which emits `VECTOR` columns, `VECTOR INDEX` and the
+  `VEC_DISTANCE_COSINE` / `VEC_FromText` functions — MariaDB's spelling of vector search — and the
+  vectors are indexed, which stays fast on a large document set. That is why the package is a
+  `suggest` rather than a require.
+
+  Where either is missing, the assistant compares the vectors itself in PHP against an ordinary table
+  with a `JSON` column. Exact rather than approximate, full float64 rather than the vector type's
+  float32, unremarkable for the handful of legal pages and uploads most shops have, and a linear scan
+  once a corpus reaches thousands of passages. So the database question means *slower*, not *broken* —
+  shop information runs on whatever database Shopware itself supports.
+
+  **No MySQL version serves the MariaDB store**, and that is worth stating because the intuitive fix
+  is the wrong one: MySQL has no `VECTOR` type before 9.0, and MySQL 9's functions are named
+  differently (`STRING_TO_VECTOR`, `DISTANCE` — and `DISTANCE` is HeatWave-only), so upgrading MySQL
+  does not help. A MySQL shop is a portable-store shop, and that is fine.
+
+  **The two stores share no data.** They write to different tables and nothing copies between them,
+  so a shop that gains or loses `symfony/ai-maria-db-store` — a `composer update` on a MariaDB shop
+  is the usual way — switches store and finds nothing until its documents are indexed again.
+  Retrieval keeps working; it just has an empty table to work against. Which store answered is in the
+  trace as `retrieve.shopinfo.store`, with the reason for a fallback.
 - An English- or German-language storefront. The assistant answers in the language the shopper
   writes in, falling back to the storefront's own domain locale; any other locale falls back to
   English (`Core\Prompt\ReplyLanguage` is the closed list to extend).
@@ -141,6 +158,20 @@ Environment variables win over stored values on purpose: Shopware's system confi
 storage, so a key entered in the admin form is readable by anyone with config access and travels in
 every database backup. Until all three are set, the chat endpoint answers **503** rather than failing
 mid-turn.
+
+Shop-information retrieval is a second, separate switch — the **Shop knowledge** card in the plugin's
+settings, off by default. It needs both halves: the switch on *and* an embedding model, and either one
+alone leaves the feature off, with no tool in the model's schema and the documents never offered.
+
+```fish
+bin/console system:config:set SwagAssistantStarterKit.config.enableShopKnowledge true
+bin/console system:config:set SwagAssistantStarterKit.config.embeddingModel "baai/bge-m3"
+```
+
+The model must be one your provider serves at `/v1/embeddings` — it reuses the chat model's base URL
+and key. Then index the shop's pages from the Administration's **Assistant shop information** screen,
+or with `bin/console swag:assistant:shopinfo --index=…`. Changing the embedding model afterwards makes
+every indexed document unusable: delete and index them again.
 
 ## Request limits
 
