@@ -8,15 +8,31 @@
 created by `Migration1788393600CreateShopInfoPassages`, and the shop still records
 `retrieve.shopinfo.store` as `{"store":"mariadb"}` — the fast path was not lost.
 
-*Verified on MySQL 8.0.46* (a throwaway shop stood up for the purpose, the same version the staging
-box runs, confirmed to have neither `VECTOR` nor `VEC_DISTANCE_COSINE`): the plugin installs, the
-migration creates `swag_assistant_shop_info_passage` with a native `json` vector column, three
-documents index through `DalPortablePassageStore::add()`, `query()` ranks them correctly in PHP
-(0.7418 / 0.5296 / 0.4578, right document first), a German shopper question is answered from the
-indexed text, and the turn records
-`{"store":"portable","reason":"…this shop runs 8.0.46…"}`. **This is the run that closes
+*Verified on MySQL 8.0.46* — a throwaway shop stood up for the purpose, the same version the
+staging box runs, confirmed to have neither `VECTOR` (`CREATE TABLE _vec_probe (id INT, v VECTOR(4))`
+→ syntax error) nor `VEC_DISTANCE_COSINE` (function does not exist). **This run is what closes
 *What this cannot test* for the portable half** — its SQL had never touched a real database before,
-because every store test in the repo mocks `Connection`.
+because every store test in this repo mocks `Connection`. What was exercised end to end:
+
+| | |
+|---|---|
+| Install | Plugin installs and activates; the migration creates `swag_assistant_shop_info_passage` with a native `json` vector column (MariaDB spells the same column `longtext` + a `json_valid()` CHECK). `swag_assistant_shop_info_vector` is never created. |
+| The switch | With `enableShopKnowledge` off but `embeddingModel` SET, ingestion is refused — the boolean resolving into the one off-state, on a real shop. |
+| Ingestion, merchant path | `POST /api/_action/swag-assistant/shop-info/index-pages` indexed all five configured CMS legal pages: 5 indexed, 0 failed, 0 skipped. |
+| Ingestion, upload path | `POST /api/_action/swag-assistant/shop-info/upload` indexed a merchant's own size chart, 1024 dimensions. |
+| Ingestion, CLI path | `swag:assistant:shopinfo --index` for plain files. |
+| Ranking | `--query` scored 0.7418 / 0.5296 / 0.4578 with the right document first — similarity semantics and ordering correct over MySQL JSON rows. |
+| Answering, German | "Wie lange habe ich Widerrufsrecht?" → answered from the indexed text, `shop_info_retrieved`. |
+| Answering, English, cross-lingual | "How many days do I have to return an order?" → answered in English **from the German document**, which `baai/bge-m3` makes possible and which the portable store's exact float64 ranking serves unchanged. |
+| Answering, merchant upload | 57 cm head circumference → size M (55–59), read out of the uploaded chart. |
+| Multi-turn | A follow-up on the same conversation token answered from a *different* document. |
+| Refusal | Asked for a company register number the (lorem-ipsum) imprint does not contain, it declined and escalated rather than inventing one. |
+| Deletion | `deleteDocument()` removed the document and its passages; re-indexing the same file left exactly one passage, so spec R8's delete-then-add holds here too. |
+| The trace | Seven turns, every one `{"store":"portable","reason":"…this shop runs 8.0.46…"}`. |
+
+Not verified: the storefront widget driven as a user in a browser — only that the storefront serves it
+(HTTP 200, widget markup and assets present). Every turn above went through
+`POST /assistant/chat`, which is the endpoint the widget calls.
 
 **One thing stays open:** half of D6 — the line on the shop-information admin screen naming the
 active store, with its re-index notice — is not built.
