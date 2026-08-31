@@ -51,9 +51,14 @@ which is an illustration.
 
     Every term here is one of the offsets the panel actually sits on, plus a rem of breathing room
     at the top, so the ceiling follows the obstruction instead of being outrun by it.
+
+    **The 760px ceiling is also declared in `resize.js` as `DEFAULT_HEIGHT`**, because the panel has to
+    be sized before that chunk loads. `tests/js/panel-defaults.test.js` holds the two together; the
+    viewport clamp below has no JS counterpart and needs none, since the drag handle clamps against
+    the live window instead.
     */
     max-height: min(
-        640px,
+        760px,
         calc(
             100vh - #{$swag-assistant-orb-inset} - var(--swag-assistant-obstruction, 0px) -
                 #{$swag-assistant-orb-size} - 18px - 1rem

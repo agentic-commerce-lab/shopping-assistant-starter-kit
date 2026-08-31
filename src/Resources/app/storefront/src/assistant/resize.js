@@ -33,9 +33,22 @@ export const MAX_HEIGHT = 900;
  */
 const VIEWPORT_MARGIN = 16;
 
-const DEFAULT_WIDTH = 420;
+/**
+ * The size the panel opens at when `localStorage` holds nothing.
+ *
+ * **Exported because the stylesheet owns the same two numbers**, and it has to: the panel must be
+ * correctly sized on first paint, before the lazily-loaded chunk that imports this file has run. So
+ * `_tokens.scss` carries the width and `_panel.scss` the height ceiling, and
+ * `tests/js/panel-defaults.test.js` reads both back to check they still agree with these. Change one
+ * and that test names the other.
+ *
+ * Raised from 420x640 on 2026-08-31: a full reply did not fit, so reading one answer meant scrolling
+ * the log. The viewport clamp in `_panel.scss` is unchanged and still wins, so a taller ceiling
+ * cannot push the panel off a short screen.
+ */
+export const DEFAULT_WIDTH = 480;
 
-const DEFAULT_HEIGHT = 640;
+export const DEFAULT_HEIGHT = 760;
 
 /**
  * A size the panel can actually be, given the window it is in.
