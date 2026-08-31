@@ -47,6 +47,7 @@ final class AssistantTableRemoval
         'swag_assistant_trace_event',
         'swag_assistant_conversation',
         ShopInfoVectorTable::TABLE,
+        'swag_assistant_shop_info_passage',
         'swag_assistant_document',
     ];
 
