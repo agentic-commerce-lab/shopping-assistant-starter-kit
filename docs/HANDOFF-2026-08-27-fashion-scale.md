@@ -1,4 +1,19 @@
-# Handoff — 2026-08-27
+# Handoff — 2026-08-27: the fashion-scale sweep
+
+> **HISTORICAL. Both of its tasks are done and the branch it describes is merged.**
+>
+> `integration/fashion-scale-sweep` merged to `main` in `b8f5211` on 2026-08-27, and 77 commits have
+> landed on `main` since. Its closing section, "Not merged", is therefore false as written, and its
+> test/quality figures are a snapshot of that merge, not of `main` today.
+>
+> Kept, and moved here from the repository root, because a dozen committed plans and specs cite it by
+> name — chiefly "The environment, exactly" for how the Docker shop is driven, "What the spec got
+> wrong" for the decisions measurement refuted, and Task A's rule against a `--force` reseed.
+> `docs/superpowers/specs/2026-08-27-family-diversified-narrowing-design.md` builds directly on its
+> Task B.
+>
+> There is no current handoff. `ARCHITECTURE.md` is the architecture of record.
+
 
 **Task A is done.** The fashion catalogue is seeded, measured, and reviewed — see
 `docs/superpowers/reports/2026-08-27-fashion-catalogue-seeded.md` for the real-shop measurements, and

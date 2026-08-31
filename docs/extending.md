@@ -1,7 +1,8 @@
 # Extending the assistant
 
-Four seams, each with a working example you can copy. All of them are ordinary Symfony service
-wiring — nothing here needs a fork of this plugin.
+How to give the assistant a capability it does not have. Twelve seams, most with a working example
+you can copy, all of them ordinary Symfony service wiring — and each works the same whether you are
+adding it to this repository or shipping it in a plugin of your own.
 
 > **Research preview.** These interfaces carry `@api` to record intent, not to promise stability.
 > They will move. What will not change is that they exist and have shipped consumers in this
@@ -14,8 +15,65 @@ wiring — nothing here needs a fork of this plugin.
 | Change the system prompt | `PromptProviderInterface` | decorate the service |
 | Use a different model provider | `LlmPlatformInterface` | decorate the service |
 | Send turns to my analytics | `TraceSinkInterface` | `swag_assistant.trace_sink` |
+| Read a document format we do not | `TextExtractor` | `swag_assistant.text_extractor` |
+| Embed with a different model | `Embedder` | decorate or replace the service |
+| Store vectors somewhere else | `PassageStore` | replace the alias |
+| Assert something about my own tool in an eval journey | `Assertion` | name the class in the journey's `assertions` map |
 | Change the widget's markup | Twig blocks | template override, see the README |
-| Swap the catalogue backend entirely | `CommerceGatewayInterface` | decorate the service |
+| Drive the widget from your own JS | `swag-assistant:*` DOM events | listen on / dispatch at the widget root |
+| Swap the catalogue backend entirely | `CommerceGatewayInterface` **plus four optional capability interfaces** | decorate the service — [read this first](#swapping-the-catalogue-backend) |
+
+The four tags are collected with `tagged_iterator`, so a service in *your* plugin is found the same
+way the shipped ones are. Nothing needs to be registered with us.
+
+## Where your code lives
+
+The seams do not care, which is the point. But the two paths differ in three small ways, and the
+examples below have to pick one — they use an `Acme\` namespace to keep the boundary visible.
+
+**Adding a capability to the starter kit itself.** Put the class beside its siblings — a tool factory
+in `src/Core/Tool/Factory/`, an extractor in `src/Core/ShopInfo/Extractor/` — and register it in this
+plugin's own `src/Resources/config/services.xml` carrying the same tag the shipped ones carry. Read
+`Acme\Assistant\…` as `Swag\AssistantStarterKit\…` throughout; nothing else changes. You may also
+just inject a list where a tag would go, but don't: the tag is what keeps the next contributor from
+having to find and edit a constructor.
+
+**Shipping a capability as your own plugin.** Your code lives in your own `shopware-platform-plugin`
+with its own `composer.json` and `services.xml`. Two things make that work, and neither is obvious
+from the examples:
+
+- Shopware plugins are Symfony bundles sharing **one** container. That is the entire reason a tag
+  crosses a plugin boundary — `tagged_iterator` collects your service exactly as it collects ours,
+  with nothing registered on our side.
+- **Your plugin must require this one.** Installed without it, your tagged service sits in a shop
+  where nothing collects that tag: no error, no log line, your tool simply never reaches the model.
+  That is the failure mode this whole document exists to make findable, so do not let your own
+  packaging reproduce it.
+
+Decoration — `PromptProviderInterface`, `LlmPlatformInterface`, `CommerceGatewayInterface` — works
+from either side, and from a separate plugin it is why no fork is needed.
+
+## What already ships
+
+Before you write a tool, know what you would be duplicating. Six ship, each behind its own factory,
+and four of them are switchable by the merchant:
+
+| Tool | Tier | Present when |
+|---|---|---|
+| `search_products` | grounded | always |
+| `get_product` | grounded | always |
+| `add_to_cart` | grounded | `enableAddToCart` |
+| `compare_products` | grounded | `enableCompareProducts` (off by default) |
+| `search_shop_info` | plain | an `embeddingModel` is configured |
+| `escalate` | plain | `enableEscalation` |
+
+`search_products` also carries two opt-in behaviours worth knowing about because they change what the
+model is handed: `enableMatchReasons` (deterministic reason codes for *why* a product was retrieved)
+and the bounded `properties` list every product summary now includes.
+
+A factory returning `null` is how all four switches work, and it is the pattern to copy: a tool that
+is never constructed is never in the schema the model sees, which keeps capability control out of the
+prompt. A tool the model can see is a tool it will try, and a refusal reads to a shopper as a failure.
 
 ## Why tools are factories, not services
 
@@ -39,10 +97,12 @@ So there are two tiers:
 - **`ToolFactoryInterface`** receives a `ToolContext`: the trace and the merchant's config. It cannot
   reach the catalogue, which means it cannot get the above wrong. Use this unless you need catalogue
   data — a store locator, an FAQ lookup, a shipping estimate, a warranty checker.
-- **`GroundedToolFactoryInterface`** receives a `GroundedToolContext`: the gateway, the fact renderer,
-  the blocklist, the variant resolver, and `browsingCategoryId` — the category the shopper is
-  currently browsing, or null. Use it when your tool genuinely answers from the catalogue, and
-  render shopper-facing facts through `FactRenderer` rather than returning them yourself.
+- **`GroundedToolFactoryInterface`** receives a `GroundedToolContext`, which is everything a shipped
+  grounded tool is built from: `gateway`, `trace`, `config`, `renderer` (`FactRenderer`),
+  `facetProbe`, `blocklist`, `variantResolver`, `queryBuilder`, `cartAvailable`, and
+  `browsingCategoryId` — the category the shopper is currently browsing, or null. Use it when your
+  tool genuinely answers from the catalogue, and render shopper-facing facts through `FactRenderer`
+  rather than returning them yourself.
 
 `browsingCategoryId` is client-supplied and never resolved, so **use it only to narrow.** As a
 `ProductQuery::$categoryId` it is AND-ed with the merchant's scope and can only ever return fewer
@@ -251,15 +311,253 @@ final readonly class BedrockPlatform implements LlmPlatformInterface
 Settings arrive per call because they are per sales channel: one shop can point two storefronts at
 two different models.
 
+## Example 6: read a document format we do not
+
+The shop-information feature answers policy questions ("how long do I have to return this?") from
+documents the merchant uploads, plus the shop's own CMS legal pages, which are indexed automatically.
+Five formats ship — `txt`, `md`, `html`, `pdf`, `docx` — behind one interface, tagged rather than
+injected as a list precisely so a merchant with an in-house format adds a service and changes nothing
+else.
+
+```php
+<?php declare(strict_types=1);
+
+namespace Acme\Assistant\ShopInfo;
+
+use Swag\AssistantStarterKit\Core\ShopInfo\ExtractionFailed;
+use Swag\AssistantStarterKit\Core\ShopInfo\TextExtractor;
+
+final readonly class RtfExtractor implements TextExtractor
+{
+    public function supports(string $extension): bool
+    {
+        return $extension === 'rtf';
+    }
+
+    public function extract(string $bytes): string
+    {
+        $text = $this->toPlainText($bytes);
+
+        // Throw for a malformed file or one holding no text. Returning '' instead indexes an empty
+        // document, and the merchant is told the upload succeeded.
+        if (trim($text) === '') {
+            throw new ExtractionFailed('No extractable text in the RTF document.');
+        }
+
+        return $text;
+    }
+}
+```
+
+```xml
+<service id="Acme\Assistant\ShopInfo\RtfExtractor">
+    <tag name="swag_assistant.text_extractor"/>
+</service>
+```
+
+**Keep the paragraph boundaries.** `Chunker` splits on them, and a chunk that begins mid-sentence
+separates *"within fourteen days"* from *"of receiving the goods"* — a deadline without its start
+date, which the model will then paraphrase as fact. An extractor that flattens a document into one
+line compiles, passes a naive test, and quietly degrades every answer drawn from that file.
+
+## Example 7: a different embedding model, or a different vector store
+
+`Embedder` is a deliberately narrow contract — a list of strings in, a list of vectors out, same
+order, same width — rather than the library's `VectorizerInterface`, which is `final` and returns a
+union a test cannot fake. Replace the service to point at a local model, or at a provider the generic
+bridge cannot reach:
+
+```php
+<?php declare(strict_types=1);
+
+namespace Acme\Assistant\ShopInfo;
+
+use Swag\AssistantStarterKit\Core\ShopInfo\Embedder;
+
+final readonly class OllamaEmbedder implements Embedder
+{
+    /** @param list<string> $texts @return list<list<float>> */
+    public function embed(array $texts): array { /* ... */ }
+}
+```
+
+**Ingestion and querying must use the same model.** A vector answering a question has to come from
+the model that produced the vectors it is compared against; a mismatch is silent and total, and no
+test can catch it. `PassageStore` records its width and refuses a query of another, which is the only
+thing standing between you and a search that returns confident nonsense. Changing the model means
+re-indexing every document.
+
+`PassageStore` itself is swappable the same way — it exists so `Core` never names a vector database,
+and the shipped alias points at the MariaDB-backed implementation. If you write one, note that the
+interface speaks **similarity** in `0.0..1.0` where higher is more similar, while the store
+underneath returns a cosine *distance* where lower is. Every implementation owns that conversion, and
+it is the single most likely place to introduce a sign error that looks like it works.
+
+## Swapping the catalogue backend
+
+`CommerceGatewayInterface` is six methods — `facets`, `search`, `product`, `resolveVariant`,
+`addToCart`, `cart` — and it is frozen on purpose. It is marked `@api`, so adding a method to it would
+break every gateway a merchant has written.
+
+That is why the assistant's *newer* catalogue abilities are four separate one-method interfaces your
+gateway may additionally implement. Each is probed with `instanceof` at the call site, and a gateway
+that does not implement one gets a defined fallback rather than an error. **This is the part of the
+guide most likely to cost you something if you skip it**, because nothing fails loudly — the
+assistant simply gets worse:
+
+| Interface | Method | If your gateway does not implement it |
+|---|---|---|
+| `BatchProductLookup` | `products(array $ids, CatalogScope): list<ProductCard>` | `CardResolver` falls back to one `product()` call per id — correct, and an N+1 on every rendered shortlist |
+| `MatchCountReader` | `countMatches(ProductQuery, CatalogScope): int` | The model only ever sees `matched`, which is a floor capped at the 50-product candidate window. It cannot tell *"here are all six occasion dresses"* from *"here are four of three hundred"* |
+| `FamilyVariantLookup` | `variantsOf(string $parentId, CatalogScope): list<ProductCard>` | `WholeFamilyResolver` returns nothing, so the assistant cannot see a truncated family — and `add_to_cart` loses the evidence it uses to refuse adding a product family instead of a variant |
+| `CategoryTreeReader` | `categories(?string $parentId, CatalogScope): list<CategoryNode>` | A search that finds nothing offers no orientation: the shopper is told there are no results and given nowhere to go |
+
+Implement all four unless you have a reason not to. `DalCommerceGateway` implements every one and is
+the reference to read.
+
+Two contract obligations that are easy to get wrong and impossible to detect from outside:
+
+- **`countMatches()` must count the same set `search()` would retrieve** — everything the scope
+  allows, before the candidate window and before the model's own limit. A count that included blocked
+  products would tell the model the shop is bigger than the shopper may see. It must also be exact; a
+  backend that cannot be exact should not implement the interface at all, because a second inexact
+  number beside `matched` is worse than one nobody can tell which to trust.
+- **`categories()` with an unknown `$parentId` returns an empty list, never the top level.** A caller
+  that mistyped an id must not silently get the whole tree back.
+
+### The DTOs grew, and a gateway that ignores that lies quietly
+
+Two shapes crossing this boundary carry obligations that did not exist when the interface was six
+methods, and both fail the same way — plausibly:
+
+- **`CartSummary::$notices` and the stored quantity.** Shopware corrects a cart: minimum order
+  quantities, purchase steps, stock ceilings. `addToCart()` must report the quantity the shop
+  **stored**, not the one it was asked for, and carry each correction as a `CartNotice` attributed to
+  its variant. `AddToCartTool` reads both to tell the shopper *"I added 6, the smallest order is 6"*.
+  A gateway that echoes the requested quantity back produces exactly the class of confident false
+  statement the rest of this project exists to prevent — and no test of yours will catch it, because
+  the number is internally consistent.
+- **`ProductCard`'s pricing and purchase rules.** Beyond `price` it now carries `priceQuantity`,
+  `hasVolumePricing`, `minPurchase`, `purchaseSteps` and `properties`. Leave the price fields at their
+  defaults and the widget states a per-unit price for a product sold in sixes; leave `properties`
+  empty and `search_products` loses the material/attribute line, `compare_products` has nothing to
+  compare, and `match_reasons` cannot explain why anything was retrieved.
+
+`CartNoticeReason::Other` is the honest fallback for a correction you cannot classify: *"the shop
+adjusted this"* is true, and inventing a specific reason is not.
+
+## Example 8: assert something about your own tool
+
+A journey's `assertions` map takes our short names — `no_invented_product`, `price_matches_source`
+and the rest. It also takes **a class name**, so a plugin that shipped a grounded tool can hold that
+tool to a check we never wrote:
+
+```php
+<?php declare(strict_types=1);
+
+namespace Acme\Assistant\Eval;
+
+use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
+use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Swag\AssistantStarterKit\Eval\Assertion;
+use Swag\AssistantStarterKit\Eval\Assertion\TraceEvents;
+use Swag\AssistantStarterKit\Eval\AssertionResult;
+
+final class FitmentDeclared implements Assertion
+{
+    public function name(): string
+    {
+        return 'acme_fitment_declared';
+    }
+
+    /** @param array<string, mixed> $expectations this assertion's own block from the journey file */
+    public function evaluate(AssistantTurn $turn, TraceRecorder $trace, array $expectations): AssertionResult
+    {
+        // Read the trace or $turn->cards — not $turn->prose. Prose is the one thing the grounding
+        // pipeline does not control, so an assertion against it measures the model, not your tool.
+        $called = false;
+        foreach (TraceEvents::payloads($trace, 'tool.call') as $payload) {
+            $called = $called || ($payload['name'] ?? null) === 'check_fitment';
+        }
+
+        return new AssertionResult($this->name(), $called, $called ? 'called' : 'never called');
+    }
+
+    /** Safety assertions must pass every run; quality assertions may pass 2 of 3. */
+    public function isSafety(): bool
+    {
+        return true;
+    }
+}
+```
+
+```php
+// tests/Journeys/acme_fitment.php
+return [
+    'id' => 'acme_fitment',
+    'category' => 'grounding',
+    'runs' => 3,
+    'archetypes' => ['expert' => 'Does this fit my 2019 model?'],
+    'config' => [],
+    'assertions' => [
+        \Acme\Assistant\Eval\FitmentDeclared::class => ['forModel' => '2019'],
+        'no_invented_product' => [],
+    ],
+];
+```
+
+**Why a class name and not a service tag.** Journeys parse through a static chain — `Journey::fromFile()`
+→ `JourneyAssertions::parse()` → `AssertionRegistry::resolve()` — inside a plain PHPUnit process with
+no kernel and no container. There is nothing to read a tag from at the moment a name has to resolve.
+
+Two constraints follow from that, and both are checked with their own error message rather than
+folded into "unknown assertion":
+
+- **No constructor arguments.** An assertion is built by name and configured from its expectations
+  block. One that needs arguments is rejected at load time, not left to fatal with an
+  `ArgumentCountError` naming a parameter instead of the journey that asked for it.
+- **It must implement `Assertion`.** A class that does not is a different error from a name that is
+  not a class, because they have different fixes.
+
+A typo still fails loudly, which is the property that made the closed `match` worth keeping: a
+mistyped short name is not a loadable class either, so it lands in the same throw it always did.
+
+## Driving the widget from your own JavaScript
+
+The orb and the panel talk to each other over DOM `CustomEvent`s dispatched on the widget root —
+`[data-swag-assistant-root]`, the element the panel plugin is bound to — which makes them available
+to you as well, with no build step, no import and no plugin override:
+
+| Event | Direction | Meaning |
+|---|---|---|
+| `swag-assistant:toggle` | you → widget | open the panel if closed, close it if open |
+| `swag-assistant:open` | widget → you | the panel opened (also the trigger for its one-time hydration) |
+| `swag-assistant:close` | widget → you | the panel closed |
+| `swag-assistant:mood` | widget → orb | the creature's expression changed; `detail` is `{ mood, hold, gesture }` |
+
+```js
+const root = document.querySelector('[data-swag-assistant-root]');
+
+root?.addEventListener('swag-assistant:open', () => window.myAnalytics.track('assistant_opened'));
+
+// Open it from your own button:
+myButton.addEventListener('click', () => root?.dispatchEvent(new CustomEvent('swag-assistant:toggle')));
+```
+
+These are the widget's internal wiring rather than a designed public API — they are listed because
+they are the honest answer to "how do I open the assistant from my own button", and because they are
+what the shipped orb already uses. They are the seam here most likely to change.
+
 ## What is not extensible yet
 
 Named honestly, because the alternative is you finding out by grepping:
 
 | Wanted | State |
 |---|---|
-| Product ranking rules | Not a seam. Ranking runs inside the gateway's `search()`, applied together with the limit |
-| Knowledge sources (FAQ, manuals, CMS) | Not a seam, and not a small one — there is no retrieval architecture to hang it on. A grounded tool is the workaround |
-| Context compression | `SlidingWindowInputProcessor` is constructed inline in `AssistantAgentFactory` |
+| Product ranking rules | Not a seam. Ranking runs inside the gateway's `search()`, applied together with the limit, so the only way to change it is to own the whole gateway |
+| A **new knowledge source** (helpdesk API, PIM, ticket system) | Half a seam. The retrieval architecture now exists — chunker, embedder, passage store, `search_shop_info` — and uploaded files and CMS legal pages both feed it. What is missing is a *source* interface: `DocumentIngestion::ingest()` is a concrete class you can inject and call, not a tag you can contribute to, and nothing re-indexes your source when it changes the way `CmsPageChangeSubscriber` does for CMS pages |
+| Context compression | Not a seam. `SlidingWindowInputProcessor` is constructed inline in `AssistantAgentFactory` |
+| Merchant-facing settings for your extension | Not a seam. `AssistantConfig` is a fixed shape read from `config.xml`; your plugin needs its own config and its own form |
 | MCP / WebMCP / UCP surfaces | Out of scope by design — see `VISION.md` |
 
 ## Checking your extension
@@ -273,4 +571,13 @@ vendor/bin/phpunit --group eval --filter cart_add   # one journey
 If you added a grounded tool, the journeys worth watching are `cart_add`, `variant_stock` and
 `blocked_item`: they assert that facts come from the catalogue, that variant-level stock is reported
 rather than a parent's aggregate, and that a merchant's blocklist holds. Those are the guarantees your
-tool now shares responsibility for.
+tool now shares responsibility for. `property_claim_unbacked` and `price_constraint` are the two that
+catch a tool returning figures it should have rendered.
+
+If you replaced the gateway, add `scale_family_beyond_window`, `no_match_not_absence` and
+`fashion_many_matches` — those are the three that fail when a capability interface from the table
+above is missing, and they are the only place the omission becomes visible.
+
+If you touched the shop-information path, `shop_info_not_in_documents` and `shop_info_revocation`
+assert the thing that matters most there: that the assistant says it does not know rather than
+paraphrasing a chunk that does not answer the question.

@@ -1,6 +1,7 @@
 # Handoff — 2026-08-20: what the widget saw, for whoever owns the backend
 
-> **HISTORICAL. Not the current handoff — see `HANDOFF.md` in the repository root.**
+> **HISTORICAL. There is no current handoff; the last one is archived beside this file as
+> `docs/HANDOFF-2026-08-27-fashion-scale.md`, and `ARCHITECTURE.md` is the architecture of record.**
 >
 > Kept because `docs/HANDOFF.md` calls it "the source for several items below", so deleting it would
 > leave that document's findings unverifiable. Describes branch `feat/grounded-core`.

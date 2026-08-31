@@ -1,6 +1,7 @@
 # Handoff — 2026-08-20: the technical gaps, for the next session
 
-> **HISTORICAL. Not the current handoff — see `HANDOFF.md` in the repository root.**
+> **HISTORICAL. There is no current handoff; the last one is archived beside this file as
+> `docs/HANDOFF-2026-08-27-fashion-scale.md`, and `ARCHITECTURE.md` is the architecture of record.**
 >
 > Kept because thirteen committed documents cite it as the record of specific measurements: §1 for the
 > interrogative-phrasing defect (since verified fixed, at fashion scale and on the real shop), §8 for the

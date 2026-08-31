@@ -44,6 +44,7 @@ can replace that prompt from their own plugin.
 | [VISION.md](VISION.md) | Why this exists, who it is for, what counts as success |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Structure, interfaces, pipeline, data model |
 | [GLOSSARY.md](GLOSSARY.md) | Terms that have burned us before — read this first if you are new |
+| [docs/extending.md](docs/extending.md) | Every extension seam, with a worked example — read this before forking anything |
 | [docs/superpowers/specs/](docs/superpowers/specs/) | The design of record for the current build |
 
 ## Requirements
@@ -287,10 +288,14 @@ It is absent on phones, where the panel is already a full-screen sheet.
 | Change the system prompt | decorate `PromptProviderInterface` |
 | Use a different model provider | decorate `LlmPlatformInterface` |
 | Send turns to my analytics | `TraceSinkInterface`, tag `swag_assistant.trace_sink` |
-| Swap the catalogue backend | decorate `CommerceGatewayInterface` |
+| Read a document format we do not | `TextExtractor`, tag `swag_assistant.text_extractor` |
+| Embed with a different model, or store vectors elsewhere | replace `Embedder` / `PassageStore` |
+| Swap the catalogue backend | decorate `CommerceGatewayInterface` — **and implement its four optional capability interfaces**, or the assistant quietly degrades |
+| Open the panel from my own button | dispatch `swag-assistant:toggle` on the widget root |
+| Assert something about my own tool in an eval journey | name your `Assertion` class in the journey's `assertions` map |
 
-Ranking rules, knowledge sources and MCP surfaces are **not** seams yet; `docs/extending.md` says so
-plainly rather than leaving you to grep for them.
+Ranking rules, a new knowledge *source* and MCP surfaces are **not** seams yet; `docs/extending.md`
+says so plainly rather than leaving you to grep for them.
 
 For the widget's markup, override any of these Twig blocks from a theme or plugin:
 
