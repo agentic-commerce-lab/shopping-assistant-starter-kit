@@ -34,6 +34,9 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
 
     public ?string $lastBrowsingCategoryId = null;
 
+    /** The storefront's own language, as the controller read it off the request. */
+    public ?string $lastStorefrontLocale = null;
+
     /**
      * Seeds the recorded value, so a test can prove the *next* turn overwrote it with null rather
      * than simply never having touched it.
@@ -47,17 +50,21 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
         $this->lastViewingProductId = $value;
     }
 
+    // @mago-expect lint:excessive-parameter-list
+    // Dictated by ChatTurnRunnerInterface, which carries the reasoning for the list's length.
     public function run(
         string $message,
         string $salesChannelId,
         array $history,
         ?string $viewingProductId = null,
         ?string $browsingCategoryId = null,
+        ?string $storefrontLocale = null,
     ): TurnResult {
         $this->calls++;
         $this->lastHistory = $history;
         $this->lastViewingProductId = $viewingProductId;
         $this->lastBrowsingCategoryId = $browsingCategoryId;
+        $this->lastStorefrontLocale = $storefrontLocale;
 
         $trace = new TraceRecorder();
         $trace->record('guard.check', ['verdict' => 'allow']);

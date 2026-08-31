@@ -110,6 +110,21 @@ final class SearchShopInfoTool
      * address, fee and condition are the four things a model supplies from general knowledge about
      * German consumer law when a shop's own document does not contain them, and each one would be a
      * legal statement the merchant never made.
+     *
+     * **The last sentence is about a gap the language rule opened.** Passages are retrieved in the
+     * SALES CHANNEL's language — {@see \Swag\AssistantStarterKit\ShopInfo\CmsLegalPages} reads them
+     * through the channel's own language chain, and a document exists in the language the merchant
+     * wrote it in. The reply, since the prompt started following the shopper instead of the settings
+     * screen, may be in a different one. So a German shopper on an English storefront can ask about
+     * the revocation period and get a model's translation of the merchant's legal text.
+     *
+     * Translation is not a neutral act on a passage like this: it is a paraphrase whose errors are
+     * invisible, in exactly the register where "14 Tage" and "14 days" are the only two words that
+     * matter. The note therefore separates the two things a shopper needs — what the passage says,
+     * which may be given in their language, and its wording, which may not be reproduced as though
+     * the merchant had written it that way. Pointing at the page is what makes the difference
+     * checkable, which is also {@see \Swag\AssistantStarterKit\Core\ShopInfo\SearchShopInfoTool}'s
+     * standing answer to R7's missing rendered source.
      */
     public const RELEVANCE_NOTE =
         'These passages were found by similarity, not by understanding, and one or more of them may '
@@ -117,7 +132,10 @@ final class SearchShopInfoTool
             . 'the answer. If none of them does, say you cannot find it in the shop information and '
             . 'point the shopper at the relevant page — do not stretch a passage to fit. Invent no '
             . 'deadline, no address, no fee and no condition, and do not answer from general knowledge '
-            . 'about consumer law — erfinde nichts.';
+            . 'about consumer law — erfinde nichts. '
+            . 'If a passage is written in a language other than the one you are answering in, you may '
+            . 'say what it means, but do not present your rendering of it as the shop\'s own wording: '
+            . 'name the page it came from so the shopper can read the original.';
 
     private const MAX_QUESTION_CHARS = 500;
 

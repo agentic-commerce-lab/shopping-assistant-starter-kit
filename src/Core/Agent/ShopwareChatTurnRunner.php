@@ -37,14 +37,22 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
         private AssistantAgentFactory $agentFactory,
     ) {}
 
+    // @mago-expect lint:excessive-parameter-list
+    // Six facts about one turn, with two provenances that must not be merged: `message`,
+    // `viewingProductId` and `browsingCategoryId` are what the CLIENT claimed and are treated as
+    // hints throughout, while `salesChannelId` and `storefrontLocale` are what the SERVER knows from
+    // the request it is already handling. The grouping the rule asks for would put those two kinds
+    // in one object, and this pipeline's whole posture is that the difference between them decides
+    // how much a value is trusted.
     public function run(
         string $message,
         string $salesChannelId,
         array $history,
         ?string $viewingProductId = null,
         ?string $browsingCategoryId = null,
+        ?string $storefrontLocale = null,
     ): TurnResult {
-        $config = $this->configFactory->forSalesChannel($salesChannelId);
+        $config = $this->configFactory->forSalesChannel($salesChannelId, $storefrontLocale);
 
         // Resolved through the same scope as any search hit, so the blocklist and the excluded
         // categories decide what the assistant may see. An id that does not resolve is dropped

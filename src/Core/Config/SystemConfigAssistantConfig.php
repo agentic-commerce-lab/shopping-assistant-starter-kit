@@ -7,6 +7,8 @@ namespace Swag\AssistantStarterKit\Core\Config;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
+use Swag\AssistantStarterKit\Core\Prompt\ReplyLanguage;
+use Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoAvailability;
 
 /**
  * Builds an {@see AssistantConfig} from the merchant's `config.xml` settings for one sales channel.
@@ -55,12 +57,29 @@ final readonly class SystemConfigAssistantConfig
 
     private StoredValueReader $stored;
 
-    public function __construct(SystemConfigService $systemConfig)
-    {
+    /**
+     * `$shopInfo` decides whether this shop can run shop-information retrieval at all. Defaulted to
+     * "assume it can" so every existing construction — the eval harness, the endpoint tests — keeps
+     * meaning what it meant; the container passes the real one.
+     */
+    public function __construct(
+        SystemConfigService $systemConfig,
+        private readonly ?ShopInfoAvailability $shopInfo = null,
+    ) {
         $this->stored = new StoredValueReader($systemConfig, self::PREFIX);
     }
 
-    public function forSalesChannel(string $salesChannelId): AssistantConfig
+    /**
+     * `$storefrontLocale` is the only argument here that is not a stored setting, and it is a
+     * parameter rather than a lookup because it cannot be one: one sales channel serves several
+     * domains, and Shopware's storefront picks the snippets around this widget from the DOMAIN's
+     * locale. The channel row would answer a different question — and would answer it wrongly for
+     * every shop whose English and German storefronts share a channel.
+     *
+     * Null for any caller the storefront's `RequestTransformer` never touched: the console probe,
+     * the eval harness, a direct API call.
+     */
+    public function forSalesChannel(string $salesChannelId, ?string $storefrontLocale = null): AssistantConfig
     {
         // Named arguments throughout: ruling R17's carve-out for AssistantConfig's parameter-count
         // pragma is conditional on its call sites using them.
@@ -89,13 +108,51 @@ final readonly class SystemConfigAssistantConfig
             enableCompareProducts: $this->stored->bool('enableCompareProducts', false, $salesChannelId),
             logTraces: $this->stored->bool('logTraces', true, $salesChannelId),
             salesChannelId: $salesChannelId,
-            embeddingModel: trim($this->stored->string('embeddingModel', $salesChannelId)),
+            // Read as empty on a shop that cannot run the feature — see self::shopInfoUsable().
+            embeddingModel: $this->embeddingModel($salesChannelId),
             // Through StoredValueReader::bool(), never a cast: `system:config:set ... false` stores
             // the string "false", and `(bool) "false"` is true. The kill switch was measured failing
             // exactly that way, and this one would spend embedding money rather than open a
             // guardrail. That reader runs filter_var(FILTER_VALIDATE_BOOLEAN), which reads it right.
-            autoIndexShopPages: $this->stored->bool('autoIndexShopPages', false, $salesChannelId),
+            autoIndexShopPages: $this->shopInfoUsable()
+            && $this->stored->bool('autoIndexShopPages', false, $salesChannelId),
+            // Through ReplyLanguage rather than stored as given: its closed list is what keeps a
+            // string out of the system prompt that the merchant's database could otherwise choose.
+            defaultReplyLanguage: ReplyLanguage::of($storefrontLocale),
         );
+    }
+
+    /**
+     * The merchant's model name, or an empty string on a shop that cannot use it.
+     *
+     * **The stored value is left alone.** This reads it as off rather than clearing it, so moving a
+     * shop onto a MariaDB brings shop information straight back without anybody retyping a model
+     * name — and so the settings screen can still show what was chosen while explaining why it is
+     * inactive.
+     */
+    private function embeddingModel(string $salesChannelId): string
+    {
+        if (!$this->shopInfoUsable()) {
+            return '';
+        }
+
+        return trim($this->stored->string('embeddingModel', $salesChannelId));
+    }
+
+    /**
+     * **Why an unmet requirement is "off" rather than an error.** Measured on the staging shop on
+     * 2026-08-31: `embeddingModel` was set, `symfony/ai-store` was not installed, and every shopper
+     * message came back a 500 from a feature nobody was using. `embeddingModel: ''` already means
+     * switched off everywhere in this plugin (spec R13) — no tool constructed, nothing in the
+     * model's schema, ingestion refused at the CLI — so this reuses a path that is already tested
+     * instead of inventing a second kind of unavailable.
+     *
+     * Null availability means "not wired", which only happens in tests and in the eval harness;
+     * those shops are not running shop information off a real database either way.
+     */
+    private function shopInfoUsable(): bool
+    {
+        return $this->shopInfo === null || $this->shopInfo->isAvailable();
     }
 
     private function scope(string $salesChannelId): CatalogScope

@@ -58,9 +58,13 @@ final class InMemoryConversationStore implements ConversationStore
     /** The customer the last `start()` was given, so a controller test can assert what it passed. */
     public ?string $lastCustomerId = null;
 
+    /** The locale the last `start()` was given, for the same reason. */
+    public ?string $lastStartedLocale = null;
+
     public function start(ShoppingContext $context, string $locale): string
     {
         $this->lastCustomerId = $context->customerId;
+        $this->lastStartedLocale = $locale;
         $this->tokenCounter++;
         $this->startedConversations++;
         $token = \sprintf('%032x', $this->tokenCounter);

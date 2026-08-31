@@ -109,8 +109,21 @@
 
         <!-- Merchant configuration. Until these exist, config.xml is a form that changes nothing —
              including the kill switch, which is a security control rather than an ops nicety. -->
+        <!-- Whether this shop can run shop information at all: the store packages present, and a
+             database that answers VEC_DISTANCE_COSINE. An unmet requirement reads back as
+             embeddingModel: '' — the switched-off state — rather than throwing at a shopper. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVectorSupport">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoAvailability">
+            <factory class="Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoAvailability" method="detect"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVectorSupport"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig">
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoAvailability"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings">
@@ -360,6 +373,40 @@
 
         <service id="Swag\AssistantStarterKit\Command\SeedFashionCatalogueCommand">
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedRunner"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
+            <tag name="console.command"/>
+        </service>
+
+        <!-- The bike catalogue: fills out THIS shop rather than building one, so it reads the shop's
+             own categories, property groups and manufacturers before planning. Its guard carries a
+             separate marker, or seeding either catalogue would refuse the other. -->
+        <service id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedGuard"
+                 class="Swag\AssistantStarterKit\Command\Seed\SeedGuard">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\MarkerCategoryStore"/>
+            <argument>bike-seed</argument>
+            <argument>Bike Seed Marker — do not delete</argument>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedCompletion"
+                 class="Swag\AssistantStarterKit\Command\Seed\SeedCompletion">
+            <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Indexing\EntityIndexerRegistry"/>
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedGuard"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\Bike\DalShopTaxonomyReader">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedGuard"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bike\DalShopTaxonomyReader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedWriter"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedCompletion"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\SeedBikeCatalogueCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedRunner"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
             <tag name="console.command"/>
         </service>

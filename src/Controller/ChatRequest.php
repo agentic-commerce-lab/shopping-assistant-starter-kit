@@ -47,6 +47,20 @@ final readonly class ChatRequest
         // Not sensitive: public catalogue ids, unlike the conversation token above. A separate
         // object because it is a separate subject — see PageContext.
         public PageContext $page,
+        /**
+         * The language this storefront presents itself in, or null.
+         *
+         * **The one field here that is not shopper input.** Everything else on this object arrived
+         * in the request body and is parsed defensively because the endpoint is public; this is set
+         * on the request by Shopware's own storefront `RequestTransformer`, from the domain being
+         * served. It lives here anyway because it is a fact *about the request*, and this class
+         * exists so the controller is left with the ordering it enforces rather than with parsing —
+         * an argument that does not change with the value's provenance.
+         *
+         * Read by {@see StorefrontLocale}, which carries the reasoning for reading the request
+         * attributes rather than the body and for what its null means.
+         */
+        public ?string $storefrontLocale,
     ) {}
 
     public static function fromRequest(Request $request): self
@@ -59,6 +73,7 @@ final readonly class ChatRequest
             message: self::message($payload['message'] ?? null),
             token: self::token($raw),
             page: PageContext::fromPayload($payload),
+            storefrontLocale: StorefrontLocale::of($request),
         );
     }
 

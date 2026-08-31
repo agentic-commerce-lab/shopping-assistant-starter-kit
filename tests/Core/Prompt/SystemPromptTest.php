@@ -23,7 +23,7 @@ final class SystemPromptTest extends TestCase
     {
         $prompt = SystemPrompt::build(new AssistantConfig(agentVoice: 'Be terse. Metric units.'));
 
-        $rulesEnd = strpos($prompt, 'Answer in English.');
+        $rulesEnd = strpos($prompt, 'Answer in the language the shopper writes in');
         $voiceStart = strpos($prompt, 'Be terse. Metric units.');
 
         self::assertIsInt($rulesEnd);
@@ -51,7 +51,7 @@ final class SystemPromptTest extends TestCase
             'Words this shop uses. Size: M, L.',
         );
 
-        $rulesEnd = strpos($prompt, 'Answer in English.');
+        $rulesEnd = strpos($prompt, 'Answer in the language the shopper writes in');
         $vocabularyStart = strpos($prompt, 'Words this shop uses. Size: M, L.');
         $voiceStart = strpos($prompt, 'Be terse. Metric units.');
 
@@ -83,7 +83,7 @@ final class SystemPromptTest extends TestCase
     {
         // "If asked about any of those" has to be adjacent to the list of things it cannot do.
         // Appended to the end of the prompt instead, "those" refers to nothing — measured: it landed
-        // after "Answer in English.", three lines from its own antecedent.
+        // after the closing language rule, three lines from its own antecedent.
         $prompt = SystemPrompt::build(new AssistantConfig());
 
         self::assertStringContainsString(

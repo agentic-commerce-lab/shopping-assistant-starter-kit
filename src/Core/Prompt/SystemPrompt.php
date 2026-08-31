@@ -99,7 +99,10 @@ final class SystemPrompt
      * pronoun and its antecedent, which is how a rule stops being read as a rule.
      */
     private const CLOSING = <<<'PROMPT'
-        Answer in English.
+        Answer in the language the shopper writes in, and stay in it for the whole conversation.
+        If a message is too short to tell — a size, a colour, a product name, "ok" — carry on in
+        the language you were already using. If that is the shopper's first message and it is
+        still unclear, answer in %s.
         PROMPT;
 
     /**
@@ -171,7 +174,7 @@ final class SystemPrompt
             $prompt .= "\n\n" . self::COMPARE_PRODUCTS_AVAILABLE;
         }
 
-        $prompt .= "\n\n" . self::CLOSING;
+        $prompt .= "\n\n" . \sprintf(self::CLOSING, self::language($config));
 
         if ($vocabulary !== '') {
             $prompt .= "\n\n" . $vocabulary;
@@ -187,5 +190,23 @@ final class SystemPrompt
         }
 
         return $prompt;
+    }
+
+    /**
+     * The fallback language name, checked against {@see ReplyLanguage::names()} on the way in.
+     *
+     * **The check is the guarantee, not a formality.** `AssistantConfig` is a plain constructor
+     * anyone can call — the eval harness builds one straight from a journey file, and a decorating
+     * `PromptProviderInterface` implementation builds its own — so `ReplyLanguage::of()` having a
+     * closed range proves nothing about what reaches here. Validating at the point the string is
+     * written into the prompt is what makes "only a name this project chose can appear above the
+     * merchant's voice" true for every caller rather than for the one that happens to go through
+     * the sales-channel reader.
+     */
+    private static function language(AssistantConfig $config): string
+    {
+        return \in_array($config->defaultReplyLanguage, ReplyLanguage::names(), true)
+            ? $config->defaultReplyLanguage
+            : ReplyLanguage::FALLBACK;
     }
 }

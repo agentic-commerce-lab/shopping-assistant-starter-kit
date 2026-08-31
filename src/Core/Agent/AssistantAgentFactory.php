@@ -230,7 +230,14 @@ final readonly class AssistantAgentFactory
         // BoundedToolbox's docblock — so it is not what enforces the bound. It is
         // still passed through for whatever single-round protection it happens to
         // offer; BoundedToolbox is the real, request-wide counter.
-        $toolbox = new BoundedToolbox(new Toolbox($tools), $config->maxToolCallsPerTurn, $trace);
+        // WholeNumberToolArguments, not the framework's default resolver: a model states a
+        // budget as a JSON integer, and the default rejects it against a `float` parameter
+        // before the tool is entered. See that class for the measurement.
+        $toolbox = new BoundedToolbox(
+            new Toolbox($tools, argumentResolver: new WholeNumberToolArguments()),
+            $config->maxToolCallsPerTurn,
+            $trace,
+        );
 
         $toolProcessor = new AgentProcessor($toolbox, maxToolCalls: $config->maxToolCallsPerTurn);
 

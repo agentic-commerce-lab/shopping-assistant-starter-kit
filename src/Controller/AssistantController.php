@@ -119,7 +119,19 @@ class AssistantController extends StorefrontController
             return $this->refuse($refusal);
         }
 
-        [$token, $history] = $this->resumeOrStart($shoppingContext, $chat->token, $context->getLanguageId());
+        // From the DOMAIN rather than the channel: one channel serves several domains, and the
+        // attribute ChatRequest reads is what Shopware's own storefront sets and what picks the
+        // snippets rendered around this widget.
+        $storefrontLocale = $chat->storefrontLocale;
+
+        // The two contracts differ on purpose and `StorefrontLocale` owns the difference:
+        // `ConversationStore::start()` records a `string`, while the runner's parameter is nullable
+        // because "the caller is not a storefront" is a fact it acts on.
+        [$token, $history] = $this->resumeOrStart(
+            $shoppingContext,
+            $chat->token,
+            StorefrontLocale::recorded($storefrontLocale),
+        );
 
         $result = $this->turnRunner->run(
             $message,
@@ -127,6 +139,7 @@ class AssistantController extends StorefrontController
             $history,
             $chat->page->productId,
             $chat->page->categoryId,
+            $storefrontLocale,
         );
         $turn = $result->turn;
 

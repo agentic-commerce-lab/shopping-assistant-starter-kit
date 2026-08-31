@@ -81,6 +81,22 @@ final readonly class AssistantConfig
          * re-upload.
          */
         public bool $autoIndexShopPages = false,
+        /**
+         * The language to answer in when the shopper's own cannot be told — their first message
+         * being a size, a colour or a bare product name.
+         *
+         * **A fallback, never a setting.** The reply follows the shopper: someone writing German
+         * into an English-configured shop is still writing German, and answering them from the
+         * settings screen would be the assistant correcting the person instead of serving them.
+         * This is only what the shop opens with when there is nothing yet to follow.
+         *
+         * Resolved from the sales channel's locale by {@see \Swag\AssistantStarterKit\Core\Prompt\ReplyLanguage},
+         * whose closed list is what keeps merchant-controlled text out of the system prompt. Empty
+         * means unresolved, and {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt} reads it
+         * as English — the same "empty is off" shape `embeddingModel` above uses, rather than a
+         * second place that has to know what the default language is.
+         */
+        public string $defaultReplyLanguage = '',
     ) {}
 
     /**

@@ -51,7 +51,30 @@ can replace that prompt from their own plugin.
 
 - Shopware **6.7** (`^6.7`), PHP 8.2+
 - An OpenAI-compatible chat-completions endpoint (`base_url` + `model` + `api_key`)
-- English-language catalog and storefront (v0 is English-only)
+- **MariaDB 11.7 or newer, if you want shop-information retrieval (RAG).** The passage store is
+  `Symfony\AI\Store\Bridge\MariaDb\Store`, which emits `VECTOR` columns, `VECTOR INDEX` and the
+  `VEC_DISTANCE_COSINE` / `VEC_FromText` functions — MariaDB's spelling of vector search.
+  **No MySQL version serves it**, and that is worth stating because the intuitive fix is the wrong
+  one: MySQL has no `VECTOR` type before 9.0, and MySQL 9's functions are named differently
+  (`STRING_TO_VECTOR`, `DISTANCE`), so upgrading MySQL does not help — the engine has to change.
+  Everything else in this plugin runs on whatever database Shopware itself supports; only shop
+  information needs this.
+- **`symfony/ai-store` and `symfony/ai-maria-db-store` installed in the SHOP's vendor tree**, again
+  only for shop information. They are `composer.json` requires of this plugin, but Shopware autoloads
+  a plugin's dependencies from the shop's own vendor directory — so a plugin deployed by symlink or
+  rsync can run with them absent.
+
+  Neither shortfall is fatal: `Core\ShopInfo\ShopInfoAvailability` probes for both at runtime, and a
+  shop missing either reads back with `embeddingModel` empty, which is this plugin's documented off
+  switch. The tool is never built, nothing changes in the model's schema, and the assistant keeps
+  answering product questions. Before that check existed, an embedding model configured on a shop
+  without the packages returned a 500 to every shopper.
+- An English- or German-language storefront. The assistant answers in the language the shopper
+  writes in, falling back to the storefront's own domain locale; any other locale falls back to
+  English (`Core\Prompt\ReplyLanguage` is the closed list to extend).
+- **An English-language catalog.** Retrieval is keyword-based against the shop's own index, so a
+  German shopper searching for "Kleid" in an English-named catalogue finds nothing — the reply
+  language and the catalogue language are separate problems, and only the first one is solved.
 
 ## Installing it into a shop
 

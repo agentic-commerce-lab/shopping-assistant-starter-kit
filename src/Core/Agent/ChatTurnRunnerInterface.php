@@ -26,12 +26,25 @@ interface ChatTurnRunnerInterface
      * @param ?string $browsingCategoryId the category the storefront reports being browsed, or null.
      *                                    Never resolved — it only narrows a search, and narrowing is
      *                                    safe by construction (P8).
+     * @param ?string $storefrontLocale the language this storefront presents itself in, from the
+     *                                  request's domain, or null when the caller is not a storefront
+     *                                  request. Only ever the FALLBACK language: the reply follows
+     *                                  the shopper's own words, and this is what the shop opens with
+     *                                  when a first message has no language in it.
      */
+    // @mago-expect lint:excessive-parameter-list
+    // Six facts about one turn, with two provenances that must not be merged: `message`,
+    // `viewingProductId` and `browsingCategoryId` are what the CLIENT claimed and are treated as
+    // hints throughout, while `salesChannelId` and `storefrontLocale` are what the SERVER knows from
+    // the request it is already handling. The grouping the rule asks for would put those two kinds
+    // in one object, and this pipeline's whole posture is that the difference between them decides
+    // how much a value is trusted.
     public function run(
         string $message,
         string $salesChannelId,
         array $history,
         ?string $viewingProductId = null,
         ?string $browsingCategoryId = null,
+        ?string $storefrontLocale = null,
     ): TurnResult;
 }

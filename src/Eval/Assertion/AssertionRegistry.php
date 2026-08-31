@@ -55,6 +55,7 @@ final class AssertionRegistry
             'retrieved_shop_info' => new RetrievedShopInfo(),
             'no_unsupported_period_in_prose' => new NoUnsupportedPeriodInProse(),
             'rendered_family_spread' => new RenderedFamilySpread(),
+            'reply_in_language' => new ReplyInLanguage(),
             default => self::byClassName($name, $journeyId),
         };
     }
