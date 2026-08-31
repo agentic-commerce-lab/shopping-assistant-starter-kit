@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Eval;
 
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Eval\Assertion;
 use Swag\AssistantStarterKit\Eval\Journey;
 
 /**
@@ -32,6 +33,48 @@ final class JourneyTest extends TestCase
         $journey = Journey::fromFile(__DIR__ . '/../Journeys/variant_stock.php');
 
         self::assertSame(['archetype'], $journey->turns);
+    }
+
+    /**
+     * The documented shape of the class-name escape hatch, exercised the way a plugin author would
+     * meet it: through a journey file, not through the registry directly.
+     */
+    public function testAJourneyMayDeclareAnAssertionClassItBroughtItself(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'journey_');
+        self::assertIsString($path);
+        $path .= '.php';
+
+        file_put_contents($path, <<<'PHP'
+            <?php
+            declare(strict_types=1);
+            return [
+                'id' => 'third_party_journey',
+                'category' => 'grounding',
+                'runs' => 3,
+                'archetypes' => ['expert' => 'anything'],
+                'config' => [],
+                'assertions' => [
+                    \Swag\AssistantStarterKit\Tests\Eval\Assertion\ThirdPartyAssertion::class => ['forModel' => '2019'],
+                ],
+            ];
+            PHP);
+
+        try {
+            $journey = Journey::fromFile($path);
+
+            $key = \Swag\AssistantStarterKit\Tests\Eval\Assertion\ThirdPartyAssertion::class;
+
+            self::assertArrayHasKey($key, $journey->assertions);
+
+            $resolved = $journey->assertions[$key] ?? null;
+            self::assertIsArray($resolved);
+            self::assertInstanceOf(Assertion::class, $resolved['assertion']);
+            self::assertSame('acme_fitment_declared', $resolved['assertion']->name());
+            self::assertSame(['forModel' => '2019'], $resolved['expectations']);
+        } finally {
+            unlink($path);
+        }
     }
 
     public function testThrowsOnAnUnknownAssertionNameInsteadOfSkippingItSilently(): void

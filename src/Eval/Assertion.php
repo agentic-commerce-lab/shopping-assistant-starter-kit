@@ -16,6 +16,10 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * the one thing this project's grounding pipeline does not control. `price_matches_source`
  * does not need an LLM judge: it compares the price on a rendered card against the source
  * record captured in the trace. Deterministic, free, instant.
+ *
+ * @api An extension point. A journey may name any implementation of this by class instead of by one
+ *      of {@see Assertion\AssertionRegistry}'s short names, so a plugin that shipped a grounded tool
+ *      can hold that tool to its own check. Implementations must be constructible with no arguments.
  */
 interface Assertion
 {
