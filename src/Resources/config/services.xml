@@ -109,9 +109,13 @@
 
         <!-- Merchant configuration. Until these exist, config.xml is a form that changes nothing —
              including the kill switch, which is a security control rather than an ops nicety. -->
-        <!-- Whether this shop can run shop information at all: the store packages present, and a
-             database that answers VEC_DISTANCE_COSINE. An unmet requirement reads back as
-             embeddingModel: '' — the switched-off state — rather than throwing at a shopper. -->
+        <!-- Whether this shop can run shop information at all: `symfony/ai-store` present, so a
+             question can be embedded. An unmet requirement reads back as embeddingModel: '' — the
+             switched-off state — rather than throwing at a shopper.
+
+             DalVectorSupport probes the database, but that answer no longer gates the feature: it
+             decides WHICH passage store answers, since the portable one needs nothing from the
+             database beyond an ordinary table. See PassageStoreChooser, below. -->
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVectorSupport">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
@@ -468,8 +472,29 @@
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoVectorTable"/>
         </service>
 
-        <service id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore"
-                 alias="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore"/>
+        <service id="Swag\AssistantStarterKit\ShopInfo\DalPortablePassageStore">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <!-- Which of the two answers is a fact about the shop, not a setting (spec D1): MariaDB's
+             indexed store where the database and the `symfony/ai-maria-db-store` package both allow
+             it, the portable one everywhere else.
+
+             **AiStorePassageStore is deliberately NOT lazy, and must not be made lazy.** The obvious
+             worry is that the container builds it on a shop without the package and fatals — it does
+             not. Neither its constructor nor ShopInfoVectorTable's touches a
+             Symfony\AI\Store\Bridge\MariaDb\* class; PHP resolves `use` imports and the
+             `ShopInfoVectorTable::store(): Store` return type only when they are reached, so both
+             objects construct fine. Only store() itself would fatal, and the chooser never hands
+             this store to anybody on a shop that lacks the package. Making it lazy would be the
+             riskier path, not the safer one: Symfony 7.4 lazy services on PHP 8.2 need
+             symfony/proxy-manager-bridge, which this plugin does not ship. -->
+        <service id="Swag\AssistantStarterKit\Core\ShopInfo\PassageStore">
+            <factory class="Swag\AssistantStarterKit\ShopInfo\PassageStoreChooser" method="choose"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoAvailability"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DalPortablePassageStore"/>
+        </service>
 
         <!-- One extractor per format behind one interface (spec R10). Tagged rather than injected as
              a list so a merchant with an in-house format adds a service and changes nothing else. -->

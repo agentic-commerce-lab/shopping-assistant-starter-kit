@@ -19,7 +19,6 @@
     "smalot/pdfparser": "^2.12",
     "symfony/ai-agent": "0.12.*",
     "symfony/ai-generic-platform": "0.12.*",
-    "symfony/ai-maria-db-store": "0.12.*",
     "symfony/ai-platform": "0.12.*",
     "symfony/ai-store": "0.12.*",
     "symfony/cache": "~7.4.0",
@@ -57,6 +56,9 @@
     "symfony/serializer": ">=8.0",
     "symfony/string": ">=8.0",
     "symfony/uid": ">=8.0"
+  },
+  "suggest": {
+    "symfony/ai-maria-db-store": "0.12.* — indexes shop-information vectors natively on MariaDB 11.7+, which the plugin prefers wherever it works. Without it the assistant compares vectors in PHP: exact rather than approximate, unremarkable for a few hundred passages and slower on thousands."
   },
   "autoload": {
     "psr-4": { "Swag\\AssistantStarterKit\\": "src/" }

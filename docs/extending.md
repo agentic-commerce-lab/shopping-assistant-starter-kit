@@ -17,7 +17,7 @@ adding it to this repository or shipping it in a plugin of your own.
 | Send turns to my analytics | `TraceSinkInterface` | `swag_assistant.trace_sink` |
 | Read a document format we do not | `TextExtractor` | `swag_assistant.text_extractor` |
 | Embed with a different model | `Embedder` | decorate or replace the service |
-| Store vectors somewhere else | `PassageStore` | replace the alias |
+| Store vectors somewhere else | `PassageStore` | replace or decorate the service |
 | Assert something about my own tool in an eval journey | `Assertion` | name the class in the journey's `assertions` map |
 | Change the widget's markup | Twig blocks | template override, see the README |
 | Drive the widget from your own JS | `swag-assistant:*` DOM events | listen on / dispatch at the widget root |
@@ -387,9 +387,11 @@ test can catch it. `PassageStore` records its width and refuses a query of anoth
 thing standing between you and a search that returns confident nonsense. Changing the model means
 re-indexing every document.
 
-`PassageStore` itself is swappable the same way — it exists so `Core` never names a vector database,
-and the shipped alias points at the MariaDB-backed implementation. If you write one, note that the
-interface speaks **similarity** in `0.0..1.0` where higher is more similar, while the store
+`PassageStore` itself is swappable the same way — it exists so `Core` never names a vector database.
+The shipped service is a factory rather than an alias: it picks the MariaDB-backed store where the
+database and the (suggested) `symfony/ai-maria-db-store` package both allow it, and the portable
+store, which keeps vectors as JSON and ranks them in PHP, everywhere else. If you write one, note
+that the interface speaks **similarity** in `0.0..1.0` where higher is more similar, while the store
 underneath returns a cosine *distance* where lower is. Every implementation owns that conversion, and
 it is the single most likely place to introduce a sign error that looks like it works.
 

@@ -27,8 +27,10 @@ namespace Swag\AssistantStarterKit\Core\ShopInfo;
  * serves one shop's revocation notice in another (spec R12). It is a parameter rather than
  * constructor state so a single store instance can serve a multi-channel shop.
  *
- * @api An extension point. Replace the alias to keep passages somewhere other than the shipped
- *      MariaDB vector table; `docs/extending.md` documents it, so adding a method here breaks a
+ * @api An extension point. Replace the service to keep passages somewhere other than the two shipped
+ *      stores — the MariaDB vector table, or the portable JSON table it falls back to;
+ *      {@see \Swag\AssistantStarterKit\ShopInfo\PassageStoreChooser} is the shipped factory that
+ *      picks between them. `docs/extending.md` documents this, so adding a method here breaks a
  *      store someone else wrote.
  */
 interface PassageStore
@@ -57,7 +59,8 @@ interface PassageStore
     /**
      * The vector width this store holds, or null when it holds nothing.
      *
-     * The store's column is `VECTOR(n)` while the model is a merchant setting, so switching models
+     * A store holds exactly one width — a `VECTOR(n)` column in the MariaDB store, a recorded
+     * `dimension` in the portable one — while the model is a merchant setting, so switching models
      * invalidates everything already stored. Callers compare this against the width the configured
      * model produces and refuse rather than return nonsense — see the plan's *Two gaps* section.
      */

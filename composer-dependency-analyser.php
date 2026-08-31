@@ -42,4 +42,20 @@ $config->ignoreErrorsOnPackage('symfony/cache', [
     \ShipMonk\ComposerDependencyAnalyser\Config\ErrorType::PROD_DEPENDENCY_ONLY_IN_DEV,
 ]);
 
+// `symfony/ai-maria-db-store` is a SHADOW dependency on purpose: `ShopInfoVectorTable` and
+// `AiStorePassageStore` name its classes, but `composer.json` only *suggests* the package. That is
+// the point of the portable-passage-store plan's Task 5 — its `VECTOR` columns and
+// `VEC_DISTANCE_COSINE` are MariaDB's spelling, which no MySQL version can serve, so requiring it
+// would make shop information unavailable on databases Shopware fully supports.
+//
+// Safe because nothing reaches those classes unless the package is there:
+// `PassageStoreChooser::choose()` hands out `AiStorePassageStore` only when
+// `ShopInfoAvailability::nativeVectorStoreUsable()` is true, which is `class_exists()` on the bridge
+// AND a live probe of the database. The container can construct both objects without the package —
+// only `ShopInfoVectorTable::store()` would fatal, and on such a shop it is never called. Added
+// 2026-08-31. If the chooser is ever removed, this ignore is wrong and the require should come back.
+$config->ignoreErrorsOnPackage('symfony/ai-maria-db-store', [
+    \ShipMonk\ComposerDependencyAnalyser\Config\ErrorType::SHADOW_DEPENDENCY,
+]);
+
 return $config;

@@ -125,10 +125,14 @@ final readonly class SystemConfigAssistantConfig
     /**
      * The merchant's model name, or an empty string on a shop that cannot use it.
      *
-     * **The stored value is left alone.** This reads it as off rather than clearing it, so moving a
-     * shop onto a MariaDB brings shop information straight back without anybody retyping a model
-     * name — and so the settings screen can still show what was chosen while explaining why it is
-     * inactive.
+     * **The stored value is left alone.** This reads it as off rather than clearing it, so
+     * installing the missing `symfony/ai-store` into the shop brings shop information straight back
+     * without anybody retyping a model name — and so the settings screen can still show what was
+     * chosen while explaining why it is inactive.
+     *
+     * The shop's DATABASE is not one of the reasons this reads as empty, and used to be: a shop
+     * without MariaDB's vector functions now answers from the portable passage store instead of
+     * having the feature switched off. {@see ShopInfoAvailability} carries that split.
      */
     private function embeddingModel(string $salesChannelId): string
     {
