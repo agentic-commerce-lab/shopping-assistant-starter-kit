@@ -26,6 +26,10 @@ namespace Swag\AssistantStarterKit\Core\ShopInfo;
  * configured per channel, so two channels genuinely have different terms; a query without that filter
  * serves one shop's revocation notice in another (spec R12). It is a parameter rather than
  * constructor state so a single store instance can serve a multi-channel shop.
+ *
+ * @api An extension point. Replace the alias to keep passages somewhere other than the shipped
+ *      MariaDB vector table; `docs/extending.md` documents it, so adding a method here breaks a
+ *      store someone else wrote.
  */
 interface PassageStore
 {
