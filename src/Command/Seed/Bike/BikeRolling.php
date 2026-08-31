@@ -36,7 +36,6 @@ final class BikeRolling
                 'category' => 'Tyres',
                 'properties' => [
                     'Season' => ['All-season'],
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Road', 'Gravel'],
                 ],
                 'variants' => ['Size' => ['700x28', '700x32', '700x40']],
@@ -51,7 +50,6 @@ final class BikeRolling
                 'category' => 'Tyres',
                 'properties' => [
                     'Season' => ['Winter'],
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Trail', 'Gravel'],
                 ],
                 'variants' => ['Size' => ['700x32', '700x40']],
@@ -66,7 +64,6 @@ final class BikeRolling
                 'category' => 'Tyres',
                 'properties' => [
                     'Season' => ['All-season'],
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Commuting', 'Road'],
                 ],
                 'variants' => ['Size' => ['700x32', '700x40']],
@@ -81,7 +78,6 @@ final class BikeRolling
                 'category' => 'Tyres',
                 'properties' => [
                     'Season' => ['All-season'],
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Commuting'],
                 ],
                 'variants' => ['Size' => ['700x32']],
@@ -96,7 +92,6 @@ final class BikeRolling
                 'category' => 'Tyres',
                 'properties' => [
                     'Season' => ['All-season'],
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Gravel', 'Trail'],
                 ],
                 'variants' => ['Size' => ['650x47']],
@@ -111,7 +106,6 @@ final class BikeRolling
                 'category' => 'Tyres',
                 'properties' => [
                     'Season' => ['Summer'],
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Road'],
                 ],
                 'variants' => ['Size' => ['700x25', '700x28']],
@@ -153,7 +147,6 @@ final class BikeRolling
                 'manufacturer' => 'Halyard Tyres',
                 'category' => 'Tyres/Tubes',
                 'properties' => [
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Road'],
                 ],
             ],
@@ -166,7 +159,6 @@ final class BikeRolling
                 'manufacturer' => 'Halyard Tyres',
                 'category' => 'Tyres/Tubes',
                 'properties' => [
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Gravel'],
                 ],
             ],
@@ -179,7 +171,6 @@ final class BikeRolling
                 'manufacturer' => 'Halyard Tyres',
                 'category' => 'Tyres/Tubes',
                 'properties' => [
-                    'Material' => ['Rubber'],
                     'Terrain' => ['Road'],
                 ],
             ],

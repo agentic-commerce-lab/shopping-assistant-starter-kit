@@ -34,7 +34,39 @@ final class FakeShopTaxonomy
             self::options(),
             self::ids(BikeCatalogue::EXISTING_MANUFACTURERS),
             self::TAX_ID,
+            self::existingProductIds(),
         );
+    }
+
+    /** A shop that has the taxonomy but none of the products the enrichment list names. */
+    public static function withoutExistingProducts(): ShopTaxonomy
+    {
+        return new ShopTaxonomy(
+            self::ids(BikeCatalogue::EXISTING_CATEGORIES),
+            ['Colour' => self::id('group-colour'), 'Size' => self::id('group-size')],
+            self::options(),
+            self::ids(BikeCatalogue::EXISTING_MANUFACTURERS),
+            self::TAX_ID,
+            [],
+        );
+    }
+
+    /** The id this fake shop gives one of its own products, so a test can look a payload up by it. */
+    public static function productId(string $number): string
+    {
+        return self::id('product-' . $number);
+    }
+
+    /** @return array<string, string> */
+    private static function existingProductIds(): array
+    {
+        $ids = [];
+
+        foreach (array_keys(BikeCatalogue::existingProductProperties()) as $number) {
+            $ids[(string) $number] = self::productId((string) $number);
+        }
+
+        return $ids;
     }
 
     /** A shop the catalogue was not written against: nothing resolves at all. */

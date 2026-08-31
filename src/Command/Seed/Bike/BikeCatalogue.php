@@ -188,6 +188,12 @@ final class BikeCatalogue
      * windproof glove is not thereby a winter glove, and that distinction is the one the gloves case
      * turns on.
      *
+     * **A material that is true of an entire product type is left out rather than recorded.** Every
+     * cycling helmet is EPS and every tyre is rubber, so `Polystyrene` and `Rubber` could not
+     * discriminate anywhere — and a live answer proved what that costs: asked for a helmet, the
+     * assistant told the shopper three of five candidates were "made of polystyrene". True, identical,
+     * and useless for choosing.
+     *
      * A group may offer more values than any single product uses;
      * {@see \Swag\AssistantStarterKit\Core\Tool\BoundedProperties} caps the *product*, not the
      * group.
@@ -204,6 +210,7 @@ final class BikeCatalogue
                 'Alloy',
                 'Carbon',
                 'Cork',
+                'Cotton',
                 'Gel',
                 'Leather',
                 'Merino',
@@ -211,13 +218,110 @@ final class BikeCatalogue
                 'Nylon',
                 'Plastic',
                 'Polyester',
-                'Polystyrene',
-                'Rubber',
                 'Stainless steel',
                 'Steel',
             ],
             'Terrain' => ['Road', 'Gravel', 'Trail', 'Commuting'],
             'Mounting' => ['Bottle bosses', 'Handlebar', 'Stem', 'Seatpost', 'Frame', 'Rear rack', 'Fork'],
+        ];
+    }
+
+    /**
+     * Descriptive properties for products **this shop already had**, keyed by product number.
+     *
+     * ## Why the seeder reaches outside its own catalogue
+     *
+     * It gave 85 `bk-*` products properties and left the shop's own 16 `sk-*` products with none,
+     * which made the catalogue two-class in a way that surfaces directly in answers. Asked for a
+     * helmet, the assistant described three `bk-*` helmets by season, terrain and breathability and
+     * two `sk-*` ones as *"available in White"* — the shopper cannot tell that the difference is in
+     * the data rather than in the products.
+     *
+     * The sharper case: `sk-101 Trail Helmet` is the most trail-specific helmet in the shop — extended
+     * rear shell, adjustable visor, 22 vents — and had **no properties at all**. Any narrowing on
+     * `Terrain=Trail` would have dropped exactly the right answer. That is the argument against
+     * filtering on attributes in a catalogue whose attributes are incomplete, and the argument for
+     * completing them.
+     *
+     * ## Why `fx-*` is not here
+     *
+     * Those mirror `tests/Fixtures/catalog.json` verbatim — including the prompt-injection description
+     * on `fx-017` and the deliberate mis-categorisation of `fx-021` (see
+     * `docs/demo-catalog/README.md`). They are test material, and enriching them would destroy what
+     * they test. `bk-*` is absent for a different reason: those carry their properties in
+     * {@see BikeProducts}, and a second source would let the two disagree.
+     *
+     * ## What these are derived from
+     *
+     * Each product's own description, which is where every one of these facts already was. Nothing is
+     * invented: `sk-111`'s "warm when it is cold, breathable when it is not" is why it is Insulated
+     * and Breathable, and `sk-105`'s "fully waterproof roll-top" is why it is Waterproof.
+     *
+     * @return array<string, array<string, list<string>>>
+     */
+    public static function existingProductProperties(): array
+    {
+        return [
+            // Helmets — the pair the gloves-and-helmet answer turned on.
+            'sk-101' => [
+                'Season' => ['All-season'],
+                'Weather protection' => ['Breathable'],
+                'Terrain' => ['Trail', 'Gravel'],
+            ],
+            'sk-102' => [
+                'Season' => ['Winter', 'All-season'],
+                'Weather protection' => ['Waterproof'],
+                'Terrain' => ['Commuting'],
+            ],
+
+            // Lights — both weatherproof, distinguished by where they mount.
+            'sk-103' => [
+                'Season' => ['All-season'],
+                'Weather protection' => ['Waterproof'],
+                'Mounting' => ['Handlebar'],
+            ],
+            'sk-104' => [
+                'Season' => ['All-season'],
+                'Weather protection' => ['Waterproof'],
+                'Mounting' => ['Seatpost'],
+            ],
+
+            // Bag — "fully waterproof roll-top" is the description's own claim.
+            'sk-105' => [
+                'Weather protection' => ['Waterproof'],
+                'Material' => ['Nylon'],
+                'Terrain' => ['Gravel', 'Commuting'],
+                'Mounting' => ['Handlebar'],
+            ],
+
+            // Tools — material is all a tool honestly offers here.
+            'sk-107' => ['Material' => ['Steel']],
+            'sk-108' => ['Material' => ['Alloy'], 'Mounting' => ['Frame']],
+
+            // Sealant — a tubeless consumable, so terrain rather than material.
+            'sk-110' => ['Season' => ['All-season'], 'Terrain' => ['Gravel', 'Road']],
+
+            // Apparel — the layer that is warm and the layer that is not.
+            'sk-111' => [
+                'Season' => ['All-season'],
+                'Insulation' => ['Insulated'],
+                'Weather protection' => ['Breathable'],
+                'Material' => ['Merino'],
+            ],
+            'sk-112' => [
+                'Season' => ['Summer'],
+                'Insulation' => ['Uninsulated'],
+                'Weather protection' => ['Breathable'],
+                'Material' => ['Polyester'],
+            ],
+            'sk-121' => ['Season' => ['Summer'], 'Material' => ['Cotton']],
+
+            // Contact points and components.
+            'sk-114' => ['Mounting' => ['Handlebar'], 'Terrain' => ['Trail', 'Gravel']],
+            'sk-115' => ['Material' => ['Carbon'], 'Mounting' => ['Frame'], 'Terrain' => ['Road', 'Gravel']],
+            'sk-116' => ['Material' => ['Steel'], 'Mounting' => ['Seatpost'], 'Terrain' => ['Gravel']],
+            'sk-117' => ['Season' => ['Summer'], 'Terrain' => ['Road']],
+            'sk-119' => ['Material' => ['Alloy'], 'Terrain' => ['Road', 'Gravel']],
         ];
     }
 

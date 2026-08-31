@@ -271,7 +271,6 @@ final class BikeWear
                 'properties' => [
                     'Season' => ['Summer'],
                     'Weather protection' => ['Breathable'],
-                    'Material' => ['Polystyrene'],
                     'Terrain' => ['Road'],
                 ],
                 'variants' => ['Size' => ['S', 'M', 'L'], 'Colour' => ['Black', 'White']],
@@ -287,7 +286,6 @@ final class BikeWear
                 'properties' => [
                     'Season' => ['All-season'],
                     'Weather protection' => ['Breathable'],
-                    'Material' => ['Polystyrene'],
                     'Terrain' => ['Gravel', 'Trail'],
                 ],
                 'variants' => ['Size' => ['M', 'L'], 'Colour' => ['Black', 'Olive']],
@@ -302,7 +300,6 @@ final class BikeWear
                 'category' => 'Helmets',
                 'properties' => [
                     'Season' => ['All-season'],
-                    'Material' => ['Polystyrene'],
                     'Terrain' => ['Commuting'],
                 ],
                 'variants' => ['Size' => ['S'], 'Colour' => ['Blue', 'Red']],

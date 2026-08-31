@@ -75,7 +75,17 @@ final readonly class BikeSeedRunner
         // failure that established it, and for why it also makes a half-finished run repairable.
         $this->writer->upsertCategories($io, $plan->categories, $context);
         $this->writer->upsertPropertyGroups($io, $plan->propertyGroups, $context);
-        $this->writer->upsertProducts($io, $plan->products, $context);
+        // One upsert for both: an enrichment payload is a product payload with fewer fields, and the
+        // DAL batches them together. Reported separately because "we touched 16 products the shop
+        // already had" is not something an operator should have to infer from a total.
+        if ($plan->enrichments !== []) {
+            $io->writeln(\sprintf(
+                'Adding properties to %d product(s) this shop already had…',
+                \count($plan->enrichments),
+            ));
+        }
+
+        $this->writer->upsertProducts($io, [...$plan->products, ...$plan->enrichments], $context);
 
         // Marker last, inside completion, exactly as the fashion seeder does it: a run that dies
         // partway through must look unfinished on the next invocation rather than guarded.

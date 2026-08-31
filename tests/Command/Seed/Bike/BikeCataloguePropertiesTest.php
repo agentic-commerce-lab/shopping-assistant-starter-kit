@@ -79,4 +79,29 @@ final class BikeCataloguePropertiesTest extends TestCase
             }
         }
     }
+
+    /**
+     * A material that is true of an entire product type is not an attribute, it is noise.
+     *
+     * **Measured against a live answer.** Asked for a helmet, the assistant told the shopper three of
+     * five candidates were "made of polystyrene" — true, identical across all three, and worthless for
+     * choosing. Every cycling helmet is EPS; every tyre and tube is rubber. The model named it because
+     * it was in the data, and the reply read as a datasheet instead of advice.
+     *
+     * The rule is narrower than "must differ inside its category", which was the first attempt and was
+     * wrong: `Material=Nylon` on all three jackets tells you nothing between jackets but a great deal
+     * against a merino base layer. What disqualifies a value is being **trivially true of the whole
+     * product type**, so it cannot discriminate anywhere.
+     *
+     * `Plastic` deliberately stays. It is weak, but `bk-mount-out-front` is Alloy where
+     * `bk-mount-phone` is Plastic — there it does the work this test is about.
+     */
+    public function testTheMaterialGroupOffersNoValueThatIsTrueOfAWholeProductType(): void
+    {
+        $materials = BikeCatalogue::descriptiveGroups()['Material'] ?? [];
+        self::assertIsArray($materials);
+
+        self::assertNotContains('Polystyrene', $materials, 'every cycling helmet is EPS');
+        self::assertNotContains('Rubber', $materials, 'every tyre and tube is rubber');
+    }
 }

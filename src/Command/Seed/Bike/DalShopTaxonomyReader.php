@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Command\Seed\Bike;
 
 use Doctrine\DBAL\Connection;
+use Shopware\Core\Defaults;
 
 /**
  * Reads what the shop already has, so {@see BikeSeedPlan} can attach to it instead of duplicating it.
@@ -45,6 +46,13 @@ final readonly class DalShopTaxonomyReader
                  JOIN product_manufacturer_translation mt ON mt.product_manufacturer_id = m.id
                  WHERE mt.name IS NOT NULL'),
             $this->taxId(),
+            // Parents only: a variant inherits its parent's properties, so enriching the parent is
+            // enough and enriching both would write the same facts twice.
+            $this->pairs(\sprintf(
+                'SELECT p.product_number name, LOWER(HEX(p.id)) id FROM product p
+                 WHERE p.parent_id IS NULL AND p.version_id = UNHEX(\'%s\')',
+                Defaults::LIVE_VERSION,
+            )),
         );
     }
 
@@ -101,6 +109,17 @@ final readonly class DalShopTaxonomyReader
         $pairs = [];
 
         foreach ($this->connection->fetchAllAssociative($sql) as $row) {
+            // Asserted rather than coalesced. A query whose key column is not aliased `name` used to
+            // land every row under the empty string and read as "this shop has none of those" — which
+            // is exactly what happened when the product lookup selected `product_number` unaliased:
+            // the seeder reported success and enriched nothing. A missing column is a bug in the SQL
+            // above, and it must not be able to look like an empty shop.
+            if (!isset($row['name'], $row['id'])) {
+                throw new \RuntimeException(
+                    'A taxonomy query must alias its key column "name" and its value column "id".',
+                );
+            }
+
             $pairs[(string) $row['name']] = (string) $row['id'];
         }
 

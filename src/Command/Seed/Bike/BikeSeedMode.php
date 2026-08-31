@@ -132,6 +132,14 @@ enum BikeSeedMode
      * mapping tables keyed by the pair itself — there is no minted id to collide with — and they are
      * exactly what an update exists to change.
      *
+     * **A third limit, of a different kind: `--update` cannot *remove* a property.** `properties` is a
+     * many-to-many association and `upsert` merges into it — a shorter list adds nothing and deletes
+     * nothing. So dropping a value from {@see BikeCatalogue::descriptiveGroups()} (as `Polystyrene` and
+     * `Rubber` were dropped, for discriminating nothing) fixes new shops and leaves an already-seeded
+     * one carrying the old assignment. Clearing those needs a delete against `product_property`, which
+     * this seeder deliberately does not do: it has no way to tell a value it wrote from one the
+     * merchant added.
+     *
      * The cost, stated plainly: **`--update` cannot change a product's variant axes or its sales
      * channel visibility.** Adding a colour to an existing family, or exposing the catalogue in a
      * second storefront, needs a restore and a fresh seed — the same as renumbering a product. What it

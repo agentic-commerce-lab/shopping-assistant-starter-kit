@@ -30,14 +30,17 @@ use Swag\AssistantStarterKit\Command\Seed\SizeFamily;
 final readonly class BikeSeedPlan
 {
     /**
-     * @param list<array<string, mixed>> $categories
-     * @param list<array<string, mixed>> $propertyGroups
-     * @param list<array<string, mixed>> $products
+     * @param list<array<string, mixed>>              $categories
+     * @param list<array<string, mixed>>              $propertyGroups
+     * @param list<array<string, mixed>>              $products
+     * @param list<array{id: string, properties: list<array{id: string}>}> $enrichments properties for
+     *        products the shop already had — see {@see BikeCatalogue::existingProductProperties()}
      */
     private function __construct(
         public array $categories,
         public array $propertyGroups,
         public array $products,
+        public array $enrichments,
     ) {}
 
     /**
@@ -73,7 +76,12 @@ final readonly class BikeSeedPlan
             ));
         }
 
-        return new self(BikeTaxonomyPlan::categories($shop), BikeTaxonomyPlan::propertyGroups($shop), $products);
+        return new self(
+            BikeTaxonomyPlan::categories($shop),
+            BikeTaxonomyPlan::propertyGroups($shop),
+            $products,
+            BikeEnrichmentPlan::build($ctx, $unresolved),
+        );
     }
 
     /**
