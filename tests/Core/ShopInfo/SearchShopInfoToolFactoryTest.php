@@ -10,6 +10,8 @@ use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory;
 use Swag\AssistantStarterKit\Core\ShopInfo\SearchShopInfoTool;
+use Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoAvailability;
+use Swag\AssistantStarterKit\Core\ShopInfo\VectorSupport;
 use Swag\AssistantStarterKit\Core\Tool\Factory\SearchShopInfoToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolContext;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -55,6 +57,17 @@ final class SearchShopInfoToolFactoryTest extends TestCase
                 $prefix . 'llmApiKey' => 'not-a-real-key',
             ]))),
             new InMemoryPassageStore(),
+            new ShopInfoAvailability(new class implements VectorSupport {
+                public function isAvailable(): bool
+                {
+                    return true;
+                }
+
+                public function describe(): string
+                {
+                    return 'MariaDB 11.8';
+                }
+            }, packagesInstalled: true),
         );
     }
 
