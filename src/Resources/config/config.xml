@@ -50,15 +50,43 @@
                 document excludes them from withdrawal entirely.</helpText>
         </input-field>
 
-        <input-field type="text">
+        <input-field type="password">
+            <name>llmApiKey</name>
+            <label>API key</label>
+            <helpText>Prefer an environment variable. Shopware's settings have no real secret
+                storage, so a key entered here can be read by anyone with config access and ends up
+                in database backups.</helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <name>shopKnowledge</name>
+        <title>Shop knowledge</title>
+
+        <input-field type="bool">
+            <name>enableShopKnowledge</name>
+            <label>Answer from your shop's own documents</label>
+            <defaultValue>false</defaultValue>
+            <helpText>With this on, the assistant can answer questions about your imprint, privacy
+                policy, terms, right of withdrawal and shipping — and about any document you upload
+                yourself on the Assistant shop information screen, such as a size guide or a care
+                instruction. With it off, the assistant answers about products only and is never
+                offered these documents at all.
+
+                Needs an embedding model below, and a database that can store vectors. MariaDB 11.7
+                or newer is recommended: it indexes the vectors, which stays fast on a large set of
+                documents. On any other database the assistant compares them itself, which is fine
+                for the handful of pages most shops have and slows down on thousands.</helpText>
+        </input-field>
+
+        <input-field>
             <name>embeddingModel</name>
             <label>Embedding model</label>
             <helpText>Used to index shop documents and to match a question against them. Uses the
                 same provider URL and API key as the chat model, so it must be a model your provider
                 serves at /v1/embeddings. Measured working on OpenRouter: baai/bge-m3 (1024
                 dimensions, multilingual — the one this plugin was calibrated against),
-                openai/text-embedding-3-small (1536) and openai/text-embedding-3-large (3072). Leave
-                empty to switch shop information off entirely: no tool is offered to the model at all.
+                openai/text-embedding-3-small (1536) and openai/text-embedding-3-large (3072).
                 Changing it makes every indexed document unusable — delete and index them again after
                 a change, which the shop information screen will tell you.</helpText>
         </input-field>
@@ -66,20 +94,12 @@
         <input-field type="bool">
             <name>autoIndexShopPages</name>
             <label>Re-index shop pages automatically on change</label>
+            <defaultValue>false</defaultValue>
             <helpText>When on, editing the imprint, privacy, withdrawal, terms or shipping page
                 re-indexes that page in the background and replaces its previous passages. This costs
                 one embedding call per changed page, so it is off by default. With it off, use "Index
                 shop pages" on the Assistant shop information screen after editing a page — otherwise
                 the assistant keeps answering from the wording it last indexed.</helpText>
-            <defaultValue>false</defaultValue>
-        </input-field>
-
-        <input-field type="password">
-            <name>llmApiKey</name>
-            <label>API key</label>
-            <helpText>Prefer an environment variable. Shopware's settings have no real secret
-                storage, so a key entered here can be read by anyone with config access and ends up
-                in database backups.</helpText>
         </input-field>
     </card>
 

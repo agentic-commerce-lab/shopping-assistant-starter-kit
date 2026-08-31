@@ -35,6 +35,7 @@ final class SystemConfigShopInfoSettingsTest extends TestCase
     public function testTheEmbeddingModelIsReadAndDefaultsToEmpty(): void
     {
         $configured = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
+            self::PREFIX . 'enableShopKnowledge' => true,
             self::PREFIX . 'embeddingModel' => '  text-embedding-3-small  ',
         ])))->forSalesChannel(self::CHANNEL);
 
@@ -69,6 +70,8 @@ final class SystemConfigShopInfoSettingsTest extends TestCase
         self::assertFalse($storedFalse->autoIndexShopPages);
 
         $storedTrue = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
+            self::PREFIX . 'enableShopKnowledge' => true,
+            self::PREFIX . 'embeddingModel' => 'baai/bge-m3',
             self::PREFIX . 'autoIndexShopPages' => true,
         ])))->forSalesChannel(self::CHANNEL);
 

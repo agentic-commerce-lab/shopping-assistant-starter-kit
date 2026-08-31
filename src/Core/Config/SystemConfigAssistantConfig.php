@@ -114,7 +114,7 @@ final readonly class SystemConfigAssistantConfig
             // the string "false", and `(bool) "false"` is true. The kill switch was measured failing
             // exactly that way, and this one would spend embedding money rather than open a
             // guardrail. That reader runs filter_var(FILTER_VALIDATE_BOOLEAN), which reads it right.
-            autoIndexShopPages: $this->shopInfoUsable()
+            autoIndexShopPages: $this->embeddingModel($salesChannelId) !== ''
             && $this->stored->bool('autoIndexShopPages', false, $salesChannelId),
             // Through ReplyLanguage rather than stored as given: its closed list is what keeps a
             // string out of the system prompt that the merchant's database could otherwise choose.
@@ -132,7 +132,7 @@ final readonly class SystemConfigAssistantConfig
      */
     private function embeddingModel(string $salesChannelId): string
     {
-        if (!$this->shopInfoUsable()) {
+        if (!$this->stored->bool('enableShopKnowledge', false, $salesChannelId) || !$this->shopInfoUsable()) {
             return '';
         }
 

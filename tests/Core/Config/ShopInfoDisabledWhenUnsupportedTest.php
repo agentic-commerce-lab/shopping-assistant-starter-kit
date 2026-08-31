@@ -51,6 +51,7 @@ final class ShopInfoDisabledWhenUnsupportedTest extends TestCase
     {
         return new SystemConfigAssistantConfig(
             new FakeSystemConfigService([
+                self::PREFIX . 'enableShopKnowledge' => true,
                 self::PREFIX . 'embeddingModel' => 'baai/bge-m3',
                 self::PREFIX . 'autoIndexShopPages' => true,
             ]),
