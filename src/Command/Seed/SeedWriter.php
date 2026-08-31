@@ -56,6 +56,67 @@ final readonly class SeedWriter
     }
 
     /**
+     * The upsert counterparts, for a seeder that attaches to a shop it did not create.
+     *
+     * **`create()` is an insert and nothing else.** Adding two colours to the shop's own `Colour`
+     * group is an update by construction, and the first live run of the bike seeder died on exactly
+     * that: *Expected command for "property_group" to be InsertCommand. (Got: UpdateCommand)*. The
+     * fashion seeder never met it, because it owns every id it writes.
+     *
+     * The second reason is recovery. Seeded ids are derived from names rather than randomised, so a
+     * run that dies partway through has already written rows the next run would insert again. With
+     * `upsert` a re-run repairs; with `create` it fails one step further along.
+     *
+     * An empty payload writes nothing: the DAL rejects one, and "this shop already has every value
+     * the catalogue needs" is an ordinary outcome, not an error.
+     *
+     * @param list<array<string, mixed>> $tree
+     */
+    public function upsertCategories(SymfonyStyle $io, array $tree, Context $context): void
+    {
+        if ($tree === []) {
+            return;
+        }
+
+        $io->writeln('Writing category tree…');
+        self::withIndexingDisabled($context, fn() => $this->categoryRepository->upsert($tree, $context));
+    }
+
+    /**
+     * @param list<array<string, mixed>> $groups
+     */
+    public function upsertPropertyGroups(SymfonyStyle $io, array $groups, Context $context): void
+    {
+        if ($groups === []) {
+            return;
+        }
+
+        $io->writeln('Writing property groups…');
+        self::withIndexingDisabled($context, fn() => $this->propertyGroupRepository->upsert($groups, $context));
+    }
+
+    /**
+     * @param list<array<string, mixed>> $products
+     */
+    public function upsertProducts(SymfonyStyle $io, array $products, Context $context): void
+    {
+        $io->progressStart(\count($products));
+
+        foreach (array_chunk($products, self::PRODUCT_BATCH_SIZE) as $batch) {
+            self::withIndexingDisabled($context, function () use ($batch, $context): void {
+                $this->productRepository->upsert($batch, $context);
+
+                $productIds = self::productIds($batch);
+                $this->inheritanceUpdater->update(ProductDefinition::ENTITY_NAME, $productIds, $context);
+                $this->statesUpdater->update($productIds, $context);
+            });
+            $io->progressAdvance(\count($batch));
+        }
+
+        $io->progressFinish();
+    }
+
+    /**
      * @param list<array<string, mixed>> $products
      */
     public function writeProducts(SymfonyStyle $io, array $products, Context $context): void
