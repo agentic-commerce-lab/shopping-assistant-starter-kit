@@ -316,14 +316,21 @@ final class FactRenderer
      * closed vocabulary.
      *
      * @return list<string>
+     * `$givenDescriptions` are the product descriptions this run handed the model, supplied by the
+     * caller for the same reason `$givenPassages` is: this class never touches the trace. A
+     * qualitative claim the shop's own prose makes is the shop's claim, not the model's.
+     *
+     * @param list<string> $givenDescriptions
+     *
      */
-    public function unbackedPropertiesInProse(string $prose, FacetSet $facets): array
+    public function unbackedPropertiesInProse(string $prose, FacetSet $facets, array $givenDescriptions = []): array
     {
         $unbacked = $this->proseAudit->unbackedProperties(
             $prose,
             array_values($this->renderedCards),
             $this->shopperMessage,
             $facets,
+            $givenDescriptions,
         );
 
         $this->unbackedProperties = $unbacked;

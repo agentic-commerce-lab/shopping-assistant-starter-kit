@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Core\Agent;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
+use Swag\AssistantStarterKit\Core\Tool\GivenDescriptions;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Output;
 use Symfony\AI\Agent\OutputProcessorInterface;
@@ -129,7 +130,16 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // not, and a live turn told a shopper a sold-out variant was available (ruling R75).
         $this->renderer->unbackedAvailabilityInProse($text);
 
-        $this->renderer->unbackedPropertiesInProse($text, $this->facets);
+        // The descriptions this run handed the model, for the same reason the passages are supplied
+        // above: a qualitative claim the shop's own prose makes is the shop's claim, not an invention.
+        // Before this, "it has an extended rear shell" was indistinguishable from a fabrication —
+        // nothing in the facet vocabulary can express it — so the model had no way to say the one true
+        // thing separating two products with identical properties.
+        //
+        // Note what is NOT supplied: `unbackedPricesInProse()` above gets passages and never
+        // descriptions. A shop document legitimately states a shipping cost; a product description
+        // does not legitimately state the product's price. See ProseAudit::unbackedPrices().
+        $this->renderer->unbackedPropertiesInProse($text, $this->facets, GivenDescriptions::from($this->trace));
     }
 
     /**

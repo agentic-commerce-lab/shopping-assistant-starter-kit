@@ -37,12 +37,19 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * fabrication surface that was not already open; it only lets the model tell two retrieved products
  * apart without paying a round trip for each.
  *
- * **Never widen this with a figure or free text.** A price or stock number here would let the model
- * quote a figure it did not have to earn — the one thing this whole pipeline exists to prevent.
- * `properties` is the one deliberate exception: it is closed-vocabulary (drawn from the shop's own
- * facet values) and audited by {@see \Swag\AssistantStarterKit\Core\Grounding\ProseAudit::unbackedProperties()},
- * the same way price is audited. `description` must never be added here — it is free text with no
- * closed vocabulary to audit against.
+ * **Never widen this with a figure.** A price or stock number here would let the model quote a figure
+ * it did not have to earn — the one thing this whole pipeline exists to prevent. `properties` is a
+ * deliberate exception: it is closed-vocabulary (drawn from the shop's own facet values) and audited
+ * by {@see \Swag\AssistantStarterKit\Core\Grounding\ProseAudit::unbackedProperties()}, the same way
+ * price is audited.
+ *
+ * **`description` was the second exception, and only through {@see self::withDescriptions()}.** This
+ * class used to say it "must never be added here", on the grounds that free text has no closed
+ * vocabulary to audit against. That reasoning still holds for `search_products`, which is why
+ * {@see self::of()} is unchanged. What it cost elsewhere was measured on 2026-08-31: `sk-101 Trail
+ * Helmet` and `bk-helmet-gravel` carry identical properties, so on everything the model could see they
+ * were the same product. The design and its limits are in
+ * `docs/superpowers/specs/2026-08-31-product-descriptions-in-the-comparison-path-design.md`.
  */
 final class ToolProductSummary
 {
@@ -82,5 +89,40 @@ final class ToolProductSummary
             },
             $cards,
         );
+    }
+
+    /**
+     * {@see self::of()} plus each product's own description, for the comparison path only.
+     *
+     * **A named method rather than a flag on `of()`**, so the call site says which contract it asked
+     * for. `search_products` must keep the narrow shape — its minimality has its own measured reason,
+     * the tool-call blow-up described above — and a boolean argument makes that distinction invisible
+     * at exactly the place a reviewer looks.
+     *
+     * A product with nothing to say gets **no key at all**, not an empty one. An empty string is a
+     * value the model can reason about, and "the shop says nothing about this product" is an inference
+     * worth denying it.
+     *
+     * The excerpt is plain prose, capped, and never a defence — see
+     * {@see DescriptionExcerpt} for what the cap is and is not.
+     *
+     * @param list<ProductCard>           $cards
+     * @param array<string, list<string>> $reasons
+     *
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, reasons?: list<string>, description?: string}>
+     */
+    public static function withDescriptions(array $cards, array $reasons = []): array
+    {
+        $summaries = self::of($cards, $reasons);
+
+        foreach ($cards as $index => $card) {
+            $excerpt = DescriptionExcerpt::of($card->description);
+
+            if ($excerpt !== '') {
+                $summaries[$index]['description'] = $excerpt;
+            }
+        }
+
+        return $summaries;
     }
 }
