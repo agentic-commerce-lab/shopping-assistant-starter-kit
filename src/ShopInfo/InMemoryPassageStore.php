@@ -46,32 +46,17 @@ final class InMemoryPassageStore implements PassageStore
 
     public function query(array $vector, string $salesChannelId, float $minScore, int $limit): array
     {
-        $scored = [];
+        $candidates = [];
 
         foreach ($this->rows as $row) {
             if ($row['salesChannelId'] !== $salesChannelId) {
                 continue;
             }
 
-            $score = CosineSimilarity::between($vector, $row['vector']);
-
-            if ($score < $minScore) {
-                continue;
-            }
-
-            $passage = $row['passage'];
-            $scored[] = new ShopInfoPassage(
-                $passage->documentId,
-                $passage->documentName,
-                $passage->section,
-                $passage->text,
-                $score,
-            );
+            $candidates[] = ['passage' => $row['passage'], 'vector' => $row['vector']];
         }
 
-        usort($scored, static fn(ShopInfoPassage $a, ShopInfoPassage $b): int => $b->score <=> $a->score);
-
-        return \array_slice($scored, offset: 0, length: $limit);
+        return PassageRanking::of($vector, $candidates, $minScore, $limit);
     }
 
     public function deleteDocument(string $documentId): void
