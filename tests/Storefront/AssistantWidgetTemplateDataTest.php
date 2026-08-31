@@ -64,4 +64,21 @@ final class AssistantWidgetTemplateDataTest extends AssistantWidgetTestCase
             $names,
         );
     }
+
+    /**
+     * The template passes the storefront's locale through, so the widget greets in the language the
+     * page is in. Without the pass-through the extension would always resolve the fallback language
+     * and a German storefront would show the English greeting — the bug this pair of fields exists
+     * for.
+     */
+    public function testTheGreetingFollowsTheLocaleTheTemplatePassesIn(): void
+    {
+        $extension = $this->extension($this->configured([
+            self::PREFIX . 'greetingDe' => 'Hallo.',
+            self::PREFIX . 'greetingEn' => 'Hi.',
+        ]));
+
+        self::assertSame('Hallo.', $extension->greeting(self::CHANNEL, 'de-DE'));
+        self::assertSame('Hi.', $extension->greeting(self::CHANNEL, 'en-GB'));
+    }
 }

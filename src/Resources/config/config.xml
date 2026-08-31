@@ -301,11 +301,31 @@
 
         <input-field type="textarea">
             <name>greeting</name>
-            <label>Greeting</label>
+            <label>Greeting — all languages</label>
             <placeholder>Welcome to our shop! I can look up products, prices and availability —
                 what are you after?</placeholder>
             <helpText>The first message a shopper sees. Say what the assistant can look up, not how
-                clever it is. Left empty, a translated default is used.</helpText>
+                clever it is. Used for every language unless you fill in one of the fields below.
+                Left empty everywhere, a translated default is used.</helpText>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>greetingDe</name>
+            <label>Greeting — German storefronts</label>
+            <placeholder>Willkommen! Ich kann Produkte, Preise und Verfügbarkeit nachsehen — wonach
+                suchen Sie?</placeholder>
+            <helpText>Shown instead of the greeting above on a German-language storefront. Leave
+                empty to use the one above.</helpText>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>greetingEn</name>
+            <label>Greeting — English storefronts</label>
+            <placeholder>Welcome! I can look up products, prices and availability — what are you
+                after?</placeholder>
+            <helpText>Shown instead of the greeting above on an English-language storefront, and on
+                any storefront in a language the assistant does not yet speak — those are answered in
+                English, so they are greeted in English too. Leave empty to use the one above.</helpText>
         </input-field>
     </card>
 

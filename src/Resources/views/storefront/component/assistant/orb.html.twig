@@ -15,7 +15,7 @@
          data-cart-url="{{ path('frontend.checkout.line-item.add') }}"
          data-locale="{{ app.request.locale|default('en-GB')|replace({'_': '-'}) }}"
          data-assistant-name="{{ swag_assistant_widget_name(context.salesChannelId) }}"
-         data-greeting="{{ swag_assistant_greeting(context.salesChannelId) ?: 'swagAssistant.panel.defaultGreeting'|trans }}"
+         data-greeting="{{ swag_assistant_greeting(context.salesChannelId, app.request.locale) ?: 'swagAssistant.panel.defaultGreeting'|trans }}"
          data-add-to-cart-enabled="{{ swag_assistant_add_to_cart_enabled(context.salesChannelId) ? 'true' : 'false' }}"
          data-entry-point="{{ theme.entryPointStyle }}"
          {# What the current page is about, so the assistant knows what "this" means.

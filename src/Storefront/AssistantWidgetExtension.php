@@ -83,9 +83,15 @@ final class AssistantWidgetExtension extends AbstractExtension
         return $this->widgetSettings->assistantName($salesChannelId);
     }
 
-    public function greeting(string $salesChannelId): string
+    /**
+     * `$locale` comes from the template, which reads it off the request — the same value it puts in
+     * `data-locale` for price formatting, so the greeting and the numbers beside it can never
+     * disagree about which storefront this is. Absent, the fallback language's greeting applies; see
+     * {@see SystemConfigWidgetSettings::greeting()}.
+     */
+    public function greeting(string $salesChannelId, ?string $locale = null): string
     {
-        return $this->widgetSettings->greeting($salesChannelId);
+        return $this->widgetSettings->greeting($salesChannelId, $locale);
     }
 
     /**
