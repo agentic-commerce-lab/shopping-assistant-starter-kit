@@ -1,0 +1,141 @@
+name: Release
+
+# Push a tag, get a downloadable plugin.
+#
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# The asset is always called SwagAssistantStarterKit.zip so that
+# .../releases/latest/download/SwagAssistantStarterKit.zip — the link in README.md —
+# keeps working across releases. The version lives inside the zip's composer.json,
+# written from the tag, which is what Shopware reads.
+#
+# `shopware-cli extension validate` is deliberately not a step here. Every error it
+# reports on this plugin is a Shopware Store metadata rule — German translations,
+# manufacturerLink, supportLink, a description of 150+ characters — and this plugin
+# does not ship to the Store. A gate that can only ever fail is not a gate.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    # Builds the artefact and attaches it to the run, without publishing a release.
+    # The way to test a change to this file before tagging anything.
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # shopware-cli packages from git, not from the working tree, so it needs the
+          # history — a shallow checkout leaves it without a commit to archive.
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer
+
+      - name: Setup shopware-cli
+        uses: shopware/shopware-cli-action@v3
+
+      - name: Resolve the version
+        id: version
+        run: |
+          declared="$(php -r 'require "src/Version.php"; echo \Swag\AssistantStarterKit\Version::CURRENT;')"
+
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+
+            if [ "$version" != "$declared" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match Version::CURRENT ($declared) in src/Version.php. Bump the constant (and tests/SmokeTest.php) or fix the tag — a release that reports a version it is not is worse than no release."
+              exit 1
+            fi
+
+            publish=true
+          else
+            # A dispatch run has no tag to take a version from.
+            version="${declared}-dev.${GITHUB_RUN_NUMBER}"
+            publish=false
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Building version $version (publish: $publish)"
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Test
+        # The deterministic suite. `composer run test` excludes the eval group, which
+        # needs a real model endpoint and real money, so this never calls out.
+        run: composer run test
+
+      - name: Build the plugin zip
+        run: |
+          mkdir -p build
+          shopware-cli extension zip . \
+            --release \
+            --overwrite-version "${{ steps.version.outputs.version }}" \
+            --filename SwagAssistantStarterKit.zip \
+            --output-directory build
+
+      - name: Show what is in it
+        run: |
+          ls -lh build/SwagAssistantStarterKit.zip
+          unzip -l build/SwagAssistantStarterKit.zip | tail -3
+          echo "Version written into the packaged composer.json:"
+          unzip -p build/SwagAssistantStarterKit.zip SwagAssistantStarterKit/composer.json | grep '"version"'
+
+      - name: Attach the zip to this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwagAssistantStarterKit-${{ steps.version.outputs.version }}
+          path: build/SwagAssistantStarterKit.zip
+          if-no-files-found: error
+
+      - name: Publish the release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # A tag with a suffix (v0.2.0-rc.1) is a pre-release. A plain 0.x tag is not:
+          # GitHub's /releases/latest/ never resolves to a pre-release, and that is the
+          # link README.md hands people.
+          prerelease=""
+          case "$VERSION" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+
+          gh release create "$GITHUB_REF_NAME" \
+            build/SwagAssistantStarterKit.zip \
+            --title "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --generate-notes \
+            --notes-file - $prerelease <<'NOTES'
+          **Research preview.** Not production software — no support, no upgrade guarantees.
+
+          ### Install
+
+          Download `SwagAssistantStarterKit.zip` below and unpack it into the shop's
+          `custom/plugins/`. **The zip contains the plugin, not its PHP dependencies** —
+          Shopware autoloads only a plugin's own namespaces, so `symfony/ai-agent` and the
+          rest have to be in the shop's own vendor tree. Read
+          [Install it](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md#install-it)
+          first: one step there prevents a 500 on the whole storefront.
+          NOTES

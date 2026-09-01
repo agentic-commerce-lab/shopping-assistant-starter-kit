@@ -1,0 +1,47 @@
+# How `shopware-cli extension zip` builds the release artefact.
+#
+# Composer is off on purpose. Shopware 6.5+ no longer wants a plugin's dependencies
+# vendored inside the zip, and this plugin's dependencies could not be loaded from there
+# anyway: `KernelPluginLoader::registerPluginNamespaces()` registers only the plugin's own
+# PSR-4 namespaces for a plugin Shopware does not manage through Composer, and nothing in
+# the core requires a plugin's `vendor/autoload.php`. The zip therefore ships the plugin,
+# not `symfony/ai-agent` — see "Install it" in README.md.
+build:
+  zip:
+    composer:
+      enabled: false
+    pack:
+      excludes:
+        paths:
+          # Contributor tooling and agent scaffolding — nothing a shop runs.
+          - .agents
+          - .claude
+          - .code-review-graph
+          - .fallow
+          - .superpowers
+          - .vscode
+          - .editorconfig
+          - .env.example
+          - .jscpd.json
+          - .shopware-extension.yml
+          - captainhook.json
+          - composer-dependency-analyser.php
+          - mago.toml
+          - package.json
+          - package-lock.json
+          - phpcca.yaml
+          - playwright.config.js
+          - scripts
+          - skills.lock
+          # Working notes and 2.2 MB of planning material — nothing anyone downloading a
+          # plugin came for. README.md, docs/manual.md, docs/extending.md and docs/adr
+          # stay in, so the artefact still answers "how do I install and extend this?".
+          - docs/superpowers
+          - docs/demo-catalog
+          - docs/HANDOFF.md
+          - docs/HANDOFF-widget-to-backend.md
+          - docs/HANDOFF-2026-08-27-fashion-scale.md
+          - AGENTS.md
+          - ARCHITECTURE.md
+          - GLOSSARY.md
+          - VISION.md
