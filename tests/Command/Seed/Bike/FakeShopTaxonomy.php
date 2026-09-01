@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Command\Seed\Bike;
 
 use Swag\AssistantStarterKit\Command\Seed\Bike\BikeCatalogue;
 use Swag\AssistantStarterKit\Command\Seed\Bike\ShopTaxonomy;
+use Swag\AssistantStarterKit\Command\Seed\SeedTax;
 
 /**
  * A shop that has everything {@see BikeCatalogue} expects of it.
@@ -21,6 +22,14 @@ final class FakeShopTaxonomy
 {
     public const TAX_ID = 'tax0000000000000000000000000000';
 
+    /** The rate that goes with {@see self::TAX_ID}: seeded prices are gross, so the net derives from it. */
+    public const TAX_RATE = 19.0;
+
+    public static function tax(): SeedTax
+    {
+        return new SeedTax(self::TAX_ID, self::TAX_RATE);
+    }
+
     public const SALES_CHANNEL_ID = 'saleschannel00000000000000000000';
 
     private function __construct() {}
@@ -33,7 +42,7 @@ final class FakeShopTaxonomy
             ['Colour' => self::id('group-colour'), 'Size' => self::id('group-size')],
             self::options(),
             self::ids(BikeCatalogue::EXISTING_MANUFACTURERS),
-            self::TAX_ID,
+            self::tax(),
             self::existingProductIds(),
         );
     }
@@ -46,7 +55,7 @@ final class FakeShopTaxonomy
             ['Colour' => self::id('group-colour'), 'Size' => self::id('group-size')],
             self::options(),
             self::ids(BikeCatalogue::EXISTING_MANUFACTURERS),
-            self::TAX_ID,
+            self::tax(),
             [],
         );
     }
@@ -72,7 +81,7 @@ final class FakeShopTaxonomy
     /** A shop the catalogue was not written against: nothing resolves at all. */
     public static function empty(): ShopTaxonomy
     {
-        return new ShopTaxonomy([], [], [], [], self::TAX_ID);
+        return new ShopTaxonomy([], [], [], [], self::tax());
     }
 
     /** @return array<string, array<string, string>> */

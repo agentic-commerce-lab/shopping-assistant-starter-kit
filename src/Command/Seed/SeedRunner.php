@@ -45,10 +45,20 @@ final readonly class SeedRunner
 
         // ORDER BY makes which tax rate the whole catalogue gets deterministic, matching SeedId's and
         // ProductFillerBuilder's LCG determinism elsewhere in this feature.
-        $taxId = $this->connection->fetchOne('SELECT LOWER(HEX(id)) FROM tax ORDER BY tax_rate DESC, id LIMIT 1');
+        //
+        // The rate comes back with the id because the payloads need both: the seeded figure is a gross
+        // price, and `SizeFamily::grossPrice()` derives `net` from it. Reading only the id is what let
+        // this catalogue store net == gross — see that method.
+        $tax = $this->connection->fetchAssociative(
+            'SELECT LOWER(HEX(id)) AS id, tax_rate AS rate FROM tax ORDER BY tax_rate DESC, id LIMIT 1',
+        );
+        $taxId = \is_array($tax) ? $tax['id'] ?? null : null;
         if (!\is_string($taxId) || $taxId === '') {
             throw new \RuntimeException('No tax rule exists in this shop — cannot price seeded products.');
         }
+
+        \assert(\is_array($tax));
+        $seedTax = new SeedTax($taxId, (float) $tax['rate']);
 
         $navigationRootId = $salesChannelContext->getSalesChannel()->getNavigationCategoryId();
         \assert(\is_string($navigationRootId), description: 'navigationCategoryId must be set on every sales channel');
@@ -59,7 +69,7 @@ final readonly class SeedRunner
             $categoryPlan['idsByPath'],
             $propertyPlan['optionIds'],
             $propertyPlan['sizeOptionIds'],
-            $taxId,
+            $seedTax,
             $salesChannelContext->getSalesChannelId(),
         );
 

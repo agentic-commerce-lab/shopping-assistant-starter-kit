@@ -39,7 +39,7 @@ final class BikeVariantFamily
     public static function build(
         string $parentId,
         string $parentNumber,
-        float $price,
+        array $price,
         int $stock,
         array $axes,
         array $optionIds,
@@ -70,7 +70,7 @@ final class BikeVariantFamily
             $children[] = [
                 'id' => SeedId::forPath('bike-variant', $parentId . '/' . $number),
                 'productNumber' => $number,
-                'price' => SizeFamily::grossPrice($price),
+                'price' => $price,
                 // A family the catalogue put out of stock stays out of stock in every unit: that is
                 // the case ruling R75 exists for, and spreading "a little stock everywhere" would
                 // make it untestable. Otherwise the spread is deterministic and uneven, so a shopper
