@@ -443,6 +443,9 @@
              Administration trace view makes it prominent. -->
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionSettings">
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <!-- Resolves one window per sales channel, the way the settings form does. Without it
+                 a value set on a channel was stored and then ignored — see the class docblock. -->
+            <argument type="service" id="sales_channel.repository"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner">
