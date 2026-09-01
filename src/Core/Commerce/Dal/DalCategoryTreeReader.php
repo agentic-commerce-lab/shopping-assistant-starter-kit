@@ -73,6 +73,13 @@ final readonly class DalCategoryTreeReader
      * shopper-facing tool, so a category hidden from the storefront navigation must not be advertised by
      * the assistant either.
      *
+     * The `active` criterion is asked **twice on purpose**, and the second time is the one that
+     * matters. In the criteria it is a cheap SQL narrowing; after hydration {@see DalActiveCategories}
+     * asks again, because Shopware Commercial's Advanced Product Catalogues deactivate a restricted
+     * category in PHP on `sales_channel.category.loaded`, long after the row was selected. Without the
+     * second ask this method advertised categories a B2B shopper is not released for — measured
+     * 2026-09-01, see that class.
+     *
      * @return list<CategoryEntity>
      */
     private function children(string $parentId, SalesChannelContext $context): array
@@ -83,15 +90,7 @@ final readonly class DalCategoryTreeReader
         $criteria->addSorting(new FieldSorting('name'));
         $criteria->setLimit(self::MAX_NODES);
 
-        $found = [];
-
-        foreach ($this->categoryRepository->search($criteria, $context)->getElements() as $entity) {
-            if ($entity instanceof CategoryEntity) {
-                $found[] = $entity;
-            }
-        }
-
-        return $found;
+        return DalActiveCategories::of($this->categoryRepository->search($criteria, $context)->getElements());
     }
 
     /**
