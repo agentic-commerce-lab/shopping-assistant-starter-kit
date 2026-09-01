@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 use Swag\AssistantStarterKit\Core\Agent\AssistantRunner;
+use Swag\AssistantStarterKit\Core\Agent\IncompleteTurnMessage;
 use Swag\AssistantStarterKit\Core\Agent\TurnOutcomeResolver;
 use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
@@ -150,13 +151,13 @@ final class AssistantRunnerTest extends TestCase
 
         $turn = $runner->run('find me something', new MessageBag());
 
-        $incompleteTurnMessage = (new \ReflectionClassConstant(
-            AssistantRunner::class,
-            'INCOMPLETE_TURN_MESSAGE',
-        ))->getValue();
-
         self::assertSame(TurnOutcomeResolver::TOOL_LIMIT_EXCEEDED, $turn->outcome);
-        self::assertSame($incompleteTurnMessage, $turn->prose);
+
+        // The message moved out of a constant on this class and into IncompleteTurnMessage, which picks
+        // it by language and by whether cards accompany it. Cards DO survive this turn (asserted
+        // below), so the expected variant is the one that says so — before, the sentence claimed
+        // nothing about them and they read as the answer.
+        self::assertSame(IncompleteTurnMessage::for($config->defaultReplyLanguage, hasCards: true), $turn->prose);
 
         // The first two dispatched tool calls (search_products with no filters) really
         // did retrieve products from the fixture catalog before the cap was hit — those

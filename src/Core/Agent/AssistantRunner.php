@@ -32,17 +32,6 @@ use Symfony\AI\Platform\Result\TextResult;
  */
 final class AssistantRunner
 {
-    /**
-     * Fixed, honest prose for a turn {@see self::run()} could not finish. Deliberately
-     * makes no claim about any product, price or availability — the only cards this
-     * reply can carry are whatever {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer}
-     * already retrieved before the cap was hit, never anything this sentence itself
-     * asserts.
-     */
-    private const INCOMPLETE_TURN_MESSAGE =
-        'I was not able to finish handling that request. '
-            . 'Could you narrow it down — for example, ask about one product at a time?';
-
     public function __construct(
         private readonly AssistantConfig $config,
         private readonly Bundle $bundle,
@@ -172,7 +161,18 @@ final class AssistantRunner
 
         $this->recordTurnEnd(TurnOutcomeResolver::TOOL_LIMIT_EXCEEDED, $cards);
 
-        return new AssistantTurn(self::INCOMPLETE_TURN_MESSAGE, $cards, TurnOutcomeResolver::TOOL_LIMIT_EXCEEDED);
+        // The message names the cards as partial when there are some, and speaks the sales channel's
+        // language — see IncompleteTurnMessage for both measurements that made it a class.
+        //
+        // **The language is the channel's, not necessarily the conversation's**, and that limit is
+        // real: `defaultReplyLanguage` comes from the storefront domain, while the model follows
+        // whatever language the shopper actually wrote in. A German question on an English domain is
+        // therefore still answered — and still failed — in English. Nothing in this layer knows the
+        // conversation's language; only the model does, and this path exists precisely because the
+        // model never produced a reply.
+        $message = IncompleteTurnMessage::for($this->config->defaultReplyLanguage, $cards !== []);
+
+        return new AssistantTurn($message, $cards, TurnOutcomeResolver::TOOL_LIMIT_EXCEEDED);
     }
 
     /**
