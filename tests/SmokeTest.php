@@ -11,6 +11,6 @@ final class SmokeTest extends TestCase
 {
     public function testVersionIsExposed(): void
     {
-        self::assertSame('0.1.0', Version::CURRENT);
+        self::assertSame('0.2.0', Version::CURRENT);
     }
 }
