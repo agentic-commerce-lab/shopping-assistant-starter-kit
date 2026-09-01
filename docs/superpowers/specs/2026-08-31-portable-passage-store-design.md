@@ -30,9 +30,12 @@ because every store test in this repo mocks `Connection`. What was exercised end
 | Deletion | `deleteDocument()` removed the document and its passages; re-indexing the same file left exactly one passage, so spec R8's delete-then-add holds here too. |
 | The trace | Seven turns, every one `{"store":"portable","reason":"…this shop runs 8.0.46…"}`. |
 
-Not verified: the storefront widget driven as a user in a browser — only that the storefront serves it
-(HTTP 200, widget markup and assets present). Every turn above went through
-`POST /assistant/chat`, which is the endpoint the widget calls.
+*Driven through the storefront widget itself*, 2026-09-01, on the same MySQL shop: the launcher
+opens the panel, and five turns typed into it produced the withdrawal period, the free-shipping
+threshold as a follow-up in the same conversation, a refusal to invent a company register number, the
+helmet size read out of the merchant's uploaded chart, and a product answer rendering two cards with
+prices, stock and the grounding note. All five recorded `{"store":"portable"}` — twelve turns on this
+shop, every one of them portable, and `swag_assistant_shop_info_vector` was never created.
 
 **One thing stays open:** half of D6 — the line on the shop-information admin screen naming the
 active store, with its re-index notice — is not built.
