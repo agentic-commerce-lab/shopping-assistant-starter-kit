@@ -223,6 +223,36 @@
                     </dd>
                 </dl>
 
+                {# Spec D6. Which store answers is decided per request from a live probe and was
+                   only ever recorded in the trace, where a merchant never looks. Reported beside the
+                   embedding model because they are the two facts that decide what this page does. #}
+                <dl v-if="storeStatus" class="swag-assistant-shop-info-list__config-row">
+                    <dt>{{ $tc('swag-assistant-shop-info.list.store.label') }}</dt>
+                    <dd class="swag-assistant-shop-info-list__config-value">
+                        {{ $tc(`swag-assistant-shop-info.list.store.${storeStatus.store}`) }}
+                    </dd>
+                </dl>
+
+                {# Outside the definition row, not inside the `dd`. A paragraph of explanation in
+                   there makes the row wrap and the value jump to a line of its own, which reads as a
+                   heading rather than as the counterpart of the model above it. #}
+                <p v-if="storeStatus && storeStatus.reason" class="swag-assistant-shop-info-list__reason">
+                    {{ storeStatus.reason }}
+                </p>
+
+                {# The only line here a merchant must act on: the store that is answering is not the
+                   one holding the documents, so retrieval finds nothing while the table above still
+                   lists them all. The stores share no data by design — see the design note on the
+                   `composer update` that causes this. #}
+                <sw-alert
+                    v-if="storeStatus && storeStatus.otherStoreHasPassages"
+                    class="swag-assistant-shop-info-list__notice"
+                    variant="warning"
+                    :title="$tc('swag-assistant-shop-info.list.store.staleTitle')"
+                >
+                    {{ $tc('swag-assistant-shop-info.list.store.staleBody') }}
+                </sw-alert>
+
                 <template #footer>
                     <sw-button
                         size="small"

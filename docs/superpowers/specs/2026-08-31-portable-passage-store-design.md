@@ -37,8 +37,10 @@ helmet size read out of the merchant's uploaded chart, and a product answer rend
 prices, stock and the grounding note. All five recorded `{"store":"portable"}` — twelve turns on this
 shop, every one of them portable, and `swag_assistant_shop_info_vector` was never created.
 
-**One thing stays open:** half of D6 — the line on the shop-information admin screen naming the
-active store, with its re-index notice — is not built.
+**D6 is complete as of 2026-09-01.** Its second half — the line on the shop-information admin screen
+naming the active store, with its re-index notice — is built and verified on both engines. The screen
+now reports which store answers, why the fast path is unavailable when it is, and warns when the store
+answering is not the one holding the documents. Nothing from this design is open.
 **Supersedes nothing.** The MariaDB store stays, and stays preferred where it works.
 
 ## Purpose

@@ -5,6 +5,7 @@ import {
     indexPagesRequest,
     reindexAllRequest,
     reindexRequest,
+    storeStatusRequest,
     uploadRequest,
 } from './requests';
 import './swag-assistant-shop-info-list.scss';
@@ -57,6 +58,9 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             // edited here.
             embeddingModel: '',
             shopKnowledgeEnabled: false,
+            // Null until the first answer arrives, so the row can stay absent rather than flash a
+            // wrong store name for one frame.
+            storeStatus: null,
             isLoading: true,
             busyId: null,
             isUploading: false,
@@ -205,7 +209,7 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             this.salesChannelId = salesChannelId;
             this.uploadError = null;
 
-            await Promise.all([this.loadShopKnowledgeConfig(), this.loadDocuments()]);
+            await Promise.all([this.loadShopKnowledgeConfig(), this.loadDocuments(), this.loadStoreStatus()]);
         },
 
         /**
@@ -234,6 +238,25 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
 
             this.embeddingModel = (config['SwagAssistantStarterKit.config.embeddingModel'] || '').trim();
             this.shopKnowledgeEnabled = isTrue(config['SwagAssistantStarterKit.config.enableShopKnowledge']);
+        },
+
+        /**
+         * Spec D6's other half: the fallback is announced to the merchant, not only to the trace.
+         *
+         * Failure is silent on purpose. This row explains the page; it does not run it, and a shop
+         * whose status cannot be read still has a working upload form above. Taking the screen down
+         * over a diagnostic would be the opposite of what the diagnostic is for.
+         */
+        async loadStoreStatus() {
+            const { url, options } = storeStatusRequest(Shopware.Context.api);
+
+            try {
+                const response = await fetch(url, options);
+
+                this.storeStatus = response.ok ? await response.json() : null;
+            } catch (failure) {
+                this.storeStatus = null;
+            }
         },
 
         async loadDocuments() {

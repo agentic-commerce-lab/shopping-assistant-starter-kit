@@ -48,7 +48,14 @@
                 "noModelTitle": "No embedding model is configured",
                 "noModelBody": "Shop knowledge is switched on, but it also needs an embedding model to index documents and match questions against them. Set one in the plugin settings."
             },
-            "modelDisabled": "Switched off in the plugin settings"
+            "modelDisabled": "Switched off in the plugin settings",
+            "store": {
+                "label": "Passage store",
+                "mariadb": "Indexed vector store (MariaDB)",
+                "portable": "Portable store — vectors compared in PHP",
+                "staleTitle": "Documents are in the other store",
+                "staleBody": "The store answering questions is not the one holding your indexed documents, so the assistant will find nothing until they are indexed again. The two stores keep separate tables and nothing is copied between them — this happens when a shop gains or loses the MariaDB vector package. Use \"Index everything again\" above."
+            }
         }
     }
 }

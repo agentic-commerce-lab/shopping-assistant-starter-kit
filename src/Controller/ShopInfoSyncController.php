@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Controller;
 use Shopware\Core\Framework\Routing\ApiRouteScope;
 use Shopware\Core\PlatformRequest;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
+use Swag\AssistantStarterKit\ShopInfo\PassageStoreStatus;
 use Swag\AssistantStarterKit\ShopInfo\ShopInfoSync;
 use Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -30,7 +31,30 @@ class ShopInfoSyncController
         private readonly ShopPageIndexer $pages,
         private readonly ShopInfoSync $sync,
         private readonly SystemConfigAssistantConfig $config,
+        private readonly PassageStoreStatus $storeStatus,
     ) {}
+
+    /**
+     * Which passage store is answering, and whether the other one still holds documents (spec D6).
+     *
+     * A GET with no side effects, read fresh each time: every input can change without this plugin
+     * being involved — a database upgrade, a `composer` run, a restore from a dump — so a cached
+     * answer would be the one thing on this screen that could quietly go stale.
+     *
+     * Not scoped to a sales channel, unlike everything else on this controller. The engine and the
+     * installed package are properties of the shop, not of a channel, and pretending otherwise would
+     * invite a merchant to look for a per-channel setting that does not exist.
+     */
+    #[Route(
+        path: '/api/_action/swag-assistant/shop-info/store-status',
+        name: 'api.action.swag_assistant.shop_info.store_status',
+        defaults: ['_acl' => ['swag_assistant_document:read']],
+        methods: ['GET'],
+    )]
+    public function storeStatus(): JsonResponse
+    {
+        return new JsonResponse($this->storeStatus->describe());
+    }
 
     /**
      * Index the shop's own legal pages for one channel (spec R1).

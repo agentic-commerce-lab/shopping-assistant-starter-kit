@@ -54,6 +54,16 @@ function channelPost(api, action, salesChannelId) {
     return { url: `${api.apiPath}/${ACTION}/${action}`, options: { method: 'POST', headers: headers(api), body } };
 }
 
+/**
+ * Which store answers, and whether the other still holds documents (spec D6).
+ *
+ * The only GET on this screen, and the only request not scoped to a sales channel: the database
+ * engine and the installed package belong to the shop, not to a channel.
+ */
+export function storeStatusRequest(api) {
+    return { url: `${api.apiPath}/${ACTION}/store-status`, options: { method: 'GET', headers: headers(api) } };
+}
+
 export function reindexRequest(api, documentId) {
     return formPost(api, 'reindex', documentId);
 }

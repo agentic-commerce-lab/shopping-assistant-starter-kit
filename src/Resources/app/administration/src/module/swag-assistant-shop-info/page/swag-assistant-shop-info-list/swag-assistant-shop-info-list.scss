@@ -125,6 +125,15 @@ $card-measure: 960px;
         }
     }
 
+    /*
+     * A plain-text value in a definition row, sized like the `code` beside it. Without this the store
+     * name inherits the body size and reads a weight louder than the embedding model it sits under —
+     * two facts of equal standing, printed as though one mattered more.
+     */
+    &__config-value {
+        font-size: 13px;
+    }
+
     &__config-unset {
         color: var(--color-text-secondary-default, #758ca3);
         font-size: 13px;

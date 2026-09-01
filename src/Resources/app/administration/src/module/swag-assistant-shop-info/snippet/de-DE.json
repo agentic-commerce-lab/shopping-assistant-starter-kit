@@ -48,7 +48,14 @@
                 "noModelTitle": "Kein Embedding-Modell konfiguriert",
                 "noModelBody": "Shop-Wissen ist eingeschaltet, benötigt aber zusätzlich ein Embedding-Modell, um Dokumente zu indexieren und Fragen dagegen abzugleichen. Hinterlegen Sie eines in den Plugin-Einstellungen."
             },
-            "modelDisabled": "In den Plugin-Einstellungen ausgeschaltet"
+            "modelDisabled": "In den Plugin-Einstellungen ausgeschaltet",
+            "store": {
+                "label": "Passagenspeicher",
+                "mariadb": "Indexierter Vektorspeicher (MariaDB)",
+                "portable": "Portabler Speicher — Vektoren werden in PHP verglichen",
+                "staleTitle": "Die Dokumente liegen im anderen Speicher",
+                "staleBody": "Der Speicher, der Fragen beantwortet, ist nicht der, in dem Ihre indexierten Dokumente liegen — der Assistent findet deshalb nichts, bis sie erneut indexiert werden. Die beiden Speicher haben getrennte Tabellen und es wird nichts kopiert; das passiert, wenn ein Shop das MariaDB-Vektorpaket bekommt oder verliert. Nutzen Sie oben „Alles neu indexieren“."
+            }
         }
     }
 }

@@ -622,10 +622,21 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
         </service>
 
+        <!-- Reports which passage store answers and whether the other still holds documents, so the
+             fallback is visible to the merchant and not only in the trace (spec D6). Both stores are
+             injected directly rather than the chosen one: the point is to ask the store that is NOT
+             in use whether it is holding anything. -->
+        <service id="Swag\AssistantStarterKit\ShopInfo\PassageStoreStatus">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\ShopInfoAvailability"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\AiStorePassageStore"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DalPortablePassageStore"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Controller\ShopInfoSyncController" public="true">
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer"/>
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\PassageStoreStatus"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Command\ShopInfoCommand">
