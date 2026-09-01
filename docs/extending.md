@@ -45,10 +45,14 @@ from the examples:
 - Shopware plugins are Symfony bundles sharing **one** container. That is the entire reason a tag
   crosses a plugin boundary — `tagged_iterator` collects your service exactly as it collects ours,
   with nothing registered on our side.
-- **Your plugin must require this one.** Installed without it, your tagged service sits in a shop
-  where nothing collects that tag: no error, no log line, your tool simply never reaches the model.
-  That is the failure mode this whole document exists to make findable, so do not let your own
-  packaging reproduce it.
+- **Your plugin must require this one**, and the require earns more than it looks like. Without it,
+  your tagged service sits in a shop where nothing collects that tag: no error, no log line, your
+  tool simply never reaches the model — the failure mode this whole document exists to make findable.
+  *With* it, Shopware reads the `composer.json` require as a plugin dependency and refuses to
+  deactivate us underneath you: `PluginHasActiveDependantsException`, naming your plugin. Verified on
+  6.7.13.1 with a plugin installed by hand into `custom/plugins/`, so it holds even where Composer
+  never resolved the constraint. One line in `require` converts a silent degradation into a loud
+  refusal.
 
 Decoration — `PromptProviderInterface`, `LlmPlatformInterface`, `CommerceGatewayInterface` — works
 from either side, and from a separate plugin it is why no fork is needed.
@@ -163,6 +167,13 @@ final readonly class FindStoreToolFactory implements ToolFactoryInterface
 
 Your tool's return value goes to the model as JSON. Keep it small — it is spent from the same context
 budget as everything else in the turn.
+
+**A turn your plain tool answered is recorded as `no_result`.** The outcome is derived from the
+catalogue cards the turn rendered, and a plain tool renders none — so a shopper who got a perfectly
+good store-locator answer shows up in the Administration's conversation list beside the turns that
+found nothing. Your tool still appears in the trace, both as `tool.call` and as whatever stage you
+record yourself, so the evidence is there; it is the summary column that misreads. Worth knowing
+before a merchant asks you why your extension "never works".
 
 ## Example 2: a tool that answers from the catalogue
 
@@ -557,7 +568,7 @@ Named honestly, because the alternative is you finding out by grepping:
 | Wanted | State |
 |---|---|
 | Product ranking rules | Not a seam. Ranking runs inside the gateway's `search()`, applied together with the limit, so the only way to change it is to own the whole gateway |
-| A **new knowledge source** (helpdesk API, PIM, ticket system) | Half a seam. The retrieval architecture now exists — chunker, embedder, passage store, `search_shop_info` — and uploaded files and CMS legal pages both feed it. What is missing is a *source* interface: `DocumentIngestion::ingest()` is a concrete class you can inject and call, not a tag you can contribute to, and nothing re-indexes your source when it changes the way `CmsPageChangeSubscriber` does for CMS pages |
+| A **new knowledge source** (helpdesk API, PIM, ticket system) | Half a seam. The retrieval architecture now exists — chunker, embedder, passage store, `search_shop_info` — and uploaded files and CMS legal pages both feed it. What is missing is a *source* interface: ingestion is a concrete `DocumentIngestion::ingest()` you reach through the registered `DocumentIngestionFactory` (the class itself is not a service), not a tag you can contribute to, and nothing re-indexes your source when it changes the way `CmsPageChangeSubscriber` does for CMS pages |
 | Context compression | Not a seam. `SlidingWindowInputProcessor` is constructed inline in `AssistantAgentFactory` |
 | Merchant-facing settings for your extension | Not a seam. `AssistantConfig` is a fixed shape read from `config.xml`; your plugin needs its own config and its own form |
 | MCP / WebMCP / UCP surfaces | Out of scope by design — see `VISION.md` |

@@ -17,6 +17,7 @@ use Swag\AssistantStarterKit\Core\Context\ShoppingMode;
 use Swag\AssistantStarterKit\Core\Policy\RequestBudget;
 use Swag\AssistantStarterKit\Tests\Core\Config\FakeSystemConfigService;
 use Swag\AssistantStarterKit\Tests\Core\Trace\InMemoryConversationStore;
+use Swag\AssistantStarterKit\Tests\LlmEnvironmentGuard;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,6 +33,8 @@ use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
  */
 abstract class AssistantEndpointTestCase extends TestCase
 {
+    use LlmEnvironmentGuard;
+
     protected const CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
     protected const BLUE_M_ID = 'a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2';
@@ -51,15 +54,9 @@ abstract class AssistantEndpointTestCase extends TestCase
         self::PREFIX . 'llmApiKey' => 'sk-test',
     ];
 
-    /** @var list<string> */
-    private const ENV_NAMES = ['ASSISTANT_LLM_BASE_URL', 'ASSISTANT_LLM_MODEL', 'ASSISTANT_LLM_API_KEY'];
-
     protected RecordingTurnRunner $runner;
 
     protected InMemoryConversationStore $store;
-
-    /** @var array<string, string|false> */
-    private array $savedEnv = [];
 
     /** @param non-empty-string $name */
     public function __construct(string $name)
@@ -75,19 +72,12 @@ abstract class AssistantEndpointTestCase extends TestCase
         // SystemConfigLlmSettings prefers the environment over stored config (ruling R77), so a
         // developer .env would make "unconfigured shop" impossible to test — the suite would read
         // the machine it runs on and pass for the wrong reason.
-        foreach (self::ENV_NAMES as $name) {
-            $this->savedEnv[$name] = getenv($name);
-            putenv($name);
-        }
+        $this->clearLlmEnvironment();
     }
 
     protected function tearDown(): void
     {
-        foreach ($this->savedEnv as $name => $value) {
-            if (\is_string($value)) {
-                putenv(\sprintf('%s=%s', $name, $value));
-            }
-        }
+        $this->restoreLlmEnvironment();
     }
 
     /**
