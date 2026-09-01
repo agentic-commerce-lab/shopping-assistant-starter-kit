@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Command\Seed\Bike;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Command\Seed\Bike\BikeVariantFamily;
+use Swag\AssistantStarterKit\Command\Seed\SizeFamily;
 
 /**
  * The cross product of a product's variant axes.
@@ -31,7 +32,14 @@ final class BikeVariantFamilyTest extends TestCase
      */
     private function family(array $axes, int $stock = 5): array
     {
-        return BikeVariantFamily::build('parent-id', 'bk-thing', 49.0, $stock, $axes, self::OPTION_IDS);
+        return BikeVariantFamily::build(
+            'parent-id',
+            'bk-thing',
+            SizeFamily::grossPrice(49.0, 19.0),
+            $stock,
+            $axes,
+            self::OPTION_IDS,
+        );
     }
 
     public function testASingleAxisProducesOneVariantPerValue(): void

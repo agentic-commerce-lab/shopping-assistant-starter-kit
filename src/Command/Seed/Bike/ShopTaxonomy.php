@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Command\Seed\Bike;
 
+use Swag\AssistantStarterKit\Command\Seed\SeedTax;
+
 /**
  * What the shop already has, resolved to ids, as the plan builder needs to see it.
  *
@@ -39,7 +41,7 @@ final readonly class ShopTaxonomy
         public array $propertyGroupIdsByName,
         public array $optionIds,
         public array $manufacturerIdsByName,
-        public string $taxId,
+        public SeedTax $tax,
         public array $productIdsByNumber = [],
     ) {}
 }

@@ -40,7 +40,7 @@ final class ProductPlan
         array $categoryIdsByPath,
         array $optionIds,
         array $sizeOptionIds,
-        string $taxId,
+        SeedTax $tax,
         string $salesChannelId,
     ): array {
         // Collected, not thrown-on-first-hit: every unresolved path is named in one error below,
@@ -50,14 +50,14 @@ final class ProductPlan
 
         $traps = [];
         foreach (FashionSeedTraps::all() as $trap) {
-            $built = self::trapToPayload($trap, $categoryIdsByPath, $optionIds, $sizeOptionIds, $taxId);
+            $built = self::trapToPayload($trap, $categoryIdsByPath, $optionIds, $sizeOptionIds, $tax);
             $traps[] = $built['product'];
             if ($built['unresolvedPath'] !== null) {
                 $unresolvedPaths[] = $built['unresolvedPath'];
             }
         }
 
-        $filler = ProductFillerBuilder::build($categoryIdsByPath, $optionIds, $sizeOptionIds, $taxId, $unresolvedPaths);
+        $filler = ProductFillerBuilder::build($categoryIdsByPath, $optionIds, $sizeOptionIds, $tax, $unresolvedPaths);
 
         if ($unresolvedPaths !== []) {
             $distinct = array_values(array_unique($unresolvedPaths));
@@ -101,7 +101,7 @@ final class ProductPlan
         array $categoryIdsByPath,
         array $optionIds,
         array $sizeOptionIds,
-        string $taxId,
+        SeedTax $tax,
     ): array {
         $path = implode('/', $trap['categoryPath']);
         $categoryId = $categoryIdsByPath[$path] ?? null;
@@ -118,8 +118,8 @@ final class ProductPlan
             'productNumber' => 'FW-' . strtoupper($trap['id']),
             'name' => $trap['name'],
             'description' => $trap['description'],
-            'price' => SizeFamily::grossPrice($trap['price']),
-            'taxId' => $taxId,
+            'price' => SizeFamily::grossPrice($trap['price'], $tax->rate),
+            'taxId' => $tax->id,
             'active' => true,
             'stock' => 6,
             'categories' => [['id' => $categoryId]],
@@ -127,7 +127,13 @@ final class ProductPlan
         ];
 
         if ($trap['sizes']) {
-            $family = SizeFamily::build($product['id'], $product['productNumber'], $trap['price'], $sizeOptionIds, 3);
+            $family = SizeFamily::build(
+                $product['id'],
+                $product['productNumber'],
+                SizeFamily::grossPrice($trap['price'], $tax->rate),
+                $sizeOptionIds,
+                3,
+            );
             $product['children'] = $family['children'];
             $product['configuratorSettings'] = $family['configuratorSettings'];
         }

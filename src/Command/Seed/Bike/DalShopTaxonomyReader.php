@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Command\Seed\Bike;
 
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Defaults;
+use Swag\AssistantStarterKit\Command\Seed\SeedTax;
 
 /**
  * Reads what the shop already has, so {@see BikeSeedPlan} can attach to it instead of duplicating it.
@@ -34,6 +35,8 @@ final readonly class DalShopTaxonomyReader
      */
     public function read(): ShopTaxonomy
     {
+        $tax = $this->tax();
+
         return new ShopTaxonomy(
             $this->pairs('SELECT ct.name, LOWER(HEX(c.id)) id FROM category c
                  JOIN category_translation ct ON ct.category_id = c.id
@@ -45,7 +48,7 @@ final readonly class DalShopTaxonomyReader
             $this->pairs('SELECT mt.name, LOWER(HEX(m.id)) id FROM product_manufacturer m
                  JOIN product_manufacturer_translation mt ON mt.product_manufacturer_id = m.id
                  WHERE mt.name IS NOT NULL'),
-            $this->taxId(),
+            $tax,
             // Parents only: a variant inherits its parent's properties, so enriching the parent is
             // enough and enriching both would write the same facts twice.
             $this->pairs(\sprintf(
@@ -78,20 +81,35 @@ final readonly class DalShopTaxonomyReader
     }
 
     /**
+     * The tax rule every seeded product gets: its id **and** its rate.
+     *
      * The same `ORDER BY tax_rate DESC, id` the fashion seeder uses, so the two agree on which rate a
      * seeded product carries in a shop that has several.
      *
+     * The rate is read alongside the id because the payloads need both — the seeded figure is a gross
+     * price and {@see \Swag\AssistantStarterKit\Command\Seed\SizeFamily::grossPrice()} derives `net`
+     * from it. Reading only the id is what let this catalogue store net == gross.
+     *
+     * One query for the row, called once by {@see self::read()} and held in a local there, rather than
+     * two calls for its two columns — this class is `final readonly`, so there is nowhere to memoise.
+     *
      * @throws \Doctrine\DBAL\Exception propagated, as {@see self::read()} documents
      */
-    private function taxId(): string
+    private function tax(): SeedTax
     {
-        $taxId = $this->connection->fetchOne('SELECT LOWER(HEX(id)) FROM tax ORDER BY tax_rate DESC, id LIMIT 1');
+        $row = $this->connection->fetchAssociative(
+            'SELECT LOWER(HEX(id)) AS id, tax_rate AS rate FROM tax ORDER BY tax_rate DESC, id LIMIT 1',
+        );
+
+        $taxId = \is_array($row) ? $row['id'] ?? null : null;
 
         if (!\is_string($taxId) || $taxId === '') {
             throw new \RuntimeException('No tax rule exists in this shop — cannot price seeded products.');
         }
 
-        return $taxId;
+        \assert(\is_array($row));
+
+        return new SeedTax($taxId, (float) $row['rate']);
     }
 
     /**

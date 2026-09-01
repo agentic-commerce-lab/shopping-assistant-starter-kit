@@ -11,6 +11,7 @@ use Swag\AssistantStarterKit\Command\Seed\FashionSeedTraps;
 use Swag\AssistantStarterKit\Command\Seed\ProductPlan;
 use Swag\AssistantStarterKit\Command\Seed\PropertyGroupPlan;
 use Swag\AssistantStarterKit\Command\Seed\SeedId;
+use Swag\AssistantStarterKit\Command\Seed\SeedTax;
 
 /**
  * The counts here are the seeder plan's Context table made executable: 3,617 top-level products,
@@ -20,6 +21,8 @@ use Swag\AssistantStarterKit\Command\Seed\SeedId;
 final class ProductPlanTest extends TestCase
 {
     private const TAX_ID = 'tax00000000000000000000000000000';
+
+    private const TAX_RATE = 19.0;
 
     private const SALES_CHANNEL_ID = 'saleschannel0000000000000000000';
 
@@ -35,7 +38,7 @@ final class ProductPlanTest extends TestCase
             $categories,
             $properties['optionIds'],
             $properties['sizeOptionIds'],
-            self::TAX_ID,
+            new SeedTax(self::TAX_ID, self::TAX_RATE),
             self::SALES_CHANNEL_ID,
         );
     }
@@ -114,7 +117,7 @@ final class ProductPlanTest extends TestCase
             $categories,
             $properties['optionIds'],
             $properties['sizeOptionIds'],
-            self::TAX_ID,
+            new SeedTax(self::TAX_ID, self::TAX_RATE),
             self::SALES_CHANNEL_ID,
         );
     }

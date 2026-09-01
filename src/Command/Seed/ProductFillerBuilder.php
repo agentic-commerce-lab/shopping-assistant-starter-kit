@@ -46,7 +46,7 @@ final class ProductFillerBuilder
         array $categoryIdsByPath,
         array $optionIds,
         array $sizeOptionIds,
-        string $taxId,
+        SeedTax $tax,
         array &$unresolvedPaths,
     ): array {
         $state = self::SEED;
@@ -88,8 +88,8 @@ final class ProductFillerBuilder
                 'productNumber' => 'FW-' . strtoupper(substr($id, offset: 0, length: 12)),
                 'name' => \sprintf('%s %04d', $leaf['name'], $index),
                 'description' => \sprintf('%s in a considered cut.', $leaf['name']),
-                'price' => SizeFamily::grossPrice($price),
-                'taxId' => $taxId,
+                'price' => SizeFamily::grossPrice($price, $tax->rate),
+                'taxId' => $tax->id,
                 'active' => true,
                 'stock' => $next() % 12,
                 'categories' => [['id' => $categoryId]],
@@ -97,7 +97,13 @@ final class ProductFillerBuilder
             ];
 
             if (($index % 5) !== 0) {
-                $family = SizeFamily::build($id, $product['productNumber'], $price, $sizeOptionIds, $next());
+                $family = SizeFamily::build(
+                    $id,
+                    $product['productNumber'],
+                    SizeFamily::grossPrice($price, $tax->rate),
+                    $sizeOptionIds,
+                    $next(),
+                );
                 $product['children'] = $family['children'];
                 $product['configuratorSettings'] = $family['configuratorSettings'];
             }

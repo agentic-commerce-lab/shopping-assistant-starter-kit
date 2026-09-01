@@ -22,7 +22,7 @@ final class SizeFamily
     public static function build(
         string $parentId,
         string $parentNumber,
-        float $price,
+        array $price,
         array $sizeOptionIds,
         int $stockSeed,
     ): array {
@@ -35,7 +35,7 @@ final class SizeFamily
             $children[] = [
                 'id' => $childId,
                 'productNumber' => $parentNumber . '-' . strtolower($size),
-                'price' => self::grossPrice($price),
+                'price' => $price,
                 'stock' => ($stockSeed + $offset) % 9,
                 'options' => [['id' => $optionId]],
             ];
@@ -52,14 +52,27 @@ final class SizeFamily
      * {@see ProductPlan}, both of which build a top-level product's own price the same way) to
      * keep the shape written once.
      *
+     * `$price` is the **gross** figure, as the name says, and `net` is derived from it rather than
+     * copied. Until 2026-09-01 both fields carried the same number, which is a pair that cannot both
+     * be true at any non-zero tax rate. On a gross-display storefront it looked right, which is why
+     * it survived; B2B pricing is what exposed it. Shopware Commercial's Individual Pricing applies
+     * its percentage to the **net** figure and then re-derives gross, so a merchant-configured +50%
+     * surcharge rendered as 59 × 1.5 × 1.19 = 105.32 — an effective +78%, measured on the staging
+     * shop, and indistinguishable from a Commercial bug. See {@see \Swag\AssistantStarterKit\Tests\Command\Seed\SeededPriceTest}.
+     *
+     * @param float $taxRate percent, e.g. `19.0` — the rate of the `taxId` the same payload carries
+     *
      * @return list<array{currencyId: string, gross: float, net: float, linked: bool}>
      */
-    public static function grossPrice(float $price): array
+    public static function grossPrice(float $price, float $taxRate): array
     {
         return [[
             'currencyId' => \Shopware\Core\Defaults::CURRENCY,
             'gross' => $price,
-            'net' => $price,
+            // Rounded to the currency's own precision: an unrounded net leaves Shopware storing a
+            // figure with more decimals than any price field displays, and the admin then shows a
+            // net that does not multiply back to the gross beside it.
+            'net' => round($price / (1 + ($taxRate / 100)), 2),
             'linked' => true,
         ]];
     }
