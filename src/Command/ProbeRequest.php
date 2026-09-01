@@ -41,19 +41,21 @@ final readonly class ProbeRequest
         public string $parentId = '',
         public array $selections = [],
         public int $limit = 10,
+        public ProbeShopper $shopper = new ProbeShopper(),
     ) {}
 
     public static function fromInput(InputInterface $input, string $defaultSalesChannel): self
     {
         $salesChannelId = self::text($input->getOption('sales-channel')) ?: $defaultSalesChannel;
+        $shopper = ProbeShopper::fromInput($input);
 
         if ($input->getOption('facets') === true) {
-            return new self(self::MODE_FACETS, $salesChannelId);
+            return new self(self::MODE_FACETS, $salesChannelId, shopper: $shopper);
         }
 
         $question = self::text($input->getOption('ask'));
         if ($question !== '') {
-            return new self(self::MODE_ASK, $salesChannelId, question: $question);
+            return new self(self::MODE_ASK, $salesChannelId, question: $question, shopper: $shopper);
         }
 
         $parentId = self::text($input->getOption('variant'));
@@ -63,6 +65,7 @@ final readonly class ProbeRequest
                 $salesChannelId,
                 parentId: $parentId,
                 selections: self::selections($input->getOption('option')),
+                shopper: $shopper,
             );
         }
 
@@ -73,10 +76,11 @@ final readonly class ProbeRequest
                 $salesChannelId,
                 term: $term,
                 limit: max(1, (int) self::text($input->getOption('limit'))),
+                shopper: $shopper,
             );
         }
 
-        return new self(self::MODE_NONE, $salesChannelId);
+        return new self(self::MODE_NONE, $salesChannelId, shopper: $shopper);
     }
 
     /**
