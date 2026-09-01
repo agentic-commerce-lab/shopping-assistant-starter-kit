@@ -106,11 +106,21 @@ final class GroundingOutputProcessorTest extends TestCase
     }
 
     /**
-     * The live-run regression: a natural reply that names no product id at all must
-     * still render a card, sourced from the last tool batch — not from scraping prose
-     * that was never designed to carry a card selector.
+     * The live-run regression this test was written for still holds: a natural reply that names no
+     * product **id** must render a card rather than none.
+     *
+     * **What changed on 2026-09-01 is where that card comes from.** This used to assert
+     * `last_tool_batch`, on the reasoning that prose "was never designed to carry a card selector".
+     * That reasoning held while the model listed everything it had found — prose and cards agreed by
+     * accident. Once the prompt asked for one recommendation and at most two alternatives, the
+     * fallback rendered products the reply never mentioned: measured live, three named against six
+     * rendered. So a reply naming a product by name now selects that product, and the source is
+     * `prose` — the same card as before, chosen for a reason instead of by coincidence.
+     *
+     * The fallback itself is untouched and covered by
+     * {@see GroundingRendersWhatTheProseNamesTest::testAReplyNamingNothingStillFallsBackToTheLastBatch()}.
      */
-    public function testProseNamingNoIdRendersTheLastToolBatch(): void
+    public function testProseNamingAProductByNameSelectsThatProduct(): void
     {
         [$renderer, $trace] = $this->process('The Alloy Bottle Cage is a good match for your bike.', ['fx-017']);
 
@@ -121,7 +131,7 @@ final class GroundingOutputProcessorTest extends TestCase
 
         $payload = $trace->payload('grounding.select');
         self::assertNotNull($payload);
-        self::assertSame('last_tool_batch', $payload['source']);
+        self::assertSame('prose', $payload['source']);
         self::assertSame(['fx-017'], $payload['selectedIds']);
     }
 

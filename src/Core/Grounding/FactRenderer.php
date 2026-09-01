@@ -43,6 +43,16 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * pushed this class's own cyclomatic-complexity total over this project's threshold
  * (mago sums it per class, across every method).
  */
+// @mago-expect lint:too-many-methods
+// Sixteen methods, in four groups that each need their own entry point plus a getter for what the
+// last call found: registration, selection, rendering, and the three prose audits. The audits'
+// *reasoning* already lives elsewhere — ProseAudit and PassageAudit were split out for exactly this
+// budget — so what remains here are the seams a turn drives them through.
+//
+// The linter is not wrong that this is a lot of surface, and splitting the class is probably the
+// right answer eventually. It is not the right answer inside a bug fix: the split worth doing is
+// "per-turn state" against "audit entry points", every eval assertion reads the getters, and doing
+// it here would put a refactor of the grounding core in a commit about which cards get rendered.
 final class FactRenderer
 {
     private RetrievedProductIndex $index;
@@ -100,6 +110,34 @@ final class FactRenderer
     public function retrievedIds(): array
     {
         return $this->index->ids();
+    }
+
+    /**
+     * The name of every retrieved product, keyed by its canonical id.
+     *
+     * Exposed so {@see \Swag\AssistantStarterKit\Core\Agent\GroundingOutputProcessor} can find out
+     * which products a reply *names* — the model writes names, never ids, because the prompt forbids
+     * it from describing how its answer is displayed. See {@see ProseProductNames} for what that cost
+     * before this existed.
+     *
+     * Returns names rather than taking the prose, so the index stays this class's business and the text
+     * matching stays testable on its own.
+     *
+     * @return array<string, string> canonical id => product name
+     */
+    public function retrievedNamesById(): array
+    {
+        $names = [];
+
+        foreach ($this->index->ids() as $id) {
+            $card = $this->index->card($id);
+
+            if ($card !== null) {
+                $names[$id] = $card->name;
+            }
+        }
+
+        return $names;
     }
 
     /**

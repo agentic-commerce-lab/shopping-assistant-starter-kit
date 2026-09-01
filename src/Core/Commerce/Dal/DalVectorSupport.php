@@ -57,8 +57,12 @@ final class DalVectorSupport implements VectorSupport
         }
 
         try {
-            $version = $this->connection->fetchOne('SELECT VERSION()');
-            $this->version = \is_string($version) && $version !== '' ? $version : 'an unknown database';
+            /** @var array{version?: mixed, comment?: mixed}|false $row */
+            $row = $this->connection->fetchAssociative('SELECT VERSION() AS version, @@version_comment AS comment');
+            $this->version = DatabaseLabel::of(
+                \is_array($row) && \is_string($row['version'] ?? null) ? $row['version'] : '',
+                \is_array($row) && \is_string($row['comment'] ?? null) ? $row['comment'] : '',
+            );
         } catch (\Throwable) {
             $this->version = 'an unknown database';
         }

@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\ProseProductNames;
 use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
 use Swag\AssistantStarterKit\Core\Tool\GivenDescriptions;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -106,7 +107,7 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
 
         $text = $result->getContent();
 
-        $validation = $this->renderer->validate($this->extractCandidateIds($text));
+        $validation = $this->renderer->validate($this->candidatesIn($text));
         $fromProse = $validation->accepted !== [];
         $toRender = $fromProse ? $validation->accepted : $this->renderer->lastRetrievedBatch();
 
@@ -140,6 +141,27 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // descriptions. A shop document legitimately states a shipping cost; a product description
         // does not legitimately state the product's price. See ProseAudit::unbackedPrices().
         $this->renderer->unbackedPropertiesInProse($text, $this->facets, GivenDescriptions::from($this->trace));
+    }
+
+    /**
+     * Every retrieved product this reply points at, by id or by name.
+     *
+     * **The name half is what makes the card set match the answer.** The id half predates it and stays:
+     * a model that does write an id should still have it honoured, and the audit can then attribute a
+     * claim to a specific product. But the prompt forbids the model from describing how its answer is
+     * displayed, so in practice it writes names — and with only the id path, `$fromProse` was always
+     * false and the fallback rendered the entire last tool batch. That matched the prose only while the
+     * model listed everything it found. Measured live 2026-09-01: three products named, six cards
+     * rendered.
+     *
+     * @return list<string>
+     */
+    private function candidatesIn(string $text): array
+    {
+        return array_values(array_unique([
+            ...$this->extractCandidateIds($text),
+            ...ProseProductNames::idsNamedIn($text, $this->renderer->retrievedNamesById()),
+        ]));
     }
 
     /**
