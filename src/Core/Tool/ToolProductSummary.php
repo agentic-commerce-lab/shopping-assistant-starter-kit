@@ -37,6 +37,11 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * fabrication surface that was not already open; it only lets the model tell two retrieved products
  * apart without paying a round trip for each.
  *
+ * **`soldOut` is the one buyability signal, and only in the negative.** It is a boolean, not a
+ * quantity — no count, no threshold, no "low stock" — so nothing here lets the model quote a figure it
+ * did not earn. See {@see \Swag\AssistantStarterKit\Tests\Core\Tool\ToolProductSummarySoldOutTest}
+ * for the live turn that made it necessary and for why there is deliberately no `soldOut: false`.
+ *
  * **Never widen this with a figure.** A price or stock number here would let the model quote a figure
  * it did not have to earn — the one thing this whole pipeline exists to prevent. `properties` is a
  * deliberate exception: it is closed-vocabulary (drawn from the shop's own facet values) and audited
@@ -61,7 +66,7 @@ final class ToolProductSummary
      *                                              {@see MatchReasons::of()} — empty unless
      *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, reasons?: list<string>}>
      */
     public static function of(array $cards, array $reasons = []): array
     {
@@ -78,6 +83,19 @@ final class ToolProductSummary
                     // card.
                     'properties' => BoundedProperties::of($card->properties),
                 ];
+
+                // **Only ever true, never false.** An absent key means what it always meant: the model
+                // has been told nothing about buyability and may claim none. A `false` would be a
+                // statement the model could repeat as "this is available", which is the one claim the
+                // shop must render from its own record.
+                //
+                // Added after a live turn offered to add an out-of-stock product to the cart. It
+                // claimed no availability — the audit was satisfied — but it proposed something that
+                // cannot happen, because it had no way to know. See ToolProductSummarySoldOutTest for
+                // why the direction is chosen by what each error costs.
+                if (!$card->isInStock()) {
+                    $summary['soldOut'] = true;
+                }
 
                 $codes = $reasons[$card->id] ?? [];
 
@@ -109,7 +127,7 @@ final class ToolProductSummary
      * @param list<ProductCard>           $cards
      * @param array<string, list<string>> $reasons
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, reasons?: list<string>, description?: string}>
      */
     public static function withDescriptions(array $cards, array $reasons = []): array
     {
