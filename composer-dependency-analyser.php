@@ -54,8 +54,17 @@ $config->ignoreErrorsOnPackage('symfony/cache', [
 // AND a live probe of the database. The container can construct both objects without the package —
 // only `ShopInfoVectorTable::store()` would fatal, and on such a shop it is never called. Added
 // 2026-08-31. If the chooser is ever removed, this ignore is wrong and the require should come back.
+//
+// It is a `require-dev` since 2026-09-01, so the error type changed with it: what used to be a
+// shadow dependency is now a dev dependency used in production code, and the ignore had to follow —
+// this analyser fails on an ignore that never fires, so keeping the old one would have been just as
+// red. The `require-dev` is not cosmetic: without it CI installed no bridge at all and
+// `mago analyze` failed on every reference to `MariaDb\Store` with unresolvable types rather than
+// real defects, while the same command exited 0 on a developer machine that happened to have the
+// package lying around. It gives the analysers the classes without putting the package anywhere
+// near a shop's dependency graph.
 $config->ignoreErrorsOnPackage('symfony/ai-maria-db-store', [
-    \ShipMonk\ComposerDependencyAnalyser\Config\ErrorType::SHADOW_DEPENDENCY,
+    \ShipMonk\ComposerDependencyAnalyser\Config\ErrorType::DEV_DEPENDENCY_IN_PROD,
 ]);
 
 return $config;
