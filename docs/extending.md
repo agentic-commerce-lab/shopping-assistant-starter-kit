@@ -19,7 +19,7 @@ adding it to this repository or shipping it in a plugin of your own.
 | Embed with a different model | `Embedder` | decorate or replace the service |
 | Store vectors somewhere else | `PassageStore` | replace or decorate the service |
 | Assert something about my own tool in an eval journey | `Assertion` | name the class in the journey's `assertions` map |
-| Change the widget's markup | Twig blocks | template override, see the README |
+| Change the widget's markup | Twig blocks | template override, see [the manual](manual.md#the-storefront-widget) |
 | Drive the widget from your own JS | `swag-assistant:*` DOM events | listen on / dispatch at the widget root |
 | Swap the catalogue backend entirely | `CommerceGatewayInterface` **plus four optional capability interfaces** | decorate the service — [read this first](#swapping-the-catalogue-backend) |
 

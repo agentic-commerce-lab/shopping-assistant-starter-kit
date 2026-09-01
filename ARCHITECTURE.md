@@ -534,7 +534,7 @@ example of each:
 | Replace the whole turn | decorate/replace `ChatTurnRunnerInterface` | the widest seam there is |
 | Change the agent voice | `config.xml`, no code | — |
 | Point at another OpenAI-compatible endpoint | `llmBaseUrl` / `llmModel`, no code | — |
-| Storefront widget markup | Twig block override — five named blocks, see README | — |
+| Storefront widget markup | Twig block override — six named blocks, see `docs/manual.md` | — |
 | Storefront widget behaviour | own JS against `POST /assistant/chat` | the endpoint stays reachable with the widget off |
 
 ### Two tiers of tool authority
