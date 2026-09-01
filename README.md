@@ -116,11 +116,68 @@ bin/console plugin:install --activate SwagAssistantStarterKit
 bin/console cache:clear && bin/console theme:compile
 ```
 
-Then set a base URL, a model and an API key — in the Administration, or as `ASSISTANT_LLM_*`
-environment variables, which win because Shopware's system config has no secret storage. Until all
-three are set the endpoint answers **503** and no orb renders.
-**[The manual](docs/manual.md)** covers the rest: requirements, every setting, request limits,
-escalation, the widget, and the probe commands.
+## Configure it
+
+### The model — required, nothing answers without it
+
+Any OpenAI-compatible chat-completions endpoint. Set it in the Administration under **Language
+model**, or as environment variables, which take precedence because Shopware's system config has no
+secret storage — a key typed into the admin form is readable by anyone with config access and travels
+in every database backup.
+
+```fish
+bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://openrouter.ai/api"
+bin/console system:config:set SwagAssistantStarterKit.config.llmModel   "openai/gpt-4o-mini"
+bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey  "sk-…"
+
+# or, winning over the above:
+# ASSISTANT_LLM_BASE_URL, ASSISTANT_LLM_MODEL, ASSISTANT_LLM_API_KEY
+```
+
+Until all three are set the chat endpoint answers **503** and no orb renders. The base URL is the
+host **without** the version path: the platform appends `/v1/chat/completions` itself, so
+`https://openrouter.ai/api/v1` becomes `…/v1/v1/chat/completions` and fails.
+
+### Shop knowledge (RAG) — off by default
+
+Answers about legal pages, shipping and uploaded PDFs come from a vector index, not the catalog.
+**It needs both halves** — the switch *and* an embedding model. Either one alone leaves the feature
+off, with no tool in the model's schema.
+
+```fish
+bin/console system:config:set SwagAssistantStarterKit.config.enableShopKnowledge true
+bin/console system:config:set SwagAssistantStarterKit.config.embeddingModel "baai/bge-m3"
+```
+
+The embedding model reuses the chat model's base URL and key, so it must be one your provider serves
+at `/v1/embeddings`. Index from the Administration's **Assistant shop information** screen or with
+`bin/console swag:assistant:shopinfo --index=…`; `autoIndexShopPages` keeps them current on change.
+**Changing the embedding model makes every indexed document unusable** — delete and index again.
+
+Two environment facts decide how well it runs, and neither breaks the shop: `symfony/ai-store` must
+be in the shop's vendor tree or the feature stays off by design, and on MariaDB 11.7+ with
+`symfony/ai-maria-db-store` the vectors are indexed natively — everywhere else they are compared in
+PHP, which is exact but linear. [The manual](docs/manual.md#requirements) has the detail.
+
+### Everything else
+
+| Card | Settings |
+|---|---|
+| **Assistant status** | `widgetEnabled` — stops it being *shown*; the separate off switch stops it *answering* |
+| **Limits** | `enableAddToCart`, `maxItemQuantity`, `maxCartValue`, `maxToolCallsPerTurn` (20) |
+| **Request limits** | `requestsPerMinute` (60), `dailyRequestCap` (0 = unlimited) — both refuse before any spend |
+| **Voice and catalogue scope** | `agentVoice`, `blockedProducts`, `blockedCategories` |
+| **Handing over to a human** | `enableEscalation`, `escalationUrl`, `escalationMessage`, plus `enableMatchReasons` and `enableCompareProducts` |
+| **Appearance** | `entryPointStyle` (`icon` or `creature`), `primaryColor`, `secondaryColor` |
+| **Storefront widget** | `assistantName`, `greeting`, `greetingDe`, `greetingEn` |
+| **Logging · Data retention** | `logTraces`, `traceRetentionDays` (30) |
+
+A `0` means **unlimited** in every numeric limit but one: `maxToolCallsPerTurn` takes no zero and
+falls back to 20, because it bounds a model that has already started looping. Every switch that turns
+a capability off removes the tool rather than forbidding it, so the model never sees a tool it is not
+allowed to call.
+**[The manual](docs/manual.md)** explains what each one actually does, and why the defaults are what
+they are.
 
 ## Documents
 
