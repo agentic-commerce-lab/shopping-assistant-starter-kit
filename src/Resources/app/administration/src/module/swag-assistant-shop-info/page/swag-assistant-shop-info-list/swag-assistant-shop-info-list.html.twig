@@ -99,9 +99,9 @@
                     v-if="isSwitchedOff"
                     class="swag-assistant-shop-info-list__notice"
                     variant="info"
-                    :title="$tc('swag-assistant-shop-info.list.offTitle')"
+                    :title="offTitle"
                 >
-                    {{ $tc('swag-assistant-shop-info.list.offBody') }}
+                    {{ offBody }}
                 </sw-alert>
 
                 <sw-alert
@@ -209,10 +209,16 @@
             >
                 <dl class="swag-assistant-shop-info-list__config-row">
                     <dt>{{ $tc('swag-assistant-shop-info.list.model') }}</dt>
+                    {# The model is reported whenever one is stored, even with the feature switched
+                       off. Hiding it there said "not set" about a value the merchant had set, which
+                       is how this card came to contradict the indexed documents listed above it. #}
                     <dd>
-                        <code v-if="!isSwitchedOff">{{ embeddingModel }}</code>
+                        <code v-if="embeddingModel">{{ embeddingModel }}</code>
                         <span v-else class="swag-assistant-shop-info-list__config-unset">
                             {{ $tc('swag-assistant-shop-info.list.modelUnset') }}
+                        </span>
+                        <span v-if="offReason === 'disabled'" class="swag-assistant-shop-info-list__config-unset">
+                            — {{ $tc('swag-assistant-shop-info.list.modelDisabled') }}
                         </span>
                     </dd>
                 </dl>

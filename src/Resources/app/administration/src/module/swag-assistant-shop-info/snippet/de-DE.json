@@ -11,8 +11,6 @@
             "uploadHelp": "PDF, TXT, MD, HTML oder DOCX, bis 8 MB. Der Text wird beim Hochladen extrahiert; die Datei selbst wird nicht gespeichert.",
             "uploadButton": "Hochladen und indexieren",
             "uploading": "Text wird extrahiert und indexiert…",
-            "offTitle": "Shopinformationen sind ausgeschaltet",
-            "offBody": "Für diesen Verkaufskanal ist kein Embedding-Modell konfiguriert, daher hat der Assistent überhaupt kein Werkzeug für Shopinformationen. Hinterlege eines in den Plugin-Einstellungen.",
             "columnName": "Dokument",
             "columnStatus": "Status",
             "columnChunks": "Passagen",
@@ -43,7 +41,14 @@
             "reindexAll": "Alles neu indexieren",
             "reindexAllHelp": "Nötig nach einer Änderung des Embedding-Modells: alle Dokumente wurden mit dem vorherigen indexiert. Shopseiten werden neu gelesen, hochgeladene Dateien aus ihrem gespeicherten Text neu indexiert.",
             "bulkIndexed": "{count} Dokument(e) indexiert.",
-            "bulkSkipped": "Übersprungen, weil die Seite leer ist: {names}."
+            "bulkSkipped": "Übersprungen, weil die Seite leer ist: {names}.",
+            "off": {
+                "disabledTitle": "Shop-Wissen ist ausgeschaltet",
+                "disabledBody": "Das Antworten aus den eigenen Dokumenten Ihres Shops ist in den Plugin-Einstellungen ausgeschaltet, deshalb erreicht nichts auf dieser Seite einen Kunden. Schalten Sie „Aus den eigenen Dokumenten Ihres Shops antworten“ ein, um es zu nutzen.",
+                "noModelTitle": "Kein Embedding-Modell konfiguriert",
+                "noModelBody": "Shop-Wissen ist eingeschaltet, benötigt aber zusätzlich ein Embedding-Modell, um Dokumente zu indexieren und Fragen dagegen abzugleichen. Hinterlegen Sie eines in den Plugin-Einstellungen."
+            },
+            "modelDisabled": "In den Plugin-Einstellungen ausgeschaltet"
         }
     }
 }

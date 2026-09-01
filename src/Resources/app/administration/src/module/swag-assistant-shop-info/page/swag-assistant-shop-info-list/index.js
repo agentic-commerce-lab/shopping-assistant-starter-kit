@@ -20,6 +20,18 @@ const { Criteria } = Shopware.Data;
 const STOREFRONT_TYPE_ID = '8a243080f92e4c719546314b577cf82b';
 
 /**
+ * A stored boolean, read the way the server reads it.
+ *
+ * The config API returns `true` for a value written through the Administration and the STRING
+ * `"true"` for one written by `system:config:set`, and `(Boolean) "false"` is `true` — the same trap
+ * `StoredValueReader::bool()` exists for on the PHP side. A bare cast here would report a switched-off
+ * feature as on.
+ */
+function isTrue(value) {
+    return value === true || value === 'true' || value === 1 || value === '1';
+}
+
+/**
  * The documents the assistant may answer from, for one sales channel.
  *
  * **Scoped to a sales channel, always, with no "all channels" option.** Passages are stored per
@@ -40,9 +52,11 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             documents: null,
             salesChannels: [],
             salesChannelId: null,
-            // Read-only here. It is a plugin setting, and this page shows it because it decides
-            // whether anything on this page does anything (spec R13) — not because it is edited here.
+            // Read-only here. Both are plugin settings, and this page shows them because they
+            // decide whether anything on this page does anything (spec R13) — not because they are
+            // edited here.
             embeddingModel: '',
+            shopKnowledgeEnabled: false,
             isLoading: true,
             busyId: null,
             isUploading: false,
@@ -67,7 +81,31 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
          * opposite things — "nothing uploaded yet" is a task, "the feature is off" is a setting.
          */
         isSwitchedOff() {
-            return this.embeddingModel === '';
+            return !this.shopKnowledgeEnabled || this.embeddingModel === '';
+        },
+
+        /**
+         * WHICH kind of off, because the two need different sentences and only one of them is a task.
+         *
+         * `enableShopKnowledge` false is a decision the merchant made and can undo in one click; an
+         * empty model on an enabled feature is an unfinished setup. Telling a merchant to "set an
+         * embedding model" when they deliberately switched the whole feature off sends them to fix
+         * something that is not broken.
+         */
+        offReason() {
+            if (!this.shopKnowledgeEnabled) {
+                return 'disabled';
+            }
+
+            return this.embeddingModel === '' ? 'noModel' : null;
+        },
+
+        offTitle() {
+            return this.$tc(`swag-assistant-shop-info.list.off.${this.offReason}Title`);
+        },
+
+        offBody() {
+            return this.$tc(`swag-assistant-shop-info.list.off.${this.offReason}Body`);
         },
 
         /**
@@ -167,20 +205,35 @@ Shopware.Component.register('swag-assistant-shop-info-list', {
             this.salesChannelId = salesChannelId;
             this.uploadError = null;
 
-            await Promise.all([this.loadEmbeddingModel(), this.loadDocuments()]);
+            await Promise.all([this.loadShopKnowledgeConfig(), this.loadDocuments()]);
         },
 
-        async loadEmbeddingModel() {
+        /**
+         * **The config API does not inherit; the PHP side does.** `getValues(domain, salesChannelId)`
+         * returns only the values overridden FOR that channel — a shop configured once, globally,
+         * comes back empty. `SystemConfigService::getString()` in the storefront falls back to the
+         * global row, so retrieval worked while this screen reported the feature switched off and
+         * disabled every control on it. Measured on a live shop: eight indexed documents listed below
+         * a notice saying no embedding model was configured.
+         *
+         * So both scopes are read and merged, channel over global — the same order the server
+         * resolves them in. A key present in the channel response wins even when it is empty, because
+         * clearing a value for one channel is a deliberate act and must not fall back.
+         */
+        async loadShopKnowledgeConfig() {
             if (!this.salesChannelId) {
                 return;
             }
 
-            const config = await this.systemConfigApiService.getValues(
-                'SwagAssistantStarterKit.config',
-                this.salesChannelId,
-            );
+            const [global, channel] = await Promise.all([
+                this.systemConfigApiService.getValues('SwagAssistantStarterKit.config', null),
+                this.systemConfigApiService.getValues('SwagAssistantStarterKit.config', this.salesChannelId),
+            ]);
+
+            const config = { ...global, ...channel };
 
             this.embeddingModel = (config['SwagAssistantStarterKit.config.embeddingModel'] || '').trim();
+            this.shopKnowledgeEnabled = isTrue(config['SwagAssistantStarterKit.config.enableShopKnowledge']);
         },
 
         async loadDocuments() {

@@ -11,8 +11,6 @@
             "uploadHelp": "PDF, TXT, MD, HTML or DOCX, up to 8 MB. The text is extracted on upload; the file itself is not kept.",
             "uploadButton": "Upload and index",
             "uploading": "Extracting and indexing…",
-            "offTitle": "Shop information is switched off",
-            "offBody": "No embedding model is configured for this sales channel, so the assistant has no shop-information tool at all. Set one in the plugin settings.",
             "columnName": "Document",
             "columnStatus": "Status",
             "columnChunks": "Passages",
@@ -43,7 +41,14 @@
             "reindexAll": "Index everything again",
             "reindexAllHelp": "Needed after changing the embedding model: every document was indexed with the previous one. Shop pages are read again, uploaded files are re-indexed from their stored text.",
             "bulkIndexed": "{count} document(s) indexed.",
-            "bulkSkipped": "Skipped, because the page is empty: {names}."
+            "bulkSkipped": "Skipped, because the page is empty: {names}.",
+            "off": {
+                "disabledTitle": "Shop knowledge is switched off",
+                "disabledBody": "Answering from your shop's own documents is switched off in the plugin settings, so nothing on this page reaches a shopper. Switch \"Answer from your shop's own documents\" on to use it.",
+                "noModelTitle": "No embedding model is configured",
+                "noModelBody": "Shop knowledge is switched on, but it also needs an embedding model to index documents and match questions against them. Set one in the plugin settings."
+            },
+            "modelDisabled": "Switched off in the plugin settings"
         }
     }
 }

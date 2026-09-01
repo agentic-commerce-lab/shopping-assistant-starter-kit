@@ -3,9 +3,29 @@
  * convention the trace list already follows. A hand-picked hex beside a token system is drift, and it
  * is what gets left behind when the Administration changes theme.
  */
+/*
+ * The Administration centres `mt-card` in a column of this width. The scope control and the document
+ * table are not cards, so nothing aligned them to it and they sat flush against the content edge
+ * while every card started ~190px further in. Named once here rather than repeated: if the
+ * Administration ever changes the card measure, this is the single line that has to follow it.
+ */
+$card-measure: 960px;
+
 .swag-assistant-shop-info-list {
     &__content {
         padding: 24px;
+    }
+
+    /*
+     * One column for the whole page. Everything that is not a card is brought onto the card measure,
+     * so the page reads as a single stack rather than a table and a select that happen to share a
+     * screen with some cards.
+     */
+    &__scope,
+    &__grid {
+        max-width: $card-measure;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     /*
@@ -14,8 +34,15 @@
      * when only one of them is a choice about the page itself.
      */
     &__scope {
-        max-width: 420px;
         margin-bottom: 24px;
+    }
+
+    /*
+     * The select keeps its own comfortable measure inside the wider column — a sales-channel name is
+     * short, and a full-width select over a 960px column reads as a form field that expects an essay.
+     */
+    &__channel {
+        max-width: 420px;
     }
 
     &__scope-hint,
@@ -55,6 +82,22 @@
     &__skeleton,
     &__config {
         margin-top: 24px;
+    }
+
+    /*
+     * **Back into the document flow.** `sw-entity-listing` renders with `sw-data-grid--full-page`,
+     * whose Administration rule is `position: absolute` — right for a listing that IS the page, wrong
+     * for one sitting between cards. Absolute took the table out of flow, so the configuration card
+     * below it was painted underneath the rows instead of after them, and a merchant read "no
+     * embedding model configured" across the middle of eight indexed documents.
+     *
+     * `.sw-data-grid` is named a second time only to carry weight: BEM nesting compiles `&__grid` to
+     * a single class, which ties the Administration's own two-class selector exactly, and a tie is
+     * decided by load order — which the Administration wins. Three classes beat two whatever the
+     * order, and that is cheaper to live with than `!important`.
+     */
+    &__grid.sw-data-grid.sw-data-grid--full-page {
+        position: static;
     }
 
     /*
