@@ -1,9 +1,12 @@
 # Design: B2B Commercial Shopping Context
 
-- **Date:** 2026-08-27, revised 2026-08-28
+- **Date:** 2026-08-27, revised 2026-08-28, verified and revised 2026-09-01
 - **Author:** Robin Schulte with Codex; revised by Robin Schulte with Claude after a fact check
-  against Shopware core 6.7.13 in `vendor/`, this repository, and the B2B Components documentation
-- **Status:** proposed for implementation
+  against Shopware core 6.7.13 in `vendor/`, this repository, and the B2B Components documentation;
+  revised again 2026-09-01 against a **live Commercial 7.13.0 shop** with all six B2B components
+  enabled (see section 17)
+- **Status:** partially implemented — sections 7.1, 7.3, 7.5 and 8 landed; the Commercial bridge of
+  section 5.2 (employee and organisation resolution) has not
 - **Target:** Shopware 6.7 plugin with optional Shopware Commercial B2B Components support
 
 ## 1. Context
@@ -290,6 +293,66 @@ Pricing writes its result into `calculatedPrice`, into `calculatedPrices`, or in
 by the installed package and must be observed rather than assumed; following the storefront's
 precedence is correct under all three.
 
+### 7.5 Price *filtering* is not price display — added 2026-09-01
+
+Sections 7.1–7.4 make the price the assistant **shows** correct. They say nothing about the price it
+**searches on**, and those are not the same number.
+
+`DalFilterTranslator` maps a stated budget onto a SQL `RangeFilter('price')`. `product.price` is a
+`PriceField`, and `PriceFieldAccessorBuilder` resolves currency and gross/net and nothing else. Every
+price that depends on who is asking — customer-group prices, Rule Builder prices, Commercial's
+Individual Pricing and Custom Pricing — is applied to the *loaded entity* by subscribers on
+`sales_channel.product.loaded`, after the query has already chosen the rows. Commercial's indexer
+writes those prices into `b2b_components_individual_pricing_computed_cache` and **never** into
+`product.price` or `product.cheapest_price_accessor`, so switching the filter to `cheapestPrice` does
+not help either: no column the filter can read carries them.
+
+**Measured 2026-09-01**, as Coca Cola (a +50% `by_percent` surcharge, `whole_company`), asking *"Show
+me jerseys under 100 euros"*:
+
+| what the shopper saw | price |
+|---|---|
+| prose | *"There are quite a few jerseys **under 100 euros**"* |
+| Thermal Jersey Long Sleeve | 123.17 EUR |
+| Trail Jersey | 74.85 EUR |
+| Club Jersey (the one it recommended) | 105.32 EUR |
+
+The trace shows `understand.priceMax: 100`, `query.build.filtersApplied: ["price"]` and
+`render.fieldsSubstituted: ["price", …]`. Grounding was not at fault: the rendered prices are the
+shopper's real prices, server-side, exactly as designed. The candidate set was chosen with someone
+else's prices. The same defect is visible without a model at all — the `price` facet reports the range
+`0 – 649` to both a guest and Coca Cola, whose real range is roughly `0 – 1158`, so the vocabulary
+handed to the model is wrong before it filters.
+
+**Shopware's own storefront has this limitation too.** Its listing route cannot filter or sort by an
+individual price; `IndividualPricingProductListingRouteDecorator` only adds HTTP cache tags. So this
+is a platform boundary, not the assistant lagging behind it — and "make it fully correct" cannot mean
+reconstructing Commercial's pricing, which decision B2 forbids.
+
+**Decision B12: enforce the stated range on the price the shopper is actually shown, and treat the
+SQL range as an approximation.** `StatedBudget`, applied to every card list `RetrievalPass` can
+return, drops cards that break the stated range and records a `price.enforced` trace event when it
+does. This is safe unconditionally — a product outside an explicit constraint was never a valid
+answer — and it is a no-op wherever list price equals the shopper's price, which is every guest and
+every shop without price rules.
+
+**The match count had the same root cause, and is withheld.** `ExactMatchCount` asks the gateway for a
+SQL `CountAggregation` over the search's own criteria, so a `price` range there is counted on the list
+price too. In the run above, 29 of 32 candidates were over budget once their real prices were known and
+the aggregation still said 33 — which the model reported as *"quite a few more matching that price (33
+in total)"*. That class's own docblock says overstating the catalogue is the one direction the number
+must never err in, so when `StatedBudget` has dropped anything the count is withheld and `matched`
+falls back to the floor-with-`more` shape it had before exact counting existed. The signal travels on
+`IntentCandidates::$budgetNarrowed`.
+
+**What remains open.** This fixes the false positives, which are the shopper-visible half. It does
+not recover **false negatives**: under a *discount*, a product above the ceiling in the database can
+be inside it for this shopper, and no post-filter can see a row the query never returned. Fixing that
+means not pre-filtering on price at all whenever the context can move prices — determinable from
+whether the context carries rule ids — and paying for it with a wider candidate window. That needs a
+Core-visible "prices may differ from list" signal from behind the gateway seam, which does not exist
+yet, so it is deliberately not guessed at here.
+
 ### 7.2 Requested quantity
 
 Add an optional positive `quantity` to product search and exact-product tool arguments. Absence means
@@ -374,6 +437,43 @@ the same number, and the existing end-to-end test that re-hydrates a 15-card tra
 extended with a case where the same product appears at two quantities.
 
 ## 8. Product catalogue enforcement
+
+> **Answered 2026-09-01 against a live Commercial 7.13.0 shop.** The mechanism this section hoped for
+> is the one Commercial actually uses, so **no catalogue adapter is needed** for products. One defect
+> was found on the *category* side and fixed. The rest of this section is kept as the reasoning that
+> got there; the verification is in section 17.
+
+**Products: already enforced, on the assistant's exact path.**
+`Shopware\Commercial\B2B\AdvancedProductCatalogs\Subscriber\SalesChannelCriteriaSubscriber::addProductFilter`
+is registered on `sales_channel.product.process.criteria` and adds
+`EqualsAnyFilter('categories.id', $releasedCategoryIds)`. Because `processCriteria()` runs for
+`_search()`, `_searchIds()` and `_aggregate()` alike, that one subscriber covers text search, exact
+lookup, variant lookup, rehydration and the facet aggregations together — including the hostile case
+this section flagged, since `DalCommerceGateway::product()` goes through the searcher rather than the
+by-id reader. Verified end to end: an employee scoped to an organisation whose catalogue released every
+category **except** Jerseys got products for `helmet` and `tyre` and **nothing** for `jersey`.
+
+**Categories: a real leak, now fixed.** Commercial does *not* filter categories in the criteria. It
+subscribes to `sales_channel.category.loaded` and calls `setActive(false)` on the restricted ones — in
+PHP, after the rows are selected. `DalCategoryTreeReader` filtered `active = true` in the *criteria*
+and then trusted every row that came back, so the no-match orientation path would name a category the
+shopper is not released for (flagged only as having no products, because the product repository *is*
+restricted). That contradicted the reader's own docblock. Fixed by asking again after hydration —
+`DalActiveCategories`, which also has to guard the read: `CategoryEntity::$active` is a non-nullable
+typed property with no default, so a partially hydrated category throws rather than returning a value,
+and an unreadable visibility flag degrades to "not visible".
+
+**A catalogue only applies to an employee with an organisation.** All four of these must hold, or
+`addProductFilter` returns without adding anything: the licence is on, the context carries a
+`b2bEmployee` `EmployeeEntity`, that employee's `organizationId` is non-null, and a catalogue row
+matches both that organisation **and** the current sales channel. So the company customer itself, and
+any employee on a membership with no organisation, is unrestricted. That is a valid configuration and
+the single easiest thing to mistake for "Advanced Product Catalogues do not work" — which is why
+`ProbeShopperReport` prints which catalogue is in force, or says plainly that none is.
+
+---
+
+The original reasoning follows.
 
 The Advanced Product Catalogue restricts **categories** per organisation unit; products outside the
 released categories are hidden, and Shopware's storefront answers a direct link to one with a 404.
@@ -747,7 +847,81 @@ Only then does the B2B work proper begin: context contract and employee-aware co
 then quantity-aware cards and rehydration, then the Commercial bridge and the catalogue verification
 of section 8.
 
+**Revised 2026-09-01.** The external prerequisite is met and the catalogue verification is done, which
+removes work this section assumed:
+
+3. **Done 2026-09-01.** **Catalogue verification** (section 8). Answered in the best case: no
+   catalogue adapter, no additional production filter for products. One category-side leak found and
+   fixed.
+4. **Done 2026-09-01.** **Price-filter enforcement** (section 7.5), and the seeded price pair it
+   exposed — the bike catalogue wrote `net == gross`, which made a merchant's +50% surcharge render as
+   +78% and read exactly like a Commercial bug.
+
+What is left of the Commercial bridge is section 5.2's identity half: `ShoppingContextResolver` still
+hardcodes `employeeId` and `organisationId` to null. The live shop sharpened *why* that matters beyond
+what decision B4 claimed. One employee **account** can hold several `b2b_employee` membership rows —
+one per organisational context, switched through
+`frontend.account.employee.context.switch` — and `AudienceContextResolver` returns a different
+`AudienceContext(customerId, employeeId, organizationId, [])` for each, dropping tags in the process.
+So the same human in the same browser session can legitimately see different prices and a different
+catalogue while `customerId` never changes. The assistant currently cannot tell those apart at all.
+
 If the installed Commercial package exposes no supported way to obtain the active organisation or
 apply its product scope to the existing repository, implementation stops at that boundary and the
 design is revised. It must not compensate by querying private Commercial tables or duplicating its
 pricing and catalogue rules. Items 1 and 2 keep their value regardless of that outcome.
+
+## 17. Verification log — 2026-09-01
+
+Run against the staging shop: Shopware 6.7.13.0, Shopware Commercial 7.13.0, all six B2B components
+enabled (Employee Management, Order Approvals, Organization Units, Advanced Product Catalogs, Budget
+Management, Individual Pricing).
+
+### Fixture
+
+| what | configuration |
+|---|---|
+| Coca Cola Inc. | business partner; Individual Pricing `by_percent`, `action_amount = -50`, scope `whole_company` |
+| Sinalco Inc. | business partner, no rules — the baseline |
+| organisation "Finance" | under Coca Cola; Advanced Product Catalogue releasing every category **except Jerseys** |
+| employee Tim | one account, two memberships: primary (no organisation) and Finance |
+
+A **negative** `by_percent` is a surcharge: `newNet = net * (1 - amount/100)`, so `-50` means ×1.5.
+
+### Results
+
+| question | answer |
+|---|---|
+| Do Individual Pricing results reach the assistant's cards? | **Yes**, with no code. `IndividualPricingProductSubscriber` runs on `sales_channel.product.loaded` at priority 1 — listener #3, ahead of core's `ProductSubscriber` at #4 — and reassigns `price`/`prices`/`cheapestPrice`, so core then calculates `calculatedPrices` from them. Sinalco 59.00 EUR, Coca Cola 105.32 EUR. |
+| Are Advanced Product Catalogues enforced on the assistant's queries? | **Yes**, for products, via one `sales_channel.product.process.criteria` subscriber. See section 8. |
+| Are they enforced for categories? | **No** — leak found and fixed. See section 8. |
+| Is the price *filter* correct for a B2B shopper? | **No.** See section 7.5. Fixed for false positives; false negatives remain open. |
+
+### Two traps for anyone repeating this
+
+**The observed surcharge was ×1.785, not ×1.5, and Commercial was not at fault.** Our own bike
+catalogue seeded `{"net": 59.0, "gross": 59.0}` — a pair that cannot both be true at 19% tax.
+Commercial surcharges the *net* and re-derives gross, giving 59 × 1.5 × 1.19 = 105.32. Fixed in
+`SizeFamily::grossPrice()`, which now derives `net` from the gross figure; on correct data Coca Cola
+sees 88.50.
+
+**`ProbeCommand::DEFAULT_SALES_CHANNEL` is the lab's channel, not any other shop's.** Every probe run
+elsewhere needs `--sales-channel`, or it silently targets a channel that does not exist there and
+reports no products.
+
+### Tooling added
+
+`swag:assistant:probe` grew `--customer` and `--employee` so any row of the section 14.3 matrix can be
+run from the CLI without a browser session. `ProbeShopperReport` refuses to measure when the resolved
+context is not the one that was asked for — necessary because both Commercial context decorators
+degrade silently: an employee whose membership is not active makes the employee decorator fall back to
+`customerId => null`, i.e. a **guest**, and a guest sees list prices and an unrestricted catalogue.
+That check caught its own first implementation reporting "no organisation" for a membership whose
+catalogue was demonstrably filtering search.
+
+### Unexplained
+
+Tim's *primary* membership resolves to no customer at all, while a second employee's identically
+shaped primary membership works. It correlates with Tim's account holding two memberships, but nothing
+in `EmployeeAccountResolver::isValidMembership()` accounts for it. Not root-caused; it blocked nothing.
+Worth revisiting if anything comes to depend on primary-membership resolution.
