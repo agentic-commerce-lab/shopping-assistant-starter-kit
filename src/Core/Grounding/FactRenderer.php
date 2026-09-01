@@ -127,17 +127,7 @@ final class FactRenderer
      */
     public function retrievedNamesById(): array
     {
-        $names = [];
-
-        foreach ($this->index->ids() as $id) {
-            $card = $this->index->card($id);
-
-            if ($card !== null) {
-                $names[$id] = $card->name;
-            }
-        }
-
-        return $names;
+        return $this->index->namesById();
     }
 
     /**
@@ -365,7 +355,21 @@ final class FactRenderer
     {
         $unbacked = $this->proseAudit->unbackedProperties(
             $prose,
-            array_values($this->renderedCards),
+            // **Retrieved, not rendered**, and that distinction is the whole of this argument. The audit
+            // asks whether the model stated something it was never given, and the yardstick for that is
+            // what the tools handed it — rendering is a presentation decision taken afterwards, and it
+            // cannot make a true statement false.
+            //
+            // Measured 2026-09-01: eight of eight property warnings on the live shop were colours and
+            // sizes ("Blue", "M","XL", "Olive"), never a material. A search returns several variants of
+            // one family, the model correctly says "in both Black and Blue", one card is rendered, and
+            // the shopper was then told the card overrides the sentence. It did not — the card showed
+            // one variant of a true statement.
+            //
+            // A value in no retrieved card at all is still flagged, which is the invention this exists
+            // for. Prices and availability keep measuring against RENDERED cards on purpose: those two
+            // are figures the shop puts on screen, so the screen is exactly the right yardstick.
+            $this->index->cards(),
             $this->shopperMessage,
             $facets,
             $givenDescriptions,

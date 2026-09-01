@@ -66,4 +66,30 @@ final class RetrievedProductIndex
     {
         return $this->byId[$canonicalId] ?? null;
     }
+
+    /**
+     * Every card registered this turn, in registration order.
+     *
+     * Lives here rather than on {@see FactRenderer} because this class owns the cards; the renderer
+     * assembling them from `ids()` plus `card()` cost it cyclomatic budget for a loop over data it does
+     * not hold. Used by the property audit, which measures a claim against what the model was *given*
+     * rather than against what was rendered — see
+     * {@see FactRenderer::unbackedPropertiesInProse()}.
+     *
+     * @return list<ProductCard>
+     */
+    public function cards(): array
+    {
+        return array_values($this->byId);
+    }
+
+    /**
+     * The name of every registered card, keyed by canonical id.
+     *
+     * @return array<string, string>
+     */
+    public function namesById(): array
+    {
+        return array_map(static fn(ProductCard $card): string => $card->name, $this->byId);
+    }
 }
