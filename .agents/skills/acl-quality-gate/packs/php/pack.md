@@ -175,6 +175,11 @@ toolchain, never swap it for Mago unless explicitly asked:
 - Mago is a single Rust binary covering format + lint + type-check + guard. It has **no
   PHPStan-style level system** — strictness is per-category `[analyzer]` toggles. Pin the Mago
   `version` and set `php-version` in `mago.toml` (Mago does not read it from `composer.json`).
+- Keep `[source] includes = ["vendor"]` and keep `vendor` out of `excludes` (exclude only
+  `vendor/bin`). Mago parses `includes` for symbols without linting or reporting on them; it is
+  how the analyzer resolves dependency types. Excluding `vendor` instead makes every dependency
+  class read as "not found", which passes on a project with no dependencies and fails the moment
+  it has one. An exclude cancels the include, so the two must not overlap.
 - Keep `no-debug-symbols` at `level = "error"` (its default is `note`, which would not gate
   `echo`/`var_dump`/`dd`). Keep `strict-types` with `allow-disabling = false`.
 - phpcca is **advisory only**: `phpcca analyse` never exits non-zero on a metric breach, and
