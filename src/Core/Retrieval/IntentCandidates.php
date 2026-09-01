@@ -30,5 +30,11 @@ final readonly class IntentCandidates
          * that set and resolution can replace a parent card with a variant card.
          */
         public bool $windowSaturated,
+        /**
+         * Budget enforcement dropped at least one card, which means the SQL `price` range and the
+         * shopper's own prices disagree — so any count computed by the database over that range is
+         * unreliable for this shopper. See {@see StatedBudget} and {@see ExactMatchCount}.
+         */
+        public bool $budgetNarrowed = false,
     ) {}
 }

@@ -83,7 +83,7 @@ final readonly class IntentRetrieval
         // is strictly less exposure than fetching it and relying on removal afterwards. The caller's
         // BlocklistFilter still runs unconditionally as the second line of defence.
         // The caged pass: everything the shopper asked for, inside the aisle they are standing in.
-        ['cards' => $cards, 'note' => $note] = RetrievalPass::run(
+        ['cards' => $cards, 'note' => $note, 'budgetNarrowed' => $budgetNarrowed] = RetrievalPass::run(
             $this->gateway,
             $query,
             $buildResult,
@@ -92,7 +92,12 @@ final readonly class IntentRetrieval
         );
 
         if ($cards === [] && $this->browsingCategoryId !== null) {
-            ['cards' => $cards, 'note' => $note] = $this->uncaged($query, $buildResult, $scope);
+            ['cards' => $cards, 'note' => $note, 'budgetNarrowed' => $uncagedNarrowed] = $this->uncaged(
+                $query,
+                $buildResult,
+                $scope,
+            );
+            $budgetNarrowed = $budgetNarrowed || $uncagedNarrowed;
         }
 
         return new IntentCandidates(
@@ -100,6 +105,7 @@ final readonly class IntentRetrieval
             note: $note,
             buildResult: $buildResult,
             windowSaturated: \count($cards) === $query->retrievalLimit(),
+            budgetNarrowed: $budgetNarrowed,
         );
     }
 
@@ -121,7 +127,8 @@ final readonly class IntentRetrieval
      * the aisle's answer when the aisle has one, and the shop's answer when it does not — and page
      * context can still never make the assistant worse than its absence.
      *
-     * @return array{cards: list<\Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard>, note: ?string}
+     * @return array{cards: list<\Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard>, note: ?string,
+     *     budgetNarrowed: bool}
      */
     private function uncaged(ProductQuery $query, QueryBuildResult $buildResult, CatalogScope $scope): array
     {
