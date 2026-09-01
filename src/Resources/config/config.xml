@@ -375,10 +375,12 @@
             <name>traceRetentionDays</name>
             <label>Keep conversations for (days)</label>
             <defaultValue>30</defaultValue>
-            <helpText>Conversations older than this are deleted every day, along with their
-                records. There is deliberately no "keep forever": these rows hold what shoppers
-                typed, so a table that only grows is a data-protection problem rather than a
-                convenience. Blank or 0 falls back to 30 days.</helpText>
+            <helpText>Conversations older than this are deleted, along with their records. There is
+                deliberately no "keep forever": these rows hold what shoppers typed, so a table that
+                only grows is a data-protection problem rather than a convenience. Blank or 0 falls
+                back to 30 days. Set it per sales channel if one of them needs a shorter or longer
+                window — each channel is pruned on its own value. Deleting runs once a day through
+                your shop's task queue, so it needs a worker (or the Administration open).</helpText>
         </input-field>
     </card>
 

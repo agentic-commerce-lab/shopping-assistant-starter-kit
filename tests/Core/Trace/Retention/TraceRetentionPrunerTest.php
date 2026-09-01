@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Core\Trace\Retention;
 
-use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -15,10 +14,11 @@ use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner;
 use Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionSettings;
 
-final class TraceRetentionPrunerTest extends TestCase
+/**
+ * The shop-wide window. Per-channel windows are {@see PerSalesChannelRetentionTest}.
+ */
+final class TraceRetentionPrunerTest extends RetentionTestCase
 {
-    private const NOW = '2026-08-21 12:00:00';
-
     public function testDeletesConversationsOlderThanTheWindow(): void
     {
         $ids = [Uuid::randomHex(), Uuid::randomHex()];
@@ -72,8 +72,13 @@ final class TraceRetentionPrunerTest extends TestCase
 
         self::assertSame(
             TraceRetentionSettings::DEFAULT_DAYS,
-            (new TraceRetentionSettings($systemConfig))->retentionDays(),
+            (new TraceRetentionSettings($systemConfig, $this->salesChannels([])))->retentionDays(),
         );
+    }
+
+    private function settings(int $days): TraceRetentionSettings
+    {
+        return new TraceRetentionSettings($this->systemConfigReturning($days), $this->salesChannels([]));
     }
 
     /**
@@ -89,7 +94,7 @@ final class TraceRetentionPrunerTest extends TestCase
             ->willReturnCallback(function (Criteria $criteria) use ($ids, &$calls): IdSearchResult {
                 $calls++;
 
-                // First pass returns the batch, second returns nothing: the pruner loops until a
+                // First pass returns the batch, every later one nothing: the pruner loops until a
                 // batch comes back empty, so a stub that always answers would spin forever.
                 return new IdSearchResult(
                     $calls === 1 ? \count($ids) : 0,
@@ -100,31 +105,5 @@ final class TraceRetentionPrunerTest extends TestCase
             });
 
         return $repository;
-    }
-
-    /**
-     * `IdSearchResult` keys its rows by primary key rather than taking a list.
-     *
-     * @param list<string> $ids
-     *
-     * @return array<string, array{primaryKey: string, data: array<string, mixed>}>
-     */
-    private static function searchRows(array $ids): array
-    {
-        $rows = [];
-
-        foreach ($ids as $id) {
-            $rows[$id] = ['primaryKey' => $id, 'data' => []];
-        }
-
-        return $rows;
-    }
-
-    private function settings(int $days): TraceRetentionSettings
-    {
-        $systemConfig = $this->createMock(SystemConfigService::class);
-        $systemConfig->method('getInt')->willReturn($days);
-
-        return new TraceRetentionSettings($systemConfig);
     }
 }
