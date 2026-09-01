@@ -18,3 +18,7 @@ var/
 /playwright-report/
 
 .superpowers/
+
+# Per-machine Claude Code permissions. Until now this was invisible only because of a
+# personal ~/.config/git/ignore entry — a fresh clone showed it as untracked.
+.claude/settings.local.json
