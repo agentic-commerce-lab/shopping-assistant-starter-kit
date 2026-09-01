@@ -80,6 +80,19 @@ final class ProbeCommand extends Command
                 InputOption::VALUE_REQUIRED,
                 'Sales channel id.',
                 self::DEFAULT_SALES_CHANNEL,
+            )
+            ->addOption(
+                'customer',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Run as this customer, so customer-group, rule and B2B prices apply.',
+            )
+            ->addOption(
+                'employee',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Run as this B2B employee membership; needs --customer. Selects the organisation '
+                . 'scope, which is what an Advanced Product Catalogue is bound to.',
             );
     }
 
@@ -90,7 +103,17 @@ final class ProbeCommand extends Command
 
         // A console command has no HTTP request, so the provider would throw. Scoping the context
         // to this callback rather than setting it means it cannot leak into anything else.
-        $context = $this->contextFactory->create(Uuid::randomHex(), $request->salesChannelId);
+        $context = $this->contextFactory->create(
+            Uuid::randomHex(),
+            $request->salesChannelId,
+            $request->shopper->contextOptions(),
+        );
+
+        // Before any measurement: Commercial resolves a shopper silently, so a context that is not
+        // the one asked for must stop the run rather than quietly answer a different question.
+        if (!(new ProbeShopperReport($request->shopper))->write($io, $context)) {
+            return self::FAILURE;
+        }
 
         return $this->contextProvider->use($context, fn(): int => match ($request->mode) {
             ProbeRequest::MODE_ASK => $this->ask($io, $request->question),
