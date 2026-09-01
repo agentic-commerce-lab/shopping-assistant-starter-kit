@@ -18,6 +18,9 @@ use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
  * actionable rather than decorative — and it means the probe command and the widget read the same
  * credentials from one place during development.
  *
+ * "Environment" means all three places a variable can be — see {@see EnvironmentValue}, which exists
+ * because reading `getenv()` alone left a key in `.env.local` silently invisible to the shop.
+ *
  * An incomplete configuration **throws**. The alternative is an assistant that appears installed and
  * fails at the first shopper message, with the failure surfacing as a turn error rather than as a
  * configuration problem.
@@ -71,10 +74,10 @@ final readonly class SystemConfigLlmSettings
 
     private function setting(string $key, string $envName, string $salesChannelId): string
     {
-        $env = getenv($envName);
+        $env = EnvironmentValue::of($envName);
 
-        if (\is_string($env) && trim($env) !== '') {
-            return trim($env);
+        if ($env !== '') {
+            return $env;
         }
 
         return trim($this->systemConfig->getString(SystemConfigAssistantConfig::PREFIX . $key, $salesChannelId));

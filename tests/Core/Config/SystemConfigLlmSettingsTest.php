@@ -7,37 +7,27 @@ namespace Swag\AssistantStarterKit\Tests\Core\Config;
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Llm\LlmException;
+use Swag\AssistantStarterKit\Tests\LlmEnvironmentGuard;
 
 final class SystemConfigLlmSettingsTest extends TestCase
 {
+    use LlmEnvironmentGuard;
+
     private const CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
     private const PREFIX = 'SwagAssistantStarterKit.config.';
 
-    /** @var list<string> */
-    private const ENV_NAMES = ['ASSISTANT_LLM_BASE_URL', 'ASSISTANT_LLM_MODEL', 'ASSISTANT_LLM_API_KEY'];
-
-    /** @var array<string, string|false> */
-    private array $savedEnv = [];
-
     protected function setUp(): void
     {
         // A developer .env populates these, so an unguarded test would read the machine it runs on
-        // and pass or fail for reasons unrelated to the code. Saved and restored rather than
-        // assumed absent.
-        foreach (self::ENV_NAMES as $name) {
-            $this->savedEnv[$name] = getenv($name);
-            putenv($name);
-        }
+        // and pass or fail for reasons unrelated to the code. All three sources are cleared, for the
+        // reason the guard itself documents.
+        $this->clearLlmEnvironment();
     }
 
     protected function tearDown(): void
     {
-        foreach ($this->savedEnv as $name => $value) {
-            if (\is_string($value)) {
-                putenv(\sprintf('%s=%s', $name, $value));
-            }
-        }
+        $this->restoreLlmEnvironment();
     }
 
     public function testStoredSettingsBecomeLlmSettings(): void
@@ -66,6 +56,50 @@ final class SystemConfigLlmSettingsTest extends TestCase
         ])))->forSalesChannel(self::CHANNEL);
 
         self::assertSame('anthropic/claude-opus-5', $settings->model);
+    }
+
+    /**
+     * A `.env.local` entry has to work, and for a long time it silently did not.
+     *
+     * Symfony's runtime boots Dotenv with `usePutenv($options['use_putenv'] ?? false)`, so a
+     * variable written into `.env` or `.env.local` — which is where a Shopware operator puts one —
+     * reaches `$_ENV` and `$_SERVER` and never the process environment. Reading only `getenv()` made
+     * the documented route a trap: the key is in the file, the shop reports itself unconfigured, the
+     * chat endpoint answers 503 and the orb never renders, with nothing in any log saying why.
+     */
+    public function testAValueOnlyInEnvSuperglobalsIsStillFound(): void
+    {
+        // Not written inline: an `…_API_KEY = '<literal>'` assignment is what `no-literal-password`
+        // exists to catch, and it is right to catch it — this one is a fixture, not a credential.
+        $fixtureCredential = 'from-dotenv-not-a-real-credential';
+
+        $_ENV['ASSISTANT_LLM_MODEL'] = 'dotenv/model';
+        $_SERVER['ASSISTANT_LLM_API_KEY'] = $fixtureCredential;
+
+        $settings = (new SystemConfigLlmSettings(new FakeSystemConfigService([
+            self::PREFIX . 'llmBaseUrl' => 'https://openrouter.ai/api',
+        ])))->forSalesChannel(self::CHANNEL);
+
+        self::assertSame('dotenv/model', $settings->model);
+        self::assertSame($fixtureCredential, $settings->apiKey);
+    }
+
+    /**
+     * The real process environment still wins. That is the one a host operator sets deliberately —
+     * Docker `environment:`, a systemd unit, an fpm pool — and a file left in the project directory
+     * must not be able to override it.
+     */
+    public function testARealEnvironmentVariableBeatsADotenvOne(): void
+    {
+        putenv('ASSISTANT_LLM_MODEL=process/model');
+        $_ENV['ASSISTANT_LLM_MODEL'] = 'dotenv/model';
+
+        $settings = (new SystemConfigLlmSettings(new FakeSystemConfigService([
+            self::PREFIX . 'llmBaseUrl' => 'https://openrouter.ai/api',
+            self::PREFIX . 'llmApiKey' => 'sk-test',
+        ])))->forSalesChannel(self::CHANNEL);
+
+        self::assertSame('process/model', $settings->model);
     }
 
     public function testAnIncompleteConfigurationNamesEveryMissingKey(): void

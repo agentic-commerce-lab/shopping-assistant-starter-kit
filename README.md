@@ -37,9 +37,9 @@ command.
 | **Shop knowledge** | Legal pages, shipping info and uploaded PDFs as vectors — MariaDB 11.7+ natively, any other database in PHP |
 | **Escalation** | Order status, returns and account questions get a merchant-configured route instead of a guess, and may not claim a human was notified |
 | **Observability** | Every turn in the Administration: what was understood, retrieved, rendered, refused — and the system prompt it ran with. Exportable as JSON |
-| **Widget** | Ships compiled, no Node toolchain in the shop. Neutral icon or animated creature, merchant colors, resizable, 2.3 KB gzipped on a page that never opens it |
+| **Widget** | Ships compiled, no Node toolchain in the shop. Neutral icon or animated creature, merchant colors, resizable, 13 KB gzipped on a storefront page — 2.3 KB of it the orb |
 | **Guard rails** | Per-caller rate limit and an opt-in daily cap, both refusing before any spend; a `maxCartValue` on the cart tool; SSRF guard on the model endpoint |
-| **Eval suite** | Fifteen journeys with deterministic assertions, skipped cleanly without a real endpoint |
+| **Eval suite** | Thirty-five journeys with deterministic assertions, skipped cleanly without a real endpoint |
 
 **It deliberately does not** complete an order or take payment, set prices or negotiate, answer
 order-status or account questions, or invent a product, a price or a stock level.
@@ -134,6 +134,13 @@ bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey  "sk-…"
 # ASSISTANT_LLM_BASE_URL, ASSISTANT_LLM_MODEL, ASSISTANT_LLM_API_KEY
 ```
 
+**A `.env.local` entry counts**, as does a real process variable — Docker
+`environment:`/`env_file:`, Apache `SetEnv`, a systemd unit — and a real one wins over the file. If
+you configured this before September 2026, note it did **not** count then: the settings were read
+with `getenv()` alone, and Symfony's runtime boots Dotenv with `usePutenv(false)`, so a key in
+`.env.local` reached `$_ENV` and stayed invisible. The symptom was silent — endpoint at 503, no orb,
+setting apparently configured — which is why the lookup now reads `$_ENV` and `$_SERVER` too.
+
 Until all three are set the chat endpoint answers **503** and no orb renders. The base URL is the
 host **without** the version path: the platform appends `/v1/chat/completions` itself, so
 `https://openrouter.ai/api/v1` becomes `…/v1/v1/chat/completions` and fails.
@@ -170,7 +177,7 @@ PHP, which is exact but linear. [The manual](docs/manual.md#requirements) has th
 | **Handing over to a human** | `enableEscalation`, `escalationUrl`, `escalationMessage`, plus `enableMatchReasons` and `enableCompareProducts` |
 | **Appearance** | `entryPointStyle` (`icon` or `creature`), `primaryColor`, `secondaryColor` |
 | **Storefront widget** | `assistantName`, `greeting`, `greetingDe`, `greetingEn` |
-| **Logging · Data retention** | `logTraces`, `traceRetentionDays` (30) |
+| **Logging · Data retention** | `logTraces`, `traceRetentionDays` (30, per sales channel — needs a queue worker to run) |
 
 A `0` means **unlimited** in every numeric limit but one: `maxToolCallsPerTurn` takes no zero and
 falls back to 20, because it bounds a model that has already started looping. Every switch that turns
@@ -189,7 +196,7 @@ they are.
 | [VISION.md](VISION.md) | Why this exists, who it is for, what counts as success |
 | [GLOSSARY.md](GLOSSARY.md) | Terms that have burned us before — read this first if you are new |
 | [AGENTS.md](AGENTS.md) · [docs/adr/](docs/adr/) | Conventions the quality gate enforces; decisions of record |
-| [docs/superpowers/](docs/superpowers/) · [docs/HANDOFF.md](docs/HANDOFF.md) | The plans each feature was built from, and the failures that shaped it — 29 source and test files cite one by path |
+| [docs/superpowers/](docs/superpowers/) · [docs/HANDOFF.md](docs/HANDOFF.md) | The plans each feature was built from, and the failures that shaped it — source and test files cite them by path where the reasoning lives there |
 
 ## Development
 
@@ -201,8 +208,10 @@ composer run build:storefront   # rebuild src/Resources/app/storefront/dist
 ```
 
 Never run bare `phpunit`: only the composer script excludes the eval group, which spends real money.
-`composer run test:eval` drives fifteen journeys against a real endpoint — copy `.env.example` to
-`.env` first, and budget both the minutes and the tokens.
+`composer run test:eval` drives every journey in `tests/Journeys/` against a real endpoint — 35 of
+them at the time of writing, each with its own `runs` count — so copy `.env.example` to `.env`
+first, and budget both the minutes and the tokens. `vendor/bin/phpunit --group eval --filter <id>`
+runs one.
 
 To cut a release, bump `Version::CURRENT` in [src/Version.php](src/Version.php) (and
 `tests/SmokeTest.php`), then `git tag v0.2.0 && git push origin v0.2.0`. The workflow refuses a tag

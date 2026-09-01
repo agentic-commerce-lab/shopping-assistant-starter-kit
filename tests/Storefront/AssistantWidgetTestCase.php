@@ -13,6 +13,7 @@ use Swag\AssistantStarterKit\Core\Context\ContextStorageKey;
 use Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver;
 use Swag\AssistantStarterKit\Storefront\AssistantWidgetExtension;
 use Swag\AssistantStarterKit\Tests\Core\Config\FakeSystemConfigService;
+use Swag\AssistantStarterKit\Tests\LlmEnvironmentGuard;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -24,34 +25,23 @@ use Symfony\Component\HttpFoundation\RequestStack;
  */
 abstract class AssistantWidgetTestCase extends TestCase
 {
+    use LlmEnvironmentGuard;
+
     protected const CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
     protected const PREFIX = 'SwagAssistantStarterKit.config.';
 
-    /** @var list<string> */
-    private const ENV_NAMES = ['ASSISTANT_LLM_BASE_URL', 'ASSISTANT_LLM_MODEL', 'ASSISTANT_LLM_API_KEY'];
-
-    /** @var array<string, string|false> */
-    private array $savedEnv = [];
-
     protected function setUp(): void
     {
         // `isConfigured()` lets the environment override stored config, and a developer .env
-        // populates all three. Unguarded, the negative tests would read the machine they run on and
-        // pass for the wrong reason. Same guard as SystemConfigLlmSettingsTest.
-        foreach (self::ENV_NAMES as $name) {
-            $this->savedEnv[$name] = getenv($name);
-            putenv($name);
-        }
+        // populates all three names in all three sources. Unguarded, the negative tests would read
+        // the machine they run on and pass for the wrong reason.
+        $this->clearLlmEnvironment();
     }
 
     protected function tearDown(): void
     {
-        foreach ($this->savedEnv as $name => $value) {
-            if (\is_string($value)) {
-                putenv(\sprintf('%s=%s', $name, $value));
-            }
-        }
+        $this->restoreLlmEnvironment();
     }
 
     /**

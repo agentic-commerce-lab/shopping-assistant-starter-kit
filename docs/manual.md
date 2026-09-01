@@ -121,13 +121,22 @@ have to reach the shop's own vendor tree:
 composer require symfony/ai-agent:0.12.* symfony/ai-platform:0.12.* \
     symfony/ai-generic-platform:0.12.* symfony/ai-store:0.12.* \
     masterminds/html5:^2.11 smalot/pdfparser:^2.12
+
+# On MariaDB 11.7+, add this too — see Requirements. Without it the shop silently
+# lands on the portable PHP store, which is exact but linear.
+composer require symfony/ai-maria-db-store:0.12.*
 ```
 
 Everything else the plugin needs, Shopware already ships. The placeholder files above are just as
 mandatory here — this `composer require` is what triggers the Flex recipe.
 
-**The path-repository route above is the one verified end to end**; this one is reconstructed from
-what the core does, and has not been walked through on a fresh shop.
+**Both routes are now verified end to end.** The zip route was walked through on a fresh
+`shopware-cli` shop on 2026-09-01 (Shopware 6.7.13.1, MariaDB 11.8, PHP 8.5): plugin installed and
+activated, all four tables created, six tools live, storefront and Administration at 200 throughout —
+and the placeholder files above did their job, Flex left both byte-identical. The one thing that
+route costs you is the MariaDB store, which is why the second `composer require` is there;
+`retrieve.shopinfo.store` in the trace says which store answered and why, so you can check rather
+than assume.
 
 ## Configuring a model
 
@@ -144,6 +153,25 @@ Environment variables win over stored values on purpose: Shopware's system confi
 storage, so a key entered in the admin form is readable by anyone with config access and travels in
 every database backup. Until all three are set, the chat endpoint answers **503** rather than failing
 mid-turn.
+
+> **Both kinds of "environment variable" count**, and a real one wins. `Core\Config\EnvironmentValue`
+> reads the process environment first — Docker `environment:` or `env_file:`, Apache `SetEnv`, an
+> nginx/php-fpm pool `env[…]`, a systemd unit — then `$_ENV` and `$_SERVER`, which is where Symfony's
+> Dotenv puts a `.env` or `.env.local` entry. A file in the project directory therefore cannot
+> override a variable the host set deliberately, and an operator who uses the file still gets what
+> they configured.
+>
+> **Before September 2026 the file did not work at all**, and the failure was silent. The settings
+> were read with `getenv()` alone, while `SymfonyRuntime` boots Dotenv with `usePutenv(false)` —
+> measured on 6.7.13.1, `ASSISTANT_DOC_PROBE=hello` in `.env` gave `getenv(…) === false` beside
+> `$_ENV[…] === 'hello'`. The key was *there*, the assistant reported itself unconfigured, the chat
+> endpoint answered 503 and the orb never rendered, with nothing in any log saying why. Verified both
+> ways on a real shop: with the key only in `.env`, the released 0.1.0 answered 503 with no orb and the
+> fixed lookup answered 200 with the orb rendering.
+>
+> `composer run test:eval` never showed the bug, which is exactly why it survived: it reads `.env`
+> fine, because `Shopware\Core\TestBootstrapper` is the one caller in the stack that does
+> `(new Dotenv())->usePutenv()`.
 
 Shop-information retrieval is a second, separate switch — the **Shop knowledge** card in the plugin's
 settings, off by default. It needs both halves: the switch on *and* an embedding model, and either one
@@ -195,6 +223,49 @@ window — Symfony's `getClientIp()` is what the per-caller window counts.
 > but the storefront never supplied it a count, so it could only ever trip when set to 0. It is now
 > enforced in `Core\Policy\RequestBudget`, at the HTTP boundary, and covered by
 > `tests/Controller/AssistantThrottleTest.php`.
+
+## Data retention
+
+`swag_assistant_conversation.transcript` holds what shoppers typed, so the table is pruned rather
+than allowed to grow. One setting, under **Data retention**:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `traceRetentionDays` | 30 | Conversations created longer ago than this are deleted, and `ON DELETE CASCADE` takes their trace events |
+
+There is deliberately no "keep forever". A blank or `0` falls back to 30 rather than switching the
+prune off, because a merchant who never opens this card must still get retention — this is the one
+numeric field in the plugin where zero does not mean unlimited.
+
+**Set it per sales channel where one needs a different window.** Each channel is pruned on the value
+that channel resolves to — its own if it has one, the shop-wide value if it does not, exactly as the
+settings form shows it. Conversations from a sales channel that has since been deleted are pruned on
+the shop-wide window, so nothing outlives the channel that produced it.
+
+> That is a fix rather than a feature, and worth knowing if you configured this before September 2026.
+> `TraceRetentionSettings` used to read the value once with no channel at all, on the argument that a
+> scheduled task has no `SalesChannelContext`. The argument was true and the conclusion was wrong: the
+> settings page is sales-channel-switchable, so a merchant could set a channel to "keep 1 day", watch
+> it save, and have nothing change — measured on 6.7.13.1, where a three-day-old conversation in that
+> channel survived the prune. The dangerous direction was the one that read as safe: a channel set to
+> **90** days for an audit trail was still deleted at the global 30. Re-check any per-channel window
+> you set before the fix; it was not in force.
+
+**It needs the queue**, and this part is still true. `PruneConversationsTask` is a Shopware
+`ScheduledTask` dispatched through Messenger, so "deleted every day" means *deleted when something
+consumes the queue*: a `messenger:consume` worker plus `scheduled-task:run`, or the admin worker,
+which is on by default and runs only while someone has the Administration open. On a shop with
+neither, the task sits at `status = scheduled` and nothing is ever deleted. Force one run with:
+
+```fish
+bin/console scheduled-task:run-single swag_assistant.prune_conversations
+```
+
+Verified against a real shop on 2026-09-01. With the default window, conversations older than 30 days
+went and a 29-day-old one stayed; their trace events went with them and left no orphans; setting the
+window to 7 pruned a 10-day-old conversation on the next run. With two channels on different windows —
+one at 1 day, one at 90 — the first channel's three-day-old conversations were deleted and the second
+channel's forty-day-old one was kept, in the same run.
 
 ## Escalation
 
