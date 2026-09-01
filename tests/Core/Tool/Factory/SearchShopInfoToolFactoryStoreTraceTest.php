@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Tool\Factory;
 
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\ShopInfo\EmbedderFactory;
@@ -56,8 +57,18 @@ final class SearchShopInfoToolFactoryStoreTraceTest extends TestCase
         // `SystemConfigLlmSettings` is `final readonly`, so PHPUnit cannot stub it — build the real
         // one over `FakeSystemConfigService`, the way `SystemConfigLlmSettingsTest` already does.
         // Nothing in this test reaches the provider: the factory never embeds anything.
+        //
+        // The three values have to be there all the same. `SearchShopInfoToolFactory::create()`
+        // builds the embedder eagerly, and `SystemConfigLlmSettings::forSalesChannel()` throws on
+        // missing credentials before anything is embedded — so an empty config made this test
+        // depend on a local `.env` being present. It passed on a credentialed machine and errored
+        // in CI, where there is no `.env` at all.
         return new SearchShopInfoToolFactory(
-            new EmbedderFactory(new SystemConfigLlmSettings(new FakeSystemConfigService([]))),
+            new EmbedderFactory(new SystemConfigLlmSettings(new FakeSystemConfigService([
+                SystemConfigAssistantConfig::PREFIX . 'llmBaseUrl' => 'https://example.invalid/api',
+                SystemConfigAssistantConfig::PREFIX . 'llmModel' => 'test/model',
+                SystemConfigAssistantConfig::PREFIX . 'llmApiKey' => 'sk-test',
+            ]))),
             new DalPortablePassageStore($this->createStub(Connection::class)),
             $availability,
         );
