@@ -137,6 +137,38 @@ final class SystemPrompt
      * on. Appending it to the finished prompt instead put an unrelated instruction between the
      * pronoun and its antecedent, which is how a rule stops being read as a rule.
      */
+    /**
+     * How long a reply may be, and the measurement behind it.
+     *
+     * Generation time scales with output tokens and nothing else in the turn comes close. Measured on
+     * the staging shop 2026-09-02, `google/gemini-3.7-flash` via OpenRouter: ~36 completion tokens
+     * took 1.4–2.5 s, ~146 took 4.9–6.4 s, ~396 took 6.2–7.4 s. The plugin's own retrieval on the
+     * same shop was **50–120 ms** (`swag:assistant:benchmark`), and a round trip carrying twenty
+     * tokens still costs ~2.5–3.5 s before a word is generated. So the only part of a turn worth
+     * shortening is the part the model chooses, and until this constant existed nothing told it to.
+     *
+     * **Not `max_tokens`.** A cap buys the seconds by cutting the sentence off rather than by not
+     * writing it, and a reply that stops mid-word reads as a broken shop rather than a fast one.
+     *
+     * **Aimed at redundancy, not at brevity for its own sake.** The replies this replaces narrated
+     * the cards beside them — *"an all-season nylon jacket with waterproof protection"* next to a
+     * card already showing Season, Material and Weather protection. The shopper waited about six
+     * seconds to be told what they were about to read. A blunt "be brief" would have cut the
+     * reasoning that makes a recommendation worth having and kept the duplication, which is exactly
+     * the wrong half.
+     *
+     * Placed in the rules and therefore **before** the merchant's `agentVoice`, which is appended
+     * last: a shop that wants long, detailed answers has made a deliberate trade of seconds for
+     * depth, and a shipped default must not quietly overrule it.
+     */
+    private const BREVITY = <<<'PROMPT'
+        Keep replies short — two or three sentences unless the shopper asks for more. The cards
+        beside your answer already show each product's name, price, availability, options and
+        properties, so do not repeat what they show. Say what the card cannot: why this one fits
+        what they asked for, or what actually separates two of them. Ask at most one question, and
+        only when the answer would change what you recommend.
+        PROMPT;
+
     private const CLOSING = <<<'PROMPT'
         Answer in the language the shopper writes in, and stay in it for the whole conversation.
         If a message is too short to tell — a size, a colour, a product name, "ok" — carry on in
@@ -254,6 +286,10 @@ final class SystemPrompt
         if ($config->enableCompareProducts) {
             $prompt .= "\n\n" . self::COMPARE_PRODUCTS_AVAILABLE;
         }
+
+        // Before CLOSING's language rule and well before the merchant's voice, so a shop that wants
+        // long answers can still say so — see self::BREVITY.
+        $prompt .= "\n\n" . self::BREVITY;
 
         $prompt .= "\n\n" . \sprintf(self::CLOSING, self::language($config));
 
