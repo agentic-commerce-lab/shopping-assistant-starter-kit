@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
 
+use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
+
 final readonly class ProductQuery
 {
     /** @param list<FilterClause> $filters */
@@ -16,7 +18,7 @@ final readonly class ProductQuery
         public ?string $term = null,
         public array $filters = [],
         public int $limit = 10,
-        public ?string $sort = null,
+        public ?PriceSort $sort = null,
         public ?int $candidateLimit = null,
         /**
          * The category the shopper is browsing, when the storefront reported one.

@@ -97,7 +97,11 @@ final class SearchProductsToolLimitTest extends TestCase
         $payload = $this->trace->payload('query.build');
         self::assertIsArray($payload);
         self::assertSame(1, $payload['limitRequested']);
-        self::assertSame(20, $payload['candidateLimit']);
+        // 50 since 2026-09-02, not 20: a few large families filled a 20-wide window between them and
+        // made every other family unreachable — see SearchFamilySaturationTest for the reported turn.
+        // What this line pins is unchanged, and it is not the number: the window must be wider than
+        // the model's own limit, or ranking truncates the unit the question is about.
+        self::assertSame(50, $payload['candidateLimit']);
     }
 
     /** A limit above the ceiling stays a rejection — that bound is not negotiable. */

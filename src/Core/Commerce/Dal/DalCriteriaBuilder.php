@@ -11,6 +11,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\NotFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
+use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
 
 /**
  * Translates a {@see ProductQuery} plus a {@see CatalogScope} into a DAL {@see Criteria}.
@@ -58,8 +59,11 @@ final readonly class DalCriteriaBuilder
             $criteria->addFilter(new EqualsAnyFilter('categoriesRo.id', [$query->categoryId]));
         }
 
-        if ($query->sort !== null && $query->sort !== '') {
-            $criteria->addSorting(new FieldSorting($query->sort));
+        // Field AND direction, both from the enum: a shopper asking for the cheapest gets ascending,
+        // and the field can only ever be the accessor {@see PriceSort} names. See its docblock for
+        // why a sort string from a tool call is not something this line should ever have accepted.
+        if ($query->sort !== null) {
+            $criteria->addSorting(new FieldSorting($query->sort->field(), $query->sort->direction()));
         }
 
         // The mapper reads these and drops anything it cannot resolve, so a missing
