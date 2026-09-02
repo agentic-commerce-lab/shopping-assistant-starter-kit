@@ -100,7 +100,11 @@
         {% endblock %}
 
         {# Snippets are a server-side concern, so the strings the browser needs travel through the DOM
-           as JSON rather than being duplicated in JavaScript. One element, parsed once. #}
+           as JSON rather than being duplicated in JavaScript. One element, parsed once.
+
+           The three `warning…NoCard` strings are the same three corrections worded for a reply that
+           rendered no card, which its wording therefore cannot point at — a shop-information answer
+           and a "nothing found" answer both land there. See warningCopy() in render.js. #}
         {% block swag_assistant_translations %}
             <script type="application/json" data-swag-assistant-translations>
                 {{- {
@@ -127,6 +131,9 @@
                     warningAvailability: 'swagAssistant.warning.availability'|trans,
                     warningPrice: 'swagAssistant.warning.price'|trans,
                     warningProperty: 'swagAssistant.warning.property'|trans,
+                    warningAvailabilityNoCard: 'swagAssistant.warning.availabilityNoCard'|trans,
+                    warningPriceNoCard: 'swagAssistant.warning.priceNoCard'|trans,
+                    warningPropertyNoCard: 'swagAssistant.warning.propertyNoCard'|trans,
                     handoffMessage: 'swagAssistant.handoff.message'|trans,
                     handoffAction: 'swagAssistant.handoff.action'|trans,
                     errorNetwork: 'swagAssistant.error.network'|trans,
