@@ -16,11 +16,13 @@ use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Retrieval\CandidateInterleave;
+use Swag\AssistantStarterKit\Core\Retrieval\CandidateWindow;
 use Swag\AssistantStarterKit\Core\Retrieval\ExactMatchCount;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentCandidates;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentRetrieval;
 use Swag\AssistantStarterKit\Core\Retrieval\MergedCandidates;
+use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuildResult;
 use Swag\AssistantStarterKit\Core\Retrieval\RetrievalPass;
@@ -72,25 +74,6 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 )]
 final class SearchProductsTool
 {
-    /**
-     * How much wider than the model's `limit` the retrieval window is, and its bounds.
-     *
-     * Retrieval, ranking and truncation used to happen together inside the gateway, so a
-     * narrow `limit` decided the answer before variant resolution ever ran. Now the gateway
-     * retrieves this wider window, resolution and the blocklist run over all of it, and the
-     * result is narrowed to the model's own `limit` afterwards — the ordering
-     * ARCHITECTURE.md's lifecycle table always claimed.
-     *
-     * The floor matters more than the multiplier: a family with several variants must fit
-     * inside the window whole, or ranking's in-stock bias can still hide the sold-out unit.
-     * The ceiling bounds retrieval cost, since these are id-only reads.
-     */
-    private const CANDIDATE_MULTIPLIER = 4;
-
-    private const MIN_CANDIDATES = 20;
-
-    private const MAX_CANDIDATES = 50;
-
     /**
      * The most products one search may return, and therefore the most cards a turn can render.
      *
@@ -163,6 +146,7 @@ final class SearchProductsTool
      * @param ?string $brand   Brand name to filter by.
      * @param ?array<array-key, array<array-key, string>|string> $options Option selections narrowing to one variant, each a [group, option] pair such as [["Colour", "Blue"], ["Size", "M"]]. Group names use this catalogue's own spelling; a bare option value on its own also works.
      * @param int $limit Maximum number of products to return (1-8, default 5). The shop renders these as a shortlist of cards, so ask for the few that answer the question rather than the maximum.
+     * @param ?string $sort Ordering: "price_asc" for cheapest first, "price_desc" for most expensive first. Pass it when the shopper asks a superlative — "the cheapest jersey", "your most expensive helmet" — and then name the FIRST product in the result as the cheapest or dearest one. You still may not state its price. Leave it out otherwise: without it the shop ranks by how well each product matches, which is the better answer to every other question.
      *
      * @return array{
      *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>,
@@ -195,8 +179,12 @@ final class SearchProductsTool
         ?array $options = null,
         ?array $terms = null,
         int $limit = self::DEFAULT_LIMIT,
+        ?string $sort = null,
     ): array {
         $searchTerms = SearchTermList::of($term, $terms, 'terms');
+        // Resolved through the enum, so an unknown ordering falls back to relevance rather than
+        // reaching the DAL as a field name — see PriceSort.
+        $priceSort = PriceSort::fromRequest($sort);
         $brand = Guard::boundedString($brand, 120, 'brand');
         $requestedLimit = Guard::boundedInt($limit, 1, self::MAX_LIMIT, 'limit');
 
@@ -216,10 +204,7 @@ final class SearchProductsTool
         // candidate window below, and narrowing to the model's own limit happens after
         // resolution and the blocklist have run over all of it. So `limit` no longer needs
         // coercing, and the shopper's bound is no longer silently ignored.
-        $candidateLimit = min(self::MAX_CANDIDATES, max(
-            $requestedLimit * self::CANDIDATE_MULTIPLIER,
-            self::MIN_CANDIDATES,
-        ));
+        $candidateLimit = CandidateWindow::for($requestedLimit);
         $selections = VariantSelectionGuard::fromRaw($options, 'options');
 
         $scope = $this->config->scope;
@@ -239,6 +224,7 @@ final class SearchProductsTool
                     priceMin: $priceMin,
                     brand: $brand,
                     selections: $selections,
+                    sort: $priceSort,
                 ),
                 $facets,
                 $requestedLimit,
@@ -252,7 +238,7 @@ final class SearchProductsTool
         // fix. See CandidateInterleave.
         $cards = CandidateInterleave::of(
             array_map(static fn(IntentCandidates $one): array => $one->cards, $candidates),
-            self::MAX_CANDIDATES,
+            CandidateWindow::ceiling(),
         );
 
         // The first pass's, deliberately: every intent above carries the SAME options, price and brand

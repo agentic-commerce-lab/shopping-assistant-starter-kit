@@ -22,5 +22,10 @@ final readonly class ShopperIntent
         public ?string $brand = null,
         public array $selections = [],
         public array $referencedProductIds = [],
+        /**
+         * The ordering the shopper asked for, when they asked a superlative — "the cheapest", "the
+         * most expensive". Null is this shop's own relevance ranking. See {@see PriceSort}.
+         */
+        public ?PriceSort $sort = null,
     ) {}
 }
