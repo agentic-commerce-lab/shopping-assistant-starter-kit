@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Config;
 
 use Shopware\Core\System\SystemConfig\SystemConfigService;
-use Swag\AssistantStarterKit\Core\Prompt\ReplyLanguage;
 
 /**
- * The three storefront-widget fields from `config.xml`.
+ * The storefront-widget fields from `config.xml`.
  *
  * Separate from {@see SystemConfigAssistantConfig} on purpose: those fields are policy the model is
  * bound by, and these are presentation. A merchant hiding the widget has not changed what the
@@ -72,40 +71,5 @@ final readonly class SystemConfigWidgetSettings
         ));
 
         return $name === '' ? self::DEFAULT_NAME : $name;
-    }
-
-    /**
-     * The greeting for the language this storefront presents itself in.
-     *
-     * **Why a field per language.** `system_config` stores one value per key per sales channel and has
-     * no translation layer, so the language-neutral `greeting` field could only ever hold one
-     * language's sentence — a German shopper on a bilingual channel got the English one. The languages
-     * are resolved through {@see ReplyLanguage::subtagOf()} rather than a list kept here, so the
-     * greeting can never offer a language the assistant would not answer in, and a third language
-     * costs one entry there plus one field in `config.xml`.
-     *
-     * **The neutral field is the fallback, not a legacy remnant.** A merchant running one language
-     * fills it in once and is done; a shop that configured it before the per-language fields existed
-     * keeps its greeting on update. Only a non-empty language-specific value overrides it.
-     *
-     * Empty stays empty rather than becoming an English sentence baked into PHP: the template
-     * substitutes the translated snippet, so an unconfigured German shop greets in German. Whitespace
-     * counts as empty, or a field a merchant "cleared" with a space would suppress that snippet and
-     * show a blank bubble.
-     */
-    public function greeting(string $salesChannelId, ?string $locale = null): string
-    {
-        $prefix = SystemConfigAssistantConfig::PREFIX;
-
-        $forLanguage = trim($this->systemConfig->getString(
-            $prefix . 'greeting' . ucfirst(ReplyLanguage::subtagOf($locale)),
-            $salesChannelId,
-        ));
-
-        if ($forLanguage !== '') {
-            return $forLanguage;
-        }
-
-        return trim($this->systemConfig->getString($prefix . 'greeting', $salesChannelId));
     }
 }

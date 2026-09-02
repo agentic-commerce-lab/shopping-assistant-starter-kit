@@ -162,35 +162,9 @@ final readonly class SystemConfigAssistantConfig
     private function scope(string $salesChannelId): CatalogScope
     {
         return new CatalogScope(
-            blockedProductIds: $this->idList('blockedProducts', $salesChannelId),
-            blockedCategoryIds: $this->idList('blockedCategories', $salesChannelId),
+            blockedProductIds: $this->stored->idList('blockedProducts', $salesChannelId),
+            blockedCategoryIds: $this->stored->idList('blockedCategories', $salesChannelId),
         );
-    }
-
-    /**
-     * One id per line, trimmed, with blanks dropped.
-     *
-     * All three failure modes here are silent, which is why each is handled explicitly: a single
-     * un-split string matches nothing; an id with a trailing `\r` from a Windows textarea matches
-     * nothing; and a list of one empty string reports a *configured* blocklist in the trace while
-     * blocking nothing at all. D5 makes the blocklist a compliance control, and a compliance
-     * control that quietly does nothing is worse than an absent one.
-     *
-     * @return list<string>
-     */
-    private function idList(string $key, string $salesChannelId): array
-    {
-        $raw = $this->stored->string($key, $salesChannelId);
-
-        $lines = preg_split('/\R/', $raw);
-
-        if ($lines === false) {
-            return [];
-        }
-
-        $trimmed = array_map(static fn(string $line): string => trim($line), $lines);
-
-        return array_values(array_filter($trimmed, static fn(string $line): bool => $line !== ''));
     }
 
     /**

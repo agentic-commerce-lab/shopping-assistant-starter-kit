@@ -98,8 +98,6 @@ final class PluginManifestTest extends TestCase
             'widgetEnabled',
             'assistantName',
             'greeting',
-            'greetingDe',
-            'greetingEn',
             'traceRetentionDays',
             'entryPointStyle',
             'primaryColor',
