@@ -38,54 +38,67 @@ namespace Swag\AssistantStarterKit\Core\Grounding;
  * **Not word-boundary aware beyond the masking.** A product named `Tape` would match inside `Taped`.
  * Left alone deliberately: the fix would be a per-name regex with escaping, and the cost of being
  * wrong is one extra card on a shop that names a product after a common word fragment.
+ *
+ * ## One name, several variants: `$preferredIds`
+ *
+ * Reported from a live shop on 2026-09-02: a search showed **Trail Jersey (Blue, M)**, the shopper
+ * asked for size L, size L was added to the cart — and the card rendered beside the confirmation was
+ * size M again. Shopware names a variant after its parent, so every variant of a family carries the
+ * *same* `name`, and a name is therefore not an identity. Two of them were registered that turn:
+ * Blue/M, replayed at turn start by {@see \Swag\AssistantStarterKit\Core\Prompt\RecentCardsContext},
+ * and Blue/L, registered by {@see \Swag\AssistantStarterKit\Core\Tool\AddToCartTool} when it added
+ * it. Both answer to "Trail Jersey", so this class resolved the name to whichever was registered
+ * first — the turn-old one — and the shopper was shown a card for a variant the turn had not touched,
+ * with that variant's price and stock, beside prose about the one it had.
+ *
+ * So a name resolves to ONE id, and when several ids answer to it, `$preferredIds` decides which:
+ * the caller passes {@see \Swag\AssistantStarterKit\Core\Grounding\FactRenderer::lastRetrievedBatch()},
+ * the cards the turn's most recent tool call actually returned. Registration order remains the
+ * tie-break for a name no preferred id answers to.
+ *
+ * Still one card per name, which is the pre-existing behaviour the masking already produced: a reply
+ * offering two sizes of one product renders the acted-on one rather than both. Widening that means
+ * matching option values in the prose, which is a different job than deciding what a *name* points
+ * at.
  */
 final class ProseProductNames
 {
     private function __construct() {}
 
     /**
-     * @param array<string, string> $namesById product id => the product's name
+     * @param array<string, string> $namesById    product id => the product's name
+     * @param list<string>          $preferredIds the ids to resolve an ambiguous name to — several
+     *                                            variants of one family share a name, so this is
+     *                                            what decides which of them a name points at. See
+     *                                            the class docblock and {@see ProductNameIndex}.
      *
-     * @return list<string> the ids whose name appears in the prose
+     * @return list<string> the ids whose name appears in the prose, at most one per name
      */
-    public static function idsNamedIn(string $prose, array $namesById): array
+    public static function idsNamedIn(string $prose, array $namesById, array $preferredIds = []): array
     {
         if (trim($prose) === '') {
             return [];
         }
 
+        $index = new ProductNameIndex($namesById);
         $found = [];
         $remaining = $prose;
 
-        foreach (self::longestFirst($namesById) as $id => $name) {
+        foreach ($index->namesLongestFirst() as $name) {
             if (stripos($remaining, $name) === false) {
                 continue;
             }
 
-            $found[] = $id;
+            $id = $index->idFor($name, $preferredIds);
+
+            if ($id !== null) {
+                $found[] = $id;
+            }
+
             // Blanked rather than removed, so two names cannot become adjacent and form a third.
             $remaining = str_ireplace($name, ' ', $remaining);
         }
 
         return $found;
-    }
-
-    /**
-     * The names worth searching for, longest first.
-     *
-     * Blank names are dropped: every string contains the empty string, so one would match every reply
-     * and render a card for a product the shop failed to name.
-     *
-     * @param array<string, string> $namesById
-     *
-     * @return array<string, string>
-     */
-    private static function longestFirst(array $namesById): array
-    {
-        $usable = array_filter($namesById, static fn(string $name): bool => trim($name) !== '');
-
-        uasort($usable, static fn(string $a, string $b): int => \strlen($b) <=> \strlen($a));
-
-        return $usable;
     }
 }
