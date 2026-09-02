@@ -23,6 +23,7 @@
     "symfony/ai-store": "0.12.*",
     "symfony/cache": "~7.4.0",
     "symfony/console": "~7.4.0",
+    "symfony/dependency-injection": "~7.4.0",
     "symfony/event-dispatcher": "~7.4.0",
     "symfony/http-client": "~7.4.0",
     "symfony/http-client-contracts": "^3.0",
@@ -44,7 +45,6 @@
     "phpunit/phpunit": "^11.0",
     "shipmonk/composer-dependency-analyser": "^1.0",
     "symfony/ai-maria-db-store": "0.12.*",
-    "symfony/dependency-injection": "~7.4.0",
     "symfony/dotenv": "~7.4.0",
     "symfony/filesystem": "~7.4.0"
   },

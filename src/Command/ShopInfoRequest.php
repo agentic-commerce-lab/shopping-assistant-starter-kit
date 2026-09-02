@@ -33,9 +33,14 @@ final readonly class ShopInfoRequest
         public string $question = '',
     ) {}
 
-    public static function fromInput(InputInterface $input, string $defaultSalesChannel): self
+    /**
+     * `$default` is resolved lazily on the right-hand side of `?:` below, so a command given an
+     * explicit `--sales-channel` never queries the shop and never sees
+     * {@see NoDefaultSalesChannelException}.
+     */
+    public static function fromInput(InputInterface $input, DefaultSalesChannel $default): self
     {
-        $salesChannelId = self::text($input->getOption('sales-channel')) ?: $defaultSalesChannel;
+        $salesChannelId = self::text($input->getOption('sales-channel')) ?: $default->id();
 
         $path = self::text($input->getOption('index'));
         if ($path !== '') {

@@ -207,3 +207,82 @@ measurements; the licence position on music, SFX and imagery.
 4. Audio pass for cue placement — noting that no one in this pipeline can judge how
    the keystrokes *sound*; that is the builder's call on the render.
 5. Full render, `ffprobe`-verified at ≈97.0s / 1920×1080 / 30fps.
+
+---
+
+# Revision pass 2 — kill the pauses, text cards, grid-driven cuts
+
+Second round of builder feedback after watching the 97s cut.
+
+## The feedback
+
+1. Too much pause in between.
+2. The subtitle-style captions could often be **full-screen text on a clean screen with
+   nice, fancy animations** instead. (Asked whether GSAP is usable.)
+3. **The code part's pause is way too long.**
+4. Can the music be substituted for something more engaging — more bass, so screen
+   switches can cut to it.
+5. Animations in general could be more engaging.
+
+The direction has converged: this is a **punchy produced teaser**, not a calm
+screencast. The original "this is real, not marketing" framing is no longer the
+governing constraint — but the honesty constraints still are. Full-screen text between
+product moments does not hide the product; it frames a claim the footage then proves.
+
+## On GSAP — not used, and why
+
+GSAP animates against wall-clock/rAF; Remotion renders deterministically frame by
+frame. It can be driven by creating a paused timeline and seeking it to `frame / fps`
+each frame, but that puts a wall-clock animator inside a frame-exact pipeline for no
+capability gain. What the feedback actually asks for — per-character text reveals,
+snappier easing, combined scale/slide — is design, and Remotion's `interpolate` and
+`spring` already express it deterministically. Hand-rolled, tested, no new dependency.
+
+## Music — the real lever is the cut grid, not the track
+
+Attempted substitution and failed for environmental reasons worth recording: the
+Playwright browser profile is locked by a stale session, so Pixabay (the only source
+whose licence is genuinely clean for this use) could not be browsed; Openverse returns
+**zero** CC0 results for music; ccMixter is largely CC-BY/NC and its query API did not
+return parseable JSON.
+
+More importantly, the track is second-order. The first cut aligned only **four** cuts
+to the music. What makes an edit feel driven by music is cutting **many** transitions
+to its bar grid — and the current track (115 BPM, defined beat) supports that now.
+
+**So: keep the track, and make the edit grid-driven.** Every cut position derives from
+`BPM` and a bar/half-bar grid rather than from hand-picked seconds. Substituting the
+music then becomes changing one constant and re-flowing, not re-timing by hand. If the
+builder drops a replacement file in, the swap is minutes.
+
+## Runtime
+
+**Target ~85s.** Cutting pauses shortens; adding text cards lengthens; net shorter and
+tighter than 97s. Exact boundaries fall out of the bar grid rather than being decreed.
+
+## Structural changes
+
+- **Full-screen text cards** replace several bottom captions. Clean ground, large type
+  from `videoType`, per-character or per-word reveal, held only as long as the line
+  takes to read. Each card doubles as a screen switch cut to a bar line — which is how
+  items 2 and 4 solve each other.
+- **Captions stay** where the text must sit *with* the product (the annotation callouts
+  on the cards, the code callouts). A claim about what you are looking at belongs on
+  the same frame as the thing.
+- **The code beat is cut hard**, from 17s to roughly 11s. Three callouts at ~2.5s each
+  plus reveal, and no settled hold. This was the single longest pause in the cut.
+- **Every beat is audited for dead time.** The rule: no frame holds a finished state
+  for more than ~1.5s unless something is still being read.
+
+## Motion vocabulary
+
+Snappier throughout. Text arrives per character or per word rather than as a block;
+elements combine a short slide with a scale rather than fading; easing favours a fast
+out-slow-in with a brief overshoot on entrances. Nothing crosses into bounce — this is
+still a product demo, and a wobble on a price would read as unserious.
+
+## Unchanged
+
+Every honesty constraint: the fidelity rule, captured data and its provenance
+labelling, the inferred-row labels, the licence positions, and the beat 9 / beat 10
+conversation data. The camera layer and its ~1.6× cap. The code pane's no-crop framing.

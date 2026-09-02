@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Command;
 
-use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Command\ProbeRequest;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputDefinition;
@@ -16,7 +15,7 @@ use Symfony\Component\Console\Input\InputOption;
  * The shopper is cross-cutting rather than mode-specific: a B2B price is wrong in `--search` for
  * exactly the reason it is wrong in `--ask`, so every mode carries the same two ids.
  */
-final class ProbeRequestShopperTest extends TestCase
+final class ProbeRequestShopperTest extends CommandSalesChannelTestCase
 {
     private const DEFAULT_CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
 
@@ -30,7 +29,7 @@ final class ProbeRequestShopperTest extends TestCase
             new InputOption('variant', null, InputOption::VALUE_REQUIRED),
             new InputOption('option', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY),
             new InputOption('limit', null, InputOption::VALUE_REQUIRED, '', '10'),
-            new InputOption('sales-channel', null, InputOption::VALUE_REQUIRED, '', self::DEFAULT_CHANNEL),
+            new InputOption('sales-channel', null, InputOption::VALUE_REQUIRED),
             new InputOption('customer', null, InputOption::VALUE_REQUIRED),
             new InputOption('employee', null, InputOption::VALUE_REQUIRED),
         ]));
@@ -38,7 +37,9 @@ final class ProbeRequestShopperTest extends TestCase
 
     public function testAGuestProbeCarriesNoShopper(): void
     {
-        $request = ProbeRequest::fromInput(self::input(['--search' => 'jersey']), self::DEFAULT_CHANNEL);
+        $request = ProbeRequest::fromInput(self::input([
+            '--search' => 'jersey',
+        ]), $this->defaultSalesChannel(self::DEFAULT_CHANNEL));
 
         self::assertNull($request->shopper->customerId);
         self::assertNull($request->shopper->employeeId);
@@ -56,7 +57,7 @@ final class ProbeRequestShopperTest extends TestCase
         ] as $options) {
             $request = ProbeRequest::fromInput(
                 self::input($options + ['--customer' => $customerId]),
-                self::DEFAULT_CHANNEL,
+                $this->defaultSalesChannel(self::DEFAULT_CHANNEL),
             );
 
             self::assertSame($customerId, $request->shopper->customerId);
@@ -69,7 +70,7 @@ final class ProbeRequestShopperTest extends TestCase
             '--search' => 'jersey',
             '--customer' => '01a05cfa1b017514b5d846dc0810327b',
             '--employee' => '01a05d07bc20733bb8ac8bb67e1b32aa',
-        ]), self::DEFAULT_CHANNEL);
+        ]), $this->defaultSalesChannel(self::DEFAULT_CHANNEL));
 
         self::assertSame('01a05cfa1b017514b5d846dc0810327b', $request->shopper->customerId);
         self::assertSame('01a05d07bc20733bb8ac8bb67e1b32aa', $request->shopper->employeeId);
@@ -89,6 +90,6 @@ final class ProbeRequestShopperTest extends TestCase
         ProbeRequest::fromInput(self::input([
             '--search' => 'jersey',
             '--employee' => '01a05d07bc20733bb8ac8bb67e1b32aa',
-        ]), self::DEFAULT_CHANNEL);
+        ]), $this->defaultSalesChannel(self::DEFAULT_CHANNEL));
     }
 }

@@ -242,6 +242,11 @@
             <argument type="service" id="logger"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <tag name="swag_assistant.trace_sink"/>
+            <!-- Rewrites the "logger" argument above to this plugin's own channel, whose handler
+                 accepts info records. Without it the line goes to the shop-wide logger, which in
+                 production discards everything below error and wrote nothing at all. See
+                 TraceLogChannel. -->
+            <tag name="monolog.logger" channel="swag_assistant"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher">
@@ -309,11 +314,20 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
         </service>
 
+        <!-- Replaces a hard-coded sales-channel id that was correct in exactly one shop. Every
+             swag:assistant:* command falls back to this when the sales-channel option is omitted,
+             and it is only ever consulted then. -->
+        <service id="Swag\AssistantStarterKit\Command\DefaultSalesChannel">
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Command\ProbeCommand">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\DefaultSalesChannel"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
             <argument type="service" id="Swag\AssistantStarterKit\Command\ProbeTurnRunner"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <tag name="console.command"/>
         </service>
 
@@ -332,6 +346,7 @@
 
         <service id="Swag\AssistantStarterKit\Command\BenchmarkCommand">
             <argument type="service" id="Swag\AssistantStarterKit\Command\Benchmark\BenchmarkRunner"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\DefaultSalesChannel"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
@@ -377,6 +392,7 @@
 
         <service id="Swag\AssistantStarterKit\Command\SeedFashionCatalogueCommand">
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\SeedRunner"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\DefaultSalesChannel"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
             <tag name="console.command"/>
         </service>
@@ -644,6 +660,7 @@
 
         <service id="Swag\AssistantStarterKit\Command\ShopInfoCommand">
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DocumentIngestionFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\DefaultSalesChannel"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\ShopInfo\DocumentRecords"/>
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\PassageLookup"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>

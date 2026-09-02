@@ -323,10 +323,21 @@ that opens a panel which answers 503 invites a shopper to ask a question nothing
 endpoint stays reachable in every one of those cases, so a custom interface built against it keeps
 working.
 
-`assistantName` and `greeting` live under **Storefront widget**; `widgetEnabled` sits with the off
-switch under **Assistant status**, because the two are easy to confuse and belong side by side —
-`assistantEnabled` stops the assistant answering, `widgetEnabled` only stops it being shown. A blank
-greeting falls back to a translated snippet, so an unconfigured German shop still greets in German.
+`assistantName` lives under **Storefront widget**; `widgetEnabled` sits with the off switch under
+**Assistant status**, because the two are easy to confuse and belong side by side —
+`assistantEnabled` stops the assistant answering, `widgetEnabled` only stops it being shown.
+
+**The greeting and the three suggestion chips are snippets, not settings.** They are edited in the
+same configuration form, through a field with its own language switch, and they are the only fields
+there that are **not** per sales channel — a snippet set is per language, and Shopware assigns one per
+storefront domain. That is the same mechanism every other string this widget shows a shopper already
+goes through: the panel heading, the error lines, the handover text. A shop needing different
+greetings on two channels gives their domains their own snippet set under **Settings › Snippets**.
+
+Leave a suggestion empty and that chip is not rendered; empty all three and the greeting stands on
+its own. Until v0.2.0 the greeting was three `system_config` fields (`greeting`, `greetingDe`,
+`greetingEn`); a migration carries what was in them into the matching snippet sets, preferring the
+shop-wide row where a shop had set it differently per channel.
 
 ### Changing it
 
