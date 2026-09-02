@@ -16,14 +16,22 @@ checkout.
 > **Research preview / lab prototype.** This is not production software. It comes without support,
 > upgrade guarantees, or a Shopware Store release.
 
-## Choose your path
+## Download
 
-| I want to… | Start here |
-|---|---|
-| Install and configure the assistant | [Read the manual](docs/manual.md) |
-| Extend it with tools, data sources, or integrations | [Read the extension guide](docs/extending.md) |
-| Understand its boundaries and design decisions | [Explore the architecture](ARCHITECTURE.md) |
-| Understand why the project exists | [Read the vision](VISION.md) |
+**[Download the latest SwagAssistantStarterKit.zip](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/SwagAssistantStarterKit.zip)**
+· [View all releases](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases)
+
+The archive contains the compiled plugin, but not its PHP dependencies. Follow the
+[release installation guide](docs/manual.md#from-the-release-zip-instead) to install those
+dependencies in the shop's vendor directory. Developing the plugin instead? Use the
+[Composer path-repository setup](docs/manual.md#from-a-composer-path-repository).
+
+## See it in action
+
+[![Shopping Assistant demo showing a grounded storefront conversation](https://raw.githubusercontent.com/agentic-commerce-lab/shopping-assistant-starter-kit/main/docs/assets/shopping-assistant-demo-preview.gif)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/blob/main/docs/assets/shopping-assistant-demo.mp4)
+
+Watch the 73-second flow from a shopper's question to grounded product cards, cart interaction,
+Administration traces, and the extension seam behind the assistant.
 
 ## Why this is more than a chatbot shell
 
@@ -60,7 +68,7 @@ The assistant deliberately does **not** complete checkout or take payment, chang
 prices, access account or order data, or pretend that a human was notified. Unsupported requests are
 declined or sent to a merchant-configured contact route.
 
-## Get started
+## Install and configure
 
 You need:
 
@@ -88,9 +96,8 @@ needed and covers source and release-zip installations.
 Choose one route:
 
 - **For development:** install the repository through a Composer path repository.
-- **For evaluation:** download
-  **[SwagAssistantStarterKit.zip](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/SwagAssistantStarterKit.zip)**
-  and follow the [release-zip instructions](docs/manual.md#from-the-release-zip-instead).
+- **For evaluation:** use the downloaded release archive and follow the
+  [release-zip instructions](docs/manual.md#from-the-release-zip-instead).
 
 The release archive contains the compiled plugin, but not its PHP dependencies. Those dependencies
 must be installed in the shop's own vendor directory.

@@ -36,6 +36,11 @@ build:
           # Working notes and 2.2 MB of planning material — nothing anyone downloading a
           # plugin came for. README.md, docs/manual.md, docs/extending.md and docs/adr
           # stay in, so the artefact still answers "how do I install and extend this?".
+          # The README demo stays in Git, but its 19 MB of media does not belong in an
+          # installable plugin. The README uses canonical GitHub URLs, so its preview and
+          # video link still work from an unpacked release.
+          - docs/assets/shopping-assistant-demo.mp4
+          - docs/assets/shopping-assistant-demo-preview.gif
           - docs/superpowers
           - docs/demo-catalog
           - docs/HANDOFF.md

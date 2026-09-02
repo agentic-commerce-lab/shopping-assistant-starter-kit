@@ -136,6 +136,6 @@ jobs:
           `custom/plugins/`. **The zip contains the plugin, not its PHP dependencies** —
           Shopware autoloads only a plugin's own namespaces, so `symfony/ai-agent` and the
           rest have to be in the shop's own vendor tree. Read
-          [Install it](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md#install-it)
+          [Install it](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md#install-and-configure)
           first: one step there prevents a 500 on the whole storefront.
           NOTES
