@@ -32,6 +32,34 @@ use Symfony\AI\Platform\Result\TextResult;
  */
 final class AssistantRunner
 {
+    /**
+     * The most a single reply may generate — a spend fuse, not a speed control.
+     *
+     * **It is deliberately not how this assistant is made fast**, because that was measured and it
+     * does not work. Shortening replies from ~150 to ~47 words moved a first turn's median from
+     * 13.65 s to 12.53 s on the staging shop, inside a run-to-run spread of 9.7–19.1 s. A turn's cost
+     * is its number of model round trips — each one carries a ~2.5–3.5 s floor of network and
+     * provider before a word is generated — and not the length of what comes back. Tokens are
+     * cheaper than round trips, and this constant buys neither.
+     *
+     * What it does buy is that **no single reply can empty the merchant's API budget**.
+     * {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt}'s brevity rule asks for two or
+     * three sentences, and a prompt is a request, not a guarantee: a model that ignores it — or a
+     * shopper who talks it into "tell me everything about every jersey" — generates until something
+     * stops it. Until this existed, nothing did, on a public unauthenticated endpoint that spends
+     * money per call.
+     *
+     * **Generous on purpose.** A reply cut off mid-word reads as a broken shop, which is worse than
+     * a slow one, so this sits far above any legitimate answer: a normal reply measured ~65 tokens,
+     * and a merchant whose `agentVoice` asks for detail might reach 300–400. A fuse that trips in
+     * normal use is the wrong fuse.
+     *
+     * Not a `config.xml` field, and that is a judgement rather than an oversight: a merchant tuning
+     * this can only make their assistant truncate. The lever they actually want — how long an answer
+     * should be — is `agentVoice`, which is prose and cannot break a sentence in half.
+     */
+    public const MAX_OUTPUT_TOKENS = 1500;
+
     public function __construct(
         private readonly AssistantConfig $config,
         private readonly Bundle $bundle,
@@ -72,7 +100,9 @@ final class AssistantRunner
         $this->bundle->renderer->registerShopperMessage($message);
 
         try {
-            $result = $this->bundle->agent->call($this->buildMessageBag($message, $history));
+            $result = $this->bundle->agent->call($this->buildMessageBag($message, $history), [
+                'max_tokens' => self::MAX_OUTPUT_TOKENS,
+            ]);
         } catch (MaxIterationsExceededException) {
             // A confused model that keeps requesting tool calls is a foreseeable
             // condition, not a server fault — BoundedToolbox's cap firing is this
