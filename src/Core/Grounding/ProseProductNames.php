@@ -91,20 +91,36 @@ final class ProseProductNames
         $remaining = $prose;
 
         foreach ($index->namesLongestFirst() as $name) {
-            if (stripos($remaining, $name) === false) {
+            $at = stripos($remaining, $name);
+
+            if ($at === false) {
                 continue;
             }
 
             $id = $index->idFor($name, $preferredIds);
 
             if ($id !== null) {
-                $found[] = $id;
+                // Keyed by WHERE the reply says it, not by the order names are searched in. Searching
+                // has to run longest-name-first or `Chain` matches inside `Wet Chain Lube 100ml`;
+                // rendering in that order puts the longest name's card first, which has nothing to do
+                // with what the reply is about. Measured on staging 2026-09-02: *"show me the trail
+                // jersey in black, size M"* answered correctly and rendered **Thermal Jersey Long
+                // Sleeve** above the Trail Jersey, because its name is longer — so the first card, and
+                // its add button, belonged to a product the shopper had not asked for.
+                //
+                // The position is taken from `$remaining` rather than the original prose: earlier
+                // names are already blanked there, and blanking preserves offsets because it replaces
+                // each matched name with the same number of BYTES. `stripos()` counts bytes, so a
+                // name carrying an umlaut would shift every later offset if this counted characters.
+                $found[$at] = $id;
             }
 
             // Blanked rather than removed, so two names cannot become adjacent and form a third.
-            $remaining = str_ireplace($name, ' ', $remaining);
+            $remaining = str_ireplace($name, str_repeat(' ', \strlen($name)), $remaining);
         }
 
-        return $found;
+        ksort($found);
+
+        return array_values($found);
     }
 }
