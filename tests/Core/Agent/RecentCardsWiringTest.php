@@ -90,6 +90,29 @@ final class RecentCardsWiringTest extends TestCase
         self::assertSame([$card->id], $bundle->renderer->lastRetrievedBatch());
     }
 
+    /**
+     * Nameable, but not the answer to the next question. Without this a turn that answered from the
+     * shop's documents rendered the previous turn's product card underneath it — see
+     * {@see StaleCardsDoNotFollowTheConversationTest} for the reported defect.
+     */
+    public function testAPreviousShortlistAloneIsNotTheDefaultCardSet(): void
+    {
+        $gateway = self::gateway();
+        $shown = $gateway->product('fx-017', new CatalogScope());
+        self::assertNotNull($shown);
+
+        $bundle = AssistantAgentFactory::withCoreToolsOnly(self::http())->create(
+            $gateway,
+            new AssistantConfig(),
+            cartAvailable: false,
+            llm: self::llm(),
+            recentCards: [$shown],
+        );
+
+        self::assertContains($shown->id, $bundle->renderer->retrievedIds(), 'must stay nameable');
+        self::assertSame([], $bundle->renderer->lastRetrievedBatch(), 'must not be the default card set');
+    }
+
     public function testNoPreviousCardsLeavesThePromptUnchanged(): void
     {
         $gateway = self::gateway();

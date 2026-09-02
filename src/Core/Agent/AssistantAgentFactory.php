@@ -11,6 +11,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
 use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\PreGrounding;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
@@ -197,27 +198,11 @@ final readonly class AssistantAgentFactory
         // carrying a credential in its path.
         $trace->record(self::MODEL_STAGE, ['name' => $llm->model]);
 
-        // Pre-grounding, and the reason this feature removes a model round trip.
-        //
-        // `registerRetrieved()` does two different things, both of which this relies on: the
-        // retrieved *index* accumulates, so the open product stays nameable for the whole turn
-        // without `validate()` counting it as invented even after a search runs; while
-        // `lastBatchIds` is *replaced*, so it is the default rendered card set only until a tool
-        // returns something newer. A turn that calls no tool therefore renders the product the
-        // shopper is already looking at, with its real price and stock, and the model never had to
-        // ask for it.
-        // **Order matters, and it is the only subtle thing here.** `registerRetrieved()` accumulates
-        // the retrieved *index* — which is what keeps both sets nameable without `validate()`
-        // counting them as invented — but REPLACES `lastBatchIds`, the default card set for a turn
-        // that calls no tool. The product on screen is the more specific answer to "what is this
-        // about" than a shortlist from the previous reply, so it is registered last and wins.
-        if ($recentCards !== []) {
-            $renderer->registerRetrieved($recentCards);
-        }
-
-        if ($viewing !== null) {
-            $renderer->registerRetrieved([$viewing]);
-        }
+        // Pre-grounding, and the reason this feature removes a model round trip: a turn that calls
+        // no tool can answer about the product on screen with its real price and stock, because the
+        // server already had it. {@see PreGrounding} owns which of the two seeds may stand in as the
+        // turn's default card set, and the measured defect behind that rule.
+        PreGrounding::seed($renderer, $recentCards, $viewing);
 
         $facetProbe = new FacetProbe($gateway, $trace, $this->facetCache);
 
