@@ -5,8 +5,6 @@
     <card>
         <name>assistantStatus</name>
         <title>Assistant status</title>
-        <subtitle>Two switches, and they do different things. The first stops the assistant from
-            answering at all. The second only hides it from your storefront.</subtitle>
 
         <component name="swag-assistant-status-switch">
             <name>assistantEnabled</name>
@@ -26,7 +24,6 @@
     <card>
         <name>languageModel</name>
         <title>Language model</title>
-        <subtitle>The assistant cannot answer anything until a model is set here.</subtitle>
 
         <input-field type="text">
             <name>llmBaseUrl</name>
@@ -107,8 +104,6 @@
     <card>
         <name>voiceAndScope</name>
         <title>Voice and catalogue scope</title>
-        <subtitle>Anything listed here is hidden from the assistant entirely: it is never looked up,
-            so it cannot be mentioned, recommended or added to a cart.</subtitle>
 
         <input-field type="textarea">
             <name>agentVoice</name>
@@ -145,8 +140,6 @@
     <card>
         <name>limits</name>
         <title>Limits</title>
-        <subtitle>Everything here is unlimited unless you set a number. Leave a field at 0 and no
-            limit applies.</subtitle>
 
         <input-field type="bool">
             <name>enableAddToCart</name>
@@ -192,15 +185,13 @@
     <card>
         <name>requestLimits</name>
         <title>Request limits</title>
-        <subtitle>Your chat page is public and every message costs you model credit. Only the
-            per-shopper limit is on by default.</subtitle>
 
         <input-field type="int">
             <name>requestsPerMinute</name>
             <label>Messages per minute, per shopper</label>
             <defaultValue>60</defaultValue>
             <placeholder>0 — no limit</placeholder>
-            <helpText>This is the one control that stops a script hammering your shop, which is why
+            <helpText>Your chat page is public and every message costs you model credit, so only the per-shopper limit below is on by default. This is the one control that stops a script hammering your shop, which is why
                 it ships on. 60 is roughly twenty times what a person typing can produce, so real
                 shoppers never meet it. Counted per visitor in a rolling window; someone over the
                 limit is turned away before your shop reads or writes anything. 0 removes the
@@ -313,16 +304,12 @@
     <card>
         <name>storefrontWidget</name>
         <title>Storefront widget</title>
-        <subtitle>The greeting is edited per language, using the language switch on the field itself
-            — it is a storefront snippet, like every other line the assistant shows a shopper. That
-            also means it is not per sales channel: if two of your channels need different greetings,
-            give their domains their own snippet set under Settings › Snippets.</subtitle>
 
         <input-field type="text">
             <name>assistantName</name>
             <label>Assistant name</label>
             <placeholder>Shopping Assistant</placeholder>
-            <helpText>Shown in the panel heading, and read out by screen readers. Defaults to
+            <helpText>The greeting below is edited per language, through the language switch on the field itself — it is a storefront snippet, like every other line the assistant shows a shopper. That also means it is not per sales channel: if two of your channels need different greetings, give their domains their own snippet set under Settings > Snippets. Shown in the panel heading, and read out by screen readers. Defaults to
                 "Shopping Assistant".</helpText>
         </input-field>
 
@@ -336,15 +323,12 @@
     <card>
         <name>chatSuggestions</name>
         <title>Things a shopper could ask</title>
-        <subtitle>The three chips under the greeting. They are the first thing a shopper reads, and
-            the shipped ones are written for a shop that sells anything — yours can say what you
-            actually sell. Clear a field to drop that chip; clear all three and the greeting stands
-            on its own.</subtitle>
 
         <component name="sw-snippet-field">
             <name>suggestionOne</name>
             <label>First suggestion</label>
             <snippet>swagAssistant.panel.suggestionOne</snippet>
+            <helpText>The three chips under the greeting, and the first thing a shopper reads. The shipped ones are written for a shop that sells anything; yours can say what you actually sell. Clear a field to drop that chip; clear all three and the greeting stands on its own.</helpText>
         </component>
 
         <component name="sw-snippet-field">
@@ -363,14 +347,12 @@
     <card>
         <name>logging</name>
         <title>Logging</title>
-        <subtitle>Separate from the conversation list in Settings, which records every conversation
-            in full and is always on.</subtitle>
 
         <input-field type="bool">
             <name>logTraces</name>
             <label>Log a line for every reply</label>
             <defaultValue>true</defaultValue>
-            <helpText>Writes one line to var/log/swag_assistant_&lt;env&gt;.log each time the
+            <helpText>Separate from the conversation list in Settings, which records every conversation in full and is always on. Writes one line to var/log/swag_assistant_&lt;env&gt;.log each time the
                 assistant replies: which sales channel, how the reply ended and how long it took.
                 Useful for spotting failures and slow replies without opening conversations one by
                 one. Its own file rather than your shop's main log, because a production shop keeps

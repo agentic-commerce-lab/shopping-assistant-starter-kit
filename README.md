@@ -4,7 +4,7 @@
 [![Release](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/actions/workflows/release.yml/badge.svg)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-189eff)](LICENSE)
 
-A shopper-facing conversational assistant for Shopware 6.7, grounded in the merchant's own
+A shopper-facing conversational assistant for Shopware 6.6 and 6.7, grounded in the merchant's own
 catalogue and operated entirely inside the shop.
 
 Ask *"Do you have the trail jersey in blue, size M?"* and the assistant can find the correct
@@ -64,7 +64,9 @@ declined or sent to a merchant-configured contact route.
 
 You need:
 
-- Shopware 6.7 and PHP 8.2 or newer;
+- Shopware **6.6.10.23 or newer**, or any 6.7, and PHP 8.2 or newer. Older 6.6 patches ship
+  Symfony 7.2, and the Symfony AI packages this plugin is built on need 7.3 — so the
+  `symfony/*` constraints refuse those installs rather than failing later;
 - an OpenAI-compatible chat-completions endpoint;
 - Composer access to the shop for the plugin's PHP dependencies.
 
