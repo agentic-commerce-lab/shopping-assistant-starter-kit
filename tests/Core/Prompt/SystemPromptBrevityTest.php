@@ -24,8 +24,8 @@ use Swag\AssistantStarterKit\Core\Prompt\SystemPrompt;
  * and a round trip carrying twenty tokens still costs ~2.5–3.5 s of network and provider before a
  * single word is generated. So a first turn is two round trips of floor plus however long the model
  * chooses to write — and until this constant existed, nothing anywhere told it to be brief. There is
- * no `max_tokens` either; a cap would truncate mid-sentence, which buys the seconds by breaking the
- * sentence rather than by not writing it.
+ * no provider-level token cap: the generic bridge serves providers with incompatible limit fields,
+ * and a tight cap would trade a complete sentence for a truncated one rather than avoid writing it.
  *
  * ## Why this is a quality change and not only a speed one
  *
