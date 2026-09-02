@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
 /**
  * The shape a tool returns for a retrieved product: **id, name and option values — and nothing
@@ -66,7 +67,7 @@ final class ToolProductSummary
      *                                              {@see MatchReasons::of()} — empty unless
      *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>
      */
     public static function of(array $cards, array $reasons = []): array
     {
@@ -95,6 +96,21 @@ final class ToolProductSummary
                 // why the direction is chosen by what each error costs.
                 if (!$card->isInStock()) {
                     $summary['soldOut'] = true;
+                }
+
+                // **The positive direction, added 2026-09-02, and narrower than its opposite.**
+                // Measured live: asked *"ist das auf Lager?"* the assistant answered "the shop shows
+                // the current availability for you" — a non-answer to the most ordinary question in
+                // commerce, and the only answer the rules allowed, because nothing here ever said a
+                // product COULD be bought.
+                //
+                // Two guards keep the old reasoning intact. It is a boolean and never a quantity, so
+                // no figure is earned here that was not earned before. And a family PARENT never
+                // carries it: its stock is the family's aggregate, so "available" would be a claim
+                // about a unit nobody has chosen yet. Sold-out products are untouched — the key
+                // cannot appear for them, since it is the same figure read the other way.
+                if ($card->stockSource !== StockSource::Parent && $card->isInStock()) {
+                    $summary['available'] = true;
                 }
 
                 $codes = $reasons[$card->id] ?? [];
@@ -127,7 +143,7 @@ final class ToolProductSummary
      * @param list<ProductCard>           $cards
      * @param array<string, list<string>> $reasons
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
      */
     public static function withDescriptions(array $cards, array $reasons = []): array
     {
