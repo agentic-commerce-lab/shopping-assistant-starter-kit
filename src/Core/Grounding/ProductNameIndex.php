@@ -19,12 +19,19 @@ namespace Swag\AssistantStarterKit\Core\Grounding;
  */
 final readonly class ProductNameIndex
 {
+    /** @var array<string, string> */
+    private array $namesById;
+
     /**
-     * @param array<string, string> $namesById product id => the product's name
+     * @param array<string, string> $namesById   product id => the product's name
+     * @param list<string>          $excludedIds ids this reply has ruled out — dropped here rather
+     *                                           than skipped at lookup, so an excluded id is simply
+     *                                           not in the index. See {@see ContradictedVariants}.
      */
-    public function __construct(
-        private array $namesById,
-    ) {}
+    public function __construct(array $namesById, array $excludedIds = [])
+    {
+        $this->namesById = array_diff_key($namesById, array_flip($excludedIds));
+    }
 
     /**
      * Every name worth searching for, longest first, each one once however many ids answer to it.
@@ -62,7 +69,9 @@ final readonly class ProductNameIndex
      * The one id this name stands for, or null when nothing registered carries it.
      *
      * A preferred id wins over registration order; among several preferred ids sharing the name, the
-     * one the caller listed first, since that is the order the tool returned them in.
+     * one the caller listed first, since that is the order the tool returned them in. Ids the
+     * constructor excluded are not here to be found, so a name whose every candidate the reply ruled
+     * out resolves to nothing and renders no card — the honest outcome when all of them contradict.
      *
      * @param list<string> $preferredIds
      */

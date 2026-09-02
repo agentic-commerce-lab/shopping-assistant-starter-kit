@@ -100,6 +100,24 @@ final class SystemPromptToolAndDisplayRulesTest extends TestCase
     }
 
     /**
+     * **Naming is showing.** Measured live on staging, 2026-09-02: asked *"Do you sell bikes?"* the
+     * reply was *"A search for complete bikes found no matches. The search did return Bike Wash
+     * 1L…"* — and a Bike Wash card was rendered beside it, because naming a retrieved product is how
+     * a card gets selected. The shopper asked for a bicycle and was shown a bottle of cleaner.
+     *
+     * The neighbouring rule is deliberately left alone: an empty result does NOT license "we don't
+     * sell bikes", because it only means those words matched nothing. So the model must still be able
+     * to talk about the search — it just may not name a product it is not offering.
+     */
+    public function testItForbidsNamingAProductThatIsNotAnAnswer(): void
+    {
+        $prompt = SystemPrompt::build(new AssistantConfig());
+
+        self::assertStringContainsString('Name a product only when you are offering it as an answer', $prompt);
+        self::assertStringContainsString('never name one as an example of what did not match', $prompt);
+    }
+
+    /**
      * **Both marks, and what carrying neither means. Changed 2026-09-02.**
      *
      * This test used to assert the opposite: that the prompt forbade the positive direction outright

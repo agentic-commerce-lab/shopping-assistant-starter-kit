@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Grounding\ContradictedVariants;
 use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\ProductNameMask;
+use Swag\AssistantStarterKit\Core\Grounding\ProductNames;
 use Swag\AssistantStarterKit\Core\Grounding\ProseProductNames;
 use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
 use Swag\AssistantStarterKit\Core\Tool\GivenDescriptions;
@@ -152,8 +156,13 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // the shop's own document was never offered as backing. `unbackedPricesInProse()` above has
         // had the passages since 2026-08-27; this is the same exemption, one claim type later.
         // Measured on staging 2026-09-02.
+        // **Masked, and only for this audit.** A product's NAME is not a claim about its attributes,
+        // but the property vocabulary is closed and a shop's names borrow from it: "Trail Jersey"
+        // carries the Terrain value `Trail`, so a true sentence naming it was flagged as an invented
+        // property (staging, 2026-09-02). The price and availability audits above get the unmasked
+        // reply on purpose — neither vocabulary collides with a product name the way this one does.
         $this->renderer->unbackedPropertiesInProse(
-            $text,
+            ProductNameMask::strip($text, ProductNames::of($this->renderer->retrievedCards())),
             $this->facets,
             [...GivenDescriptions::from($this->trace), ...RetrievedPassages::from($this->trace)],
             DisclosedOptions::from($this->trace),
@@ -184,12 +193,18 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
      */
     private function candidatesIn(string $text): array
     {
+        $cards = $this->renderer->retrievedCards();
+
         return array_values(array_unique([
             ...$this->extractCandidateIds($text),
             ...ProseProductNames::idsNamedIn(
                 $text,
-                $this->renderer->retrievedNamesById(),
+                ProductNames::of($cards),
                 $this->renderer->lastRetrievedBatch(),
+                // A variant the reply has ruled out by naming other values of its own option group
+                // must not be what its name resolves to — see ContradictedVariants for the card that
+                // said "Size: XL" beside a sentence about M and L.
+                ContradictedVariants::in($text, $cards),
             ),
         ]));
     }

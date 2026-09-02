@@ -72,15 +72,21 @@ final class ProseProductNames
      *                                            what decides which of them a name points at. See
      *                                            the class docblock and {@see ProductNameIndex}.
      *
+     * @param list<string> $excludedIds ids this reply has ruled out — see {@see ContradictedVariants}
+     *
      * @return list<string> the ids whose name appears in the prose, at most one per name
      */
-    public static function idsNamedIn(string $prose, array $namesById, array $preferredIds = []): array
-    {
+    public static function idsNamedIn(
+        string $prose,
+        array $namesById,
+        array $preferredIds = [],
+        array $excludedIds = [],
+    ): array {
         if (trim($prose) === '') {
             return [];
         }
 
-        $index = new ProductNameIndex($namesById);
+        $index = new ProductNameIndex($namesById, $excludedIds);
         $found = [];
         $remaining = $prose;
 
