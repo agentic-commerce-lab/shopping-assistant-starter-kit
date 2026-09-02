@@ -1,5 +1,5 @@
 import './swag-assistant-trace-list.scss';
-import { exportFileName, exportRequest, saveBlob } from '../../export';
+import { collectExportIds, exportFileName, exportRequest, saveBlob } from '../../export';
 import { conversationPreview } from './preview';
 import { humanMs } from '../swag-assistant-trace-detail/facts';
 import template from './swag-assistant-trace-list.html.twig';
@@ -9,6 +9,10 @@ const { Criteria } = Shopware.Data;
 /**
  * `AssistantTraceExportController::MAX_CONVERSATIONS`, mirrored so the client asks for what the
  * server will accept rather than being refused after the round trip. **The two must stay equal.**
+ *
+ * This is the bound on the *export*, not on one API request. Collecting this many ids takes several
+ * `search-ids` pages — see {@see SEARCH_IDS_PAGE_LIMIT}, which is what asking for all of them in
+ * one request used to run into.
  */
 const EXPORT_LIMIT = 1000;
 
@@ -83,7 +87,11 @@ Shopware.Component.register('swag-assistant-trace-list', {
          * branches on the same thing, so the button cannot promise one count and send another.
          */
         exportCount() {
-            return this.selectionCount || this.total;
+            // Clamped, because the label must not promise rows the export will not contain. It read
+            // `|| this.total` until 2026-09-02, so a shop with 1750 conversations offered to export
+            // all 1750 and delivered the newest 1000 — the button promising one count and sending
+            // another, which is the exact thing this computed exists to prevent.
+            return this.selectionCount || Math.min(this.total, EXPORT_LIMIT);
         },
 
         /**
@@ -94,6 +102,15 @@ Shopware.Component.register('swag-assistant-trace-list', {
          * how the button once read "Export all 175 as" with nothing after the "as".
          */
         exportScope() {
+            // Three states, and the third is not decoration: a filter matching more than the export
+            // bound is the one case where "all" would be a lie, so it says which ones instead.
+            if (!this.selectionCount && this.total > EXPORT_LIMIT) {
+                return this.$t('swag-assistant-trace.list.scopeCapped', {
+                    count: this.exportCount,
+                    total: this.total,
+                });
+            }
+
             const key = this.selectionCount
                 ? 'swag-assistant-trace.list.scopeSelected'
                 : 'swag-assistant-trace.list.scopeAll';
@@ -215,14 +232,29 @@ Shopware.Component.register('swag-assistant-trace-list', {
             this.selectionCount = Object.keys(selection ?? {}).length;
         },
 
-        onExport() {
-            if (this.selectionCount) {
-                this.download(Object.keys(this.$refs.grid?.selection ?? {}));
+        /**
+         * **Every rejection below has to land in `exportError`.**
+         *
+         * Neither branch used to be awaited, so anything that threw on the way to the file became
+         * an unhandled promise rejection in the console and nothing at all in the page. That is how
+         * a permanently broken "Export all" — the id search was refused with a 400 on every shop,
+         * every time — survived to a release: the feature failed exactly as loudly as a feature
+         * that works.
+         */
+        async onExport() {
+            this.exportError = null;
 
-                return;
+            try {
+                await (this.selectionCount
+                    ? this.download(Object.keys(this.$refs.grid?.selection ?? {}))
+                    : this.exportFiltered());
+            } catch (error) {
+                // The API's own sentence when there is one. A DAL refusal arrives as an axios error
+                // whose `message` is "Request failed with status code 400", which tells a merchant
+                // nothing; the `detail` underneath it says what was actually wrong.
+                this.exportError = error?.response?.data?.errors?.[0]?.detail
+                    ?? this.$tc('swag-assistant-trace.list.exportFailed');
             }
-
-            this.exportFiltered();
         },
 
         /**
@@ -230,19 +262,36 @@ Shopware.Component.register('swag-assistant-trace-list', {
          *
          * Shopware's own select-all covers the current page, so a literal reading of "select all"
          * would quietly export 25 rows. `searchIds` fetches ids only, which is cheap even at the
-         * bound the server enforces.
+         * bound the server enforces — but it may not fetch more than `shopware.api.max_limit` of
+         * them per request, which is why the ids arrive a page at a time.
          */
         async exportFiltered() {
-            const criteria = new Criteria(1, EXPORT_LIMIT);
+            const ids = await collectExportIds(
+                (page, limit) => this.repository.searchIds(this.exportCriteria(page, limit), Shopware.Context.api),
+                EXPORT_LIMIT,
+            );
+
+            await this.download(ids);
+        },
+
+        /**
+         * One page of the filtered id search.
+         *
+         * The `id` tiebreak is what makes paging safe. `createdAt` alone is not a total order —
+         * traces written in the same millisecond have no defined order between them, so a
+         * conversation on a page boundary could be returned twice or skipped entirely, and the
+         * skipped one is the failure nobody would notice.
+         */
+        exportCriteria(page, limit) {
+            const criteria = new Criteria(page, limit);
             criteria.addSorting(Criteria.sort(this.sortBy, this.sortDirection));
+            criteria.addSorting(Criteria.sort('id', 'ASC'));
 
             if (this.outcomeFilter) {
                 criteria.addFilter(Criteria.equals('outcome', this.outcomeFilter));
             }
 
-            const result = await this.repository.searchIds(criteria, Shopware.Context.api);
-
-            this.download(result.data);
+            return criteria;
         },
 
         /**
@@ -250,8 +299,6 @@ Shopware.Component.register('swag-assistant-trace-list', {
          * emits customer names and is ACL-protected, so it cannot be opened as a plain URL.
          */
         async download(ids) {
-            this.exportError = null;
-
             const { url, options } = exportRequest(Shopware.Context.api, ids);
             const response = await fetch(url, options);
 

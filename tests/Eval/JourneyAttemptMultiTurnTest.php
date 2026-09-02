@@ -87,6 +87,9 @@ final class JourneyAttemptMultiTurnTest extends TestCase
                                         [
                                             'variantId' => 'fx-026-blue-l',
                                             'quantity' => 1,
+                                            // What a real model now sends: `add_to_cart` refuses a
+                                            // variant of a family the shopper never named.
+                                            'options' => [['Colour', 'Blue'], ['Size', 'L']],
                                         ],
                                         \JSON_THROW_ON_ERROR,
                                     ),

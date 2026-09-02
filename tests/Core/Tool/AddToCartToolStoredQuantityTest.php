@@ -31,6 +31,14 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  */
 final class AddToCartToolStoredQuantityTest extends TestCase
 {
+    /**
+     * The option values the shopper chose, which `add_to_cart` now requires for any product that
+     * has variants — see {@see AddToCartToolVariantChoiceTest} for why a variant nobody named is
+     * refused. Every case in this file is about something else (quantity bounds, cart limits, what
+     * the note reports), so the choice is stated once here rather than restated at each call.
+     */
+    private const CHOSEN = [['Colour', 'Blue'], ['Size', 'L']];
+
     private TraceRecorder $trace;
 
     private FactRenderer $renderer;
@@ -130,7 +138,7 @@ final class AddToCartToolStoredQuantityTest extends TestCase
         // shopper who is told "Added 10" finds out at checkout.
         $tool = $this->toolWith($this->correctingGateway(8, CartNoticeReason::PurchaseSteps));
 
-        $result = $tool(variantId: 'fx-026-blue-l', quantity: 10);
+        $result = $tool(variantId: 'fx-026-blue-l', quantity: 10, options: self::CHOSEN);
 
         self::assertStringContainsString('8', $result['note']);
         self::assertStringNotContainsString('Added 10', $result['note']);
@@ -143,14 +151,14 @@ final class AddToCartToolStoredQuantityTest extends TestCase
         // rather than confirming an add that did not happen.
         $tool = $this->toolWith($this->correctingGateway(0, CartNoticeReason::OutOfStock));
 
-        $result = $tool(variantId: 'fx-026-blue-l', quantity: 2);
+        $result = $tool(variantId: 'fx-026-blue-l', quantity: 2, options: self::CHOSEN);
 
         self::assertStringContainsString('Nothing was added', $result['note']);
     }
 
     public function testAnUncorrectedAddStillReadsAsBefore(): void
     {
-        $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2);
+        $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2, options: self::CHOSEN);
 
         self::assertSame('Added 2 to the cart.', $result['note']);
     }
@@ -160,7 +168,7 @@ final class AddToCartToolStoredQuantityTest extends TestCase
         // A merchant reading the trace must be able to see the divergence that the shopper was
         // told about, without inferring it from prose.
         $tool = $this->toolWith($this->correctingGateway(8, CartNoticeReason::PurchaseSteps));
-        $tool(variantId: 'fx-026-blue-l', quantity: 10);
+        $tool(variantId: 'fx-026-blue-l', quantity: 10, options: self::CHOSEN);
 
         $payloads = [];
         foreach ($this->trace->events() as $event) {

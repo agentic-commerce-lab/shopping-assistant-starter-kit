@@ -61,7 +61,19 @@ final class SearchProductsCategoryTest extends TestCase
 
         $this->tool(self::CATEGORY)(limit: 8);
 
-        self::assertEqualsCanonicalizing(self::IN_CATEGORY, $this->renderer->lastRetrievedBatch());
+        // A subset rather than the exact three: all three are variants of one Trail Jersey, and
+        // `FamilyDiversifier` returns one card per family, so which of them represents the family is
+        // its business and not this test's. What this test is about is that nothing from outside the
+        // category comes back — pinning the full variant list made it fail for the unrelated reason
+        // that the family stopped being shown three times.
+        $constrained = $this->renderer->lastRetrievedBatch();
+
+        self::assertNotEmpty($constrained, 'the constrained search must still find the category');
+        self::assertSame(
+            [],
+            array_diff($constrained, self::IN_CATEGORY),
+            'the constraint must admit nothing from outside the category',
+        );
     }
 
     public function testAConstraintThatFindsNothingIsRetriedWithoutIt(): void

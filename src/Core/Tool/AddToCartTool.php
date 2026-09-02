@@ -61,9 +61,14 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  */
 #[AsTool(
     name: 'add_to_cart',
-    description: 'Add a specific product variant to the shopper\'s cart. Use get_product '
-    . 'first if a size or colour still has to be resolved — this tool cannot resolve '
-    . 'options. Returns the cart totals.',
+    description: 'Add a specific product variant to the shopper\'s cart. Returns the cart totals. '
+    . 'For any product that has variants you MUST also pass "options" — the colour, size and so '
+    . 'on that THE SHOPPER chose — and they must identify the exact variant you are adding. '
+    . 'Copy them verbatim from that product\'s own "options" in the search result: '
+    . '"options": [["Colour", "Blue"], ["Size", "L"]]. '
+    . 'If the shopper has not said which variant they want, do NOT guess and do not call this '
+    . 'tool: ask them, and show the variants. An add without a choice is refused, because a '
+    . 'variant the shopper did not pick is a wrong order they only discover after buying it.',
 )]
 final class AddToCartTool
 {
@@ -98,10 +103,16 @@ final class AddToCartTool
      * @param string $variantId The exact variant id to add — never a parent product id.
      * @param int    $quantity  How many units to add (1-100, further bounded by the
      *                          shop's own per-item limit).
+     * @param ?array<array-key, array<array-key, string>|string> $options The option values THE SHOPPER chose, each a [group, option] pair such as [["Colour", "Blue"], ["Size", "L"]]; a bare option value on its own also works. Required for any product that has variants, and they must identify the exact variant being added — an add the shopper did not choose is refused rather than guessed at.
      *
      * @return array{cart?: array{itemCount: int, total: float, currency: string, checkoutUrl: string}, note: string}
      */
-    public function __invoke(string $variantId, int $quantity = 1): array
+    // @mago-expect lint:excessive-parameter-list
+    // Three, not two, and the third cannot be folded away: #[AsTool] derives the model-facing JSON
+    // Schema from this signature by reflection, so `options` has to be a parameter here to exist at
+    // all. It goes last, after `quantity`, so every existing positional call keeps meaning what it
+    // meant. Same reasoning as `SearchProductsTool::__invoke()`.
+    public function __invoke(string $variantId, int $quantity = 1, ?array $options = null): array
     {
         $variantId = Guard::boundedString($variantId, 64, 'variant_id') ?? '';
         $quantity = Guard::boundedInt($quantity, 1, 100, 'quantity');
@@ -162,6 +173,19 @@ final class AddToCartTool
                 'That is a product family rather than a single variant. Ask which options the shopper '
                 . 'wants, resolve them with get_product, and add the variant it returns.',
             ));
+        }
+
+        // **A variant nobody chose must not reach the cart.** The guard above refuses a family
+        // PARENT, which is not a sellable unit; this refuses a real variant the shopper never named,
+        // which is the more dangerous case because the cart line is valid and merely wrong. See
+        // {@see ChosenVariant} for the reported defect and for why the model cannot fake past it.
+        //
+        // Placed before the cart-value check for the same reason the blocklist is: a unit the
+        // shopper never picked must not be priced for them, let alone added.
+        $refusal = ChosenVariant::refusalFor($this->gateway, $this->config->scope, $card, $options);
+
+        if ($refusal !== null) {
+            return $this->blocked($refusal);
         }
 
         $projectedTotal = $this->gateway->cart()->total + ($card->price * $quantity);

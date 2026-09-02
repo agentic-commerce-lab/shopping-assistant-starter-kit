@@ -1,61 +1,62 @@
 {
-    "swag-assistant-shop-info": {
-        "general": {
-            "mainMenuItemGeneral": "Assistent-Shopinformationen",
-            "description": "Dokumente, aus denen der Assistent antworten darf"
-        },
-        "list": {
-            "salesChannel": "Verkaufskanal",
-            "salesChannelHelp": "Dokumente werden pro Verkaufskanal indexiert, weil zwei Kanäle unterschiedliche Bedingungen haben können.",
-            "upload": "Dokument hochladen",
-            "uploadHelp": "PDF, TXT, MD, HTML oder DOCX, bis 8 MB. Der Text wird beim Hochladen extrahiert; die Datei selbst wird nicht gespeichert.",
-            "uploadButton": "Hochladen und indexieren",
-            "uploading": "Text wird extrahiert und indexiert…",
-            "columnName": "Dokument",
-            "columnStatus": "Status",
-            "columnChunks": "Passagen",
-            "columnDimension": "Vektorbreite",
-            "columnUpdated": "Zuletzt indexiert",
-            "statusIndexed": "Indexiert",
-            "statusPending": "Ausstehend",
-            "statusFailed": "Fehlgeschlagen",
-            "reindex": "Neu indexieren",
-            "delete": "Löschen",
-            "deleteTitle": "Dieses Dokument löschen?",
-            "deleteBody": "Die Passagen werden mit entfernt, der Assistent kann danach nicht mehr daraus antworten. Die Originaldatei liegt hier nicht und lässt sich nicht wiederherstellen.",
-            "emptyTitle": "Noch keine Dokumente",
-            "emptyBody": "Lade Widerrufsbelehrung, AGB, Datenschutzerklärung oder Versandinformationen hoch. Der Assistent antwortet dann daraus, statt abzulehnen.",
-            "reindexed": "„{name}“ neu indexiert: {count} Passagen.",
-            "uploaded": "„{name}“ indexiert: {count} Passagen.",
-            "deleted": "„{name}“ und die zugehörigen Passagen sind entfernt.",
-            "configuration": "Konfiguration",
-            "model": "Embedding-Modell",
-            "modelUnset": "Nicht gesetzt — Shopinformationen sind für diesen Verkaufskanal aus",
-            "openPluginSettings": "Plugin-Einstellungen öffnen",
-            "columnSource": "Quelle",
-            "sourceCms": "Shopseite",
-            "sourceUpload": "Hochgeladen",
-            "shopPages": "Die eigenen Seiten des Shops",
-            "shopPagesHelp": "Impressum, Datenschutzerklärung, Widerrufsbelehrung, AGB sowie Versand und Zahlung — gelesen aus den unter Einstellungen konfigurierten Seiten, damit du sie nicht hochladen musst. Ein erneutes Indexieren übernimmt seitdem gemachte Änderungen.",
-            "indexPages": "Shopseiten indexieren",
-            "reindexAll": "Alles neu indexieren",
-            "reindexAllHelp": "Nötig nach einer Änderung des Embedding-Modells: alle Dokumente wurden mit dem vorherigen indexiert. Shopseiten werden neu gelesen, hochgeladene Dateien aus ihrem gespeicherten Text neu indexiert.",
-            "bulkIndexed": "{count} Dokument(e) indexiert.",
-            "bulkSkipped": "Übersprungen, weil die Seite leer ist: {names}.",
-            "off": {
-                "disabledTitle": "Shop-Wissen ist ausgeschaltet",
-                "disabledBody": "Das Antworten aus den eigenen Dokumenten Ihres Shops ist in den Plugin-Einstellungen ausgeschaltet, deshalb erreicht nichts auf dieser Seite einen Kunden. Schalten Sie „Aus den eigenen Dokumenten Ihres Shops antworten“ ein, um es zu nutzen.",
-                "noModelTitle": "Kein Embedding-Modell konfiguriert",
-                "noModelBody": "Shop-Wissen ist eingeschaltet, benötigt aber zusätzlich ein Embedding-Modell, um Dokumente zu indexieren und Fragen dagegen abzugleichen. Hinterlegen Sie eines in den Plugin-Einstellungen."
-            },
-            "modelDisabled": "In den Plugin-Einstellungen ausgeschaltet",
-            "store": {
-                "label": "Passagenspeicher",
-                "mariadb": "Indexierter Vektorspeicher (MariaDB)",
-                "portable": "Portabler Speicher — Vektoren werden in PHP verglichen",
-                "staleTitle": "Die Dokumente liegen im anderen Speicher",
-                "staleBody": "Der Speicher, der Fragen beantwortet, ist nicht der, in dem Ihre indexierten Dokumente liegen — der Assistent findet deshalb nichts, bis sie erneut indexiert werden. Die beiden Speicher haben getrennte Tabellen und es wird nichts kopiert; das passiert, wenn ein Shop das MariaDB-Vektorpaket bekommt oder verliert. Nutzen Sie oben „Alles neu indexieren“."
-            }
-        }
+  "swag-assistant-shop-info": {
+    "general": {
+      "mainMenuItemGeneral": "Assistent-Shopinformationen",
+      "description": "Dokumente, aus denen der Assistent antworten darf"
+    },
+    "list": {
+      "salesChannel": "Verkaufskanal",
+      "salesChannelHelp": "Dokumente werden pro Verkaufskanal indexiert, weil zwei Kanäle unterschiedliche Bedingungen haben können.",
+      "upload": "Dokument hochladen",
+      "uploadHelp": "PDF, TXT, MD, HTML oder DOCX, bis 8 MB. Der Text wird beim Hochladen extrahiert; die Datei selbst wird nicht gespeichert.",
+      "uploadButton": "Hochladen und indexieren",
+      "uploading": "Text wird extrahiert und indexiert…",
+      "columnName": "Dokument",
+      "columnStatus": "Status",
+      "columnChunks": "Passagen",
+      "columnDimension": "Vektorbreite",
+      "columnUpdated": "Zuletzt indexiert",
+      "statusIndexed": "Indexiert",
+      "statusPending": "Ausstehend",
+      "statusFailed": "Fehlgeschlagen",
+      "reindex": "Neu indexieren",
+      "delete": "Löschen",
+      "deleteTitle": "Dieses Dokument löschen?",
+      "deleteBody": "Die Passagen werden mit entfernt, der Assistent kann danach nicht mehr daraus antworten. Die Originaldatei liegt hier nicht und lässt sich nicht wiederherstellen.",
+      "emptyTitle": "Noch keine Dokumente",
+      "emptyBody": "Lade Widerrufsbelehrung, AGB, Datenschutzerklärung oder Versandinformationen hoch. Der Assistent antwortet dann daraus, statt abzulehnen.",
+      "reindexed": "„{name}“ neu indexiert: {count} Passagen.",
+      "uploaded": "„{name}“ indexiert: {count} Passagen.",
+      "deleted": "„{name}“ und die zugehörigen Passagen sind entfernt.",
+      "configuration": "Konfiguration",
+      "model": "Embedding-Modell",
+      "modelUnset": "Nicht gesetzt — Shopinformationen sind für diesen Verkaufskanal aus",
+      "openPluginSettings": "Plugin-Einstellungen öffnen",
+      "columnSource": "Quelle",
+      "sourceCms": "Shopseite",
+      "sourceUpload": "Hochgeladen",
+      "shopPages": "Die eigenen Seiten des Shops",
+      "shopPagesHelp": "Impressum, Datenschutzerklärung, Widerrufsbelehrung, AGB sowie Versand und Zahlung — gelesen aus den unter Einstellungen konfigurierten Seiten, damit du sie nicht hochladen musst. Ein erneutes Indexieren übernimmt seitdem gemachte Änderungen.",
+      "indexPages": "Shopseiten indexieren",
+      "reindexAll": "Alles neu indexieren",
+      "reindexAllHelp": "Nötig nach einer Änderung des Embedding-Modells: alle Dokumente wurden mit dem vorherigen indexiert. Shopseiten werden neu gelesen, hochgeladene Dateien aus ihrem gespeicherten Text neu indexiert.",
+      "bulkIndexed": "{count} Dokument(e) indexiert.",
+      "bulkSkipped": "Übersprungen, weil die Seite leer ist: {names}.",
+      "off": {
+        "disabledTitle": "Shop-Wissen ist ausgeschaltet",
+        "disabledBody": "Das Antworten aus den eigenen Dokumenten Ihres Shops ist in den Plugin-Einstellungen ausgeschaltet, deshalb erreicht nichts auf dieser Seite einen Kunden. Schalten Sie „Aus den eigenen Dokumenten Ihres Shops antworten“ ein, um es zu nutzen.",
+        "noModelTitle": "Kein Embedding-Modell konfiguriert",
+        "noModelBody": "Shop-Wissen ist eingeschaltet, benötigt aber zusätzlich ein Embedding-Modell, um Dokumente zu indexieren und Fragen dagegen abzugleichen. Hinterlegen Sie eines in den Plugin-Einstellungen."
+      },
+      "modelDisabled": "In den Plugin-Einstellungen ausgeschaltet",
+      "store": {
+        "label": "Passagenspeicher",
+        "mariadb": "Indexierter Vektorspeicher (MariaDB)",
+        "portable": "Portabler Speicher — Vektoren werden in PHP verglichen",
+        "staleTitle": "Die Dokumente liegen im anderen Speicher",
+        "staleBody": "Der Speicher, der Fragen beantwortet, ist nicht der, in dem Ihre indexierten Dokumente liegen — der Assistent findet deshalb nichts, bis sie erneut indexiert werden. Die beiden Speicher haben getrennte Tabellen und es wird nichts kopiert; das passiert, wenn ein Shop das MariaDB-Vektorpaket bekommt oder verliert. Nutzen Sie oben „Alles neu indexieren“."
+      },
+      "documents": "Indexierte Dokumente"
     }
+  }
 }

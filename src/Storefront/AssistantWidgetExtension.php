@@ -52,7 +52,6 @@ final class AssistantWidgetExtension extends AbstractExtension
         return [
             new TwigFunction('swag_assistant_widget_enabled', $this->isEnabled(...)),
             new TwigFunction('swag_assistant_widget_name', $this->assistantName(...)),
-            new TwigFunction('swag_assistant_greeting', $this->greeting(...)),
             new TwigFunction('swag_assistant_add_to_cart_enabled', $this->addToCartEnabled(...)),
             new TwigFunction('swag_assistant_theme', $this->theme(...)),
             new TwigFunction('swag_assistant_context_key', $this->contextKey(...)),
@@ -81,17 +80,6 @@ final class AssistantWidgetExtension extends AbstractExtension
     public function assistantName(string $salesChannelId): string
     {
         return $this->widgetSettings->assistantName($salesChannelId);
-    }
-
-    /**
-     * `$locale` comes from the template, which reads it off the request — the same value it puts in
-     * `data-locale` for price formatting, so the greeting and the numbers beside it can never
-     * disagree about which storefront this is. Absent, the fallback language's greeting applies; see
-     * {@see SystemConfigWidgetSettings::greeting()}.
-     */
-    public function greeting(string $salesChannelId, ?string $locale = null): string
-    {
-        return $this->widgetSettings->greeting($salesChannelId, $locale);
     }
 
     /**

@@ -76,7 +76,14 @@ final class JourneyReportPoisonedTranscriptTest extends TestCase
                 ]),
                 // Invents "fx-999" — never retrieved this run, so it must be caught.
                 self::textResponse('It is fx-026-blue-l, and fx-999 is also on sale.'),
-                self::toolCallResponse('add_to_cart', ['variantId' => 'fx-026-blue-l', 'quantity' => 1], 'call-2'),
+                // `options` is what a real model now sends: `add_to_cart` refuses a variant of a family the
+                // shopper never named — see AddToCartToolVariantChoiceTest. A canned transcript that
+                // omits it is no longer a transcript of a working turn.
+                self::toolCallResponse(
+                    'add_to_cart',
+                    ['variantId' => 'fx-026-blue-l', 'quantity' => 1, 'options' => [['Colour', 'Blue'], ['Size', 'L']]],
+                    'call-2',
+                ),
                 self::textResponse('Added it to your cart.'),
             ],
             $journey->runs * \count($journey->archetypes),

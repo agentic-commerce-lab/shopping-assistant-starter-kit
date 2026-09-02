@@ -149,7 +149,11 @@ final readonly class FindStoreToolFactory implements ToolFactoryInterface
     {
         // Return null to be absent this turn. Never construct a tool you then refuse to run: a tool
         // the model can see is a tool it will try, and a refusal reads to a shopper as a failure.
-        if (!$context->config->enableAddToCart) {
+        //
+        // `AssistantConfig` is a fixed shape and holds nothing of yours, so gate on your own
+        // plugin's config (see "What is not extensible yet") or on the state your tool needs. This
+        // one has no stores to offer if the directory is empty.
+        if ($this->directory->isEmpty()) {
             return null;
         }
 
@@ -182,17 +186,65 @@ before a merchant asks you why your extension "never works".
 
 namespace Acme\Assistant\Tool;
 
+use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
+use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolContext;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolFactoryInterface;
+use Swag\AssistantStarterKit\Core\Tool\ToolProductSummary;
+use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
-final readonly class CompatibilityToolFactory implements GroundedToolFactoryInterface
+#[AsTool(name: 'check_fitment', description: 'Check whether a product fits a given model year.')]
+final class CheckFitmentTool
+{
+    public function __construct(
+        private readonly CommerceGatewayInterface $gateway,
+        private readonly FactRenderer $renderer,
+        private readonly BlocklistFilter $blocklist,
+        private readonly TraceRecorder $trace,
+        private readonly AssistantConfig $config,
+    ) {}
+
+    /**
+     * @param string $productId The product to check.
+     * @param string $forModel  The model year the shopper owns, e.g. "2019".
+     */
+    public function __invoke(string $productId, string $forModel): array
+    {
+        $card = $this->gateway->product($productId, $this->config->scope);
+
+        if ($card === null) {
+            return ['fits' => null, 'note' => 'No such product in this shop.'];
+        }
+
+        // 1. Blocklist first, and record what it took.
+        $filtered = $this->blocklist->apply([$card], $this->config->scope);
+        $this->trace->record('blocklist.filter', ['stage' => 'post', 'removedIds' => $filtered['removed']]);
+
+        // 2. Register the survivors. This — not render() — is what makes them renderable.
+        $this->renderer->registerRetrieved($filtered['cards']);
+
+        if ($filtered['cards'] === []) {
+            return ['fits' => null, 'note' => 'Product exists but is not available in this shop.'];
+        }
+
+        return [
+            // Ids and names. Never a price, a stock level or a URL: the server substitutes those.
+            'products' => ToolProductSummary::of($filtered['cards']),
+            // Your own fact, which is the reason this tool exists.
+            'fits' => $forModel >= '2015',
+        ];
+    }
+}
+
+final readonly class CheckFitmentToolFactory implements GroundedToolFactoryInterface
 {
     public function create(GroundedToolContext $context): ?object
     {
-        return new CompatibilityTool(
+        return new CheckFitmentTool(
             $context->gateway,
-            // Facts a shopper will read go through the renderer. Returning a raw price from your own
-            // tool is the one thing this tier lets you do and should not.
             $context->renderer,
             $context->blocklist,
             $context->trace,
@@ -202,19 +254,42 @@ final readonly class CompatibilityToolFactory implements GroundedToolFactoryInte
 }
 ```
 
+> As in Example 1, the tool and its factory are shown in one block for reading. **PSR-4 needs one
+> class per file** — a plugin that pastes them into a single file will not autoload.
+
 ```xml
-<service id="Acme\Assistant\Tool\CompatibilityToolFactory">
+<service id="Acme\Assistant\Tool\CheckFitmentToolFactory">
     <tag name="swag_assistant.grounded_tool_factory"/>
 </service>
 ```
 
-Two obligations come with this tier, and neither is enforced mechanically:
+Two obligations come with this tier, and neither is enforced mechanically. **The order matters** —
+this is the sequence every shipped grounded tool follows, and `GetProductTool` is the shortest one to
+read:
 
-1. **Render facts, do not return them.** `$context->renderer->render($cards)` produces the cards the
-   response carries; hand the model ids and let the server supply the numbers.
-2. **Apply the blocklist.** `$context->blocklist->apply($cards, $context->config->scope)` — a merchant
-   who excluded a product excluded it from your tool too, and a blocklist that a plugin can bypass
-   does not survive a compliance review.
+1. **Apply the blocklist first.** `$filtered = $context->blocklist->apply($cards, $context->config->scope)`
+   — a merchant who excluded a product excluded it from your tool too, and a blocklist that a plugin
+   can bypass does not survive a compliance review. It returns
+   `array{cards: list<ProductCard>, removed: list<string>}`; record `removed` as `blocklist.filter`
+   the way the shipped tools do.
+2. **Register what survived, and return only ids and names.**
+   `$context->renderer->registerRetrieved($filtered['cards'])`, then return
+   `ToolProductSummary::of($filtered['cards'])`. Registering is what makes those ids *renderable*:
+   the output processor validates the model's answer against the registered set and renders the cards
+   from it, which is the whole grounding guarantee. **A tool that skips it renders nothing**, and the
+   turn is recorded `no_result` with a perfectly good answer in the prose.
+
+**Do not call `$context->renderer->render()` yourself.** Until 2026-09-02 this section told you to,
+and it was wrong twice: the method takes the *accepted ids* the grounding step selected, not your
+cards, and calling it is the output processor's job rather than the tool's. Your tool's job ends at
+`registerRetrieved()`.
+
+Three types you will import, because their namespaces are not guessable from the context object:
+`Swag\AssistantStarterKit\Core\Policy\BlocklistFilter`,
+`Swag\AssistantStarterKit\Core\Grounding\FactRenderer`, and the DTOs under
+`Swag\AssistantStarterKit\Core\Commerce\Dto\`. A wrong import here is an **HTTP 500**, not a
+degraded turn: factories are constructed while the agent is assembled, outside the
+`AgentExceptionInterface` catch that protects the turn itself.
 
 ## Example 3: change the system prompt
 
@@ -259,10 +334,19 @@ intended way to discover you dropped one. Run `composer run test:eval` after cha
 ## Example 4: send turns to your analytics
 
 The plugin ships one sink of its own — `LoggerTraceSink`, controlled by the **Logging** card's
-`logTraces` setting, which writes one line per reply to the shop's log and no shopper text. That is
-an example of this extension point rather than an analytics integration; the merchant-facing help
-text no longer mentions the tag, because a service-container tag in a settings form is documentation
-in the wrong place. Sinks are additive, so yours runs alongside it.
+`logTraces` setting, which writes one line per reply and no shopper text. That is an example of this
+extension point rather than an analytics integration; the merchant-facing help text no longer
+mentions the tag, because a service-container tag in a settings form is documentation in the wrong
+place. Sinks are additive, so yours runs alongside it.
+
+**It logs to a channel of its own, and the reason is worth borrowing.** Until 2026-09-02 it injected
+the shop-wide `logger` and wrote at `info` — which a stock production Shopware discards, because its
+file handler is `level: error` behind a `fingers_crossed` at `action_level: error`. The setting was
+on, the sink ran, and nothing was ever written; in `dev` the line appeared, which is why it looked
+fine. `TraceLogChannel` is now prepended onto the shop's `monolog` config and the service carries
+`<tag name="monolog.logger" channel="swag_assistant"/>`. **If your sink logs rather than enqueues,
+it has the same problem** — inject a channel of your own, or your integration is a setting that does
+nothing.
 
 ```php
 <?php declare(strict_types=1);
@@ -422,7 +506,7 @@ assistant simply gets worse:
 |---|---|---|
 | `BatchProductLookup` | `products(array $ids, CatalogScope): list<ProductCard>` | `CardResolver` falls back to one `product()` call per id — correct, and an N+1 on every rendered shortlist |
 | `MatchCountReader` | `countMatches(ProductQuery, CatalogScope): int` | The model only ever sees `matched`, which is a floor capped at the 50-product candidate window. It cannot tell *"here are all six occasion dresses"* from *"here are four of three hundred"* |
-| `FamilyVariantLookup` | `variantsOf(string $parentId, CatalogScope): list<ProductCard>` | `WholeFamilyResolver` returns nothing, so the assistant cannot see a truncated family — and `add_to_cart` loses the evidence it uses to refuse adding a product family instead of a variant |
+| `FamilyVariantLookup` | `variantsOf(string $parentId, CatalogScope): list<ProductCard>` | `WholeFamilyResolver` returns nothing, so the assistant cannot describe a family whose variants did not all fit in the candidate window. `add_to_cart` is unaffected: both of its variant refusals read the card it already loaded — `StockSource::Parent` for a family, and `parentId` plus `resolveVariant()` for a variant the shopper never chose — precisely so the one tool with write authority never fails open on an optional interface |
 | `CategoryTreeReader` | `categories(?string $parentId, CatalogScope): list<CategoryNode>` | A search that finds nothing offers no orientation: the shopper is told there are no results and given nowhere to go |
 
 Implement all four unless you have a reason not to. `DalCommerceGateway` implements every one and is

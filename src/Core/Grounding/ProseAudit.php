@@ -170,30 +170,38 @@ final readonly class ProseAudit
     }
 
     /**
-     * Attribute claims (material, and similar) in the prose that no rendered card's own `properties`
-     * backs — the {@see self::unbackedPrices()} analogue for {@see PropertyClaimExtractor}'s closed
-     * vocabulary. Same R85-style exemption: a value the shopper introduced themselves is not a claim
-     * by the model.
+     * Attribute claims (material, colour, size and the like) in the prose that nothing this turn
+     * entitled the model to state — the {@see self::unbackedPrices()} analogue for
+     * {@see PropertyClaimExtractor}'s closed vocabulary. Same R85-style exemption: a value the
+     * shopper introduced themselves is not a claim by the model.
      *
-     * @param list<ProductCard> $rendered
-     * @param list<string>      $givenDescriptions the product descriptions this run handed the model,
-     *                                             from {@see \Swag\AssistantStarterKit\Core\Tool\GivenDescriptions}
+     * **`$backed` arrives pre-built rather than as cards, and that is what keeps every exemption in
+     * one method.** There are now four sources of entitlement, not three: the cards the tools
+     * retrieved, the option values the shop disclosed without a card behind them (a truncated
+     * family's `families` block, the viewing line's family clause), the shopper's own words, and the
+     * descriptions handed over. The first two are both plain value sets and are merged by
+     * {@see BackedPropertyValues::of()} at the call site; folding the second in here instead would
+     * have meant a sixth parameter, and this list is already at the gate's ceiling.
+     *
+     * @param array<string, true> $backed      every value a reply may state, lowercased, from
+     *                                         {@see BackedPropertyValues::of()}
+     * @param list<string> $givenDescriptions  the product descriptions this run handed the model,
+     *                                         from {@see \Swag\AssistantStarterKit\Core\Tool\GivenDescriptions}
      *
      * @return list<string>
      */
     // @mago-expect lint:excessive-parameter-list
     // Five independent sources of truth for one question, and no two of them group: the prose is the
-    // model's, the cards are the server's, the shopper's message is the shopper's, the facets are the
-    // shop's vocabulary and the descriptions are the shop's prose. A bag object would hide which of
-    // them excused a claim, which is the only thing a reader of a finding wants to know.
+    // model's, the backed set is the server's, the shopper's message is the shopper's, the facets are
+    // the shop's vocabulary and the descriptions are the shop's prose. A bag object would hide which
+    // of them excused a claim, which is the only thing a reader of a finding wants to know.
     public function unbackedProperties(
         string $prose,
-        array $rendered,
+        array $backed,
         string $shopperMessage,
         FacetSet $facets,
         array $givenDescriptions = [],
     ): array {
-        $backed = BackedPropertyValues::of($rendered);
         $claims = $this->propertyClaims->extract($prose, $facets);
         $shopperLower = mb_strtolower($shopperMessage);
         $described = mb_strtolower(implode(' ', $givenDescriptions));

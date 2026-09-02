@@ -6,7 +6,10 @@ namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory\Bundle;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
+use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface;
@@ -16,6 +19,7 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary;
 use Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface;
+use Swag\AssistantStarterKit\Core\Prompt\RecentCardsContext;
 use Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider;
 use Swag\AssistantStarterKit\Core\Prompt\ViewingContext;
 use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
@@ -30,6 +34,7 @@ use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolFactoryInterface;
 use Swag\AssistantStarterKit\Core\Tool\Factory\SearchProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolContext;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
+use Swag\AssistantStarterKit\Core\Tool\FamilyOptionValues;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\Toolbox\AgentProcessor;
@@ -65,6 +70,16 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final readonly class AssistantAgentFactory
 {
+    /**
+     * The stage under which {@see self::create()} records the model that will answer the turn.
+     *
+     * A constant rather than a literal because three readers agree on the string and none of them
+     * can see the others: `phases.js` files it under the "Prepared" phase, `facts.js` prints it on
+     * the timeline, and `TraceExportSummary` lifts it into the exported summary. A typo here would
+     * leave all three quietly showing nothing.
+     */
+    public const MODEL_STAGE = 'model';
+
     /**
      * @param iterable<ToolFactoryInterface>         $toolFactories
      * @param iterable<GroundedToolFactoryInterface> $groundedToolFactories
@@ -140,12 +155,19 @@ final readonly class AssistantAgentFactory
         return \is_array($factories) ? array_values($factories) : iterator_to_array($factories, false);
     }
 
-    // @mago-expect lint:excessive-parameter-list
-    // Three of these are the turn's world — gateway, config, LLM — and the rest are what this
-    // particular request happens to be: whether a cart exists, what the shopper has open, and
-    // where they are standing. They are already grouped everywhere it helps (AssistantConfig,
-    // GroundedToolContext); one more level would only move the list somewhere a caller cannot see
-    // it, and every parameter past the third is optional at the call site.
+    /**
+     * Three of these are the turn's world — gateway, config, LLM — and the rest are what this
+     * particular request happens to be: whether a cart exists, what the shopper has open, where they
+     * are standing, and what they were shown a moment ago. They are already grouped everywhere it
+     * helps (AssistantConfig, GroundedToolContext); one more level would only move the list
+     * somewhere a caller cannot see it, and every parameter past the fourth is optional.
+     *
+     * @param list<ProductCard> $recentCards the cards the previous assistant reply rendered — see
+     *                                       {@see RecentCardsContext} for the wrong-variant-in-cart
+     *                                       defect this closes
+     *
+     * @mago-expect lint:excessive-parameter-list
+     */
     public function create(
         CommerceGatewayInterface $gateway,
         AssistantConfig $config,
@@ -153,9 +175,27 @@ final readonly class AssistantAgentFactory
         LlmSettings $llm,
         ?ProductCard $viewing = null,
         ?string $browsingCategoryId = null,
+        array $recentCards = [],
     ): Bundle {
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
+
+        // **Which model answered, recorded first and every turn.** Every other stage of the turn was
+        // already traceable; the one thing a merchant reading a bad reply could not tell was whether
+        // the shop had been pointed at a different model that week. `MODEL_STAGE` is recorded before
+        // anything can fail, so it is present even on a turn that dies inside the agent — which is
+        // precisely the turn someone opens the trace to explain.
+        //
+        // It rides in the trace rather than in a column on the conversation, deliberately: the model
+        // is a per-sales-channel setting and can change between two turns of the same conversation,
+        // so a column could only ever record one of them and would be wrong about the other. The
+        // export's summary reports the distinct names it finds — see
+        // {@see \Swag\AssistantStarterKit\Core\Trace\Export\TraceExportSummary}.
+        //
+        // The name only. `LlmSettings::$baseUrl` is not recorded here: an exported trace is a file a
+        // merchant forwards, and a provider URL is the one part of that config that has been seen
+        // carrying a credential in its path.
+        $trace->record(self::MODEL_STAGE, ['name' => $llm->model]);
 
         // Pre-grounding, and the reason this feature removes a model round trip.
         //
@@ -166,6 +206,15 @@ final readonly class AssistantAgentFactory
         // returns something newer. A turn that calls no tool therefore renders the product the
         // shopper is already looking at, with its real price and stock, and the model never had to
         // ask for it.
+        // **Order matters, and it is the only subtle thing here.** `registerRetrieved()` accumulates
+        // the retrieved *index* — which is what keeps both sets nameable without `validate()`
+        // counting them as invented — but REPLACES `lastBatchIds`, the default card set for a turn
+        // that calls no tool. The product on screen is the more specific answer to "what is this
+        // about" than a shortlist from the previous reply, so it is registered last and wins.
+        if ($recentCards !== []) {
+            $renderer->registerRetrieved($recentCards);
+        }
+
         if ($viewing !== null) {
             $renderer->registerRetrieved([$viewing]);
         }
@@ -254,6 +303,21 @@ final readonly class AssistantAgentFactory
             outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace, $facets)],
         );
 
+        $familyOptions = self::familyOptionsOf($gateway, $viewing, $config->scope);
+
+        // Recorded because the prompt is about to state these values to the model, and the property
+        // audit measures a reply against what the shop gave it. Without this line the one question
+        // `familyOptionsOf()` exists to answer — "which sizes are available?" — came back correct
+        // and annotated as suspect, because no retrieved card carries a sibling's size. See
+        // {@see DisclosedOptions}, and note the same recording happens for `search_products`'
+        // `families` block, which discloses option values for the same reason.
+        if ($familyOptions !== []) {
+            $trace->record(DisclosedOptions::STAGE, [
+                'source' => 'viewing',
+                'options' => DisclosedOptions::valuesOf([$familyOptions]),
+            ]);
+        }
+
         return new Bundle(
             $agent,
             $renderer,
@@ -261,7 +325,72 @@ final readonly class AssistantAgentFactory
             $toolbox,
             $this->prompt,
             $vocabularyStats['text'],
-            ViewingContext::line($viewing),
+            self::promptContext($viewing, $familyOptions, $recentCards),
         );
+    }
+
+    /**
+     * Every option value the viewed product's family offers, or `[]` when there is no family.
+     *
+     * **Why the prompt needs this and the pre-grounded card does not.** A detail page reports the
+     * *variant* the shopper selected — the storefront template says so outright, and it is the right
+     * id for "is this in stock?" and for add-to-cart, both of which must mean that exact unit. But
+     * {@see ViewingContext} then tells the model not to call a tool to look this product up, and a
+     * model obeying both facts answers *"which sizes are available?"* from the single size it was
+     * given. Measured on the staging shop 2026-09-02: *"specifically available in size L. There are
+     * no other sizes currently listed for this product."* — correctly grounded, and wrong.
+     *
+     * Making the model search instead would have undone the round trip this feature exists to save
+     * (10.1 s, see `ViewingContext`'s own docblock). Naming the family's option values costs one
+     * gateway query and keeps both.
+     *
+     * `instanceof` rather than a wider `CommerceGatewayInterface`, matching
+     * {@see \Swag\AssistantStarterKit\Core\Tool\WholeFamilyResolver}: family lookup is an optional
+     * capability, and a gateway without it degrades to the line it printed before.
+     *
+     * Through `$scope`, so a blocked sibling is never named. Without it the blocklist would leak the
+     * exact catalogue it exists to hide into the system prompt, where nothing downstream filters it.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function familyOptionsOf(
+        CommerceGatewayInterface $gateway,
+        ?ProductCard $viewing,
+        CatalogScope $scope,
+    ): array {
+        $parentId = $viewing?->parentId;
+
+        if ($parentId === null || !$gateway instanceof FamilyVariantLookup) {
+            return [];
+        }
+
+        return FamilyOptionValues::of($gateway->variantsOf($parentId, $scope))['options'];
+    }
+
+    /**
+     * The two "you already know about these" clauses, as one block for {@see SystemPrompt::build()}.
+     *
+     * Concatenated rather than given their own prompt parameter: `build()` appends this string after
+     * the rules and the vocabulary, and both clauses belong in exactly that position. A second
+     * parameter would have to be threaded through `Bundle` and every caller to say the same thing.
+     *
+     * Either half may be empty — most turns have no page product, and the first turn of a
+     * conversation has no previous reply — so the blank line between them is only written when both
+     * are actually present.
+     *
+     * @param array<string, list<string>> $familyOptions
+     * @param list<ProductCard>           $recentCards
+     */
+    private static function promptContext(?ProductCard $viewing, array $familyOptions, array $recentCards): string
+    {
+        $clauses = array_filter(
+            [
+                ViewingContext::line($viewing, $familyOptions),
+                RecentCardsContext::line($recentCards),
+            ],
+            static fn(string $clause): bool => $clause !== '',
+        );
+
+        return implode("\n\n", $clauses);
     }
 }

@@ -31,10 +31,15 @@ final class SearchTermListTest extends TestCase
         self::assertSame(['Glove'], SearchTermList::of('Glove', ['glove', 'GLOVE'], 'terms'));
     }
 
+    /**
+     * Four in total — one `term` plus three `terms`. The message must name the shared budget
+     * rather than the argument it happened to be given, which it did not until 2026-09-02; see
+     * {@see \Swag\AssistantStarterKit\Tests\Core\Tool\SearchTermListBoundTest}.
+     */
     public function testTooManyTermsThrows(): void
     {
         $this->expectException(ToolArgumentException::class);
-        $this->expectExceptionMessageMatches('/at most 3 terms/');
+        $this->expectExceptionMessageMatches('/at most 3 search terms in total/');
 
         SearchTermList::of('a', ['b', 'c', 'd'], 'terms');
     }

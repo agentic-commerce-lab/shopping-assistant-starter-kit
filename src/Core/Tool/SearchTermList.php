@@ -18,7 +18,11 @@ namespace Swag\AssistantStarterKit\Core\Tool;
 final class SearchTermList
 {
     /**
-     * The most search terms one call may carry.
+     * The most search terms one call may carry, **`term` and `terms` counted together**.
+     *
+     * That the two share one budget was always true and was not written down anywhere the model
+     * could read — see {@see \Swag\AssistantStarterKit\Tests\Core\Tool\SearchTermListBoundTest}
+     * for what that cost.
      *
      * Three. The reason a list exists at all is an answer spanning two disjoint kinds of product
      * (measured: dresses and suits for a wedding), and three leaves room for a third without letting
@@ -89,8 +93,15 @@ final class SearchTermList
         }
 
         if (\count($kept) > self::MAX_TERMS) {
+            // **Names the total and the other argument.** The old message read
+            // `Argument "terms" accepts at most 3 terms.` for an overflow that a `term` alongside
+            // three `terms` had caused — so it pointed at the wrong argument and stated a bound
+            // that is not the one enforced. Measured with `openai/gpt-5-mini` on 2026-09-02: the
+            // model was rejected, did not work out what to change, and the turn rendered nothing.
+            // A model that reads only this sentence must be able to fix the call from it.
             throw new ToolArgumentException(\sprintf(
-                'Argument "%s" accepts at most %d terms.',
+                'Argument "%s" accepts at most %d search terms in total, counting "term" when you '
+                . 'pass it as well. Drop the extra terms and call the tool once more.',
                 $name,
                 self::MAX_TERMS,
             ));

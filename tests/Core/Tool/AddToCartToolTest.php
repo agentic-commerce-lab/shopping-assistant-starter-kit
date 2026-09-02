@@ -21,6 +21,14 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 final class AddToCartToolTest extends TestCase
 {
+    /**
+     * The option values the shopper chose, which `add_to_cart` now requires for any product that
+     * has variants — see {@see AddToCartToolVariantChoiceTest} for why a variant nobody named is
+     * refused. Every case in this file is about something else (quantity bounds, cart limits, what
+     * the note reports), so the choice is stated once here rather than restated at each call.
+     */
+    private const CHOSEN = [['Colour', 'Blue'], ['Size', 'L']];
+
     private TraceRecorder $trace;
 
     private FactRenderer $renderer;
@@ -105,7 +113,7 @@ final class AddToCartToolTest extends TestCase
 
     public function testAddsTheRequestedVariantAndReportsTheCart(): void
     {
-        $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2);
+        $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2, options: self::CHOSEN);
 
         self::assertSame(2, $result['cart']['itemCount']);
         self::assertSame('allowed', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
@@ -113,7 +121,11 @@ final class AddToCartToolTest extends TestCase
 
     public function testBlocksAQuantityAboveMaxItemQuantity(): void
     {
-        $result = $this->tool(new AssistantConfig(maxItemQuantity: 5))(variantId: 'fx-026-blue-l', quantity: 99);
+        $result = $this->tool(new AssistantConfig(maxItemQuantity: 5))(
+            variantId: 'fx-026-blue-l',
+            quantity: 99,
+            options: self::CHOSEN,
+        );
 
         self::assertSame('cart_limit', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
         self::assertArrayNotHasKey('cart', $result);
@@ -132,10 +144,10 @@ final class AddToCartToolTest extends TestCase
     {
         $tool = $this->tool(new AssistantConfig(maxItemQuantity: 5, maxCartValue: 100_000.0));
 
-        $first = $tool(variantId: 'fx-026-blue-l', quantity: 5);
+        $first = $tool(variantId: 'fx-026-blue-l', quantity: 5, options: self::CHOSEN);
         self::assertSame(5, $first['cart']['itemCount'] ?? null);
 
-        $second = $tool(variantId: 'fx-026-blue-l', quantity: 5);
+        $second = $tool(variantId: 'fx-026-blue-l', quantity: 5, options: self::CHOSEN);
 
         self::assertArrayNotHasKey('cart', $second);
         self::assertSame('cart_limit', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
@@ -144,7 +156,11 @@ final class AddToCartToolTest extends TestCase
 
     public function testBlocksWhenTheCartWouldExceedMaxCartValue(): void
     {
-        $result = $this->tool(new AssistantConfig(maxCartValue: 100.0))(variantId: 'fx-026-blue-l', quantity: 5);
+        $result = $this->tool(new AssistantConfig(maxCartValue: 100.0))(
+            variantId: 'fx-026-blue-l',
+            quantity: 5,
+            options: self::CHOSEN,
+        );
 
         self::assertSame('cart_limit', $this->trace->payload(AddToCartTool::TRACE_STAGE)['policyReasonCode']);
         self::assertArrayNotHasKey('cart', $result);

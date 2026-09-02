@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Trace\Export;
 
+use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 use Swag\AssistantStarterKit\Entity\Conversation\ConversationEntity;
 use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
 
@@ -32,7 +33,8 @@ final class TraceExportSummary
 
     /**
      * @return array{id: string, createdAt: string, salesChannel: string, user: string, turns: int,
-     *               outcome: string, totalMs: int, shopMs: int, modelMs: int, toolCalls: int}
+     *               outcome: string, models: list<string>, totalMs: int, shopMs: int, modelMs: int,
+     *               toolCalls: int}
      */
     public static function of(ConversationEntity $conversation, string $salesChannelName): array
     {
@@ -67,6 +69,7 @@ final class TraceExportSummary
             'user' => self::user($conversation),
             'turns' => $conversation->getTurnCount(),
             'outcome' => (string) $conversation->getOutcome(),
+            'models' => self::models($events),
             'totalMs' => $totalMs,
             // Floored at zero: `total_ms` and the event offsets are written by different code
             // paths, and a negative "shop time" would be an arithmetic artefact reported as a fact.
@@ -74,6 +77,52 @@ final class TraceExportSummary
             'modelMs' => $modelMs,
             'toolCalls' => $toolCalls,
         ];
+    }
+
+    /**
+     * Every model that answered a turn of this conversation, distinct and in the order first seen.
+     *
+     * **A list, not a string.** The model is a per-sales-channel setting, so a conversation whose
+     * turns straddle a config change genuinely used two of them, and a scalar here would have to
+     * pick one and be wrong about the other turn. Almost always a list of one; a list of two is the
+     * answer to "why did this conversation start well and end badly".
+     *
+     * Empty for a conversation recorded before {@see AssistantAgentFactory::MODEL_STAGE} existed.
+     * That is the honest answer — nothing in the row can name a model a turn never wrote down — and
+     * it is the same treatment an offset of `0` gets from a row written before `elapsed_ms` did.
+     *
+     * @param list<TraceEventEntity> $events
+     *
+     * @return list<string>
+     */
+    private static function models(array $events): array
+    {
+        $recorded = array_filter(
+            $events,
+            static fn(TraceEventEntity $event): bool => $event->getStage() === AssistantAgentFactory::MODEL_STAGE,
+        );
+
+        $names = array_map(static fn(TraceEventEntity $event): string => self::modelName(
+            $event->getPayload()['name'] ?? null,
+        ), $recorded);
+
+        // `array_filter` with no callback drops the empty strings a malformed payload produced, and
+        // `array_unique` keeps the first occurrence of each name — which is what makes this the
+        // order first seen rather than the order last seen.
+        return array_values(array_unique(array_filter($names)));
+    }
+
+    /**
+     * A payload's `name` as a string, or `''` for anything that is not one.
+     *
+     * The payload is a JSON column: what comes back is whatever was written, and a row written by
+     * an older version — or by hand — can hold anything at all. An empty string is the one value
+     * {@see self::models()} drops, so a malformed name is absent from the summary rather than
+     * printed as `null` or coerced into `"Array"`.
+     */
+    private static function modelName(mixed $name): string
+    {
+        return \is_string($name) ? $name : '';
     }
 
     /**

@@ -4,10 +4,10 @@
  * is what gets left behind when the Administration changes theme.
  */
 /*
- * The Administration centres `mt-card` in a column of this width. The scope control and the document
- * table are not cards, so nothing aligned them to it and they sat flush against the content edge
- * while every card started ~190px further in. Named once here rather than repeated: if the
- * Administration ever changes the card measure, this is the single line that has to follow it.
+ * The Administration centres `mt-card` in a column of this width. The scope control is the only
+ * thing left on this page that is not a card — the document table moved inside one — so this aligns
+ * that one control to the cards it governs. Named rather than inlined: if the Administration ever
+ * changes the card measure, this is the single line that has to follow it.
  */
 $card-measure: 960px;
 
@@ -17,24 +17,16 @@ $card-measure: 960px;
     }
 
     /*
-     * One column for the whole page. Everything that is not a card is brought onto the card measure,
-     * so the page reads as a single stack rather than a table and a select that happen to share a
-     * screen with some cards.
-     */
-    &__scope,
-    &__grid {
-        max-width: $card-measure;
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    /*
-     * The page's scope, above the cards it governs. Not in a card of its own: it is one control, and
-     * wrapping a single select in a titled container would make the page read as three equal steps
-     * when only one of them is a choice about the page itself.
+     * The page's scope, above the cards it governs, and brought onto their measure so the page reads
+     * as a single stack rather than a select that happens to share a screen with some cards.
+     *
+     * Not in a card of its own: it is one control, and wrapping a single select in a titled container
+     * would make the page read as four equal steps when only one of them is a choice about the page
+     * itself.
      */
     &__scope {
-        margin-bottom: 24px;
+        max-width: $card-measure;
+        margin: 0 auto 24px;
     }
 
     /*
@@ -78,26 +70,26 @@ $card-measure: 960px;
         font-size: 13px;
     }
 
-    &__grid,
-    &__skeleton,
-    &__config {
-        margin-top: 24px;
+    /*
+     * The table fills its card edge to edge. This is the Administration's own pattern for a grid in a
+     * card — `sw-integration-list` does the same — because a data grid already draws its own row
+     * padding, and a card's padding around it reads as a second, misaligned border.
+     *
+     * Scoped to the documents card rather than written as a bare `.mt-card__content`: the three
+     * cards either side of it hold ordinary form controls and need their padding.
+     */
+    &__documents {
+        .mt-card__content {
+            padding: 0;
+        }
     }
 
     /*
-     * **Back into the document flow.** `sw-entity-listing` renders with `sw-data-grid--full-page`,
-     * whose Administration rule is `position: absolute` — right for a listing that IS the page, wrong
-     * for one sitting between cards. Absolute took the table out of flow, so the configuration card
-     * below it was painted underneath the rows instead of after them, and a merchant read "no
-     * embedding model configured" across the middle of eight indexed documents.
-     *
-     * `.sw-data-grid` is named a second time only to carry weight: BEM nesting compiles `&__grid` to
-     * a single class, which ties the Administration's own two-class selector exactly, and a tie is
-     * decided by load order — which the Administration wins. Three classes beat two whatever the
-     * order, and that is cheaper to live with than `!important`.
+     * The skeleton stands in for the table, so it keeps the gap the card it replaces would have had.
+     * The cards themselves are spaced by the Administration.
      */
-    &__grid.sw-data-grid.sw-data-grid--full-page {
-        position: static;
+    &__skeleton {
+        margin-top: 8px;
     }
 
     /*
