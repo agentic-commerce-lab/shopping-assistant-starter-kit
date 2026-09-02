@@ -35,13 +35,15 @@ Administration traces, and the extension seam behind the assistant.
 
 ## Why this is more than a chatbot shell
 
-The model never writes the product facts a shopper sees. It selects product IDs; the plugin then
-renders prices, stock, URLs, and images from Shopware's live `SalesChannelContext`. Customer-group
-pricing, rules, and the current session therefore stay authoritative.
+The model selects product IDs; the plugin then renders the product cards — including prices, stock,
+URLs, and images — from Shopware's live `SalesChannelContext`. Customer-group pricing, rules, and
+the current session therefore stay authoritative. The accompanying model prose is audited separately
+for unsupported price, availability, and property claims.
 
 This creates three structural guarantees:
 
-- **Grounded product facts:** the model cannot invent a displayed price or stock level.
+- **Authoritative product cards:** displayed prices and stock come from Shopware and cannot be
+  changed by the model; free-form prose is audited separately.
 - **Variant-level answers:** size, colour, price, and availability come from the selected variant,
   not from an aggregate parent product.
 - **A real catalogue boundary:** blocked products never enter the model context.

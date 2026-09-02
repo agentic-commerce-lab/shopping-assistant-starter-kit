@@ -20,28 +20,25 @@ use Swag\AssistantStarterKit\Core\Prompt\SystemPrompt;
  */
 final class SystemPromptToolAndDisplayRulesTest extends TestCase
 {
-    /**
-     * The rule that makes descriptions reachable at all.
-     *
-     * `compare_products` is the only tool that returns them, so a model that answers "which one" from
-     * `search_products` results alone never sees a word of the shop's own prose — and the whole
-     * comparison-path design would be dead code. Conditional on the tool existing, for the reason
-     * `SystemPrompt::COMPARE_PRODUCTS_AVAILABLE` already documents: telling a model to call a tool that
-     * is not in its toolbox is worse than saying nothing.
-     */
-    public function testItTellsTheModelToCompareWhenItHasToChooseBetweenCandidates(): void
+    /** The comparison tool is reserved for a shopper-requested comparison or choice. */
+    public function testItLimitsComparisonToARequestedComparisonOrChoice(): void
     {
         $on = SystemPrompt::build(new AssistantConfig(enableCompareProducts: true));
 
-        self::assertStringContainsString('deciding between products you have already found', $on);
-        self::assertStringContainsString("the shop's own description", $on);
+        self::assertStringContainsString('asks you to compare products or choose between two or more products', $on);
+        self::assertStringContainsString('Do not call it only to enrich an ordinary recommendation', $on);
+        self::assertStringContainsString('descriptions, which can reveal the real difference', $on);
     }
 
     public function testTheComparisonAdviceIsSilentWhenTheToolIsOff(): void
     {
         $off = SystemPrompt::build(new AssistantConfig(enableCompareProducts: false));
 
-        self::assertStringNotContainsString('deciding between products you have already found', $off);
+        self::assertStringNotContainsString(
+            'asks you to compare products or choose between two or more products',
+            $off,
+        );
+        self::assertStringNotContainsString('Do not call it only to enrich an ordinary recommendation', $off);
     }
 
     /**
