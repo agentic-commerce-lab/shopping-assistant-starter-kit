@@ -146,10 +146,16 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // viewing line's family clause — is the shop's statement, not an invention. Without it the
         // one question those two features exist to answer ("what sizes is this in?") came back
         // correct AND annotated as suspect. Measured on the live shop 2026-09-02.
+        // The passages travel with the descriptions, and their absence was a defect of its own: a
+        // correct returns answer — "tyres that have been mounted on a rim cannot be returned" —
+        // came back flagging `Rim`, because that word is in the catalogue's property vocabulary and
+        // the shop's own document was never offered as backing. `unbackedPricesInProse()` above has
+        // had the passages since 2026-08-27; this is the same exemption, one claim type later.
+        // Measured on staging 2026-09-02.
         $this->renderer->unbackedPropertiesInProse(
             $text,
             $this->facets,
-            GivenDescriptions::from($this->trace),
+            [...GivenDescriptions::from($this->trace), ...RetrievedPassages::from($this->trace)],
             DisclosedOptions::from($this->trace),
         );
     }
