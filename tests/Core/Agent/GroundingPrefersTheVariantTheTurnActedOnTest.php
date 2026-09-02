@@ -53,6 +53,25 @@ final class GroundingPrefersTheVariantTheTurnActedOnTest extends TestCase
         self::assertSame(['fx-026-blue-l'], self::renderedIds($renderer));
     }
 
+    /**
+     * The neighbouring case, measured the same day: the reply rules a variant out by naming other
+     * values of its own option group, and the card must not be that variant.
+     *
+     * Live, the reply *"sowohl in Größe M als auch in Größe L"* rendered a card reading **Size: XL**.
+     * Here the colour group carries it: a reply about the Blue one must not render the Black one.
+     */
+    public function testAVariantTheReplyRulesOutIsNotTheCardEither(): void
+    {
+        $renderer = $this->renderer();
+
+        // Black first, so registration order alone would pick it.
+        $renderer->registerRetrieved([$this->card('fx-026-black-m'), $this->card('fx-026-blue-m')]);
+
+        $this->process($renderer, 'The Trail Jersey in Blue, size M is the one I would take.');
+
+        self::assertSame(['fx-026-blue-m'], self::renderedIds($renderer));
+    }
+
     /** @return list<string> */
     private static function renderedIds(FactRenderer $renderer): array
     {

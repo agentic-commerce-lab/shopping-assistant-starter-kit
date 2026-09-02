@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Llm;
 
+use Swag\AssistantStarterKit\Core\Llm\Egress\ProviderErrorRetryStrategy;
 use Swag\AssistantStarterKit\Core\Llm\Egress\ValidatingHttpClient;
 use Symfony\AI\Platform\Bridge\Generic\Factory;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\HttpClient\RetryableHttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class PlatformFactory
@@ -57,9 +59,21 @@ final class PlatformFactory
     /** Egress validation applies to embedding calls exactly as it does to completions. */
     private static function guarded(LlmSettings $settings, ?HttpClientInterface $httpClient): HttpClientInterface
     {
-        return new ValidatingHttpClient(
-            $httpClient ?? HttpClient::create(['timeout' => 30]),
-            allowInsecure: $settings->allowInsecureEgress,
+        // **Retry inside the guard, not outside it.** `ValidatingHttpClient` is what refuses an
+        // egress to a private or loopback address, and a retry wrapped around it would repeat the
+        // request the guard just refused. Wrapped the other way, every attempt — the first and its
+        // retries — passes through the same check.
+        //
+        // Two retries, because the failure this exists for is a single stalled upstream leg rather
+        // than an outage: see {@see ProviderErrorRetryStrategy} for the measurement, and for why the
+        // status code alone would never have caught it.
+        return new RetryableHttpClient(
+            new ValidatingHttpClient(
+                $httpClient ?? HttpClient::create(['timeout' => 30]),
+                allowInsecure: $settings->allowInsecureEgress,
+            ),
+            new ProviderErrorRetryStrategy(),
+            maxRetries: 2,
         );
     }
 }

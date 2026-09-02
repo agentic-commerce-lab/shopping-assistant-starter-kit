@@ -113,21 +113,21 @@ final class FactRenderer
     }
 
     /**
-     * The name of every retrieved product, keyed by its canonical id.
+     * Every card this turn retrieved, in registration order.
      *
      * Exposed so {@see \Swag\AssistantStarterKit\Core\Agent\GroundingOutputProcessor} can find out
      * which products a reply *names* — the model writes names, never ids, because the prompt forbids
      * it from describing how its answer is displayed. See {@see ProseProductNames} for what that cost
      * before this existed.
      *
-     * Returns names rather than taking the prose, so the index stays this class's business and the text
-     * matching stays testable on its own.
+     * Cards rather than the id => name map this used to return: a name cannot tell two variants of one
+     * family apart, and which of them a reply is about needs their options — {@see ContradictedVariants}.
      *
-     * @return array<string, string> canonical id => product name
+     * @return list<ProductCard>
      */
-    public function retrievedNamesById(): array
+    public function retrievedCards(): array
     {
-        return $this->index->namesById();
+        return $this->index->cards();
     }
 
     /**
