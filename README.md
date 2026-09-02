@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-189eff)](LICENSE)
 
 A customizable starter kit for merchants, agencies, and developers building a shopper-facing
-assistant for Shopware 6.7. It provides a working reference implementation that you can evaluate in
+assistant for Shopware 6.6. It provides a working reference implementation that you can evaluate in
 a real shop, adapt to a merchant's catalogue, and use as the foundation for a custom assistant.
 
 This is **not a finished assistant or a production-ready Shopware Store extension**. It is a
@@ -81,7 +81,10 @@ This creates three structural guarantees:
 
 You need:
 
-- Shopware 6.7 and PHP 8.2 or newer;
+- Shopware **6.6.10.12 or newer** and PHP 8.2 or newer. This branch is 6.6 only —
+  `shopware/core` and `shopware/storefront` are constrained to `~6.6.0`, and the floor inside
+  6.6 comes from the `symfony/* ~7.4.0` pins: the Symfony AI packages this plugin is built on
+  need Symfony 7.3 or newer, and `shopware/core` reached 7.4 at 6.6.10.12;
 - any OpenAI-compatible chat-completions endpoint — OpenAI itself, a gateway such as
   OpenRouter, Azure, or a model you host;
 - Composer access to the shop for the plugin's PHP dependencies.

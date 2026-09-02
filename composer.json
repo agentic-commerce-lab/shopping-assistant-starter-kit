@@ -1,115 +1,124 @@
 {
-  "name": "swag/assistant-starter-kit",
-  "description": "Shopper-facing, merchant-operated shopping assistant for Shopware 6.7",
-  "type": "shopware-platform-plugin",
-  "license": "MIT",
-  "require": {
-    "php": "^8.2",
-    "ext-ctype": "*",
-    "ext-dom": "*",
-    "ext-filter": "*",
-    "ext-mbstring": "*",
-    "ext-zip": "*",
-    "doctrine/dbal": "^4.0",
-    "masterminds/html5": "^2.11",
-    "psr/cache": "^3.0",
-    "psr/log": "^3.0",
-    "shopware/core": "~6.7.0",
-    "shopware/storefront": "~6.7.0",
-    "smalot/pdfparser": "^2.12",
-    "symfony/ai-agent": "0.12.*",
-    "symfony/ai-generic-platform": "0.12.*",
-    "symfony/ai-platform": "0.12.*",
-    "symfony/ai-store": "0.12.*",
-    "symfony/cache": "~7.4.0",
-    "symfony/console": "~7.4.0",
-    "symfony/dependency-injection": "~7.4.0",
-    "symfony/event-dispatcher": "~7.4.0",
-    "symfony/http-client": "~7.4.0",
-    "symfony/http-client-contracts": "^3.0",
-    "symfony/http-foundation": "~7.4.0",
-    "symfony/messenger": "~7.4.0",
-    "symfony/rate-limiter": "~7.4.0",
-    "symfony/routing": "~7.4.0",
-    "symfony/serializer": "~7.4.0",
-    "symfony/uid": "~7.4.0",
-    "twig/twig": "^3.26"
-  },
-  "require-dev": {
-    "ext-simplexml": "*",
-    "captainhook/captainhook": "^5.25",
-    "captainhook/hook-installer": "^1.0",
-    "carthage-software/mago": "^1.30",
-    "dompdf/dompdf": "^3.1",
-    "phauthentic/cognitive-code-analysis": "^1.11",
-    "phpunit/phpunit": "^11.0",
-    "shipmonk/composer-dependency-analyser": "^1.0",
-    "symfony/ai-maria-db-store": "0.12.*",
-    "symfony/dotenv": "~7.4.0",
-    "symfony/filesystem": "~7.4.0"
-  },
-  "conflict": {
-    "symfony/clock": ">=8.0",
-    "symfony/console": ">=8.0",
-    "symfony/event-dispatcher": ">=8.0",
-    "symfony/property-access": ">=8.0",
-    "symfony/property-info": ">=8.0",
-    "symfony/serializer": ">=8.0",
-    "symfony/string": ">=8.0",
-    "symfony/uid": ">=8.0"
-  },
-  "suggest": {
-    "symfony/ai-maria-db-store": "0.12.* — indexes shop-information vectors natively on MariaDB 11.7+, which the plugin prefers wherever it works. Without it the assistant compares vectors in PHP: exact rather than approximate, unremarkable for a few hundred passages and slower on thousands."
-  },
-  "autoload": {
-    "psr-4": { "Swag\\AssistantStarterKit\\": "src/" }
-  },
-  "autoload-dev": {
-    "psr-4": { "Swag\\AssistantStarterKit\\Tests\\": "tests/" }
-  },
-  "extra": {
-    "shopware-plugin-class": "Swag\\AssistantStarterKit\\SwagAssistantStarterKit",
-    "label": {
-      "en-GB": "Shopping Assistant Starter Kit"
+    "name": "swag/assistant-starter-kit",
+    "description": "Shopper-facing, merchant-operated shopping assistant for Shopware 6.7",
+    "type": "shopware-platform-plugin",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "ext-ctype": "*",
+        "ext-dom": "*",
+        "ext-filter": "*",
+        "ext-mbstring": "*",
+        "ext-zip": "*",
+        "doctrine/dbal": "^3.9 || ^4.0",
+        "masterminds/html5": "^2.11",
+        "psr/cache": "^3.0",
+        "psr/log": "^3.0",
+        "shopware/core": "~6.6.0 || ~6.7.0",
+        "shopware/storefront": "~6.6.0 || ~6.7.0",
+        "smalot/pdfparser": "^2.12",
+        "symfony/ai-agent": "0.12.*",
+        "symfony/ai-generic-platform": "0.12.*",
+        "symfony/ai-platform": "0.12.*",
+        "symfony/ai-store": "0.12.*",
+        "symfony/cache": "~7.4.0",
+        "symfony/console": "~7.4.0",
+        "symfony/dependency-injection": "~7.4.0",
+        "symfony/event-dispatcher": "~7.4.0",
+        "symfony/http-client": "~7.4.0",
+        "symfony/http-client-contracts": "^3.0",
+        "symfony/http-foundation": "~7.4.0",
+        "symfony/messenger": "~7.4.0",
+        "symfony/rate-limiter": "~7.4.0",
+        "symfony/routing": "~7.4.0",
+        "symfony/serializer": "~7.4.0",
+        "symfony/uid": "~7.4.0",
+        "twig/twig": "^3.26"
     },
-    "description": {
-      "en-GB": "Shopper-facing, merchant-operated shopping assistant with server-side grounding."
-    }
-  },
-  "config": {
-    "process-timeout": 1800,
-    "allow-plugins": {
-      "captainhook/hook-installer": true,
-      "php-http/discovery": true,
-      "symfony/runtime": true
+    "require-dev": {
+        "ext-simplexml": "*",
+        "captainhook/captainhook": "^5.25",
+        "captainhook/hook-installer": "^1.0",
+        "carthage-software/mago": "^1.30",
+        "dompdf/dompdf": "^3.1",
+        "phauthentic/cognitive-code-analysis": "^1.11",
+        "phpunit/phpunit": "^11.0",
+        "shipmonk/composer-dependency-analyser": "^1.0",
+        "symfony/ai-maria-db-store": "0.12.*",
+        "symfony/dotenv": "~7.4.0",
+        "symfony/filesystem": "~7.4.0"
     },
-    "sort-packages": true,
-    "audit": {
-      "ignore": {
-        "CVE-2026-53965": "mcp/sdk SSE buffer growth, reachable only through symfony/mcp-bundle's MCP client, which this plugin never constructs. shopware/core v6.7.13.0 requires mcp/sdk ^0.6.0 and the fix is 0.7.1, so it is not resolvable from here. Added 2026-08-19 (ruling R57); re-check when shopware/core widens that constraint."
-      }
+    "conflict": {
+        "symfony/clock": ">=8.0",
+        "symfony/console": ">=8.0",
+        "symfony/event-dispatcher": ">=8.0",
+        "symfony/property-access": ">=8.0",
+        "symfony/property-info": ">=8.0",
+        "symfony/serializer": ">=8.0",
+        "symfony/string": ">=8.0",
+        "symfony/uid": ">=8.0"
+    },
+    "suggest": {
+        "symfony/ai-maria-db-store": "0.12.* \u2014 indexes shop-information vectors natively on MariaDB 11.7+, which the plugin prefers wherever it works. Without it the assistant compares vectors in PHP: exact rather than approximate, unremarkable for a few hundred passages and slower on thousands."
+    },
+    "autoload": {
+        "psr-4": {
+            "Swag\\AssistantStarterKit\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Swag\\AssistantStarterKit\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "shopware-plugin-class": "Swag\\AssistantStarterKit\\SwagAssistantStarterKit",
+        "label": {
+            "en-GB": "Shopping Assistant Starter Kit"
+        },
+        "description": {
+            "en-GB": "Shopper-facing, merchant-operated shopping assistant with server-side grounding."
+        }
+    },
+    "config": {
+        "process-timeout": 1800,
+        "allow-plugins": {
+            "captainhook/hook-installer": true,
+            "php-http/discovery": true,
+            "symfony/runtime": true
+        },
+        "sort-packages": true,
+        "audit": {
+            "ignore": {
+                "CVE-2026-53965": "mcp/sdk SSE buffer growth, reachable only through symfony/mcp-bundle's MCP client, which this plugin never constructs. shopware/core v6.7.13.0 requires mcp/sdk ^0.6.0 and the fix is 0.7.1, so it is not resolvable from here. Added 2026-08-19 (ruling R57); re-check when shopware/core widens that constraint."
+            }
+        }
+    },
+    "scripts": {
+        "format": "mago fmt",
+        "format:check": "mago fmt --check",
+        "lint": "mago lint",
+        "lint:fix": "mago lint --fix",
+        "typecheck": "mago analyze",
+        "test": "phpunit --exclude-group eval",
+        "test:eval": "phpunit --group eval",
+        "quality:filesize": "php scripts/check_file_length.php src",
+        "quality:dupes": "jscpd",
+        "quality:depcheck": "composer-dependency-analyser",
+        "quality:security": "composer audit",
+        "quality": [
+            "@format:check",
+            "@lint",
+            "@typecheck",
+            "@quality:filesize",
+            "@quality:dupes",
+            "@quality:depcheck",
+            "@quality:security"
+        ],
+        "quality:deps": "composer outdated --direct",
+        "quality:maintainability": "phpcca analyse src",
+        "quality:hotspots": "phpcca churn src",
+        "build": "shopware-cli extension build .",
+        "build:storefront": "shopware-cli extension build ."
     }
-  },
-  "scripts": {
-    "format": "mago fmt",
-    "format:check": "mago fmt --check",
-    "lint": "mago lint",
-    "lint:fix": "mago lint --fix",
-    "typecheck": "mago analyze",
-    "test": "phpunit --exclude-group eval",
-    "test:eval": "phpunit --group eval",
-    "quality:filesize": "php scripts/check_file_length.php src",
-    "quality:dupes": "jscpd",
-    "quality:depcheck": "composer-dependency-analyser",
-    "quality:security": "composer audit",
-    "quality": [
-      "@format:check", "@lint", "@typecheck",
-      "@quality:filesize", "@quality:dupes", "@quality:depcheck", "@quality:security"
-    ],
-    "quality:deps": "composer outdated --direct",
-    "quality:maintainability": "phpcca analyse src",
-    "quality:hotspots": "phpcca churn src",
-    "build": "shopware-cli extension build .",
-    "build:storefront": "shopware-cli extension build ."
-  }
 }
