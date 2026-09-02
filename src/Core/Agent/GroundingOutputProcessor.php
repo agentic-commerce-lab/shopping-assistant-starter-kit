@@ -165,13 +165,26 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
      * model listed everything it found. Measured live 2026-09-01: three products named, six cards
      * rendered.
      *
+     * **A name is not an identity.** Shopware names a variant after its parent, so every variant of a
+     * family answers to the same name, and more than one of them is registered on an ordinary turn:
+     * the previous reply's card replayed by {@see \Swag\AssistantStarterKit\Core\Prompt\RecentCardsContext}
+     * or the product on screen, plus whatever this turn's tools returned. Which one a name points at
+     * is therefore decided by {@see FactRenderer::lastRetrievedBatch()} — the cards the turn's most
+     * recent tool call actually returned. Without it, "Trail Jersey" resolved to whichever variant was
+     * registered first: a turn that added size L rendered the turn-old size M card beside prose about
+     * size L, with the wrong price and the wrong stock. Reported live 2026-09-02.
+     *
      * @return list<string>
      */
     private function candidatesIn(string $text): array
     {
         return array_values(array_unique([
             ...$this->extractCandidateIds($text),
-            ...ProseProductNames::idsNamedIn($text, $this->renderer->retrievedNamesById()),
+            ...ProseProductNames::idsNamedIn(
+                $text,
+                $this->renderer->retrievedNamesById(),
+                $this->renderer->lastRetrievedBatch(),
+            ),
         ]));
     }
 
