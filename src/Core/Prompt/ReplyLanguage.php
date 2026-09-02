@@ -33,12 +33,6 @@ final class ReplyLanguage
     public const FALLBACK = 'English';
 
     /**
-     * The key into {@see self::NAMES} that {@see self::FALLBACK} is the value of. Stated rather than
-     * searched for, and held to by `testTheFallbackSubtagNamesTheFallbackLanguage`.
-     */
-    public const FALLBACK_SUBTAG = 'en';
-
-    /**
      * Keyed by the ISO 639-1 language subtag, which is the only part of a locale that decides this.
      * A region distinguishes `de-DE` from `de-AT`, and those are the same language to answer in.
      *
@@ -72,34 +66,6 @@ final class ReplyLanguage
         }
 
         return self::NAMES[strtolower($matches[1] ?? '')] ?? self::FALLBACK;
-    }
-
-    /**
-     * The ISO 639-1 subtag of whichever language {@see self::of()} would resolve this locale to.
-     *
-     * **The same closed list, reached from the other side.** `of()` answers "what do I tell the model
-     * to answer in?" and returns a name; this answers "which of my known languages is this?" and
-     * returns the key. A caller naming a per-language resource — a config field like `greetingDe`, a
-     * file, a snippet — needs the key, and deriving one from the display name would have given this
-     * project a second list of languages to keep in step with `NAMES`.
-     *
-     * Unknown, malformed and absent locales all resolve to {@see self::FALLBACK_SUBTAG}, exactly as
-     * they resolve to {@see self::FALLBACK} in `of()` — a shop must not be greeted in one language and
-     * answered in another.
-     */
-    public static function subtagOf(?string $locale): string
-    {
-        if ($locale === null) {
-            return self::FALLBACK_SUBTAG;
-        }
-
-        if (preg_match('/^([a-z]{2,3})(?:[-_][a-z]{2,8})?$/i', trim($locale), $matches) !== 1) {
-            return self::FALLBACK_SUBTAG;
-        }
-
-        $subtag = strtolower($matches[1] ?? '');
-
-        return isset(self::NAMES[$subtag]) ? $subtag : self::FALLBACK_SUBTAG;
     }
 
     /**

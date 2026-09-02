@@ -7,7 +7,9 @@ namespace Swag\AssistantStarterKit;
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Framework\Plugin;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
+use Swag\AssistantStarterKit\Core\Trace\Sink\TraceLogChannel;
 use Swag\AssistantStarterKit\PluginLifecycle\AssistantTableRemoval;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
  * There is no install, update or activate hook to write: the plugin's custom entities are created by
@@ -30,6 +32,34 @@ use Swag\AssistantStarterKit\PluginLifecycle\AssistantTableRemoval;
  */
 class SwagAssistantStarterKit extends Plugin
 {
+    /**
+     * Adds the plugin's own Monolog channel, and nothing else.
+     *
+     * `parent::build()` is where Shopware loads `services.xml`, registers the migration path and
+     * wires the plugin's filesystems, so it runs first and unconditionally.
+     *
+     * **Why a plugin writes `monolog` config at all.** The `logTraces` setting promised a line per
+     * reply in the shop's log and delivered nothing in production — the reasoning, and the
+     * measurement, are on {@see TraceLogChannel}. Prepending rather than appending leaves a
+     * merchant's own `config/packages/monolog.yaml` the last word, which is the right order: this is
+     * a default the plugin brings, not a policy it imposes.
+     *
+     * The guard is not defensive padding. `prependExtensionConfig()` throws
+     * `LogicException: Container extension "monolog" is not registered` when the bundle is absent,
+     * and a shop that chose to run without MonologBundle must not be unable to install this plugin
+     * over a log line.
+     */
+    public function build(ContainerBuilder $container): void
+    {
+        parent::build($container);
+
+        if (!$container->hasExtension('monolog')) {
+            return;
+        }
+
+        $container->prependExtensionConfig('monolog', TraceLogChannel::monologConfig());
+    }
+
     /**
      * **`keepUserData()` is honoured in both directions**, and the second one matters as much as the
      * first: a merchant who leaves it ticked has asked for the trace history to stay, and a plugin
