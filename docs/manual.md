@@ -1,64 +1,92 @@
-# The manual
+# Manual
 
-Everything a merchant or an operator needs after the two-minute version in
-[README.md](../README.md): what the plugin needs from a shop, how to install it without
-taking the storefront down, every setting and what it actually controls, the widget, and
-the two commands that check the thing against a real catalogue.
+Use this guide to install, configure, and operate the Shopping Assistant Starter Kit in a Shopware
+shop. It starts where the [README](../README.md) stops and covers the details that prevent common
+installation and configuration failures.
 
-Read [extending.md](extending.md) instead if you are writing code against it.
+Writing code against the assistant? Go to the [extension guide](extending.md).
+
+## On this page
+
+| Task | Section |
+|---|---|
+| Check compatibility and optional RAG requirements | [Requirements](#requirements) |
+| Install from source or a release archive | [Installing it into a shop](#installing-it-into-a-shop) |
+| Connect chat and embedding models | [Configuring a model](#configuring-a-model) |
+| Configure behaviour, catalogue scope, and cart access | [Assistant behaviour and limits](#assistant-behaviour-and-limits) |
+| Control spend, logging, retention, and escalation | [Request limits](#request-limits), [Logging](#logging), [Data retention](#data-retention), [Escalation](#escalation) |
+| Configure or customise the storefront widget | [The storefront widget](#the-storefront-widget) |
+| Verify a real catalogue or run eval journeys | [Checking the real catalogue](#checking-it-against-the-real-catalogue), [Running the eval suite](#running-the-eval-suite) |
 
 ## Requirements
 
+### Core requirements
+
 - Shopware **6.7** (`^6.7`), PHP 8.2+
 - An OpenAI-compatible chat-completions endpoint (`base_url` + `model` + `api_key`)
-- **`symfony/ai-store` installed in the SHOP's vendor tree, if you want shop-information retrieval
-  (RAG).** This is the one hard requirement the feature has beyond a model: the package carries
-  `Symfony\AI\Store\Document\Vectorizer`, which is what turns a page or a question into a vector, so
-  without it there is nothing for any store to hold or to search. It is a `composer.json` require of
-  this plugin, but Shopware autoloads a plugin's dependencies from the shop's own vendor directory —
-  so a plugin deployed by symlink or by rsync can run with it absent.
 
-  Not fatal: `Core\ShopInfo\ShopInfoAvailability` probes for it at runtime, and a shop missing it
-  reads back with `embeddingModel` empty, which is this plugin's documented off switch. The tool is
-  never built, nothing changes in the model's schema, and the assistant keeps answering product
-  questions. Before that check existed, an embedding model configured on a shop without the package
-  returned a 500 to every shopper.
-- **MariaDB 11.7 or newer plus `symfony/ai-maria-db-store` — recommended for shop information, not
-  required.** Where both are present the passage store is
-  `Symfony\AI\Store\Bridge\MariaDb\Store`, which emits `VECTOR` columns, `VECTOR INDEX` and the
-  `VEC_DISTANCE_COSINE` / `VEC_FromText` functions — MariaDB's spelling of vector search — and the
-  vectors are indexed, which stays fast on a large document set. That is why the package is a
-  `suggest` rather than a require.
+### Shop knowledge (optional)
 
-  Where either is missing, the assistant compares the vectors itself in PHP against an ordinary table
-  with a `JSON` column. Exact rather than approximate, full float64 rather than the vector type's
-  float32, unremarkable for the handful of legal pages and uploads most shops have, and a linear scan
-  once a corpus reaches thousands of passages. So the database question means *slower*, not *broken* —
-  shop information runs on whatever database Shopware itself supports.
+Shop-information retrieval needs `symfony/ai-store` in the **shop's** vendor directory. The plugin
+declares the package, but Shopware only autoloads plugin dependencies from the shop-level vendor
+directory. A plugin deployed by symlink or rsync can therefore run without it.
 
-  **No MySQL version serves the MariaDB store**, and that is worth stating because the intuitive fix
-  is the wrong one: MySQL has no `VECTOR` type before 9.0, and MySQL 9's functions are named
-  differently (`STRING_TO_VECTOR`, `DISTANCE` — and `DISTANCE` is HeatWave-only), so upgrading MySQL
-  does not help. A MySQL shop is a portable-store shop, and that is fine.
+Missing the package does not break product questions. `Core\ShopInfo\ShopInfoAvailability` disables
+the embedding model, and the `search_shop_info` tool never enters the model schema. Before this
+runtime check existed, configuring embeddings without the package caused every assistant request to
+return HTTP 500.
 
-  **The two stores share no data.** They write to different tables and nothing copies between them,
-  so a shop that gains or loses `symfony/ai-maria-db-store` — a `composer update` on a MariaDB shop
-  is the usual way — switches store and finds nothing until its documents are indexed again.
-  Retrieval keeps working; it just has an empty table to work against. Which store answered is in the
-  trace as `retrieve.shopinfo.store`, with the reason for a fallback.
-- An English- or German-language storefront. The assistant answers in the language the shopper
-  writes in, falling back to the storefront's own domain locale; any other locale falls back to
-  English (`Core\Prompt\ReplyLanguage` is the closed list to extend).
-- **An English-language catalog.** Retrieval is keyword-based against the shop's own index, so a
-  German shopper searching for "Kleid" in an English-named catalogue finds nothing — the reply
-  language and the catalogue language are separate problems, and only the first one is solved.
+For larger document collections, use **MariaDB 11.7+** with `symfony/ai-maria-db-store`. This enables
+native, indexed vector search. Without either requirement, the assistant uses an exact PHP comparison
+against vectors stored as JSON. That fallback works with every database supported by Shopware, but
+its scan time grows linearly with the number of passages.
+
+> [!NOTE]
+> MySQL cannot use the MariaDB store. MySQL before 9.0 has no `VECTOR` type, while MySQL 9 uses a
+> different API (`STRING_TO_VECTOR` and `DISTANCE`, with `DISTANCE` limited to HeatWave). A MySQL shop
+> therefore uses the portable PHP store.
+
+The native and portable stores use different tables and do not share data. If a shop gains or loses
+`symfony/ai-maria-db-store`, re-index every document. The trace event `retrieve.shopinfo.store`
+records which implementation answered and why a fallback was selected.
+
+<details>
+<summary>Implementation detail: native and portable vector storage</summary>
+
+The native store is `Symfony\AI\Store\Bridge\MariaDb\Store`. It uses `VECTOR` columns, a
+`VECTOR INDEX`, and MariaDB's `VEC_DISTANCE_COSINE` / `VEC_FromText` functions. The portable store
+uses full float64 values in JSON and compares them exactly in PHP; MariaDB's vector type uses
+float32. The portable path is reasonable for the legal pages and uploads of a typical shop, but a
+corpus with thousands of passages benefits from native indexing.
+
+</details>
+
+### Language support
+
+- The storefront may be English or German. The assistant answers in the shopper's language and
+  falls back to the storefront locale. Other locales fall back to English. Extend
+  `Core\Prompt\ReplyLanguage` to add another reply language.
+- The catalogue itself must currently be English. Retrieval is keyword-based, so a German query for
+  `Kleid` will not find an English product named `Dress`. Reply language and catalogue language are
+  separate concerns; only the first is handled automatically.
 
 ## Installing it into a shop
 
-**Install via a Composer path repository, not a `custom/plugins` symlink.** For a plugin Shopware
-does not manage through Composer it registers only the plugin's *own* PSR-4 namespaces — not its
-dependencies — so `symfony/ai-agent` would be missing and the first turn would fatal inside a shopper
-request. Verified in `Framework/Plugin/KernelPluginLoader/KernelPluginLoader.php`.
+Choose the installation route that matches your use case:
+
+- **Developing or modifying the plugin:** use a Composer path repository.
+- **Evaluating a packaged release:** install the release zip and add its PHP dependencies to the
+  shop separately.
+
+> [!CAUTION]
+> Create both placeholder files shown below **before** running `composer require`. Symfony Flex would
+> otherwise add unsupported `ai:` configuration and can take down the entire storefront.
+
+### From a Composer path repository
+
+Do not use a bare `custom/plugins` symlink. When Shopware does not manage a plugin through Composer,
+it registers only the plugin's own PSR-4 namespace—not the plugin's dependencies. The first shopper
+request would therefore fail because `symfony/ai-agent` cannot be loaded.
 
 From the shop's project root:
 
@@ -76,46 +104,37 @@ bin/console plugin:install --activate SwagAssistantStarterKit
 bin/console cache:clear
 ```
 
-> **Why that first line exists.** `composer require` pulls `symfony/ai-generic-platform`, and in a
-> Symfony Flex project — which `shopware/production` is — Flex applies that package's recipe and
-> writes `config/packages/ai_generic_platform.yaml` containing an `ai:` root key. Nothing registers
-> `symfony/ai-bundle` (this plugin builds its platform itself, see
-> `docs/adr/0001-symfony-ai-as-agent-runtime.md`), so the container stops loading with *"There is no
-> extension able to load the configuration for 'ai'"* — and the **whole storefront returns 500**, not
-> just the assistant. Measured on Shopware 6.7.13: writing that file took the storefront from 200 to
-> 500 on the next request.
->
-> Creating the file yourself first prevents it, rather than repairing it afterwards. Flex does not
-> overwrite a file that already exists — `Options::shouldWriteFile()` returns false for an existing
-> path unless `--force` is passed, and a plain `composer require` never passes it. Verified by
-> removing the package's `symfony.lock` entry with the placeholder in place and re-running
-> `composer recipes:install symfony/ai-generic-platform`: Flex reported the recipe as configured,
-> left the file byte-identical, and the storefront stayed at 200.
->
-> A comment-only YAML file is safe to leave in place forever: Symfony's loader treats a file that
-> parses to null as empty and skips it.
->
-> The **recipe itself** is still not preventable from inside the plugin — it belongs to a dependency
-> and is applied by the *shop's* Flex. What is preventable is the outage.
->
-> **`symfony/ai-maria-db-store` is a second package with the same problem**, added for shop
-> information retrieval. Its recipe writes `config/packages/ai_maria_db_store.yaml` with an `ai.store`
-> key, and it takes the shop down exactly the same way — found the hard way on 2026-08-25, when
-> installing it turned every console command and every request into *"There is no extension able to
-> load the configuration for 'ai'"*. Same fix, which is why the loop above covers both. Any further
-> `symfony/ai-*` package needs its own placeholder on the same principle.
+<details>
+<summary>Why the placeholder files are required</summary>
+
+`composer require` installs `symfony/ai-generic-platform`. In a Symfony Flex project such as
+`shopware/production`, its recipe creates `config/packages/ai_generic_platform.yaml` with an `ai:`
+root key. This plugin constructs the platform itself and does not register `symfony/ai-bundle`, so
+the container cannot load that key. The result is *"There is no extension able to load the
+configuration for 'ai'"* and HTTP 500 for the entire storefront, not only the assistant.
+
+Creating a comment-only file first prevents the outage. Flex does not overwrite an existing file
+unless `--force` is used, and Symfony treats a YAML file containing only a comment as empty. This
+behaviour was verified on Shopware 6.7.13 by reinstalling the recipe and confirming that both the
+file and the working storefront remained unchanged.
+
+`symfony/ai-maria-db-store` has the same issue: its recipe creates
+`config/packages/ai_maria_db_store.yaml` with an `ai.store` key. That is why the command creates two
+files. Apply the same precaution before adding any other `symfony/ai-*` package with a Flex recipe.
+
+The recipe belongs to the dependency and runs in the shop, so the plugin cannot prevent it itself.
+
+</details>
 
 ### From the release zip instead
 
 The [latest release](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest)
-carries a built `SwagAssistantStarterKit.zip`: compiled Administration and storefront assets, and the
-version written into its `composer.json`. Unpack it into the shop's `custom/plugins/`.
+contains `SwagAssistantStarterKit.zip` with compiled Administration and storefront assets. Unpack it
+into the shop's `custom/plugins/` directory.
 
 **It contains the plugin, not the plugin's PHP dependencies**, and that is not an oversight of the
-build. `KernelPluginLoader::registerPluginNamespaces()` registers only a plugin's own PSR-4 namespaces
-when Shopware does not manage that plugin through Composer, and nothing in the core requires a
-bundled `vendor/autoload.php` — so dependencies shipped inside the zip would never be loaded. They
-have to reach the shop's own vendor tree:
+build. Shopware registers only the plugin's own PSR-4 namespace for a manually installed plugin and
+does not load a bundled `vendor/autoload.php`. Install the dependencies in the shop's vendor tree:
 
 ```fish
 composer require symfony/ai-agent:0.12.* symfony/ai-platform:0.12.* \
@@ -127,55 +146,80 @@ composer require symfony/ai-agent:0.12.* symfony/ai-platform:0.12.* \
 composer require symfony/ai-maria-db-store:0.12.*
 ```
 
-Everything else the plugin needs, Shopware already ships. The placeholder files above are just as
-mandatory here — this `composer require` is what triggers the Flex recipe.
+Everything else the plugin needs already ships with Shopware. The placeholder files from the
+previous section are mandatory here as well, because these `composer require` commands trigger the
+same Flex recipes.
 
-**Both routes are now verified end to end.** The zip route was walked through on a fresh
-`shopware-cli` shop on 2026-09-01 (Shopware 6.7.13.1, MariaDB 11.8, PHP 8.5): plugin installed and
-activated, all four tables created, six tools live, storefront and Administration at 200 throughout —
-and the placeholder files above did their job, Flex left both byte-identical. The one thing that
-route costs you is the MariaDB store, which is why the second `composer require` is there;
-`retrieve.shopinfo.store` in the trace says which store answered and why, so you can check rather
-than assume.
+After installing the dependencies, refresh and activate the plugin:
+
+```fish
+bin/console plugin:refresh
+bin/console plugin:install --activate SwagAssistantStarterKit
+bin/console cache:clear
+```
+
+<details>
+<summary>Release-installation verification</summary>
+
+The release route was verified end to end on 2026-09-01 with a fresh `shopware-cli` shop running
+Shopware 6.7.13.1, MariaDB 11.8, and PHP 8.5. The plugin installed and activated, all four tables were
+created, all six tools were available, and both the storefront and Administration remained at HTTP
+200. Flex left both placeholder files byte-identical.
+
+Install `symfony/ai-maria-db-store` on MariaDB 11.7+ if you want the native store. The trace event
+`retrieve.shopinfo.store` shows which store answered and why.
+
+</details>
 
 ## Configuring a model
 
-Configure it in the Administration under the plugin's settings, or as environment variables, which
-take precedence:
+### Chat model
+
+Configure the model in the plugin settings under **Language model**, or use the CLI:
 
 ```fish
 bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://openrouter.ai/api"
-bin/console system:config:set SwagAssistantStarterKit.config.llmModel "anthropic/claude-sonnet-5"
+bin/console system:config:set SwagAssistantStarterKit.config.llmModel "provider/model-id"
 bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey "…"
 ```
 
-Environment variables win over stored values on purpose: Shopware's system config has no real secret
-storage, so a key entered in the admin form is readable by anyone with config access and travels in
-every database backup. Until all three are set, the chat endpoint answers **503** rather than failing
-mid-turn.
+You can override these stored values with:
 
-> **Both kinds of "environment variable" count**, and a real one wins. `Core\Config\EnvironmentValue`
-> reads the process environment first — Docker `environment:` or `env_file:`, Apache `SetEnv`, an
-> nginx/php-fpm pool `env[…]`, a systemd unit — then `$_ENV` and `$_SERVER`, which is where Symfony's
-> Dotenv puts a `.env` or `.env.local` entry. A file in the project directory therefore cannot
-> override a variable the host set deliberately, and an operator who uses the file still gets what
-> they configured.
->
-> **Before September 2026 the file did not work at all**, and the failure was silent. The settings
-> were read with `getenv()` alone, while `SymfonyRuntime` boots Dotenv with `usePutenv(false)` —
-> measured on 6.7.13.1, `ASSISTANT_DOC_PROBE=hello` in `.env` gave `getenv(…) === false` beside
-> `$_ENV[…] === 'hello'`. The key was *there*, the assistant reported itself unconfigured, the chat
-> endpoint answered 503 and the orb never rendered, with nothing in any log saying why. Verified both
-> ways on a real shop: with the key only in `.env`, the released 0.1.0 answered 503 with no orb and the
-> fixed lookup answered 200 with the orb rendering.
->
-> `composer run test:eval` never showed the bug, which is exactly why it survived: it reads `.env`
-> fine, because `Shopware\Core\TestBootstrapper` is the one caller in the stack that does
-> `(new Dotenv())->usePutenv()`.
+- `ASSISTANT_LLM_BASE_URL`
+- `ASSISTANT_LLM_MODEL`
+- `ASSISTANT_LLM_API_KEY`
 
-Shop-information retrieval is a second, separate switch — the **Shop knowledge** card in the plugin's
-settings, off by default. It needs both halves: the switch on *and* an embedding model, and either one
-alone leaves the feature off, with no tool in the model's schema and the documents never offered.
+Environment values take precedence because Shopware system configuration is not secret storage. An
+API key entered in the Administration is visible to users with configuration access and included in
+database backups.
+
+The base URL must identify the host without the version path. The platform appends
+`/v1/chat/completions`, so a base URL ending in `/v1` produces a duplicated path and fails.
+
+Until all three settings are available, the chat endpoint returns **503** and the storefront widget
+does not render.
+
+<details>
+<summary>How environment values are resolved</summary>
+
+`Core\Config\EnvironmentValue` checks the process environment first—for example Docker
+`environment:` / `env_file:`, Apache `SetEnv`, an nginx/php-fpm pool, or a systemd unit. It then reads
+`$_ENV` and `$_SERVER`, where Symfony Dotenv places values from `.env` and `.env.local`. A file cannot
+override a process value deliberately set by the host.
+
+Before September 2026, settings were read through `getenv()` alone. Symfony Runtime boots Dotenv with
+`usePutenv(false)`, so values from `.env` reached `$_ENV` but remained invisible to the assistant.
+On Shopware 6.7.13.1 this produced a silent 503 and no widget; the fixed lookup returns 200 with the
+same file-based configuration. The eval suite did not expose the issue because Shopware's test
+bootstrap explicitly enables `usePutenv()`.
+
+</details>
+
+### Shop knowledge and embeddings
+
+Shop knowledge is separate from catalogue search and is off by default. Enable the feature under
+**Shop knowledge** and configure an embedding model. Both values are required; if either is missing,
+documents are not offered to the model and the tool is absent from its schema.
 
 ```fish
 bin/console system:config:set SwagAssistantStarterKit.config.enableShopKnowledge true
@@ -187,91 +231,141 @@ and key. Then index the shop's pages from the Administration's **Assistant shop 
 or with `bin/console swag:assistant:shopinfo --index=…`. Changing the embedding model afterwards makes
 every indexed document unusable: delete and index them again.
 
+`autoIndexShopPages` re-indexes legal and shipping pages in the background after an edit. It is off
+by default because every update spends an embedding call. When it is off, use **Index shop pages** in
+the Administration after changing a page; otherwise the assistant continues using the last indexed
+version.
+
+## Assistant behaviour and limits
+
+These settings control what the assistant can see and do:
+
+| Setting | Default | What it controls |
+|---|---|---|
+| `assistantEnabled` | on | Whether the assistant answers at all |
+| `agentVoice` | empty | Tone and personality only; it cannot grant capabilities or override safety rules |
+| `blockedProducts` | empty | Products and all their variants that must never reach the model |
+| `blockedCategories` | empty | Category branches whose products must never reach the model |
+| `enableAddToCart` | on | Whether the add-to-cart tool and product-card buttons exist |
+| `enableCompareProducts` | off | Whether the model can compare products side by side |
+| `enableMatchReasons` | off | Whether retrieval exposes deterministic reasons for a match |
+
+Disabled capabilities are removed from the toolbox instead of being described as forbidden in the
+prompt. Blocked products and categories are filtered before model context is built.
+
+The **Limits** card bounds cart actions and tool loops:
+
+| Setting | Default | What it controls |
+|---|---|---|
+| `maxItemQuantity` | 0 — unlimited | Maximum units of one item that the assistant may place in the live cart |
+| `maxCartValue` | 0 — unlimited | Highest cart total the assistant may reach, in the sales-channel currency |
+| `maxToolCallsPerTurn` | 20 | Maximum lookups in one reply; blank or `0` falls back to 20 |
+
+Item quantity and cart value are checked against the shopper's live cart, not one isolated tool call.
+A model cannot bypass them by adding items one at a time. The tool-call limit cannot be disabled
+because it stops a model that has entered a loop; reaching it ends the reply with the results already
+available.
+
 ## Request limits
 
-`POST /assistant/chat` is public and every call spends model tokens, so two limits sit in front of
-it. Both are in the Administration under **Request limits**:
+`POST /assistant/chat` is public and every accepted call can spend model tokens. Configure both
+controls in the Administration under **Request limits**:
 
 | Setting | Default | What it does |
 |---|---|---|
 | `requestsPerMinute` | 60 | Per caller, sliding window. The control that stops a scripted loop |
 | `dailyRequestCap` | **0 — off** | Per sales channel, 24h. An opt-in spend ceiling, not an abuse defence |
 
-A refused request answers **429** with a `Retry-After` header and writes nothing — no conversation
-row, no trace, no model call. The widget already treats 429 as transient and offers a retry button.
+A refused request returns **429** with a `Retry-After` header. It creates no conversation, trace, or
+model call. The widget treats this as temporary and offers a retry button.
 
-The order matters and is deliberate: the per-caller window is consumed first and in every branch, so
-switching the assistant off does not create an unthrottled path; the daily budget is consumed only
-when a turn could actually spend, so a shop that is switched off is told exactly that rather than
-told it is out of budget.
+The per-caller window is checked first and applies even when the assistant is disabled, so there is
+no unthrottled public route. The daily budget is consumed only when a turn could spend tokens. A
+disabled shop therefore reports the correct state instead of claiming that its budget is exhausted.
 
 **`0` in either field means unlimited.** It used to mean the opposite — refuse everything — which
 made zero the most destructive value a merchant could type into a numeric field, and duplicated a
 job the assistant's own off switch already does with a reason the trace can record.
 
-Only the per-caller window ships on. The daily cap is a spend ceiling, and a ceiling nobody chose is
-not a safety feature: at the old default of 500 a good day's traffic turned the assistant off by
-mid-afternoon, silently. Switch it on if you want a known stopping point, and be aware of what you
-are choosing — when it trips, every shopper gets nothing until it resets, including the ones who were
-about to buy something.
+Only the per-caller limit is enabled by default. Enable the daily cap only when you want a hard spend
+ceiling: once it is reached, every shopper is blocked until the 24-hour window resets.
 
 Counters live in the shop's cache, not the database, so **clearing the cache resets both windows**.
 Behind a proxy or CDN, `framework.trusted_proxies` has to be right or every shopper shares one
 window — Symfony's `getClientIp()` is what the per-caller window counts.
 
-> `dailyRequestCap` shipped for months enforced by nothing: the comparison existed in `GuardCheck`
-> but the storefront never supplied it a count, so it could only ever trip when set to 0. It is now
-> enforced in `Core\Policy\RequestBudget`, at the HTTP boundary, and covered by
-> `tests/Controller/AssistantThrottleTest.php`.
+<details>
+<summary>Compatibility note for earlier releases</summary>
+
+Older releases exposed `dailyRequestCap` without supplying the current count to `GuardCheck`, so the
+limit was not enforced except at zero. It is now enforced at the HTTP boundary by
+`Core\Policy\RequestBudget` and covered by `tests/Controller/AssistantThrottleTest.php`.
+
+The previous default of 500 could also disable a busy shop without the merchant choosing that trade.
+That is why the current default is unlimited.
+
+</details>
+
+## Logging
+
+The Administration conversation list always stores full conversations until the retention task
+deletes them. `logTraces` is separate and enabled by default. It writes one operational line per
+reply to `var/log/swag_assistant_<env>.log`, including the sales channel, outcome, and duration—but
+no shopper messages. Log files are retained for 14 days.
+
+The dedicated file is intentional: a standard production Shopware discards informational messages
+sent to its main error log. Turn `logTraces` off if you do not need this operational view.
 
 ## Data retention
 
-`swag_assistant_conversation.transcript` holds what shoppers typed, so the table is pruned rather
-than allowed to grow. One setting, under **Data retention**:
+`swag_assistant_conversation.transcript` contains shopper messages. The plugin therefore prunes old
+conversations instead of retaining them indefinitely. Configure the window under **Data retention**:
 
 | Setting | Default | What it does |
 |---|---|---|
 | `traceRetentionDays` | 30 | Conversations created longer ago than this are deleted, and `ON DELETE CASCADE` takes their trace events |
 
-There is deliberately no "keep forever". A blank or `0` falls back to 30 rather than switching the
-prune off, because a merchant who never opens this card must still get retention — this is the one
-numeric field in the plugin where zero does not mean unlimited.
+There is no "keep forever" option. A blank value or `0` falls back to 30 days. This is the only
+numeric plugin setting where zero does not mean unlimited.
 
-**Set it per sales channel where one needs a different window.** Each channel is pruned on the value
-that channel resolves to — its own if it has one, the shop-wide value if it does not, exactly as the
-settings form shows it. Conversations from a sales channel that has since been deleted are pruned on
-the shop-wide window, so nothing outlives the channel that produced it.
+Set a value per sales channel when retention requirements differ. Each channel uses its own value or
+falls back to the shop-wide setting. Conversations whose sales channel has been deleted use the
+shop-wide window.
 
-> That is a fix rather than a feature, and worth knowing if you configured this before September 2026.
-> `TraceRetentionSettings` used to read the value once with no channel at all, on the argument that a
-> scheduled task has no `SalesChannelContext`. The argument was true and the conclusion was wrong: the
-> settings page is sales-channel-switchable, so a merchant could set a channel to "keep 1 day", watch
-> it save, and have nothing change — measured on 6.7.13.1, where a three-day-old conversation in that
-> channel survived the prune. The dangerous direction was the one that read as safe: a channel set to
-> **90** days for an audit trail was still deleted at the global 30. Re-check any per-channel window
-> you set before the fix; it was not in force.
+> [!IMPORTANT]
+> If you configured per-channel retention before September 2026, review those values. Earlier
+> releases applied only the shop-wide setting, so shorter and longer channel-specific windows were
+> not honoured.
 
-**It needs the queue**, and this part is still true. `PruneConversationsTask` is a Shopware
-`ScheduledTask` dispatched through Messenger, so "deleted every day" means *deleted when something
-consumes the queue*: a `messenger:consume` worker plus `scheduled-task:run`, or the admin worker,
-which is on by default and runs only while someone has the Administration open. On a shop with
-neither, the task sits at `status = scheduled` and nothing is ever deleted. Force one run with:
+### Make sure pruning runs
+
+`PruneConversationsTask` is a Shopware `ScheduledTask` dispatched through Messenger. Daily pruning
+therefore requires a `messenger:consume` worker plus `scheduled-task:run`, or Shopware's admin worker.
+The admin worker runs only while someone has the Administration open. Without either worker, the
+task remains `scheduled` and no data is deleted.
+
+Force one run with:
 
 ```fish
 bin/console scheduled-task:run-single swag_assistant.prune_conversations
 ```
 
-Verified against a real shop on 2026-09-01. With the default window, conversations older than 30 days
-went and a 29-day-old one stayed; their trace events went with them and left no orphans; setting the
-window to 7 pruned a 10-day-old conversation on the next run. With two channels on different windows —
-one at 1 day, one at 90 — the first channel's three-day-old conversations were deleted and the second
-channel's forty-day-old one was kept, in the same run.
+<details>
+<summary>Retention verification</summary>
+
+This behaviour was verified against a real shop on 2026-09-01. With the default window,
+conversations older than 30 days and their trace events were deleted, while a 29-day-old conversation
+remained. A 7-day setting removed a 10-day-old conversation on the next run. In one run across two
+channels, a 1-day channel deleted three-day-old data while a 90-day channel retained forty-day-old
+data.
+
+</details>
 
 ## Escalation
 
-Some questions have no answer in the catalogue — order status, returns, account data. The assistant
-hands those over rather than guessing, and three settings under **Escalation** decide what "hand
-over" means:
+Order status, returns, and account questions cannot be answered from the catalogue. Escalation gives
+the shopper a merchant-configured route instead of allowing the assistant to guess. Configure it
+under **Escalation**:
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -279,65 +373,68 @@ over" means:
 | `escalationUrl` | — | A path on this shop (`/contact`) or an https URL. Only http and https are accepted — this link is served to every shopper |
 | `escalationMessage` | — | Shown above the link. Left empty, a translated default is used |
 
-**With no URL configured the assistant says it cannot help and names what it can do instead.** It
-does not claim a human will follow up, because nothing would notify one — and that is enforced by
-measurement rather than by instruction. `EscalateTool`'s note forbids claiming contact in so many
-words, and the `no_handoff_claim_in_prose` eval assertion is what says whether the model obeyed. The
-first, milder wording lost 6 of 6 live runs: told the question "needs the shop team", the model wrote
-"I've flagged this to the team" using verbs the note never mentioned.
+With no URL configured, the assistant declines and explains what it can help with instead. It must
+not claim that a human will follow up, because the plugin does not notify anyone. `EscalateTool` and
+the `no_handoff_claim_in_prose` eval assertion enforce that boundary.
 
-**Nothing is notified on the merchant's side.** No mail, no ticket, no queue. Escalation gives the
-shopper a route they take themselves. A merchant who wants the transcript pushed to a support desk
-needs the trace sink that is still on the deferred list.
+> [!IMPORTANT]
+> Escalation sends no email, ticket, message, or queue event. It gives the shopper a route they must
+> follow themselves. Forwarding transcripts to a support desk requires a custom integration.
 
-Switching `enableEscalation` off removes the capability rather than forbidding it: the tool is never
-constructed, so it never reaches the model's toolbox, and the system prompt drops its "escalate"
-instruction in the same step — an order to call a tool that is not there is how a model ends up
-improvising. This is the same guarantee `enableAddToCart` makes, for the same reason.
+Turning off `enableEscalation` removes both the tool and its prompt instruction. The model never sees
+a capability it cannot use. `enableAddToCart` follows the same pattern.
 
 The link is rendered server-side from the setting and is never in the model's context, so it cannot
 be paraphrased into a broken URL — the same rule that governs prices and stock. A reloaded
 transcript rebuilds it from configuration rather than replaying it, so a contact route the merchant
 has since moved or withdrawn is not still offered.
 
-> Until 2026-08-22 the escalate tool returned "Handing this over to a human." with no destination, no
-> configuration and nothing notified. Escalation is the designed answer for four of `VISION.md`'s
-> non-goals, and it was a dead end.
+<details>
+<summary>Why hand-off claims are tested</summary>
+
+An earlier prompt only said that a question "needs the shop team". In six of six live runs, the
+model claimed that it had flagged the request even though no notification existed. Before
+2026-08-22, the tool itself also returned "Handing this over to a human" without a destination.
+That history is why the current wording and eval assertion are explicit.
+
+</details>
 
 ## The storefront widget
 
-The widget ships **compiled**, so a merchant needs no Node toolchain. After installing and
-configuring a model, one command makes it appear:
+The widget ships compiled, so a merchant does not need a Node toolchain. After installing the plugin
+and configuring a model, compile the theme:
 
 ```fish
 bin/console theme:compile
 ```
 
-Styles are compiled by Shopware's own PHP SCSS pipeline, and the JavaScript is committed under
-`src/Resources/app/storefront/dist` — the same thing SwagPayPal ships, and the reason the plugin works
-on install rather than after a build.
+Shopware's PHP SCSS pipeline builds the styles. Compiled JavaScript is committed under
+`src/Resources/app/storefront/dist`, so an installed plugin works without a frontend build.
 
-**The entry point renders only on a shop that can answer.** No orb appears when no model is
-configured, when `assistantEnabled` is off, or when `widgetEnabled` is off. That is deliberate: an orb
-that opens a panel which answers 503 invites a shopper to ask a question nothing can answer. The chat
-endpoint stays reachable in every one of those cases, so a custom interface built against it keeps
-working.
+The entry point renders only when a model is configured and both `assistantEnabled` and
+`widgetEnabled` are on. The chat endpoint remains available when the widget alone is disabled, so a
+custom client can continue using it. When the assistant itself is disabled or unconfigured, the
+endpoint reports that state instead of presenting a broken panel to shoppers.
 
-`assistantName` lives under **Storefront widget**; `widgetEnabled` sits with the off switch under
-**Assistant status**, because the two are easy to confuse and belong side by side —
-`assistantEnabled` stops the assistant answering, `widgetEnabled` only stops it being shown.
+`assistantEnabled` controls whether the assistant answers. `widgetEnabled` controls only whether the
+shipped widget is shown. Both are under **Assistant status**; `assistantName` is under
+**Storefront widget**.
 
-**The greeting and the three suggestion chips are snippets, not settings.** They are edited in the
-same configuration form, through a field with its own language switch, and they are the only fields
-there that are **not** per sales channel — a snippet set is per language, and Shopware assigns one per
-storefront domain. That is the same mechanism every other string this widget shows a shopper already
-goes through: the panel heading, the error lines, the handover text. A shop needing different
-greetings on two channels gives their domains their own snippet set under **Settings › Snippets**.
+The greeting and three suggestion chips are snippets, not system-config values. Edit them through the
+language-aware fields in the configuration form. Unlike the other fields, they are not scoped per
+sales channel: Shopware assigns snippet sets by language and storefront domain. To show different
+greetings on two channels, assign their domains different snippet sets under **Settings › Snippets**.
 
-Leave a suggestion empty and that chip is not rendered; empty all three and the greeting stands on
-its own. Until v0.2.0 the greeting was three `system_config` fields (`greeting`, `greetingDe`,
-`greetingEn`); a migration carries what was in them into the matching snippet sets, preferring the
-shop-wide row where a shop had set it differently per channel.
+Leave a suggestion empty to hide that chip. If all three are empty, only the greeting is shown.
+
+<details>
+<summary>Greeting migration from versions before 0.2.0</summary>
+
+Earlier versions stored the greeting in `greeting`, `greetingDe`, and `greetingEn` system-config
+fields. A migration moves those values into the matching snippet sets and prefers the shop-wide value
+when channels previously differed.
+
+</details>
 
 ### Changing it
 
@@ -346,11 +443,16 @@ composer run build:storefront   # rebuilds src/ into dist/
 bin/console theme:compile       # in the shop
 ```
 
-CI fails if the storefront source changed without a matching `dist` rebuild. It does **not** diff the
-two byte-for-byte, and cannot: the build is deterministic at a given path but path-dependent across
-paths, because webpack derives module ids from the absolute path. Identical source built in two
-directories produces identical chunk bodies under different names, so a rebuild-and-diff job would
-fail on every CI run while proving nothing.
+CI fails when storefront source changes without a matching `dist` rebuild.
+
+<details>
+<summary>Why CI does not compare rebuilt assets byte for byte</summary>
+
+The build is deterministic at one path but not across paths because webpack derives module IDs from
+the absolute location. Identical source built in two directories produces identical chunk bodies
+under different filenames. A rebuild-and-diff job would therefore fail while proving nothing.
+
+</details>
 
 ### Appearance
 
@@ -437,21 +539,18 @@ centre of the face. `assistant/shopware-signet.png` is still shipped for exactly
 
 ### The creature
 
-The orb, the avatar in the panel header and the bubble leading the thinking indicator are **one
-object**: one Twig include (`swag_assistant_face`), one SCSS mixin (`swag-assistant-bubble`), one
-behaviour module (`assistant/creature.js`). Size travels as `--swag-assistant-unit`, so the same
-markup renders at 60px in the corner and 32px in the header with its proportions intact.
+The orb, panel avatar, and thinking indicator share one implementation: the
+`swag_assistant_face` Twig include, `swag-assistant-bubble` SCSS mixin, and
+`assistant/creature.js` behaviour module. The `--swag-assistant-unit` custom property scales the
+same markup from the 60px entry point to the 32px header avatar.
 
-Expressions are a single `data-mood` attribute with seven values — `idle`, `happy`, `laugh`,
-`curious`, `wow`, `sleepy`, `focus`. **JavaScript only ever writes that string; the stylesheet owns
-what each one looks like.** That split is why the whole personality survives
-`prefers-reduced-motion`: every mood changes a *shape*, which is state, so the creature still smiles
-and still squints with every animation switched off. Only the motion — the hops, the squash, the
-pointer tracking — is guarded, and it is guarded in one place.
+Expressions use one `data-mood` attribute: `idle`, `happy`, `laugh`, `curious`, `wow`, `sleepy`, or
+`focus`. JavaScript sets only that state; CSS defines the appearance. `prefers-reduced-motion`
+disables movement while preserving the expression, so meaning is not lost.
 
-**No animation library.** Everything is CSS keyframes plus a small Web Animations layer, which is why
-the orb chunk that loads on every storefront page is 2.3 KB gzipped rather than 25 KB. Gestures use
-`composite: 'add'` so a hop composes on top of the resting float instead of replacing it.
+The widget uses CSS keyframes and a small Web Animations layer rather than an animation library. The
+orb chunk is 2.3 KB gzipped. Gestures use `composite: 'add'`, allowing a hop to compose with the
+resting float.
 
 The widget renders on every storefront page from `base_body_inner`. To exclude some — checkout, for
 instance — wrap the include in `src/Resources/views/storefront/base.html.twig` in your own condition.
@@ -499,12 +598,16 @@ cp .env.example .env
 composer run test:eval
 ```
 
-**Budget the time and the spend.** Fifteen journeys, each up to three runs per archetype, every run
-a real turn: the whole suite is well over five minutes and costs real tokens. **A local `.env` is
-loaded by `tests/bootstrap.php`**, so on a credentialed machine `vendor/bin/phpunit tests/Eval/`
-fires all of them — use `--exclude-group eval` when you only mean to run the deterministic ones. That is also why
-`composer.json` sets `process-timeout: 1800` — Composer's 300-second default killed the run partway
-through, which reads as a failure rather than as a timeout. To spend less, filter to one journey:
+**Budget the time and the spend.** The suite currently contains 36 journeys, each with up to three
+runs per archetype, and every run is a real turn. The full suite takes several minutes and costs real
+tokens.
+
+`tests/bootstrap.php` loads a local `.env`. On a credentialed machine,
+`vendor/bin/phpunit tests/Eval/` therefore runs every journey. Use `--exclude-group eval` when you
+only want deterministic tests. Composer's default five-minute timeout was too short for the full
+suite, so `composer.json` sets `process-timeout: 1800`.
+
+To spend less, filter to one journey:
 
 ```fish
 vendor/bin/phpunit --group eval --filter order_status_escalates

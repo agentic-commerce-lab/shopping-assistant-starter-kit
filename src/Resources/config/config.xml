@@ -31,10 +31,11 @@
         <input-field type="text">
             <name>llmBaseUrl</name>
             <label>OpenAI-compatible base URL</label>
-            <placeholder>https://api.openai.com/v1</placeholder>
+            <placeholder>https://api.openai.com</placeholder>
             <helpText>Any OpenAI-compatible chat completions endpoint (Azure, OpenRouter, a local
-                model). The URL is checked on every request to make sure it points outside your
-                own network; a private or loopback address is rejected.</helpText>
+                model). Enter the base URL without /v1; the client adds /v1/chat/completions and
+                /v1/embeddings. The URL is checked on every request to make sure it points outside
+                your own network; a private or loopback address is rejected.</helpText>
         </input-field>
 
         <input-field type="text">
