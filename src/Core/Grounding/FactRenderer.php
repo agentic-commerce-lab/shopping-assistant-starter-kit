@@ -339,20 +339,28 @@ final class FactRenderer
     }
 
     /**
-     * Attribute claims in the prose that no rendered card's own `properties` backs — the
-     * {@see self::unbackedPricesInProse()} analogue for {@see \Swag\AssistantStarterKit\Core\Grounding\PropertyClaimExtractor}'s
-     * closed vocabulary.
+     * Attribute claims in the prose that nothing this turn entitled the model to state — the
+     * {@see self::unbackedPricesInProse()} analogue for {@see PropertyClaimExtractor}'s vocabulary.
      *
-     * @return list<string>
      * `$givenDescriptions` are the product descriptions this run handed the model, supplied by the
      * caller for the same reason `$givenPassages` is: this class never touches the trace. A
      * qualitative claim the shop's own prose makes is the shop's claim, not the model's.
+     * `$disclosedOptions` are option values the shop stated with no card behind them, from
+     * {@see DisclosedOptions::from()}, supplied for that same reason. Merged into the backed set here
+     * rather than inside the audit: folding them in there needs a sixth parameter on a list already
+     * at the gate's ceiling.
      *
      * @param list<string> $givenDescriptions
+     * @param list<string> $disclosedOptions
      *
+     * @return list<string>
      */
-    public function unbackedPropertiesInProse(string $prose, FacetSet $facets, array $givenDescriptions = []): array
-    {
+    public function unbackedPropertiesInProse(
+        string $prose,
+        FacetSet $facets,
+        array $givenDescriptions = [],
+        array $disclosedOptions = [],
+    ): array {
         $unbacked = $this->proseAudit->unbackedProperties(
             $prose,
             // **Retrieved, not rendered**, and that distinction is the whole of this argument. The audit
@@ -366,10 +374,11 @@ final class FactRenderer
             // the shopper was then told the card overrides the sentence. It did not — the card showed
             // one variant of a true statement.
             //
-            // A value in no retrieved card at all is still flagged, which is the invention this exists
-            // for. Prices and availability keep measuring against RENDERED cards on purpose: those two
-            // are figures the shop puts on screen, so the screen is exactly the right yardstick.
-            $this->index->cards(),
+            // A value in no retrieved card and no disclosure is still flagged, which is the invention
+            // this exists for. Prices and availability keep measuring against RENDERED cards on
+            // purpose: those two are figures the shop puts on screen, so the screen is exactly the
+            // right yardstick.
+            BackedPropertyValues::of($this->index->cards(), $disclosedOptions),
             $this->shopperMessage,
             $facets,
             $givenDescriptions,

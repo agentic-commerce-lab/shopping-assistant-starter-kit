@@ -9,6 +9,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\MatchCountReader;
+use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\RedundantParentFilter;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
@@ -156,7 +157,7 @@ final class SearchProductsTool
 
     /**
      * @param ?string $term    Free-text search term, e.g. "water bottle".
-     * @param ?array<array-key, string> $terms Up to 3 search terms for ONE search, when your answer covers more than one kind of product (for example ["occasion dress", "occasion suit"]). Their results are interleaved, so the limit is shared between them rather than spent on the first. Use this instead of searching twice: the shop shows only your most recent search, so a second search silently replaces the first.
+     * @param ?array<array-key, string> $terms Up to 3 search terms for ONE search — three in TOTAL, counting "term" if you pass that too — when your answer covers more than one kind of product (for example ["occasion dress", "occasion suit"]). Their results are interleaved, so the limit is shared between them rather than spent on the first. Use this instead of searching twice: the shop shows only your most recent search, so a second search silently replaces the first.
      * @param ?float  $priceMax Maximum price, inclusive, in the shop's currency.
      * @param ?float  $priceMin Minimum price, inclusive, in the shop's currency.
      * @param ?string $brand   Brand name to filter by.
@@ -365,6 +366,13 @@ final class SearchProductsTool
 
         if ($families !== []) {
             $result['families'] = $families;
+
+            // Recorded so the property audit knows these came from the shop: this block exists to let
+            // the model name an option no returned card carries, and the audit flagged that until now.
+            $this->trace->record(DisclosedOptions::STAGE, [
+                'source' => 'families',
+                'options' => DisclosedOptions::valuesOf(array_column($families, 'options')),
+            ]);
         }
 
         // Which of the model's own terms put nothing DISTINCT on screen. Undisclosed, a model that

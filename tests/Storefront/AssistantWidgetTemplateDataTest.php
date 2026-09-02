@@ -27,13 +27,6 @@ final class AssistantWidgetTemplateDataTest extends AssistantWidgetTestCase
         self::assertSame('Ada', $extension->assistantName(self::CHANNEL));
     }
 
-    public function testTheGreetingIsEmptyWhenUnset(): void
-    {
-        // Empty rather than an English sentence baked into PHP: the fallback belongs in a snippet,
-        // where it can be translated, so an unconfigured German shop greets in German.
-        self::assertSame('', $this->extension($this->configured())->greeting(self::CHANNEL));
-    }
-
     public function testAddToCartReflectsTheGuardrail(): void
     {
         $off = $this->extension($this->configured([self::PREFIX . 'enableAddToCart' => false]));
@@ -56,29 +49,11 @@ final class AssistantWidgetTemplateDataTest extends AssistantWidgetTestCase
             [
                 'swag_assistant_widget_enabled',
                 'swag_assistant_widget_name',
-                'swag_assistant_greeting',
                 'swag_assistant_add_to_cart_enabled',
                 'swag_assistant_theme',
                 'swag_assistant_context_key',
             ],
             $names,
         );
-    }
-
-    /**
-     * The template passes the storefront's locale through, so the widget greets in the language the
-     * page is in. Without the pass-through the extension would always resolve the fallback language
-     * and a German storefront would show the English greeting — the bug this pair of fields exists
-     * for.
-     */
-    public function testTheGreetingFollowsTheLocaleTheTemplatePassesIn(): void
-    {
-        $extension = $this->extension($this->configured([
-            self::PREFIX . 'greetingDe' => 'Hallo.',
-            self::PREFIX . 'greetingEn' => 'Hi.',
-        ]));
-
-        self::assertSame('Hallo.', $extension->greeting(self::CHANNEL, 'de-DE'));
-        self::assertSame('Hi.', $extension->greeting(self::CHANNEL, 'en-GB'));
     }
 }

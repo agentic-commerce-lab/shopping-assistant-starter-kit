@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Trace\Sink;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
+use Swag\AssistantStarterKit\Core\Agent\FailedTurn;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Trace\Sink\LoggerTraceSink;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -61,6 +62,35 @@ final class LoggerTraceSinkTest extends TestCase
         self::assertSame(['token', 'salesChannelId', 'outcome', 'elapsedMs'], array_keys($context));
         self::assertSame('product_shown', $context['outcome']);
         self::assertSame(self::CHANNEL, $context['salesChannelId']);
+    }
+
+    /**
+     * A turn that died inside the agent has no `turn.end` — ruling R40 keeps it that way — so the
+     * outcome came out as `unknown`, which is the one word that reads as "we do not know" about the
+     * one turn we do. It is read from {@see FailedTurn}'s stage instead.
+     */
+    public function testAFailedTurnIsLoggedAsAnErrorRatherThanAsUnknown(): void
+    {
+        $logger = new CollectingLogger();
+        $trace = new TraceRecorder();
+        $trace->record('tool.call', ['stage' => 'dispatch', 'name' => 'get_product']);
+        FailedTurn::record($trace, new \RuntimeException('upstream said no'));
+
+        $this->sink($logger, [])->send('tok', self::CHANNEL, $trace);
+
+        self::assertSame(FailedTurn::OUTCOME, $logger->firstContext()['outcome']);
+    }
+
+    /**
+     * A trace with neither stage is a turn nothing can describe, and saying so is correct.
+     */
+    public function testATraceWithNoEndingAtAllIsStillReportedHonestly(): void
+    {
+        $logger = new CollectingLogger();
+
+        $this->sink($logger, [])->send('tok', self::CHANNEL, new TraceRecorder());
+
+        self::assertSame('unknown', $logger->firstContext()['outcome']);
     }
 
     /**

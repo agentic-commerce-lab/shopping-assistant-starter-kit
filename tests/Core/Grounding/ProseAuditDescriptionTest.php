@@ -10,6 +10,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetType;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
+use Swag\AssistantStarterKit\Core\Grounding\BackedPropertyValues;
 use Swag\AssistantStarterKit\Core\Grounding\ProseAudit;
 
 /**
@@ -45,7 +46,7 @@ final class ProseAuditDescriptionTest extends TestCase
     {
         $flagged = $this->audit()->unbackedProperties(
             'It has an extended rear shell.',
-            [$this->card()],
+            BackedPropertyValues::of([$this->card()]),
             shopperMessage: '',
             facets: $this->facets(),
             givenDescriptions: [self::DESCRIPTION],
@@ -62,7 +63,7 @@ final class ProseAuditDescriptionTest extends TestCase
     {
         $flagged = $this->audit()->unbackedProperties(
             'It is waterproof.',
-            [$this->card()],
+            BackedPropertyValues::of([$this->card()]),
             shopperMessage: '',
             facets: $this->facets(),
             givenDescriptions: [],
@@ -85,6 +86,8 @@ final class ProseAuditDescriptionTest extends TestCase
 
         $flagged = $this->audit()->unbackedPrices(
             'You can have it for 4.99 EUR.',
+            // Cards, not a value set: `unbackedPrices()` still measures against RENDERED cards on
+            // purpose — a price is a figure the shop puts on screen, so the screen is the yardstick.
             [$this->card()],
             shopperMessage: '',
             givenPassages: [],

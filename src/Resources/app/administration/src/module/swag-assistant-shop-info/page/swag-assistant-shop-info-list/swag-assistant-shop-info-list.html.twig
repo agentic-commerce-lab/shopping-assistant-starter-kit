@@ -38,13 +38,20 @@
                deferred this to its own plan; HTML extraction was built for exactly this path, which
                is why it existed before anything uploaded HTML. #}
             {% block swag_assistant_shop_info_list_pages %}
-            <sw-card :title="$tc('swag-assistant-shop-info.list.shopPages')">
+            <mt-card
+                position-identifier="swag-assistant-shop-info-pages"
+                :title="$tc('swag-assistant-shop-info.list.shopPages')"
+            >
                 <p class="swag-assistant-shop-info-list__hint">
                     {{ $tc('swag-assistant-shop-info.list.shopPagesHelp') }}
                 </p>
 
                 <div class="swag-assistant-shop-info-list__actions">
-                    <sw-button
+                    {# `mt-button`, not `sw-button`: that wrapper puts a literal
+                       `variant="secondary"` after its `v-bind="$attrs"`, so it overrode every
+                       primary passed to it and this — the one action on the screen a merchant is
+                       meant to reach for — rendered as the quieter of the two buttons beside it. #}
+                    <mt-button
                         variant="primary"
                         size="small"
                         :disabled="isSwitchedOff || bulkAction !== null || !acl.can('swag_assistant_document.editor')"
@@ -52,7 +59,7 @@
                         @click="onBulk('pages')"
                     >
                         {{ $tc('swag-assistant-shop-info.list.indexPages') }}
-                    </sw-button>
+                    </mt-button>
 
                     <sw-button
                         size="small"
@@ -67,11 +74,14 @@
                 <p class="swag-assistant-shop-info-list__hint">
                     {{ $tc('swag-assistant-shop-info.list.reindexAllHelp') }}
                 </p>
-            </sw-card>
+            </mt-card>
             {% endblock %}
 
             {% block swag_assistant_shop_info_list_upload %}
-            <sw-card :title="$tc('swag-assistant-shop-info.list.upload')">
+            <mt-card
+                position-identifier="swag-assistant-shop-info-upload"
+                :title="$tc('swag-assistant-shop-info.list.upload')"
+            >
                 {# `update:value`, not `change` — sw-file-input emits only the former, and binding the
                    wrong one silently produces a picker that selects a file and does nothing.
 
@@ -95,6 +105,10 @@
 
                 {# Both messages sit below the control, so neither can push the file input out from
                    under the cursor while a merchant is reaching for it. #}
+                {# `critical`, not `error`: `sw-alert` forwards its attributes to `mt-banner`, which accepts
+                   only neutral, info, attention, critical, positive and inherited. An unknown variant is not
+                   rejected — it renders as a neutral info box, which silently stripped the severity off the one
+                   message that needed it. `warning` is `attention` for the same reason. #}
                 <sw-alert
                     v-if="isSwitchedOff"
                     class="swag-assistant-shop-info-list__notice"
@@ -107,7 +121,7 @@
                 <sw-alert
                     v-if="uploadError"
                     class="swag-assistant-shop-info-list__notice"
-                    variant="error"
+                    variant="critical"
                 >
                     {{ uploadError }}
                 </sw-alert>
@@ -115,10 +129,25 @@
                 <p v-if="isUploading" class="swag-assistant-shop-info-list__progress">
                     {{ $tc('swag-assistant-shop-info.list.uploading') }}
                 </p>
-            </sw-card>
+            </mt-card>
             {% endblock %}
 
+            {# **The listing lives in a card like everything else on this page.** It used to sit bare
+               between two cards, ~190px narrower than them, which read as a table that had escaped
+               the layout rather than as one of the page's three sections.
+
+               `full-page="false"` is the actual fix, not the wrapper: `sw-entity-listing` defaults to
+               `sw-data-grid--full-page`, whose Administration rule is `position: absolute` — right for
+               a listing that IS the page, wrong for one between cards. Absolute took the table out of
+               flow and the configuration card below was painted underneath the rows. That was held
+               off with a specificity fight in this page's SCSS; the prop the component already
+               offers does it properly. #}
             {% block swag_assistant_shop_info_list_grid %}
+            <mt-card
+                class="swag-assistant-shop-info-list__documents"
+                position-identifier="swag-assistant-shop-info-documents"
+                :title="$tc('swag-assistant-shop-info.list.documents')"
+            >
             <sw-entity-listing
                 v-if="documents && documents.total"
                 class="swag-assistant-shop-info-list__grid"
@@ -126,6 +155,7 @@
                 :repository="documentRepository"
                 :columns="documentColumns"
                 :isLoading="isLoading"
+                :fullPage="false"
                 :showSelection="false"
                 :allowEdit="false"
                 :allowDelete="false"
@@ -182,11 +212,14 @@
                     </sw-context-menu-item>
                 </template>
             </sw-entity-listing>
-            {% endblock %}
 
             {# Two distinct absences, deliberately not one component. A skeleton says "wait"; an empty
                state says "do this". Showing the empty state while loading would tell a merchant with
-               forty documents that they have none. #}
+               forty documents that they have none.
+
+               Inside the same card as the table they stand in for: an empty state floating between
+               two cards is the same escaped-from-the-layout problem the table had, and a merchant
+               with nothing indexed yet is the one person who sees this page at its emptiest. #}
             {% block swag_assistant_shop_info_list_empty %}
             <sw-skeleton v-if="isLoading" class="swag-assistant-shop-info-list__skeleton" variant="detail" />
 
@@ -197,14 +230,17 @@
                 :absolute="false"
             />
             {% endblock %}
+            </mt-card>
+            {% endblock %}
 
             {# Read-only, and last. The model is a plugin setting and belongs in the plugin settings —
                one place to change it, rather than two that can disagree. It is shown here because this
                is the page whose behaviour it decides: without it every upload on this screen is a
                no-op, and a merchant should not have to guess that from a disabled control. #}
             {% block swag_assistant_shop_info_list_configuration %}
-            <sw-card
+            <mt-card
                 class="swag-assistant-shop-info-list__config"
+                position-identifier="swag-assistant-shop-info-configuration"
                 :title="$tc('swag-assistant-shop-info.list.configuration')"
             >
                 <dl class="swag-assistant-shop-info-list__config-row">
@@ -247,7 +283,7 @@
                 <sw-alert
                     v-if="storeStatus && storeStatus.otherStoreHasPassages"
                     class="swag-assistant-shop-info-list__notice"
-                    variant="warning"
+                    variant="attention"
                     :title="$tc('swag-assistant-shop-info.list.store.staleTitle')"
                 >
                     {{ $tc('swag-assistant-shop-info.list.store.staleBody') }}
@@ -261,7 +297,7 @@
                         {{ $tc('swag-assistant-shop-info.list.openPluginSettings') }}
                     </sw-button>
                 </template>
-            </sw-card>
+            </mt-card>
             {% endblock %}
         </div>
     </template>

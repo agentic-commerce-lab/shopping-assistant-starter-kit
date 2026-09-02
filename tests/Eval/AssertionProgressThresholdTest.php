@@ -111,9 +111,17 @@ final class AssertionProgressThresholdTest extends TestCase
         // Runs 2 and 3: the model adds the item correctly (tool call + final text).
         $responses = [
             self::textResponse('Here is some information about that glove.'),
-            self::toolCallResponse('add_to_cart', ['variantId' => 'fx-004-black', 'quantity' => 1]),
+            self::toolCallResponse('add_to_cart', [
+                'variantId' => 'fx-004-black',
+                'quantity' => 1,
+                'options' => [['Colour', 'Black']],
+            ]),
             self::textResponse('Added it to your cart.'),
-            self::toolCallResponse('add_to_cart', ['variantId' => 'fx-004-black', 'quantity' => 1]),
+            self::toolCallResponse('add_to_cart', [
+                'variantId' => 'fx-004-black',
+                'quantity' => 1,
+                'options' => [['Colour', 'Black']],
+            ]),
             self::textResponse('Added it to your cart.'),
         ];
 

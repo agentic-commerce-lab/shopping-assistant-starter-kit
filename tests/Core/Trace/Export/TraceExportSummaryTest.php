@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Core\Trace\Export;
 
 use PHPUnit\Framework\TestCase;
-use Shopware\Core\Checkout\Customer\CustomerEntity;
+use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 use Swag\AssistantStarterKit\Core\Trace\Export\TraceExportSummary;
-use Swag\AssistantStarterKit\Entity\Conversation\ConversationEntity;
-use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventCollection;
-use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
+use Swag\AssistantStarterKit\Tests\Support\BuildsConversationRows;
 
 /**
  * The numbers in an exported file have to be the numbers on the screen. This is the one place they
@@ -17,6 +15,8 @@ use Swag\AssistantStarterKit\Entity\TraceEvent\TraceEventEntity;
  */
 final class TraceExportSummaryTest extends TestCase
 {
+    use BuildsConversationRows;
+
     public function testTheShopKeepsWhatItSpentAndTheModelTheRest(): void
     {
         // A real turn's offsets, measured 2026-08-24: the shop works up to 22ms, the model thinks
@@ -85,6 +85,53 @@ final class TraceExportSummaryTest extends TestCase
     }
 
     /**
+     * The reviewer's ask, and the reason it is in the summary rather than only in the events: a file
+     * full of turns that answered badly is unreadable without knowing which model answered them.
+     */
+    public function testTheModelThatAnsweredIsNamed(): void
+    {
+        $row = TraceExportSummary::of(self::conversation(events: [
+            self::event(0, AssistantAgentFactory::MODEL_STAGE, ['name' => 'gpt-4o-mini']),
+            self::event(12, 'turn.end'),
+        ]), 'Storefront');
+
+        self::assertSame(['gpt-4o-mini'], $row['models']);
+    }
+
+    /**
+     * The model is a per-sales-channel setting, so a conversation can straddle a change to it. A
+     * scalar here would have to name one of the two and be wrong about the other turn.
+     */
+    public function testAConversationThatStraddledAConfigChangeNamesBothModels(): void
+    {
+        $row = TraceExportSummary::of(self::conversation(events: [
+            self::event(0, AssistantAgentFactory::MODEL_STAGE, ['name' => 'gpt-4o-mini']),
+            self::event(12, 'turn.end'),
+            self::event(20, AssistantAgentFactory::MODEL_STAGE, ['name' => 'gpt-4o-mini']),
+            self::event(32, 'turn.end'),
+            self::event(40, AssistantAgentFactory::MODEL_STAGE, ['name' => 'gpt-4o']),
+            self::event(50, 'turn.end'),
+        ]), 'Storefront');
+
+        // Three turns, two models: named once each, in the order first seen.
+        self::assertSame(['gpt-4o-mini', 'gpt-4o'], $row['models']);
+    }
+
+    /**
+     * Rows written before the stage existed have no name, and the summary says so by saying nothing.
+     * Retention keeps 30 days, so every shop upgrading into this has such rows on the day it does.
+     */
+    public function testAConversationRecordedBeforeTheStageExistedNamesNoModel(): void
+    {
+        $row = TraceExportSummary::of(self::conversation(events: [
+            self::event(0, 'facet.probe'),
+            self::event(12, 'turn.end'),
+        ]), 'Storefront');
+
+        self::assertSame([], $row['models']);
+    }
+
+    /**
      * The header order the CSV writer relies on: it writes `array_values()`, so a reordering here
      * silently moves every column under the wrong heading.
      */
@@ -98,6 +145,7 @@ final class TraceExportSummaryTest extends TestCase
                 'user',
                 'turns',
                 'outcome',
+                'models',
                 'totalMs',
                 'shopMs',
                 'modelMs',
@@ -105,52 +153,5 @@ final class TraceExportSummaryTest extends TestCase
             ],
             array_keys(TraceExportSummary::of(self::conversation(), 'Storefront')),
         );
-    }
-
-    private static function customer(string $first, string $last): CustomerEntity
-    {
-        $customer = new CustomerEntity();
-        $customer->setId('01a01b4f9e2270a1b2c3d4e5f6a7b8c9');
-        $customer->setFirstName($first);
-        $customer->setLastName($last);
-
-        return $customer;
-    }
-
-    /** @param list<TraceEventEntity> $events */
-    private static function conversation(
-        array $events = [],
-        int $totalMs = 0,
-        ?CustomerEntity $customer = null,
-    ): ConversationEntity {
-        $conversation = new ConversationEntity();
-        $conversation->setId('01a0337f413070afa3b29711739324a2');
-        $conversation->setSalesChannelId('01a01b4af6567284ac9eeb3616598ac3');
-        $conversation->setTurnCount(1);
-        $conversation->setOutcome('product_shown');
-        $conversation->setTotalMs($totalMs);
-        $conversation->setCreatedAt(new \DateTimeImmutable('2026-08-24T10:12:04+00:00'));
-        $conversation->setEvents(new TraceEventCollection($events));
-
-        if ($customer !== null) {
-            $conversation->setCustomerId($customer->getId());
-            $conversation->setCustomer($customer);
-        }
-
-        return $conversation;
-    }
-
-    private static function event(int $elapsedMs, string $stage): TraceEventEntity
-    {
-        static $seq = 0;
-
-        $event = new TraceEventEntity();
-        $event->setId(bin2hex(random_bytes(16)));
-        $event->setSeq($seq++);
-        $event->setStage($stage);
-        $event->setElapsedMs($elapsedMs);
-        $event->setPayload([]);
-
-        return $event;
     }
 }

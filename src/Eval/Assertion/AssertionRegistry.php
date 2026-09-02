@@ -49,6 +49,9 @@ final class AssertionRegistry
             'no_handoff_claim_in_prose' => new NoHandoffClaimInProse(),
             'escalated_with_handoff' => new EscalatedWithHandoff(),
             'tool_calls_at_most' => new ToolCallsAtMost(),
+            // The floor, and the reason a red journey can now name its cause — see the two classes.
+            'tool_calls_at_least' => new ToolCallsAtLeast(),
+            'no_rejected_tool_arguments' => new NoRejectedToolArguments(),
             'questions_at_most' => new QuestionsAtMost(),
             'renders_at_least' => new RendersAtLeast(),
             'rendered_ids_from_each' => new RenderedIdsFromEach(),

@@ -191,7 +191,11 @@ final class AddToCartToolFamilyTest extends TestCase
     {
         // The guard must not refuse what it was never meant to: the fixture's own sellable units
         // carry StockSource::Variant or StockSource::Product and go through unchanged.
-        $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2);
+        //
+        // `options` because this one is a variant of `fx-026`, and a variant the shopper did not
+        // name is refused by the guard {@see AddToCartToolVariantChoiceTest} covers — a different
+        // refusal from this file's subject, which is the family PARENT.
+        $result = $this->tool()(variantId: 'fx-026-blue-l', quantity: 2, options: [['Colour', 'Blue'], ['Size', 'L']]);
 
         self::assertArrayHasKey('cart', $result);
         self::assertSame('Added 2 to the cart.', $result['note']);
