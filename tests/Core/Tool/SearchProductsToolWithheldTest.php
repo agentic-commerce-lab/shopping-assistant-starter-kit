@@ -46,17 +46,21 @@ final class SearchProductsToolWithheldTest extends TestCase
 
     public function testMatchedReportsWhatSurvivedRetrievalNotWhatWasReturned(): void
     {
-        // Gravel Tyre 40c has four variants in the fixture; asking for two must still report four.
+        // Gravel Tyre 40c has four variants in the fixture and they are one family, so one card
+        // comes back however many are asked for — `matched` must still report all four.
         $result = $this->tool()(term: 'Gravel Tyre', limit: 2);
 
-        self::assertSame(2, $result['total'], 'total keeps meaning the length of products (T3)');
-        self::assertCount(2, $result['products']);
+        self::assertSame(1, $result['total'], 'total keeps meaning the length of products (T3)');
+        self::assertCount(1, $result['products']);
         self::assertSame(4, $result['matched']);
     }
 
     public function testAnUntruncatedSearchReportsMatchedEqualToTotal(): void
     {
-        $result = $this->tool()(term: 'Gravel Tyre', limit: 8);
+        // A term matching only standalone products, because these two figures can now agree *only*
+        // when nothing was a family: one card per family means a four-variant match always reports
+        // `matched` above `total`. "bottle" finds three separate products in the fixture.
+        $result = $this->tool()(term: 'bottle', limit: 8);
 
         self::assertSame($result['total'], $result['matched']);
         self::assertFalse($result['more'], 'the window was not saturated, so this is the whole answer');
@@ -85,10 +89,12 @@ final class SearchProductsToolWithheldTest extends TestCase
     }
 
     /**
-     * The failure this whole change exists for, in miniature.
+     * The failure this whole change exists for, in miniature — and the reason dropping the backfill
+     * costs the model nothing.
      *
-     * Two of four Gravel Tyre variants come back. `Tan` and `650x47` are only on the two that did
-     * not — and the model must still be able to ask for them.
+     * One of four Gravel Tyre variants comes back as a card. `Tan` and `650x47` are on variants that
+     * did not, and the model must still be able to ask for them. Since one card per family replaced
+     * the backfill this disclosure carries *more*, not less: three withheld variants instead of two.
      */
     public function testATruncatedFamilyDisclosesTheOptionsOfTheVariantsItWithheld(): void
     {
@@ -103,16 +109,21 @@ final class SearchProductsToolWithheldTest extends TestCase
 
         $family = $families[0] ?? self::fail('no family summary');
         self::assertSame('Gravel Tyre 40c', $family['name']);
-        self::assertSame(2, $family['shown']);
+        self::assertSame(1, $family['shown']);
         self::assertSame(4, $family['variants']);
         self::assertContains('Tan', $family['options']['Colour'] ?? []);
         self::assertContains('650x47', $family['options']['Size'] ?? []);
     }
 
-    /** No truncation, no key. An empty families array is noise the model pays tokens to read. */
+    /**
+     * No truncation, no key. An empty families array is noise the model pays tokens to read.
+     *
+     * "bottle" rather than "Gravel Tyre": a family of four is now always truncated to its one
+     * representative card, so only a term matching standalone products can truncate nothing.
+     */
     public function testAnUntruncatedSearchOmitsTheFamiliesKeyEntirely(): void
     {
-        self::assertArrayNotHasKey('families', $this->tool()(term: 'Gravel Tyre', limit: 8));
+        self::assertArrayNotHasKey('families', $this->tool()(term: 'bottle', limit: 8));
     }
 
     /**

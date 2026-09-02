@@ -130,6 +130,59 @@ test('page context is part of preparing the turn, not an unlabelled Other', () =
     assert.equal(phaseOf('page.context'), 'prepare');
 });
 
+test('a disclosure never reads as Other, and never splits the phase it lands in', () => {
+    // `options.disclosed` records what the shop told the model about a family. It fires at two
+    // different points — before the prompt on a product page, and mid-search when a family was
+    // truncated — so it is both mapped and quiet. Unmapped it would have opened an "Other" row on
+    // every one of those turns, which is the wart this file's `prompt` gap already shows.
+    assert.equal(phaseOf('options.disclosed'), 'prepare');
+
+    const rows = buildTimeline([
+        ev(0, 'retrieve'),
+        ev(3, 'options.disclosed', { source: 'families', options: ['S', 'M'] }),
+        ev(6, 'render'),
+    ]);
+
+    // Joins the search it landed in rather than cutting it in half with a second "Prepared".
+    assert.deepEqual(rows.map((row) => row.key), ['search', 'answer']);
+    assert.equal(rows[0].events.length, 2);
+});
+
+test('a disclosure that opens the turn forms the Prepared phase itself', () => {
+    // The product-page path: it is the first event of the turn, before anything else has begun, so
+    // the quiet rule has no group to join and the mapping is what keeps it out of "Other".
+    const rows = buildTimeline([
+        ev(0, 'options.disclosed', { source: 'viewing', options: ['S', 'M'] }),
+        ev(2, 'page.context'),
+        ev(9, 'guard.check'),
+    ]);
+
+    assert.deepEqual(rows.map((row) => row.key), ['prepare']);
+    assert.equal(rows[0].events.length, 3);
+});
+
+test('the model is named on the timeline, inside the phase that opens the turn', () => {
+    // It is the first event of every turn, so an unmapped `model` stage would open all of them
+    // with a phase called "Other" — and the name is what tells a merchant reading a bad answer
+    // whether the shop was pointed at a different model that week.
+    assert.equal(phaseOf('model'), 'prepare');
+
+    const rows = buildTimeline([
+        ev(0, 'model', { name: 'gpt-4o-mini' }),
+        ev(0, 'facet.probe'),
+        ev(14, 'guard.check'),
+    ]);
+
+    assert.deepEqual(rows.map((row) => row.key), ['prepare']);
+    assert.equal(phaseFacts(rows[0]).find((fact) => fact.label === 'model').value, 'gpt-4o-mini');
+});
+
+test('a turn recorded before the model stage existed prints no model rather than a guess', () => {
+    const rows = buildTimeline([ev(0, 'facet.probe'), ev(14, 'guard.check')]);
+
+    assert.equal(phaseFacts(rows[0]).find((fact) => fact.label === 'model'), undefined);
+});
+
 test('the category retry belongs to the search it retried', () => {
     // It must not open a phase of its own: it is the same search running a second time, and a
     // separate row would read as a second search the shopper caused.
@@ -174,4 +227,45 @@ test('leaving the category is reported without a count it does not have', () => 
 
     assert.ok(fact, 'the row must say the category was abandoned');
     assert.doesNotMatch(fact.value, /^\d+$/, 'it must not claim a number');
+});
+
+/*
+ * `turn.failed` is the stage a turn that died inside the agent leaves behind — see
+ * Core/Agent/FailedTurn.php. Until 2026-09-02 the catch recorded nothing at all, so this page had
+ * nothing to show for the one turn a merchant most wants explained; now it must land in the phase
+ * that ends a turn rather than in `other`, and must close the turn the way `turn.end` does.
+ */
+const FAILED_TURN = [
+    ev(18, 'facet.probe'),
+    ev(32, 'guard.check'),
+    ev(4102, 'tool.call'),
+    ev(9310, 'turn.failed', { exception: 'Symfony\\AI\\Agent\\Exception\\RuntimeException', message: 'upstream said no' }),
+];
+
+test('a failed turn is filed under finish rather than left unmapped', () => {
+    assert.equal(phaseOf('turn.failed'), 'finish');
+});
+
+test('a failed turn closes the turn the way turn.end does', () => {
+    const turns = splitTurns([...FAILED_TURN, ...LIVE_TURN]);
+
+    assert.equal(turns.length, 2);
+    assert.equal(turns[0].at(-1).stage, 'turn.failed');
+    assert.equal(turns[1].at(-1).stage, 'turn.end');
+});
+
+test('the finish row of a failed turn names the exception rather than staying empty', () => {
+    const rows = buildTimeline(FAILED_TURN);
+    const finish = rows.find((row) => row.type === 'phase' && row.key === 'finish');
+
+    const facts = phaseFacts(finish);
+
+    assert.equal(facts.length, 1);
+    assert.equal(facts[0].label, 'failed');
+    assert.equal(facts[0].alarming, true);
+    // The class, shortened: a merchant reading a timeline needs "RuntimeException", not the
+    // namespace it lives in. The full payload is one disclosure away.
+    assert.match(facts[0].value, /RuntimeException/);
+    assert.match(facts[0].value, /upstream said no/);
+    assert.doesNotMatch(facts[0].value, /Symfony/);
 });

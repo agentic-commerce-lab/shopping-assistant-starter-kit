@@ -17,6 +17,19 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * candidate claim {@see PropertyClaimExtractor} can and will extract. A value the shopper introduced
  * themselves is exempted separately, directly in {@see ProseAudit::unbackedProperties()}, because
  * that check needs the original claimed string rather than a pre-built set.
+ *
+ * **`$disclosed` is the fourth source of entitlement, and it carries no card.** Retrieval is not the
+ * only way the shop hands the model option values: `search_products` returns a `families` block for a
+ * truncated family, and the viewing line names the open product's whole family. Both are deliberate
+ * disclosures of values the shop itself chose to state, so a reply repeating one is repeating the
+ * shop — see {@see DisclosedOptions} for where they are read from, and
+ * {@see \Swag\AssistantStarterKit\Tests\Core\Grounding\PropertyClaimsMeasuredAgainstDisclosedTest}
+ * for the live turn that made it necessary.
+ *
+ * **Known limit, deliberately not fixed here:** this set is flat, with no notion of which product a
+ * value belongs to. Two variants of two different families contribute to one pool, so an unrelated
+ * product can back a claim by coincidence. Attributing each claim to a product means teaching
+ * {@see PropertyClaimExtractor} which product a sentence is about, which is a much larger change.
  */
 final class BackedPropertyValues
 {
@@ -24,12 +37,22 @@ final class BackedPropertyValues
 
     /**
      * @param list<ProductCard> $rendered
+     * @param list<string>      $disclosed option values the shop stated to the model without a card
+     *                                     behind them, from {@see DisclosedOptions::from()}
      *
      * @return array<string, true> keyed by lowercased value, so a lookup is array_key_exists
      */
-    public static function of(array $rendered): array
+    public static function of(array $rendered, array $disclosed = []): array
     {
         $values = [];
+
+        // Lowercased on the way in, exactly like a card's own values: a disclosure must not be the
+        // one source that only works when the model echoes the catalogue's precise casing.
+        foreach ($disclosed as $value) {
+            if ($value !== '') {
+                $values[mb_strtolower($value)] = true;
+            }
+        }
 
         foreach ($rendered as $card) {
             foreach ($card->properties as $groupValues) {

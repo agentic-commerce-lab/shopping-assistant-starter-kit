@@ -40,9 +40,13 @@
                 </div>
 
                 {# Below the buttons, so showing it pushes nothing they sit on. #}
+                {# `critical`, not `error`: `sw-alert` forwards its attributes to `mt-banner`, which accepts
+                   only neutral, info, attention, critical, positive and inherited. An unknown variant is not
+                   rejected — it renders as a neutral info box, which silently stripped the severity off the one
+                   message that needed it. `warning` is `attention` for the same reason. #}
                 <sw-alert
                     v-if="exportError"
-                    variant="error"
+                    variant="critical"
                     class="swag-assistant-trace-list__export-error"
                 >
                     {{ exportError }}

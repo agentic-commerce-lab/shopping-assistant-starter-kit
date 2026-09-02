@@ -47,7 +47,12 @@ final class ViewingContext
 {
     private function __construct() {}
 
-    public static function line(?ProductCard $card): string
+    /**
+     * @param array<string, list<string>> $familyOptions every option value the viewed product's
+     *                                                   family offers, from `FamilyOptionValues`;
+     *                                                   empty for a standalone product
+     */
+    public static function line(?ProductCard $card, array $familyOptions = []): string
     {
         if ($card === null) {
             return '';
@@ -72,10 +77,52 @@ final class ViewingContext
             . 'name another. Its card is ALREADY being shown to them alongside your answer, with '
             . 'its real price and availability filled in by the shop — so do not call a tool to '
             . 'look this product up. Call one only if you need a DIFFERENT product or a different '
-            . 'variant. Never state a figure yourself: the card carries them.',
+            . 'variant. Never state a figure yourself: the card carries them.%s',
             $summary['name'],
             $described,
             $summary['id'],
+            self::familyClause($familyOptions),
         );
+    }
+
+    /**
+     * What the rest of the family offers, or `''` when there is no choice to describe.
+     *
+     * **Groups with a single value are dropped**, and that is the whole subtlety. A one-variant
+     * family is not a choice, and printing *"also available in Size: M"* directly under *"you are
+     * looking at Size: M"* states one fact twice in two different voices — which invites the model
+     * to read the repetition as significant. Dropping them also means a standalone product's line is
+     * byte-for-byte the one it was before this argument existed, so nothing changes on the CMS and
+     * listing pages that make up most of a shop.
+     *
+     * Values only, never a count and never a figure: the same allowlist reasoning as the viewed
+     * card's own options, and these values are already in the prompt through the catalogue
+     * vocabulary.
+     *
+     * @param array<string, list<string>> $familyOptions
+     */
+    private static function familyClause(array $familyOptions): string
+    {
+        $choices = [];
+
+        foreach ($familyOptions as $group => $values) {
+            if (\count($values) < 2) {
+                continue;
+            }
+
+            $choices[] = $group . ': ' . implode(', ', $values);
+        }
+
+        if ($choices === []) {
+            return '';
+        }
+
+        // Stated as fact, then the one thing the model must still do — mirroring the sentence above
+        // it, which was measured into its current wording. The model may answer "which sizes do you
+        // have?" straight from this; it may NOT claim a particular one is in stock, because a
+        // variant's availability is a figure and figures live on cards.
+        return \sprintf(' The same product also comes in — %s. You may answer questions about which options '
+        . 'exist directly from this list. To show one, or to say anything about its price or '
+        . 'availability, call a tool for that variant.', implode('; ', $choices));
     }
 }

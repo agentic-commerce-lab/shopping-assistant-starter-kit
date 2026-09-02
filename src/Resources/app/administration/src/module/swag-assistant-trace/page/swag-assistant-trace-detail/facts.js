@@ -19,7 +19,7 @@ export function phaseFacts(row) {
 
     switch (row.key) {
         case 'prepare':
-            return prepareFacts(payload('page.context'));
+            return prepareFacts(payload('page.context'), payload('model'));
         case 'understand':
             return understandFacts(payload('understand'), payload('query.build'));
         case 'search':
@@ -32,7 +32,7 @@ export function phaseFacts(row) {
         case 'answer':
             return answerFacts(payload('render'), payload('validate'));
         case 'finish':
-            return finishFacts(payload('turn.end'), row);
+            return finishFacts(payload('turn.end'), payload('turn.failed'), row);
         default:
             return [];
     }
@@ -59,16 +59,26 @@ function understandFacts(understand, query) {
 }
 
 /**
- * Whether the shopper was on a product or a category page. This is the row that explains an
- * unusually fast turn — and, when the model still called a tool anyway, the row that says the
- * shortcut was available and went unused.
+ * Which model answered, and whether the shopper was on a product or a category page.
+ *
+ * The page context is the row that explains an unusually fast turn — and, when the model still
+ * called a tool anyway, the row that says the shortcut was available and went unused.
+ *
+ * The model's name is first because it is the row that reframes every other row beneath it: a
+ * timeline full of dropped filters and invented products reads differently once you can see the
+ * shop was pointed at a small model that week. Turns recorded before the stage existed have no
+ * name and print none, rather than printing a guess.
  */
-function prepareFacts(pageContext) {
-    if (!pageContext) {
-        return [];
+function prepareFacts(pageContext, model) {
+    const facts = [];
+
+    if (model?.name) {
+        facts.push({ label: 'model', value: model.name });
     }
 
-    const facts = [];
+    if (!pageContext) {
+        return facts;
+    }
 
     if (pageContext.resolved) {
         facts.push({ label: 'viewing product', value: pageContext.resolved });
@@ -132,12 +142,34 @@ function answerFacts(render, validate) {
     return facts;
 }
 
-function finishFacts(end, row) {
+function finishFacts(end, failed, row) {
     if (row.events.some((event) => event.stage === 'turn.tool_limit_exceeded')) {
         return [{ label: 'ended', value: 'tool budget exhausted', alarming: true }];
     }
 
+    /*
+     * Checked before `outcome`, because a failed turn has no `turn.end` at all — see
+     * Core/Agent/FailedTurn.php for why one is not synthesised. This row is the entire reason that
+     * stage exists: a live failure on 2026-09-02 left a merchant a timeline that stopped after
+     * `tool.call` and said nothing.
+     */
+    if (failed) {
+        return [{ label: 'failed', value: describeFailure(failed), alarming: true }];
+    }
+
     return end?.outcome ? [{ label: 'outcome', value: end.outcome }] : [];
+}
+
+/**
+ * `Symfony\AI\Agent\Exception\RuntimeException: upstream said no` is a class path with a sentence
+ * attached. A merchant reading a timeline needs the short name and the sentence; the namespace is in
+ * the raw payload, one disclosure away, for whoever is going to grep for it.
+ */
+function describeFailure(failed) {
+    const name = String(failed.exception ?? 'error').split('\\').at(-1);
+    const message = failed.message ? `: ${failed.message}` : '';
+
+    return `${name}${message}`;
 }
 
 /** `8183` reads as an id; `8.2 s` reads as a duration. */

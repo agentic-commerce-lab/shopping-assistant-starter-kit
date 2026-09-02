@@ -47,13 +47,20 @@ final class AssistantAgentFactoryTest extends TestCase
         // empty cart and both would be wrongly allowed.
         $bundle = $this->bundle(new AssistantConfig(maxCartValue: 60.0));
 
+        // `options` because `fx-026-blue-l` is a variant of a family, and `add_to_cart` now refuses
+        // one the shopper never named — see AddToCartToolVariantChoiceTest. Both calls state the
+        // same choice, so what is being exercised here is still the accumulation, not the guard.
+        $chosen = [['Colour', 'Blue'], ['Size', 'L']];
+
         $bundle->toolbox->execute(new ToolCall('call-1', 'add_to_cart', [
             'variantId' => 'fx-026-blue-l',
             'quantity' => 1,
+            'options' => $chosen,
         ]));
         $bundle->toolbox->execute(new ToolCall('call-2', 'add_to_cart', [
             'variantId' => 'fx-026-blue-l',
             'quantity' => 1,
+            'options' => $chosen,
         ]));
 
         // This used to need a payload-key filter: dispatch and outcome both recorded `tool.call`,
@@ -74,6 +81,32 @@ final class AssistantAgentFactoryTest extends TestCase
 
         self::assertSame('allowed', $first->payload['policyReasonCode']);
         self::assertSame('cart_limit', $second->payload['policyReasonCode']);
+    }
+
+    /**
+     * Which model answered is the one thing about a turn a merchant could not see, and the turn they
+     * open a trace to explain is often the turn that died — so this is recorded before anything in
+     * `create()` can fail, not at the end where a throw would take it with it.
+     */
+    public function testTheModelIsRecordedAsTheFirstEventOfTheTurn(): void
+    {
+        $bundle = $this->bundle(new AssistantConfig());
+        $first = $bundle->trace->events()[0] ?? null;
+
+        self::assertNotNull($first);
+        self::assertSame(AssistantAgentFactory::MODEL_STAGE, $first->stage);
+        self::assertSame('gpt-x', $first->payload['name'] ?? null, 'the model LlmSettings named');
+    }
+
+    /**
+     * A trace is a file a merchant forwards. `LlmSettings::$baseUrl` is the one part of that config
+     * that has been seen carrying a credential in its path, so the name travels and the URL does not.
+     */
+    public function testTheProviderUrlIsNotRecordedBesideTheModel(): void
+    {
+        $payload = $this->bundle(new AssistantConfig())->trace->payload(AssistantAgentFactory::MODEL_STAGE);
+
+        self::assertSame(['name'], array_keys($payload ?? []));
     }
 
     public function testEscalationSwitchedOffMeansTheToolIsNeverInTheToolbox(): void

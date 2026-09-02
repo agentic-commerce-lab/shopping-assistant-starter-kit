@@ -12,14 +12,20 @@
        full record is the only thing that answers that — see the list's export for why nothing here
        offers a table instead. #}
     <template #smart-bar-actions>
-        <sw-button
+        {# `mt-button`, not `sw-button`, and that is the only way to get a primary button. The
+           `sw-button` wrapper renders `<mt-button v-bind="$attrs" variant="secondary">` — the
+           literal comes AFTER the spread, so it wins, and every `variant="primary"` passed to that
+           wrapper rendered secondary. Changing the value could not fix it; only dropping the
+           wrapper does. Every other attribute here already reached `mt-button` through `$attrs`,
+           so nothing else about this button changes. #}
+        <mt-button
             variant="primary"
             size="small"
             :disabled="isLoading || !conversation"
             @click="onExport"
         >
             {{ $tc('swag-assistant-trace.detail.export') }}
-        </sw-button>
+        </mt-button>
     </template>
     {% endblock %}
 
@@ -30,7 +36,11 @@
 
             {# The endpoint's refusals are sentences a merchant can act on, so they are shown rather
                than swallowed — the same reason the list shows them beside its filter. #}
-            <sw-alert v-if="exportError" variant="error">
+            {# `critical`, not `error`: `sw-alert` forwards its attributes to `mt-banner`, which accepts
+               only neutral, info, attention, critical, positive and inherited. An unknown variant is not
+               rejected — it renders as a neutral info box, which silently stripped the severity off the one
+               message that needed it. `warning` is `attention` for the same reason. #}
+            <sw-alert v-if="exportError" variant="critical">
                 {{ exportError }}
             </sw-alert>
 
@@ -57,7 +67,7 @@
                    turn is legible without reading anything and a dirty one cannot be missed. #}
                 <sw-alert
                     v-if="turn.flags.length"
-                    variant="warning"
+                    variant="attention"
                     :title="$tc('swag-assistant-trace.detail.warnings')"
                 >
                     <div v-for="flag in turn.flags" :key="flag.label">{{ flag.label }}: {{ flag.value }}</div>

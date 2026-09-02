@@ -17,7 +17,12 @@
  */
 
 const PHASES = [
-    { key: 'prepare', stages: ['page.context', 'facet.probe', 'vocabulary.render', 'guard.check'] },
+    /*
+     * `model` is the first event of every turn — AssistantAgentFactory records it before anything
+     * can fail — and it is listed here rather than left to fall through to `other` for that reason:
+     * an unlisted first stage would open every single turn with a phase called "Other".
+     */
+    { key: 'prepare', stages: ['model', 'options.disclosed', 'page.context', 'facet.probe', 'vocabulary.render', 'guard.check'] },
     { key: 'understand', stages: ['tool.call', 'understand', 'query.build', 'tool.arguments.rejected'] },
     { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'retrieve.without_category', 'retrieve.relaxTerm', 'variant.resolve', 'blocklist.filter'] },
     /*
@@ -30,10 +35,16 @@ const PHASES = [
      */
     { key: 'act', stages: ['cart.add'] },
     { key: 'answer', stages: ['validate', 'grounding.select', 'render', 'claims.audit'] },
-    { key: 'finish', stages: ['turn.end', 'turn.tool_limit_exceeded', 'escalate'] },
+    /*
+     * `turn.failed` is how a turn that died inside the agent ends — see Core/Agent/FailedTurn.php.
+     * It belongs here rather than in `other` for the same reason `cart.add` was moved out of
+     * `understand`: the one turn a merchant opens this page to explain must not be filed under
+     * bookkeeping. It is deliberately not a `turn.end`, so both names are listed everywhere one is.
+     */
+    { key: 'finish', stages: ['turn.end', 'turn.failed', 'turn.tool_limit_exceeded', 'escalate'] },
 ];
 
-const TERMINAL = ['turn.end', 'turn.tool_limit_exceeded'];
+const TERMINAL = ['turn.end', 'turn.failed', 'turn.tool_limit_exceeded'];
 
 /**
  * Stages that run wherever they are needed rather than at a point in the pipeline.
@@ -42,8 +53,13 @@ const TERMINAL = ['turn.end', 'turn.tool_limit_exceeded'];
  * prompt bookkeeping. Letting either start a phase cut "Understood the question" in half on a real
  * turn and invented a second "Prepared" between the pieces — a phase that never happened. They
  * join whatever phase is already running and only form their own when nothing else has begun.
+ *
+ * `options.disclosed` is the same shape and is why this list matters rather than being a curiosity:
+ * it fires before the prompt when the shopper has a product open, and again in the middle of a
+ * search that truncated a family. Mapped to `prepare` above so it never reads as "Other", and quiet
+ * here so the search-path occurrence joins the search instead of splitting it in two.
  */
-const QUIET = ['facet.probe', 'vocabulary.render'];
+const QUIET = ['facet.probe', 'vocabulary.render', 'options.disclosed'];
 
 /**
  * Below this a gap is scheduling noise, not a round trip. Model calls run in seconds; the largest
@@ -57,8 +73,9 @@ export function phaseOf(stage) {
 
 /**
  * Splits events into turns. `seq` is monotonic across a whole conversation, but `elapsedMs`
- * restarts at each turn — so a drop in elapsed marks a boundary even when a `turn.end` is missing,
- * which happens when a turn died on an unhandled error.
+ * restarts at each turn — so a drop in elapsed marks a boundary even when no terminal stage is
+ * present. That fallback still matters: a turn killed by a PHP error or a timeout leaves no stage at
+ * all. A turn that died inside the agent now leaves `turn.failed` and is closed by name.
  */
 export function splitTurns(events) {
     const turns = [];

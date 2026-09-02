@@ -10,10 +10,19 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetType;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
+use Swag\AssistantStarterKit\Core\Grounding\BackedPropertyValues;
 use Swag\AssistantStarterKit\Core\Grounding\ProseAudit;
 
 final class ProseAuditPropertyTest extends TestCase
 {
+    /*
+     * The cards are wrapped in `BackedPropertyValues::of()` because the audit now takes the
+     * already-assembled set of values a reply may state, not the cards it came from — there is a
+     * fourth source of entitlement (option values the shop disclosed with no card behind them) and
+     * merging it at the call site was the only way to add one without a sixth parameter. See
+     * `PropertyClaimsMeasuredAgainstDisclosedTest` for that source and the turn that needed it.
+     */
+
     private function facets(): FacetSet
     {
         // `properties.` prefix, matching the real convention PropertyClaimExtractor now requires
@@ -52,7 +61,7 @@ final class ProseAuditPropertyTest extends TestCase
     {
         $unbacked = (new ProseAudit())->unbackedProperties(
             'It is made of Merino.',
-            [$this->card(['Material' => ['Merino']])],
+            BackedPropertyValues::of([$this->card(['Material' => ['Merino']])]),
             '',
             $this->facets(),
         );
@@ -64,7 +73,7 @@ final class ProseAuditPropertyTest extends TestCase
     {
         $unbacked = (new ProseAudit())->unbackedProperties(
             'It is made of Nylon.',
-            [$this->card(['Material' => ['Merino']])],
+            BackedPropertyValues::of([$this->card(['Material' => ['Merino']])]),
             '',
             $this->facets(),
         );
@@ -78,7 +87,7 @@ final class ProseAuditPropertyTest extends TestCase
         // not a claim by the model.
         $unbacked = (new ProseAudit())->unbackedProperties(
             'I searched for Nylon items as you asked, but found none in stock.',
-            [$this->card(['Material' => ['Merino']])],
+            BackedPropertyValues::of([$this->card(['Material' => ['Merino']])]),
             'do you have anything in Nylon?',
             $this->facets(),
         );
@@ -94,7 +103,7 @@ final class ProseAuditPropertyTest extends TestCase
         // a candidate claim. Correctly restating a real option value must never be flagged.
         $unbacked = (new ProseAudit())->unbackedProperties(
             'It comes in Blue.',
-            [$this->card(properties: [], options: ['Colour' => 'Blue'])],
+            BackedPropertyValues::of([$this->card(properties: [], options: ['Colour' => 'Blue'])]),
             '',
             $this->facets(),
         );

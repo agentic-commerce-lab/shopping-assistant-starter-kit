@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Agent;
 
+use Swag\AssistantStarterKit\Core\Commerce\CardResolver;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
-use Symfony\AI\Agent\Exception\ExceptionInterface as AgentExceptionInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 
@@ -66,6 +68,7 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
             llm: $this->llmFactory->forSalesChannel($salesChannelId),
             viewing: $viewing,
             browsingCategoryId: $browsingCategoryId,
+            recentCards: $this->lastShown($history, $config->scope),
         );
 
         $bundle->trace->record('page.context', [
@@ -74,25 +77,30 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
             'category' => $browsingCategoryId,
         ]);
 
-        try {
-            $turn = (new AssistantRunner($config, $bundle))->run($message, $this->bag($history));
-        } catch (AgentExceptionInterface) {
-            // **Degrade, never propagate.** This is the shopper-facing path: an exception escaping
-            // here is an HTTP 500 in front of a customer. Three separate pilot blockers on this
-            // branch were foreseeable conditions ending the turn instead of degrading (rulings R48,
-            // R49, R52), each found by a live run rather than by the suite — so a fourth is not
-            // being shipped.
-            //
-            // The trace is kept and returned: it is what says where the turn stopped, and it is
-            // persisted by the controller either way (A6). The shopper sees a fixed, honest
-            // sentence rather than the exception message — a model or network error is not
-            // something to explain to a customer, and the message could carry internals.
-            $turn = new AssistantTurn(
-                'Sorry — I could not finish that just now. Please try again in a moment.',
-                [],
-                'error',
-            );
-        }
+        // **Degrade, never propagate.** This is the shopper-facing path: an exception escaping here
+        // is an HTTP 500 in front of a customer. Three separate pilot blockers on this branch were
+        // foreseeable conditions ending the turn instead of degrading (rulings R48, R49, R52), each
+        // found by a live run rather than by the suite — and on 2026-09-02 a fourth was: the catch
+        // was narrowed to the agent's own exceptions, so a model endpoint answering HTML instead of
+        // JSON reached the shopper as a 500.
+        //
+        // Both halves live in {@see FailedTurn}: which throwables degrade, the stage that records
+        // why, and the apology in the conversation's own language. The trace is persisted by the
+        // controller either way (A6), and no `turn.end` is synthesised (ruling R40).
+        //
+        // The analyzer cannot follow a closure into the callee that catches for it, so it reports
+        // `AssistantRunner::run()`'s declared throw as unhandled here. It is handled — by
+        // `catch (\Throwable)` one frame away, which is the whole subject of that method. A
+        // `@throws` tag would silence it by making the opposite claim: that this method propagates,
+        // which is precisely the behaviour the ruling above forbids. The closure is what makes the
+        // degradation policy unit-testable without constructing an agent, and that is worth one
+        // expected finding at its source.
+        // @mago-expect analysis:unhandled-thrown-type
+        $turn = FailedTurn::orDegrade(
+            $bundle->trace,
+            $config->defaultReplyLanguage,
+            fn(): AssistantTurn => (new AssistantRunner($config, $bundle))->run($message, $this->bag($history)),
+        );
 
         return new TurnResult($turn, $bundle->trace);
     }
@@ -124,5 +132,41 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
         }
 
         return $bag;
+    }
+
+    /**
+     * The cards the previous assistant reply rendered, resolved fresh.
+     *
+     * **Why this is needed at all.** {@see self::bag()} replays prose and deliberately not ids, so
+     * without this the model reads "Club Jersey" as a name, has to search for it, and a search keyed
+     * on a different term hands back a different variant of the same family. Measured on the staging
+     * shop 2026-09-02: a shopper shown Blue/M got Red/XL added to their cart, announced as though it
+     * were the one on screen. {@see RecentCardsContext} carries the full account.
+     *
+     * **Resolved, never replayed from storage.** The stored turn holds ids only, and these cards go
+     * on to be rendered — so a price or a stock figure from the previous turn is exactly what this
+     * project refuses to show. {@see CardResolver} re-reads them through `$scope`, in one round trip
+     * where the gateway supports it, which also means a product blocked since that turn is simply
+     * gone rather than resurrected by a conversation token.
+     *
+     * Only the most recent assistant turn. Two turns back is a shortlist the shopper has already
+     * moved past, and every extra card is prompt the model pays to read on a turn that is already
+     * the slowest thing in this product.
+     *
+     * @param list<ConversationTurn> $history
+     *
+     * @return list<ProductCard>
+     */
+    private function lastShown(array $history, CatalogScope $scope): array
+    {
+        foreach (array_reverse($history) as $turn) {
+            if ($turn->role !== ConversationTurn::ROLE_ASSISTANT) {
+                continue;
+            }
+
+            return $turn->cardIds === [] ? [] : (new CardResolver($this->gateway))->resolve($turn->cardIds, $scope);
+        }
+
+        return [];
     }
 }

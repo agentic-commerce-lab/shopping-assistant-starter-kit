@@ -19,6 +19,7 @@
             "exportFailed": "The export could not be created.",
             "scopeSelected": "{count} selected",
             "scopeAll": "All {count} conversations",
+            "scopeCapped": "Newest {count} of {total} conversations",
             "export": "Export traces"
         },
         "detail": {

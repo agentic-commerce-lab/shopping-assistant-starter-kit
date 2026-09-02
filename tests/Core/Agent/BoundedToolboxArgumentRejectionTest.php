@@ -143,6 +143,8 @@ final class BoundedToolboxArgumentRejectionTest extends TestCase
         $payload = $result->getResult();
         self::assertIsArray($payload);
         self::assertArrayHasKey('note', $payload);
+        $note = $payload['note'];
+        self::assertIsString($note);
 
         $rejectedEvents = array_values(array_filter(
             $trace->events(),
@@ -150,6 +152,19 @@ final class BoundedToolboxArgumentRejectionTest extends TestCase
         ));
         self::assertCount(1, $rejectedEvents);
         self::assertSame('search_products', $rejectedEvents[0]->payload['name'] ?? null);
+
+        // **The note must tell the model to call again, and this branch was the one that did not.**
+        // Its sibling — the serializer/TypeError path in `MalformedToolArgumentRejection::reject()`
+        // — has said "call it again" since it was written, while this one, the branch a model hits
+        // most often because it carries the plugin's own semantic bounds, returned the bare
+        // sentence. Measured live with `openai/gpt-5-mini` on 2026-09-02: rejected on the `terms`
+        // bound, seven seconds of reasoning, no second attempt, nothing rendered. A stronger model
+        // infers the retry; a small one does not, and the difference was one clause.
+        //
+        // "once more", not "again": an unbounded invitation spends `maxToolCallsPerTurn` on a
+        // model that has already misread the schema.
+        self::assertStringContainsString('Argument "options" entries need an "option" string.', $note);
+        self::assertStringContainsString('once more', $note);
     }
 
     /**

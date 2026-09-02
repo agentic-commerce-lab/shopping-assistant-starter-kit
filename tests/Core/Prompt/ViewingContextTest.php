@@ -84,4 +84,53 @@ final class ViewingContextTest extends TestCase
             options: $options,
         );
     }
+
+    /**
+     * The bug this argument exists for, measured on the staging shop 2026-09-02.
+     *
+     * A detail page sends the id of the **variant** the shopper has selected, not the parent — the
+     * storefront template says so outright, and it is the right id for "is this in stock?" and for
+     * add-to-cart. But this line then told the model that the product on screen is `Size: M` and, in
+     * the same breath, **not to call a tool to look it up**. Asked *"which sizes are available?"* the
+     * model obeyed both instructions and answered from the only size it had been given:
+     *
+     * > "The A-Line Bag 3317 is specifically available in size L. There are no other sizes currently
+     * > listed for this product."
+     *
+     * Confidently wrong, correctly grounded, and invisible in the trace — worse than a hallucination.
+     * The same model answered the same question correctly with no page context at all, because then
+     * it had to search. So the fix is not to make it search: it is to stop the line being the reason
+     * it does not have to.
+     *
+     * Values only, never a figure — the family's option values are in the catalogue vocabulary
+     * already, exactly like the viewed card's own.
+     */
+    public function testTheFamilysOtherOptionValuesAreNamedAlongsideTheSelectedOne(): void
+    {
+        $line = ViewingContext::line(self::card(), ['Size' => ['XS', 'S', 'M', 'L', 'XL']]);
+
+        self::assertStringContainsString('Size: M', $line, 'the selected variant is still named');
+
+        foreach (['XS', 'S', 'L', 'XL'] as $sibling) {
+            self::assertStringContainsString($sibling, $line);
+        }
+    }
+
+    public function testAProductWithNoFamilyReadsExactlyAsItDidBefore(): void
+    {
+        // A standalone product has no siblings to name, and a line that gained an empty clause would
+        // spend prompt tokens saying nothing on every CMS and listing page in the shop.
+        self::assertSame(ViewingContext::line(self::card()), ViewingContext::line(self::card(), []));
+    }
+
+    public function testAFamilyWithOnlyTheSelectedValueAddsNothing(): void
+    {
+        // One variant that happens to have a parent is not a choice. Naming "available in Size: M"
+        // beside "you are looking at Size: M" reads as two different facts and invites the model to
+        // treat the repetition as significant.
+        self::assertSame(
+            ViewingContext::line(self::card()),
+            ViewingContext::line(self::card(), ['Size' => ['M'], 'Colour' => ['Blue']]),
+        );
+    }
 }

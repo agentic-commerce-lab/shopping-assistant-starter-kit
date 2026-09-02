@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
+use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\ProseProductNames;
 use Swag\AssistantStarterKit\Core\ShopInfo\RetrievedPassages;
@@ -140,7 +141,17 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // Note what is NOT supplied: `unbackedPricesInProse()` above gets passages and never
         // descriptions. A shop document legitimately states a shipping cost; a product description
         // does not legitimately state the product's price. See ProseAudit::unbackedPrices().
-        $this->renderer->unbackedPropertiesInProse($text, $this->facets, GivenDescriptions::from($this->trace));
+        // `DisclosedOptions` beside the descriptions, and for the same reason: an option value the
+        // shop itself put in front of the model — a truncated family's `families` block, or the
+        // viewing line's family clause — is the shop's statement, not an invention. Without it the
+        // one question those two features exist to answer ("what sizes is this in?") came back
+        // correct AND annotated as suspect. Measured on the live shop 2026-09-02.
+        $this->renderer->unbackedPropertiesInProse(
+            $text,
+            $this->facets,
+            GivenDescriptions::from($this->trace),
+            DisclosedOptions::from($this->trace),
+        );
     }
 
     /**

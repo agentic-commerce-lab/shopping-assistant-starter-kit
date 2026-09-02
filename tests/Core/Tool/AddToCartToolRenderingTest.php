@@ -126,7 +126,7 @@ final class AddToCartToolRenderingTest extends TestCase
         self::assertNotNull($earlier);
         $this->renderer->registerRetrieved([$earlier]);
 
-        $tool(variantId: 'fx-026-black-m');
+        $tool(variantId: 'fx-026-black-m', options: [['Colour', 'Black'], ['Size', 'M']]);
 
         self::assertSame(['fx-026-black-m'], $this->renderer->lastRetrievedBatch());
     }

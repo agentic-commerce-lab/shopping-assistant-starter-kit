@@ -47,7 +47,7 @@ final class MalformedToolArgumentRejection
                 'reason' => $previous->getMessage(),
             ]);
 
-            return new ToolResult($toolCall, ['note' => $previous->getMessage()]);
+            return new ToolResult($toolCall, ['note' => self::retryable($previous->getMessage())]);
         }
 
         if ($previous instanceof SerializerExceptionInterface) {
@@ -103,6 +103,29 @@ final class MalformedToolArgumentRejection
         $callingFrame = $e->getTrace()[0] ?? null;
 
         return \is_array($callingFrame) && ($callingFrame['file'] ?? null) === $vendorDispatchFile;
+    }
+
+    /**
+     * A guard's own message, plus the one thing it never said: try again.
+     *
+     * **This branch was the only one without it**, and it is the one a model hits most often — it
+     * carries the plugin's own semantic bounds, where {@see self::reject()} covers malformed types.
+     * That sibling has told the model to "call it again" since it was written. Measured live with
+     * `openai/gpt-5-mini` on 2026-09-02: rejected on `search_products`'s term bound, seven seconds
+     * of reasoning, no second attempt, and a turn that rendered nothing. A stronger model infers
+     * the retry from the bare sentence; a small one does not.
+     *
+     * **"once more", not "again".** An open invitation to retry spends `maxToolCallsPerTurn` on a
+     * model that has already misread the schema, and the shopper pays for that in latency. One
+     * corrected attempt is the whole intent.
+     *
+     * A guard message that already ends in its own instruction — `SearchTermList` now does — reads
+     * fine with this appended, because the two say the same thing at different scopes: what to fix,
+     * and that fixing it is worth doing.
+     */
+    private static function retryable(string $reason): string
+    {
+        return \sprintf('%s Correct the arguments and call the tool once more.', rtrim($reason));
     }
 
     private static function reject(
