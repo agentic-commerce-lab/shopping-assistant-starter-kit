@@ -100,13 +100,30 @@ final class SystemPromptToolAndDisplayRulesTest extends TestCase
     }
 
     /**
-     * And the absence of the key must be spelled out as "no information", or the model reads it as
-     * permission to promise availability — the one claim the shop renders itself.
+     * **Both marks, and what carrying neither means. Changed 2026-09-02.**
+     *
+     * This test used to assert the opposite: that the prompt forbade the positive direction outright
+     * ("absence of that flag tells you nothing", "there is no flag that means in stock"). Measured
+     * live that day, the cost of the ban was a non-answer to the most ordinary question in commerce —
+     * asked *"ist das auf Lager?"*, the assistant replied that the shop shows the current
+     * availability, which is not an answer and was the only one the rules allowed.
+     *
+     * The original reasoning is preserved where it earns its keep, and it is worth restating: a wrong
+     * "sold out" loses a sale, a wrong "in stock" is a promise the shop then breaks. So the positive
+     * mark is narrower than its opposite — {@see \Swag\AssistantStarterKit\Core\Tool\ToolProductSummary}
+     * sets it only for a sellable unit that is actually in stock, never for a family parent whose
+     * stock is an aggregate — and the prompt still forbids quoting the quantity behind it.
+     *
+     * What must stay spelled out is the third state: a product carrying NEITHER mark is unknown, not
+     * available. That is the reading the old wording protected, and it is the one this keeps.
      */
-    public function testItSpellsOutThatNoSoldOutKeyMeansNothingIsKnown(): void
+    public function testItSpellsOutThatCarryingNeitherMarkMeansNothingIsKnown(): void
     {
         $prompt = SystemPrompt::build(new AssistantConfig());
 
-        self::assertStringContainsString('absence of that flag tells you nothing', $prompt);
+        self::assertStringContainsString('marks a product available', $prompt);
+        self::assertStringContainsString('never with a number', $prompt);
+        self::assertStringContainsString('NEITHER mark tells you nothing at all', $prompt);
+        self::assertStringContainsString('never say a family is available', $prompt);
     }
 }

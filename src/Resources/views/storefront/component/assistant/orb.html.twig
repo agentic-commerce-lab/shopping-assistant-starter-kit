@@ -15,7 +15,10 @@
          data-cart-url="{{ path('frontend.checkout.line-item.add') }}"
          data-locale="{{ app.request.locale|default('en-GB')|replace({'_': '-'}) }}"
          data-assistant-name="{{ swag_assistant_widget_name(context.salesChannelId) }}"
-         data-greeting="{{ 'swagAssistant.panel.defaultGreeting'|trans }}"
+         {# Trimmed: this is a snippet a merchant edits in the plugin config, and a stray leading
+            space there becomes a visible indent in the panel. Measured on staging 2026-09-02, where
+            the shop's own greeting was stored as " Hey, ich bin Gustav 👋 …". #}
+         data-greeting="{{ 'swagAssistant.panel.defaultGreeting'|trans|trim }}"
          data-add-to-cart-enabled="{{ swag_assistant_add_to_cart_enabled(context.salesChannelId) ? 'true' : 'false' }}"
          data-entry-point="{{ theme.entryPointStyle }}"
          {# What the current page is about, so the assistant knows what "this" means.

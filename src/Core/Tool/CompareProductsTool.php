@@ -97,7 +97,7 @@ final class CompareProductsTool
     /**
      * @param list<string> $productIds 2 to 4 product ids to compare, from ids this conversation already retrieved.
      *
-     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, reasons?: list<string>, description?: string}>, total: int, note?: string}
+     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>, total: int, note?: string}
      */
     public function __invoke(array $productIds): array
     {

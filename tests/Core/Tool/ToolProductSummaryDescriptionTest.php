@@ -24,7 +24,9 @@ final class ToolProductSummaryDescriptionTest extends TestCase
     {
         $summary = ToolProductSummary::of([self::card('A helmet with an extended rear shell.')]);
 
-        self::assertSame(['id', 'name', 'options', 'properties'], array_keys($summary[0] ?? []));
+        // `available` since 2026-09-02: this card is a sellable unit with stock 3, so it carries the
+        // buyability mark. See ToolProductSummaryAvailabilityTest.
+        self::assertSame(['id', 'name', 'options', 'properties', 'available'], array_keys($summary[0] ?? []));
     }
 
     public function testTheComparisonPathAddsTheDescriptionAsPlainProse(): void
@@ -52,7 +54,10 @@ final class ToolProductSummaryDescriptionTest extends TestCase
     {
         $summary = ToolProductSummary::withDescriptions([self::card('Something.')]);
 
-        self::assertSame(['id', 'name', 'options', 'properties', 'description'], array_keys($summary[0] ?? []));
+        self::assertSame(
+            ['id', 'name', 'options', 'properties', 'available', 'description'],
+            array_keys($summary[0] ?? []),
+        );
     }
 
     private static function card(?string $description): ProductCard
