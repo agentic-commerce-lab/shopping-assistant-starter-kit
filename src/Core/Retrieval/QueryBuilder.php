@@ -48,7 +48,7 @@ final class QueryBuilder
         }
 
         return new QueryBuildResult(
-            new ProductQuery(term: $intent->term, filters: $filters),
+            new ProductQuery(term: $intent->term, filters: $filters, sort: $intent->sort),
             $dropped,
             $canonicalSelections,
             $selectionFilters,

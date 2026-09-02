@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Fixture;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
+use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
 
 /**
  * Filter clauses, term matching, sorting and limit over a list of already
@@ -50,6 +51,20 @@ final class FixtureQueryFilter
         $term = $query->term;
         if ($term !== null && $term !== '') {
             $units = FixtureTermMatcher::filter($units, $term);
+        }
+
+        // A shopper who asked for the cheapest gets price order and nothing else in front of it — not
+        // even the in-stock bias below, which would answer "the cheapest one that happens to be in
+        // stock" to a question about the cheapest. A sold-out unit still carries `soldOut`, so the
+        // reply can say so; silently promoting a dearer one cannot be said at all.
+        if ($query->sort !== null) {
+            $ascending = $query->sort === PriceSort::Ascending;
+
+            usort($units, static fn(ProductCard $a, ProductCard $b): int => $ascending
+                ? $a->price <=> $b->price
+                : $b->price <=> $a->price);
+
+            return \array_slice($units, offset: 0, length: $query->retrievalLimit());
         }
 
         usort($units, static function (ProductCard $a, ProductCard $b): int {
