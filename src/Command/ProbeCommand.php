@@ -11,7 +11,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
-use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
+use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -41,14 +41,18 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class ProbeCommand extends Command
 {
-    /** The Storefront sales channel of the lab environment; overridable for any other shop. */
-    private const DEFAULT_SALES_CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
-
+    // @mago-expect lint:excessive-parameter-list
+    // Standing-constraints carve-out 2: a command constructor injecting the collaborators it
+    // orchestrates. The sixth is `DefaultSalesChannel`, which replaced a hard-coded id — see that
+    // class. Grouping it with anything here would pair "which shop" with an unrelated concern, and
+    // every parameter below is used exactly once in `execute()`.
     public function __construct(
         private readonly CommerceGatewayInterface $gateway,
+        private readonly DefaultSalesChannel $defaultSalesChannel,
         private readonly SalesChannelContextProvider $contextProvider,
         private readonly AbstractSalesChannelContextFactory $contextFactory,
         private readonly ProbeTurnRunner $turnRunner,
+        private readonly SystemConfigAssistantConfig $assistantConfig,
         private readonly ProbeRenderer $renderer = new ProbeRenderer(),
     ) {
         parent::__construct();
@@ -78,8 +82,7 @@ final class ProbeCommand extends Command
                 'sales-channel',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Sales channel id.',
-                self::DEFAULT_SALES_CHANNEL,
+                "Sales channel id. Defaults to the shop's only active Storefront channel.",
             )
             ->addOption(
                 'customer',
@@ -99,7 +102,13 @@ final class ProbeCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $request = ProbeRequest::fromInput($input, self::DEFAULT_SALES_CHANNEL);
+        try {
+            $request = ProbeRequest::fromInput($input, $this->defaultSalesChannel);
+        } catch (NoDefaultSalesChannelException $exception) {
+            $io->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
 
         // A console command has no HTTP request, so the provider would throw. Scoping the context
         // to this callback rather than setting it means it cannot leak into anything else.
@@ -116,7 +125,7 @@ final class ProbeCommand extends Command
         }
 
         return $this->contextProvider->use($context, fn(): int => match ($request->mode) {
-            ProbeRequest::MODE_ASK => $this->ask($io, $request->question),
+            ProbeRequest::MODE_ASK => $this->ask($io, $request->question, $request->salesChannelId),
             ProbeRequest::MODE_FACETS => $this->showFacets($io),
             ProbeRequest::MODE_VARIANT => $this->resolveVariant($io, $request->parentId, $request->selections),
             ProbeRequest::MODE_SEARCH => $this->search($io, $request->term, $request->limit),
@@ -176,8 +185,23 @@ final class ProbeCommand extends Command
     /**
      * One complete turn against a live model, then its trace. The only mode that spends money, and
      * the only one that shows what the model actually did rather than what the catalogue holds.
+     *
+     * **Under the merchant's own settings, which it used not to be.** This ran on `new
+     * AssistantConfig()` — the shipped defaults — while claiming to show "what the model actually
+     * did". Two things were wrong with that, and the second is the serious one:
+     *
+     * - Every measurement taken with it described a shop nobody runs. A blocklist, a cart ceiling, a
+     *   tool-call budget: none of them applied, so `--ask` disagreed with the storefront on the same
+     *   question and the difference was invisible.
+     * - `enableAddToCart` defaults to **on**. On a shop where the merchant switched it off, the
+     *   add-to-cart tool was constructed anyway and the model could reach a real cart through a
+     *   guardrail the merchant had closed. A support command is not an exemption from policy.
+     *
+     * Reading the real config also means the assistant's own off switch now stops `--ask`, which is
+     * correct: a probe that answers on a stopped assistant is reporting on a shop that does not
+     * exist.
      */
-    private function ask(SymfonyStyle $io, string $question): int
+    private function ask(SymfonyStyle $io, string $question, string $salesChannelId): int
     {
         $missing = $this->turnRunner->missingEnvironment();
 
@@ -188,7 +212,7 @@ final class ProbeCommand extends Command
             return self::INVALID;
         }
 
-        $result = $this->turnRunner->ask($question, new AssistantConfig());
+        $result = $this->turnRunner->ask($question, $this->assistantConfig->forSalesChannel($salesChannelId));
         $turn = $result['turn'];
 
         $io->section('reply');

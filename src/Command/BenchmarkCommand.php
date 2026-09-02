@@ -40,11 +40,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class BenchmarkCommand extends Command
 {
-    /** The Storefront sales channel of the lab environment; overridable for any other shop. */
-    private const DEFAULT_SALES_CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
-
+    // @mago-expect lint:excessive-parameter-list
+    // Standing-constraints carve-out 2: a command constructor injecting the collaborators it
+    // orchestrates. The sixth is `DefaultSalesChannel`, which replaced a hard-coded id — see that
+    // class. Grouping it with anything here would pair "which shop" with an unrelated concern, and
+    // every parameter below is used exactly once in `execute()`.
     public function __construct(
         private readonly BenchmarkRunner $runner,
+        private readonly DefaultSalesChannel $defaultSalesChannel,
         private readonly SystemConfigAssistantConfig $configs,
         private readonly SalesChannelContextProvider $contextProvider,
         private readonly AbstractSalesChannelContextFactory $contextFactory,
@@ -74,15 +77,20 @@ final class BenchmarkCommand extends Command
                 'sales-channel',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Sales channel id.',
-                self::DEFAULT_SALES_CHANNEL,
+                "Sales channel id. Defaults to the shop's only active Storefront channel.",
             );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $request = BenchmarkRequest::fromInput($input, self::DEFAULT_SALES_CHANNEL);
+        try {
+            $request = BenchmarkRequest::fromInput($input, $this->defaultSalesChannel);
+        } catch (NoDefaultSalesChannelException $exception) {
+            $io->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
 
         $context = $this->contextFactory->create(Uuid::randomHex(), $request->salesChannelId);
 

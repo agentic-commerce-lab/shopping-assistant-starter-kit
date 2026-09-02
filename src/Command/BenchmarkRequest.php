@@ -47,9 +47,13 @@ final class BenchmarkRequest
     ) {}
 
     /**
+     * `$default` is resolved lazily on the right-hand side of `?:` below, so a command given an
+     * explicit `--sales-channel` never queries the shop and never sees
+     * {@see NoDefaultSalesChannelException}.
+     *
      * @throws \InvalidArgumentException when `--repetitions` is outside 1..1000
      */
-    public static function fromInput(InputInterface $input, string $defaultSalesChannel): self
+    public static function fromInput(InputInterface $input, DefaultSalesChannel $default): self
     {
         $repetitions = (int) self::string($input, 'repetitions', '20');
 
@@ -64,7 +68,7 @@ final class BenchmarkRequest
         $terms = self::strings($input, 'term');
 
         return new self(
-            salesChannelId: self::string($input, 'sales-channel', $defaultSalesChannel),
+            salesChannelId: self::string($input, 'sales-channel', '') ?: $default->id(),
             terms: [] === $terms ? self::DEFAULT_TERMS : $terms,
             repetitions: $repetitions,
             cardIds: self::strings($input, 'card-id'),

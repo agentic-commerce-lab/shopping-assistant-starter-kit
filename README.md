@@ -37,7 +37,7 @@ command.
 | **Shop knowledge** | Legal pages, shipping info and uploaded PDFs as vectors — MariaDB 11.7+ natively, any other database in PHP |
 | **Escalation** | Order status, returns and account questions get a merchant-configured route instead of a guess, and may not claim a human was notified |
 | **Observability** | Every turn in the Administration: what was understood, retrieved, rendered, refused — and the system prompt it ran with. Exportable as JSON |
-| **Widget** | Ships compiled, no Node toolchain in the shop. Neutral icon or animated creature, merchant colors, resizable, 13 KB gzipped on a storefront page — 2.3 KB of it the orb |
+| **Widget** | Ships compiled, no Node toolchain in the shop. Neutral icon or animated creature, merchant colors, resizable. A storefront page loads **1.5 KB** gzipped; the orb chunk is 2.3 KB and the panel's 9.0 KB arrives only when a shopper opens it |
 | **Guard rails** | Per-caller rate limit and an opt-in daily cap, both refusing before any spend; a `maxCartValue` on the cart tool; SSRF guard on the model endpoint |
 | **Eval suite** | Thirty-five journeys with deterministic assertions, skipped cleanly without a real endpoint |
 
@@ -109,12 +109,25 @@ for f in ai_generic_platform ai_maria_db_store
     printf '# Intentionally empty — see SwagAssistantStarterKit README.\n' > config/packages/$f.yaml
 end
 
+# Run from the shop root. The url is where you cloned this repo, relative to the shop —
+# ../shopping-assistant-starter-kit is only right if the two sit side by side.
 composer config repositories.assistant '{"type":"path","url":"../shopping-assistant-starter-kit","options":{"symlink":true}}'
 composer require "swag/assistant-starter-kit:*@dev"
+
+# On MariaDB 11.7+, add this too, or shop knowledge silently lands on the portable PHP
+# store — it is a suggest, not a require, so nothing pulls it in for you.
+composer require "symfony/ai-maria-db-store:0.12.*"
+
 bin/console plugin:refresh
 bin/console plugin:install --activate SwagAssistantStarterKit
 bin/console cache:clear && bin/console theme:compile
 ```
+
+Installing from the release zip instead is the same shape with one extra step, because the zip
+carries the plugin and not its PHP dependencies — [the manual](docs/manual.md#from-the-release-zip-instead)
+has that command. Both routes were walked end to end on a fresh `shopware-cli` shop on 2026-09-02
+(6.7.13.1, MariaDB 11.8, PHP 8.5): four tables created, six tools live, storefront and Administration
+at 200, and both placeholder files left byte-identical by Flex.
 
 ## Configure it
 
@@ -176,8 +189,8 @@ PHP, which is exact but linear. [The manual](docs/manual.md#requirements) has th
 | **Voice and catalogue scope** | `agentVoice`, `blockedProducts`, `blockedCategories` |
 | **Handing over to a human** | `enableEscalation`, `escalationUrl`, `escalationMessage`, plus `enableMatchReasons` and `enableCompareProducts` |
 | **Appearance** | `entryPointStyle` (`icon` or `creature`), `primaryColor`, `secondaryColor` |
-| **Storefront widget** | `assistantName`, `greeting`, `greetingDe`, `greetingEn` |
-| **Logging · Data retention** | `logTraces`, `traceRetentionDays` (30, per sales channel — needs a queue worker to run) |
+| **Storefront widget · Things a shopper could ask** | `assistantName`, plus the greeting and the three suggestion chips — edited per language as storefront snippets, not per sales channel |
+| **Logging · Data retention** | `logTraces` (one line per reply into `var/log/swag_assistant_<env>.log`, kept 14 days), `traceRetentionDays` (30, per sales channel — needs a queue worker to run) |
 
 A `0` means **unlimited** in every numeric limit but one: `maxToolCallsPerTurn` takes no zero and
 falls back to 20, because it bounds a model that has already started looping. Every switch that turns

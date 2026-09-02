@@ -22,6 +22,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * **Dev-only, and deliberately impossible to run twice** — see `Command\Seed\SeedGuard`.
  * There is no `--force`: recovering from a mistaken second run is a database restore either way.
  *
+ * **"Dev-only" and the `APP_ENV=prod` warning below are about different things**, and reading them as
+ * a contradiction is a mistake this docblock has already caused once. *Dev-only* is about which shop:
+ * a development or test shop, never a merchant's live one — nothing enforces it, `SeedGuard` only
+ * stops a second run. `APP_ENV=prod` is about the environment variable that shop runs under, because
+ * dev mode inflates every measurement and makes writing 15,200 sellable units slower. A test shop
+ * with `APP_ENV=prod` is exactly the intended combination.
+ *
  * Same context-scoping pattern as {@see ProbeCommand} and {@see BenchmarkCommand} — a console command
  * has no HTTP request, so `SalesChannelContextProvider::current()` would throw; the context is built
  * here instead. Unlike those two, this command does not need `SalesChannelContextProvider::use()`,
@@ -30,15 +37,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'swag:assistant:seed-fashion-catalogue',
-    description: 'Seed the fashion taxonomy into this shop through the DAL. Dev-only; cannot be run twice.',
+    description: 'Seed the fashion taxonomy into this shop through the DAL. Dev-only; run it with APP_ENV=prod; cannot be run twice.',
 )]
 final class SeedFashionCatalogueCommand extends Command
 {
-    /** The Storefront sales channel of the lab environment; overridable for any other shop. */
-    private const DEFAULT_SALES_CHANNEL = '01a01b4af6567284ac9eeb3616598ac3';
-
     public function __construct(
         private readonly SeedRunner $runner,
+        private readonly DefaultSalesChannel $defaultSalesChannel,
         private readonly AbstractSalesChannelContextFactory $contextFactory,
     ) {
         parent::__construct();
@@ -50,8 +55,8 @@ final class SeedFashionCatalogueCommand extends Command
             'sales-channel',
             null,
             InputOption::VALUE_REQUIRED,
-            'Sales channel whose navigation tree the categories attach under.',
-            self::DEFAULT_SALES_CHANNEL,
+            'Sales channel whose navigation tree the categories attach under. Defaults to the '
+            . "shop's only active Storefront channel.",
         );
     }
 
@@ -75,7 +80,15 @@ final class SeedFashionCatalogueCommand extends Command
             ));
         }
 
-        $salesChannelId = (string) $input->getOption('sales-channel');
+        $given = $input->getOption('sales-channel');
+
+        try {
+            $salesChannelId = \is_string($given) && $given !== '' ? $given : $this->defaultSalesChannel->id();
+        } catch (NoDefaultSalesChannelException $exception) {
+            $io->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
         $context = $this->contextFactory->create(Uuid::randomHex(), $salesChannelId);
 
         try {
