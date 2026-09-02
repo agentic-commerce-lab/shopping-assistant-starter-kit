@@ -664,3 +664,11 @@ branch produces the webpack half; the Vite half must be built from a 6.7 checkou
 settings return HTTP 400 and the merchant sees no form at all. The subtitles are gone. Four of the
 eight only restated a field's own help text; the other four carried something of their own and were
 moved into the help text of the field they were about.
+
+**Storefront snippets must carry the full locale.** `SnippetFileLoader` reads the locale out of the
+filename — `explode('.')`, second part — so `swag-assistant.en.json` registers under the iso `en`,
+which is not a Shopware locale. Shopware 6.7 hides that behind a translator fallback (`en-GB` falls
+back to `en`) and the storefront reads correctly; 6.6 does not, and the widget renders raw keys:
+`swagAssistant.panel.defaultGreeting`, the three suggestion chips, the composer placeholder. The
+files are therefore named `swag-assistant.en-GB.json` and `swag-assistant.de-DE.json`, which is the
+core's own convention and correct on both versions rather than correct by accident on one.

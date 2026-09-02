@@ -69,7 +69,11 @@ final class ConfigSnippetFieldsTest extends TestCase
         self::assertIsArray($nodes);
         self::assertNotSame([], $nodes, 'No snippet fields found — this test would assert nothing.');
 
-        $raw = file_get_contents(__DIR__ . '/../src/Resources/snippet/swag-assistant.en.json');
+        // `en-GB`, not `en`: `SnippetFileLoader` reads the locale straight out of the filename
+        // (`explode('.')`, second part), so a file named `.en.json` registers under the iso `en`,
+        // which is not a Shopware locale. On 6.7 a translator fallback hid that; on 6.6 the
+        // storefront rendered raw keys — measured live, see docs/manual.md.
+        $raw = file_get_contents(__DIR__ . '/../src/Resources/snippet/swag-assistant.en-GB.json');
         self::assertIsString($raw);
 
         $snippets = json_decode($raw, associative: true, depth: 512, flags: \JSON_THROW_ON_ERROR);
