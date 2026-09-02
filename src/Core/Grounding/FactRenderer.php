@@ -342,15 +342,15 @@ final class FactRenderer
      * Attribute claims in the prose that nothing this turn entitled the model to state — the
      * {@see self::unbackedPricesInProse()} analogue for {@see PropertyClaimExtractor}'s vocabulary.
      *
-     * `$givenDescriptions` are the product descriptions this run handed the model, supplied by the
-     * caller for the same reason `$givenPassages` is: this class never touches the trace. A
-     * qualitative claim the shop's own prose makes is the shop's claim, not the model's.
-     * `$disclosedOptions` are option values the shop stated with no card behind them, from
-     * {@see DisclosedOptions::from()}, supplied for that same reason. Merged into the backed set here
-     * rather than inside the audit: folding them in there needs a sixth parameter on a list already
-     * at the gate's ceiling.
+     * `$givenShopProse` is prose the SHOP wrote and this run handed over — product descriptions AND
+     * retrieved shop-information passages; a claim either makes is the shop's, not the model's.
+     * Without the passages every shop-document sentence carrying a catalogue word was unbacked by
+     * construction: a correct returns answer flagged `Rim` (staging 2026-09-02, see
+     * `PassagePropertyExemptionTest`). It arrives merged, and `$disclosedOptions` (values the shop
+     * stated with no card behind them, {@see DisclosedOptions::from()}) is merged into the backed set
+     * here, for one reason — {@see ProseAudit::unbackedProperties()} is at the parameter ceiling.
      *
-     * @param list<string> $givenDescriptions
+     * @param list<string> $givenShopProse
      * @param list<string> $disclosedOptions
      *
      * @return list<string>
@@ -358,7 +358,7 @@ final class FactRenderer
     public function unbackedPropertiesInProse(
         string $prose,
         FacetSet $facets,
-        array $givenDescriptions = [],
+        array $givenShopProse = [],
         array $disclosedOptions = [],
     ): array {
         $unbacked = $this->proseAudit->unbackedProperties(
@@ -381,7 +381,7 @@ final class FactRenderer
             BackedPropertyValues::of($this->index->cards(), $disclosedOptions),
             $this->shopperMessage,
             $facets,
-            $givenDescriptions,
+            $givenShopProse,
         );
 
         $this->unbackedProperties = $unbacked;
