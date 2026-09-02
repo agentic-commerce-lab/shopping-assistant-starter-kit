@@ -35,6 +35,49 @@ final readonly class StoredValueReader
     }
 
     /**
+     * A list of entity ids, whichever of the two shapes the field has been stored in.
+     *
+     * **Two shapes, one key.** `sw-entity-multi-id-select` stores a real JSON array; the textarea it
+     * replaced stored one id per line. The field changed in place rather than under a new name — an
+     * id list means the same thing however it was picked, and a rename would have needed a migration
+     * whose only job was to reformat a string. So both are read here, and a shop that configured its
+     * blocklist before the picker existed keeps it.
+     *
+     * All the failure modes are silent, which is why each is handled rather than assumed away. An
+     * un-split string matches nothing. An id with a trailing `\r` from a Windows textarea matches
+     * nothing. A list of one empty string reports a *configured* blocklist in the trace while
+     * blocking nothing at all. And a non-string entry — which the Administration cannot produce, but
+     * an integration writing `system_config` directly can — is a type error inside the DAL filter at
+     * request time rather than here.
+     *
+     * @return list<string>
+     */
+    public function idList(string $key, string $salesChannelId): array
+    {
+        $value = $this->systemConfig->get($this->prefix . $key, $salesChannelId);
+
+        // preg_split on a non-string would coerce, and `preg_split('/\R/', 42)` is a deprecation in
+        // 8.5 rather than an empty list. Both shapes become a list of candidates first.
+        $candidates = \is_array($value) ? $value : (preg_split('/\R/', \is_string($value) ? $value : '') ?: []);
+
+        $ids = [];
+
+        foreach ($candidates as $candidate) {
+            if (!\is_string($candidate)) {
+                continue;
+            }
+
+            $trimmed = trim($candidate);
+
+            if ($trimmed !== '') {
+                $ids[] = $trimmed;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * An opt-in limit: absent, blank, zero and negative all mean **unlimited**.
      *
      * Negative is folded in rather than rejected because there is no reading of "-5 items per cart"

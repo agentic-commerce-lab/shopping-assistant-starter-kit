@@ -95,17 +95,6 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertFalse($config->enableAddToCart);
     }
 
-    public function testBlockedIdsAreSplitPerLineAndTrimmed(): void
-    {
-        // One long string would mean the blocklist matches nothing. A compliance control that
-        // silently does nothing is worse than an absent one (D5).
-        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
-            self::PREFIX . 'blockedProducts' => "a2a2\n  b3b3  \n\nc4c4",
-        ])))->forSalesChannel(self::CHANNEL);
-
-        self::assertSame(['a2a2', 'b3b3', 'c4c4'], $config->scope->blockedProductIds);
-    }
-
     public function testBothIdListsLandInTheirOwnScopeField(): void
     {
         // Swapping these would hide a whole branch where one product was meant to go, or the
@@ -124,22 +113,14 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertSame(['cat-1'], $config->scope->blockedCategoryIds);
     }
 
-    public function testAnEmptyListFieldYieldsAnEmptyArrayAndNotAnArrayWithAnEmptyString(): void
+    public function testIdsPickedInTheMultiSelectArriveAsAList(): void
     {
-        // [''] would make the blocklist compare every product id against the empty string, which
-        // matches nothing but reports a configured blocklist in the trace.
+        // `sw-entity-multi-id-select` stores a real JSON array, and `getString()` on an array
+        // returns `''`. Read through the string getter, a merchant who picked eight products in the
+        // new field would get an empty blocklist and no message anywhere — the exact silent-nothing
+        // failure D5 calls worse than an absent blocklist.
         $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
-            self::PREFIX . 'blockedProducts' => "\n  \n",
-        ])))->forSalesChannel(self::CHANNEL);
-
-        self::assertSame([], $config->scope->blockedProductIds);
-    }
-
-    public function testCarriageReturnsFromAWindowsTextareaDoNotBecomePartOfAnId(): void
-    {
-        // A merchant pasting ids from Windows sends \r\n. An id with a trailing \r matches nothing.
-        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
-            self::PREFIX . 'blockedProducts' => "a2a2\r\nb3b3",
+            self::PREFIX . 'blockedProducts' => ['a2a2', 'b3b3'],
         ])))->forSalesChannel(self::CHANNEL);
 
         self::assertSame(['a2a2', 'b3b3'], $config->scope->blockedProductIds);

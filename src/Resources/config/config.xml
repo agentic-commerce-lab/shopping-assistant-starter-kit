@@ -119,24 +119,26 @@
                 instructions in this box.</helpText>
         </input-field>
 
-        <input-field type="textarea">
+        <component name="sw-entity-multi-id-select">
             <name>blockedProducts</name>
-            <label>Blocked product IDs</label>
-            <placeholder>018c4f2a9b7d73f1a4e2c8d5b6a90312</placeholder>
-            <helpText>One ID per line. Hides this product. Blocking a product that has variants
-                hides all of them, so you do not have to list each colour or size. Blocked products
-                never reach the model and can never appear in a reply — this filters what gets
-                looked up rather than asking the model to behave, so it cannot be talked
-                around.</helpText>
-        </input-field>
+            <entity>product</entity>
+            <label>Blocked products</label>
+            <placeholder>Search for a product…</placeholder>
+            <helpText>Blocking a product that has variants hides all of them, so you do not have to
+                pick each colour or size. Blocked products never reach the model and can never appear
+                in a reply — this filters what gets looked up rather than asking the model to behave,
+                so it cannot be talked around.</helpText>
+        </component>
 
-        <input-field type="textarea">
+        <component name="sw-entity-multi-id-select">
             <name>blockedCategories</name>
-            <label>Blocked category IDs</label>
-            <placeholder>018c4f2a9b7d73f1a4e2c8d5b6a90312</placeholder>
-            <helpText>One ID per line. Hides everything in this category and everything below it.
-                Same guarantee as blocked products.</helpText>
-        </input-field>
+            <entity>category</entity>
+            <label>Blocked categories</label>
+            <placeholder>Search for a category…</placeholder>
+            <helpText>Hides everything in this category and everything below it — pick the top of a
+                branch rather than every category in it. Same guarantee as blocked
+                products.</helpText>
+        </component>
     </card>
 
     <card>
@@ -310,6 +312,10 @@
     <card>
         <name>storefrontWidget</name>
         <title>Storefront widget</title>
+        <subtitle>The greeting is edited per language, using the language switch on the field itself
+            — it is a storefront snippet, like every other line the assistant shows a shopper. That
+            also means it is not per sales channel: if two of your channels need different greetings,
+            give their domains their own snippet set under Settings › Snippets.</subtitle>
 
         <input-field type="text">
             <name>assistantName</name>
@@ -319,34 +325,38 @@
                 "Shopping Assistant".</helpText>
         </input-field>
 
-        <input-field type="textarea">
+        <component name="sw-snippet-field">
             <name>greeting</name>
-            <label>Greeting — all languages</label>
-            <placeholder>Welcome to our shop! I can look up products, prices and availability —
-                what are you after?</placeholder>
-            <helpText>The first message a shopper sees. Say what the assistant can look up, not how
-                clever it is. Used for every language unless you fill in one of the fields below.
-                Left empty everywhere, a translated default is used.</helpText>
-        </input-field>
+            <label>Greeting</label>
+            <snippet>swagAssistant.panel.defaultGreeting</snippet>
+        </component>
+    </card>
 
-        <input-field type="textarea">
-            <name>greetingDe</name>
-            <label>Greeting — German storefronts</label>
-            <placeholder>Willkommen! Ich kann Produkte, Preise und Verfügbarkeit nachsehen — wonach
-                suchen Sie?</placeholder>
-            <helpText>Shown instead of the greeting above on a German-language storefront. Leave
-                empty to use the one above.</helpText>
-        </input-field>
+    <card>
+        <name>chatSuggestions</name>
+        <title>Things a shopper could ask</title>
+        <subtitle>The three chips under the greeting. They are the first thing a shopper reads, and
+            the shipped ones are written for a shop that sells anything — yours can say what you
+            actually sell. Clear a field to drop that chip; clear all three and the greeting stands
+            on its own.</subtitle>
 
-        <input-field type="textarea">
-            <name>greetingEn</name>
-            <label>Greeting — English storefronts</label>
-            <placeholder>Welcome! I can look up products, prices and availability — what are you
-                after?</placeholder>
-            <helpText>Shown instead of the greeting above on an English-language storefront, and on
-                any storefront in a language the assistant does not yet speak — those are answered in
-                English, so they are greeted in English too. Leave empty to use the one above.</helpText>
-        </input-field>
+        <component name="sw-snippet-field">
+            <name>suggestionOne</name>
+            <label>First suggestion</label>
+            <snippet>swagAssistant.panel.suggestionOne</snippet>
+        </component>
+
+        <component name="sw-snippet-field">
+            <name>suggestionTwo</name>
+            <label>Second suggestion</label>
+            <snippet>swagAssistant.panel.suggestionTwo</snippet>
+        </component>
+
+        <component name="sw-snippet-field">
+            <name>suggestionThree</name>
+            <label>Third suggestion</label>
+            <snippet>swagAssistant.panel.suggestionThree</snippet>
+        </component>
     </card>
 
     <card>
@@ -359,11 +369,13 @@
             <name>logTraces</name>
             <label>Log a line for every reply</label>
             <defaultValue>true</defaultValue>
-            <helpText>Writes one line to your shop's log each time the assistant replies: which
-                sales channel, how the reply ended and how long it took. Useful for spotting
-                failures and slow replies without opening conversations one by one. No shopper
-                messages are ever written to the log — a log file does not have the deletion
-                schedule or the access rules that the conversation list has.</helpText>
+            <helpText>Writes one line to var/log/swag_assistant_&lt;env&gt;.log each time the
+                assistant replies: which sales channel, how the reply ended and how long it took.
+                Useful for spotting failures and slow replies without opening conversations one by
+                one. Its own file rather than your shop's main log, because a production shop keeps
+                only errors there and every one of these lines would have been thrown away. Kept for
+                14 days. No shopper messages are ever written to the log — a log file does not have
+                the deletion schedule or the access rules that the conversation list has.</helpText>
         </input-field>
     </card>
 

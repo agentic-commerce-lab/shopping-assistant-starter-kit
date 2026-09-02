@@ -21,10 +21,14 @@ use Shopware\Core\System\SystemConfig\SystemConfigService;
 final class FakeSystemConfigService extends SystemConfigService
 {
     /**
-     * Config values are scalars or absent — never objects or arrays — so the type is stated
+     * Config values are scalars, lists, or absent — never arbitrary objects — so the type is stated
      * precisely rather than as `mixed`, which lets the analyzer prove the getters below.
      *
-     * @param array<string, string|int|float|bool|null> $values
+     * Lists are here because `sw-entity-multi-id-select` stores a real JSON array. Every typed
+     * getter below still reports an array the way the real service does — `getString()` on one
+     * returns `''` — so a reader that has not been taught about lists keeps behaving identically.
+     *
+     * @param array<string, string|int|float|bool|list<mixed>|null> $values
      */
     public function __construct(
         private readonly array $values = [],
@@ -33,7 +37,7 @@ final class FakeSystemConfigService extends SystemConfigService
         // connection, a cache-tag collector and a clock, none of which any override below touches.
     }
 
-    public function get(string $key, ?string $salesChannelId = null): string|int|float|bool|null
+    public function get(string $key, ?string $salesChannelId = null): string|int|float|bool|array|null
     {
         return $this->values[$key] ?? null;
     }
