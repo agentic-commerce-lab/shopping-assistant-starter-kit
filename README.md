@@ -4,231 +4,183 @@
 [![Release](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/actions/workflows/release.yml/badge.svg)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-189eff)](LICENSE)
 
-A Shopware 6.7 plugin that puts a **shopper-facing, merchant-operated** conversational shopping
-assistant in the storefront — grounded in the shop's own catalog, observable from the Administration,
-and built to be forked.
+A shopper-facing conversational assistant for Shopware 6.7, grounded in the merchant's own
+catalogue and operated entirely inside the shop.
 
-> **Research preview / lab prototype.** Not production software: no support, no upgrade guarantees,
-> no Store release.
+Ask *"Do you have the trail jersey in blue, size M?"* and the assistant can find the correct
+variant, show its current price and stock, and link to the real product. Ask it to add the item to
+the cart and it uses the shopper's existing Shopware cart. Checkout remains Shopware's normal
+checkout.
 
-A shopper asks *"do you have the trail jersey in blue, size M?"* and gets an answer built from real
-catalog data — the correct variant, its real price, its real stock, a working link. *"Add that to my
-cart"* lands in their actual cart, and checkout is the shop's normal checkout.
+> [!IMPORTANT]
+> **Research preview / lab prototype.** This is not production software. It comes without support,
+> upgrade guarantees, or a Shopware Store release.
 
-**Prices, stock, URLs and images are rendered server-side from the retrieved record**, so the model
-never types a number a shopper reads. That is structural, not a prompt instruction.
+## Choose your path
 
-## Download
-
-**[⬇ SwagAssistantStarterKit.zip](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/SwagAssistantStarterKit.zip)**
-· [all releases](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases)
-
-Built on every `v*` tag by [`release.yml`](.github/workflows/release.yml). **The zip is the plugin,
-not its PHP dependencies** — Shopware cannot autoload those from inside a plugin, so they have to
-reach the shop's vendor tree. [The manual](docs/manual.md#from-the-release-zip-instead) has the
-command.
-
-## What it does
-
-| | |
+| I want to… | Start here |
 |---|---|
-| **Grounded answers** | Search, compare and inspect products through the DAL, in the shopper's real `SalesChannelContext` — customer-group and rule-based prices are correct for free |
-| **Six tools** | `search_products`, `get_product`, `add_to_cart`, `compare_products`, `search_shop_info`, `escalate`. A tool the merchant switches off is *never constructed*, so the model cannot see it |
-| **Shop knowledge** | Legal pages, shipping info and uploaded PDFs as vectors — MariaDB 11.7+ natively, any other database in PHP |
-| **Escalation** | Order status, returns and account questions get a merchant-configured route instead of a guess, and may not claim a human was notified |
-| **Observability** | Every turn in the Administration: what was understood, retrieved, rendered, refused — and the system prompt it ran with. Exportable as JSON |
-| **Widget** | Ships compiled, no Node toolchain in the shop. Neutral icon or animated creature, merchant colors, resizable. A storefront page loads **1.5 KB** gzipped; the orb chunk is 2.3 KB and the panel's 9.0 KB arrives only when a shopper opens it |
-| **Guard rails** | Per-caller rate limit and an opt-in daily cap, both refusing before any spend; a `maxCartValue` on the cart tool; SSRF guard on the model endpoint |
-| **Eval suite** | Thirty-five journeys with deterministic assertions, skipped cleanly without a real endpoint |
+| Install and configure the assistant | [Read the manual](docs/manual.md) |
+| Extend it with tools, data sources, or integrations | [Read the extension guide](docs/extending.md) |
+| Understand its boundaries and design decisions | [Explore the architecture](ARCHITECTURE.md) |
+| Understand why the project exists | [Read the vision](VISION.md) |
 
-**It deliberately does not** complete an order or take payment, set prices or negotiate, answer
-order-status or account questions, or invent a product, a price or a stock level.
+## Why this is more than a chatbot shell
 
-## Architecture
+The model never writes the product facts a shopper sees. It selects product IDs; the plugin then
+renders prices, stock, URLs, and images from Shopware's live `SalesChannelContext`. Customer-group
+pricing, rules, and the current session therefore stay authoritative.
 
-**One Shopware plugin. No external service, no app server, nothing we operate.**
+This creates three structural guarantees:
 
-```
-Storefront page
-  └── chat widget (Twig + vanilla JS) ── POST /assistant/chat
-        └── AssistantController          ← SalesChannelContext injected: real session,
-              │                            customer group, rules, prices
-              ├── RequestBudget           ← refuses before any spend
-              ├── Symfony AI Agent        ← tool loop, messages, streaming
-              │     ├── our InputProcessors   context window
-              │     ├── our OutputProcessors  validate ids, render facts, audit prose
-              │     └── BoundedToolbox        the real cap on tool calls
-              │           └── Generic platform ──► OpenAI-compatible endpoint
-              └── CommerceGatewayInterface
-                    └── DalCommerceGateway  → DAL / SalesChannel services
+- **Grounded product facts:** the model cannot invent a displayed price or stock level.
+- **Variant-level answers:** size, colour, price, and availability come from the selected variant,
+  not from an aggregate parent product.
+- **A real catalogue boundary:** blocked products never enter the model context.
 
-Administration
-  └── hand-written module over the trace entities
-```
+## What ships
 
-The runtime is [`symfony/ai-agent`](https://github.com/symfony/ai) 0.12 — we do not write a tool
-loop. We own the grounding, and it plugs into `InputProcessorInterface`, `OutputProcessorInterface`
-and the toolbox. The platform is the `Generic` bridge: OpenAI-compatible completions against a
-configurable base URL. `CommerceGatewayInterface` is the one abstraction committed to up front, and
-only our own DTOs cross it — which is what lets the eval suite run with no Shopware and no database.
+- **Conversational product discovery:** search, inspect, compare, and add products to the cart.
+- **Six built-in tools:** `search_products`, `get_product`, `add_to_cart`, `compare_products`,
+  `search_shop_info`, and `escalate`. Disabled tools are removed from the model's toolbox.
+- **Shop knowledge:** answer from legal pages, shipping information, and uploaded documents through
+  optional vector search.
+- **Merchant controls:** catalogue scope, cart limits, request limits, escalation, voice, and widget
+  appearance.
+- **Guard rails:** per-caller throttling, an optional daily spend ceiling, a maximum cart value, and
+  SSRF protection for the model endpoint.
+- **Observability:** inspect each turn, retrieval step, refusal, and rendered result in the
+  Administration; export traces as JSON.
+- **A compiled storefront widget:** no Node toolchain is needed in the shop. The entry point loads
+  1.5 KB gzipped; larger chunks arrive only after the shopper opens the panel.
+- **A live eval suite:** 36 journeys exercise grounding, safety, cart behaviour, retrieval, and
+  escalation against a real model endpoint.
 
-Both AI packages are pinned exactly, for a reason worth reading before loosening it:
-[ARCHITECTURE.md](ARCHITECTURE.md#agent-runtime-symfony-ai) and
-[ADR 0001](docs/adr/0001-symfony-ai-as-agent-runtime.md).
+The assistant deliberately does **not** complete checkout or take payment, change or negotiate
+prices, access account or order data, or pretend that a human was notified. Unsupported requests are
+declined or sent to a merchant-configured contact route.
 
-## Extensibility
+## Get started
 
-Every seam is a tagged service or a decoration — no core patches, no forking to add a tool.
-**[docs/extending.md](docs/extending.md) has a worked example of each one**, including why tools are
-factories and why a plain tool cannot reach the catalog (so it cannot return a price).
+You need:
 
-| I want to… | How |
-|---|---|
-| Add a tool answering from my own data | `ToolFactoryInterface`, tag `swag_assistant.tool_factory` |
-| Add a tool answering from the catalog | `GroundedToolFactoryInterface`, tag `swag_assistant.grounded_tool_factory` |
-| Change the system prompt | decorate `PromptProviderInterface` |
-| Use a different model provider | decorate `LlmPlatformInterface` |
-| Send turns to my analytics | `TraceSinkInterface`, tag `swag_assistant.trace_sink` |
-| Read a document format we do not | `TextExtractor`, tag `swag_assistant.text_extractor` |
-| Embed differently, or store vectors elsewhere | replace `Embedder` / `PassageStore` |
-| Swap the catalog backend | decorate `CommerceGatewayInterface` — **and its four capability interfaces**, or the assistant quietly degrades |
-| Change the widget's markup | override one of six named Twig blocks |
-| Open the panel from my own button | dispatch `swag-assistant:toggle` on the widget root |
+- Shopware 6.7 and PHP 8.2 or newer;
+- an OpenAI-compatible chat-completions endpoint;
+- Composer access to the shop for the plugin's PHP dependencies.
 
-Ranking rules, a new knowledge *source* and MCP surfaces are **not** seams yet.
+### 1. Protect the shop from Symfony Flex recipes
 
-## Install it
-
-**One step is not optional.** `composer require` pulls `symfony/ai-generic-platform`, whose Flex
-recipe writes an `ai:` config key nothing can load — and the *whole storefront* returns 500. Creating
-the files first prevents it; Flex never overwrites an existing one.
+Create these files **before** installing the AI packages. Otherwise Symfony Flex writes unsupported
+`ai:` configuration and the entire storefront can return HTTP 500.
 
 ```fish
 mkdir -p config/packages
 for f in ai_generic_platform ai_maria_db_store
-    printf '# Intentionally empty — see SwagAssistantStarterKit README.\n' > config/packages/$f.yaml
+    printf '# Intentionally empty — see SwagAssistantStarterKit manual.\n' > config/packages/$f.yaml
 end
-
-# Run from the shop root. The url is where you cloned this repo, relative to the shop —
-# ../shopping-assistant-starter-kit is only right if the two sit side by side.
-composer config repositories.assistant '{"type":"path","url":"../shopping-assistant-starter-kit","options":{"symlink":true}}'
-composer require "swag/assistant-starter-kit:*@dev"
-
-# On MariaDB 11.7+, add this too, or shop knowledge silently lands on the portable PHP
-# store — it is a suggest, not a require, so nothing pulls it in for you.
-composer require "symfony/ai-maria-db-store:0.12.*"
-
-bin/console plugin:refresh
-bin/console plugin:install --activate SwagAssistantStarterKit
-bin/console cache:clear && bin/console theme:compile
 ```
 
-Installing from the release zip instead is the same shape with one extra step, because the zip
-carries the plugin and not its PHP dependencies — [the manual](docs/manual.md#from-the-release-zip-instead)
-has that command. Both routes were walked end to end on a fresh `shopware-cli` shop on 2026-09-02
-(6.7.13.1, MariaDB 11.8, PHP 8.5): four tables created, six tools live, storefront and Administration
-at 200, and both placeholder files left byte-identical by Flex.
+The [installation guide](docs/manual.md#installing-it-into-a-shop) explains why both placeholders are
+needed and covers source and release-zip installations.
 
-## Configure it
+### 2. Install the plugin
 
-### The model — required, nothing answers without it
+Choose one route:
 
-Any OpenAI-compatible chat-completions endpoint. Set it in the Administration under **Language
-model**, or as environment variables, which take precedence because Shopware's system config has no
-secret storage — a key typed into the admin form is readable by anyone with config access and travels
-in every database backup.
+- **For development:** install the repository through a Composer path repository.
+- **For evaluation:** download
+  **[SwagAssistantStarterKit.zip](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/SwagAssistantStarterKit.zip)**
+  and follow the [release-zip instructions](docs/manual.md#from-the-release-zip-instead).
+
+The release archive contains the compiled plugin, but not its PHP dependencies. Those dependencies
+must be installed in the shop's own vendor directory.
+
+### 3. Connect a model
+
+Set the base URL, model ID, and API key in the plugin settings under **Language model**. For a local
+evaluation, you can also configure them from the shop root:
 
 ```fish
 bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://openrouter.ai/api"
-bin/console system:config:set SwagAssistantStarterKit.config.llmModel   "openai/gpt-4o-mini"
-bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey  "sk-…"
-
-# or, winning over the above:
-# ASSISTANT_LLM_BASE_URL, ASSISTANT_LLM_MODEL, ASSISTANT_LLM_API_KEY
+bin/console system:config:set SwagAssistantStarterKit.config.llmModel "provider/model-id"
+bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey "sk-…"
 ```
 
-**A `.env.local` entry counts**, as does a real process variable — Docker
-`environment:`/`env_file:`, Apache `SetEnv`, a systemd unit — and a real one wins over the file. If
-you configured this before September 2026, note it did **not** count then: the settings were read
-with `getenv()` alone, and Symfony's runtime boots Dotenv with `usePutenv(false)`, so a key in
-`.env.local` reached `$_ENV` and stayed invisible. The symptom was silent — endpoint at 503, no orb,
-setting apparently configured — which is why the lookup now reads `$_ENV` and `$_SERVER` too.
+For production, prefer `ASSISTANT_LLM_BASE_URL`, `ASSISTANT_LLM_MODEL`, and
+`ASSISTANT_LLM_API_KEY`: environment values take precedence, while Shopware system configuration is
+not secret storage. The base URL must not include `/v1`; the platform appends
+`/v1/chat/completions` itself.
 
-Until all three are set the chat endpoint answers **503** and no orb renders. The base URL is the
-host **without** the version path: the platform appends `/v1/chat/completions` itself, so
-`https://openrouter.ai/api/v1` becomes `…/v1/v1/chat/completions` and fails.
-
-### Shop knowledge (RAG) — off by default
-
-Answers about legal pages, shipping and uploaded PDFs come from a vector index, not the catalog.
-**It needs both halves** — the switch *and* an embedding model. Either one alone leaves the feature
-off, with no tool in the model's schema.
+Continue with [model configuration](docs/manual.md#configuring-a-model), then compile the theme:
 
 ```fish
-bin/console system:config:set SwagAssistantStarterKit.config.enableShopKnowledge true
-bin/console system:config:set SwagAssistantStarterKit.config.embeddingModel "baai/bge-m3"
+bin/console theme:compile
 ```
 
-The embedding model reuses the chat model's base URL and key, so it must be one your provider serves
-at `/v1/embeddings`. Index from the Administration's **Assistant shop information** screen or with
-`bin/console swag:assistant:shopinfo --index=…`; `autoIndexShopPages` keeps them current on change.
-**Changing the embedding model makes every indexed document unusable** — delete and index again.
+## How it fits into Shopware
 
-Two environment facts decide how well it runs, and neither breaks the shop: `symfony/ai-store` must
-be in the shop's vendor tree or the feature stays off by design, and on MariaDB 11.7+ with
-`symfony/ai-maria-db-store` the vectors are indexed natively — everywhere else they are compared in
-PHP, which is exact but linear. [The manual](docs/manual.md#requirements) has the detail.
+Everything runs as one Shopware plugin. There is no external app server and no service operated by
+this project.
 
-### Everything else
+```text
+Storefront widget
+  └── POST /assistant/chat
+        └── request and spend limits
+        └── Symfony AI agent and bounded tool loop
+              └── Shopware DAL and SalesChannel services
+        └── server-side fact rendering and trace persistence
 
-| Card | Settings |
+Shopware Administration
+  └── configuration, shop-information indexing, and conversation traces
+```
+
+The runtime uses [`symfony/ai-agent`](https://github.com/symfony/ai). The project owns the commerce
+gateway, grounding pipeline, policy controls, and rendering. Only project DTOs cross the commerce
+boundary, which also lets the deterministic test suite run without Shopware or a database.
+
+For the complete pipeline and its design decisions, see [ARCHITECTURE.md](ARCHITECTURE.md) and
+[ADR 0001](docs/adr/0001-symfony-ai-as-agent-runtime.md).
+
+## Extend it without forking the core
+
+Tools, prompts, model providers, trace sinks, document extractors, vector storage, catalogue access,
+and widget markup all have documented extension seams. Most use ordinary Symfony service tags or
+decoration.
+
+Start with [docs/extending.md](docs/extending.md). It explains the two tool tiers, the grounding
+obligations that catalogue-aware tools must follow, and the interfaces a custom commerce gateway
+needs to implement to avoid silent degradation.
+
+Product ranking rules, new knowledge-source integrations, context compression, and MCP surfaces are
+not extension seams yet.
+
+## Documentation
+
+| Document | Use it for |
 |---|---|
-| **Assistant status** | `widgetEnabled` — stops it being *shown*; the separate off switch stops it *answering* |
-| **Limits** | `enableAddToCart`, `maxItemQuantity`, `maxCartValue`, `maxToolCallsPerTurn` (20) |
-| **Request limits** | `requestsPerMinute` (60), `dailyRequestCap` (0 = unlimited) — both refuse before any spend |
-| **Voice and catalogue scope** | `agentVoice`, `blockedProducts`, `blockedCategories` |
-| **Handing over to a human** | `enableEscalation`, `escalationUrl`, `escalationMessage`, plus `enableMatchReasons` and `enableCompareProducts` |
-| **Appearance** | `entryPointStyle` (`icon` or `creature`), `primaryColor`, `secondaryColor` |
-| **Storefront widget · Things a shopper could ask** | `assistantName`, plus the greeting and the three suggestion chips — edited per language as storefront snippets, not per sales channel |
-| **Logging · Data retention** | `logTraces` (one line per reply into `var/log/swag_assistant_<env>.log`, kept 14 days), `traceRetentionDays` (30, per sales channel — needs a queue worker to run) |
-
-A `0` means **unlimited** in every numeric limit but one: `maxToolCallsPerTurn` takes no zero and
-falls back to 20, because it bounds a model that has already started looping. Every switch that turns
-a capability off removes the tool rather than forbidding it, so the model never sees a tool it is not
-allowed to call.
-**[The manual](docs/manual.md)** explains what each one actually does, and why the defaults are what
-they are.
-
-## Documents
-
-| Document | Read it for |
-|---|---|
-| [docs/manual.md](docs/manual.md) | Requirements, install, every setting, the widget, the probe commands |
-| [docs/extending.md](docs/extending.md) | Every extension seam, with a worked example — read before forking anything |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Structure, interfaces, pipeline, data model, the rulings behind them |
-| [VISION.md](VISION.md) | Why this exists, who it is for, what counts as success |
-| [GLOSSARY.md](GLOSSARY.md) | Terms that have burned us before — read this first if you are new |
-| [AGENTS.md](AGENTS.md) · [docs/adr/](docs/adr/) | Conventions the quality gate enforces; decisions of record |
-| [docs/superpowers/](docs/superpowers/) · [docs/HANDOFF.md](docs/HANDOFF.md) | The plans each feature was built from, and the failures that shaped it — source and test files cite them by path where the reasoning lives there |
+| [Manual](docs/manual.md) | Requirements, installation, configuration, operations, widget, and probe commands |
+| [Extension guide](docs/extending.md) | Tools, providers, data integrations, catalogue backends, widget events, and eval assertions |
+| [Architecture](ARCHITECTURE.md) | Components, contracts, data flow, grounding, and decisions |
+| [Vision](VISION.md) | Purpose, audiences, success criteria, and non-goals |
+| [Glossary](GLOSSARY.md) | Project-specific terms and distinctions |
+| [ADRs](docs/adr/) | Decisions of record |
 
 ## Development
 
 ```fish
 composer install
-composer run test               # deterministic suite; never calls a model
-composer run quality            # format, lint, typecheck, file length, dupes, deps, audit
-composer run build:storefront   # rebuild src/Resources/app/storefront/dist
+composer run test               # deterministic; never calls a model
+composer run quality            # format, lint, types, architecture, and security
+composer run build:storefront   # rebuild committed storefront assets
 ```
 
-Never run bare `phpunit`: only the composer script excludes the eval group, which spends real money.
-`composer run test:eval` drives every journey in `tests/Journeys/` against a real endpoint — 35 of
-them at the time of writing, each with its own `runs` count — so copy `.env.example` to `.env`
-first, and budget both the minutes and the tokens. `vendor/bin/phpunit --group eval --filter <id>`
-runs one.
+Do not run bare `phpunit`: only the Composer script excludes the eval group, which calls a real
+model and spends money. See [Running the eval suite](docs/manual.md#running-the-eval-suite) when you
+intend to run those journeys.
 
-To cut a release, bump `Version::CURRENT` in [src/Version.php](src/Version.php) (and
-`tests/SmokeTest.php`), then `git tag v0.2.0 && git push origin v0.2.0`. The workflow refuses a tag
-that disagrees with the constant.
+To release a new version, update `Version::CURRENT` in [src/Version.php](src/Version.php) and the
+matching expectation in `tests/SmokeTest.php`, then push a matching `v*` tag. The release workflow
+rejects a tag that disagrees with the code.
 
 ---
 

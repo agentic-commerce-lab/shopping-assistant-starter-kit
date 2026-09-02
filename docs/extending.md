@@ -1,12 +1,14 @@
 # Extending the assistant
 
-How to give the assistant a capability it does not have. Twelve seams, most with a working example
-you can copy, all of them ordinary Symfony service wiring — and each works the same whether you are
-adding it to this repository or shipping it in a plugin of your own.
+Use this guide to add capabilities without patching the assistant's core. The extension points use
+ordinary Symfony service tags, decoration, and Shopware template overrides. Most sections include a
+working example you can adapt either inside this repository or in a separate plugin.
 
 > **Research preview.** These interfaces carry `@api` to record intent, not to promise stability.
-> They will move. What will not change is that they exist and have shipped consumers in this
-> repository, which is the property their absence used to break.
+> They may change between releases. They do, however, have real consumers in this repository and are
+> the intended integration points today.
+
+## Find the right extension point
 
 | I want to… | Seam | Tag or mechanism |
 |---|---|---|
@@ -26,33 +28,69 @@ adding it to this repository or shipping it in a plugin of your own.
 The four tags are collected with `tagged_iterator`, so a service in *your* plugin is found the same
 way the shipped ones are. Nothing needs to be registered with us.
 
+### Recommended reading paths
+
+- **Adding a tool:** read [What already ships](#what-already-ships),
+  [Why tools are factories](#why-tools-are-factories-not-services), and
+  [the two tool tiers](#two-tiers-and-why-yours-is-probably-the-first-one). Then choose
+  [a plain tool](#example-1-a-tool-that-answers-from-your-own-data) or
+  [a catalogue-aware tool](#example-2-a-tool-that-answers-from-the-catalogue).
+- **Changing model behaviour:** start with
+  [the prompt provider](#example-3-change-the-system-prompt) or
+  [model platform](#example-5-a-different-model-provider).
+- **Connecting external systems:** use a [trace sink](#example-4-send-turns-to-your-analytics),
+  [document extractor](#example-6-read-a-document-format-we-do-not), or custom
+  [embedding and vector-store services](#example-7-a-different-embedding-model-or-a-different-vector-store).
+- **Replacing catalogue access:** read [Swapping the catalogue backend](#swapping-the-catalogue-backend)
+  in full. Implementing only the base gateway produces valid code with degraded behaviour.
+- **Customising the storefront:** use [widget events](#driving-the-widget-from-your-own-javascript)
+  and the Twig blocks documented in [the manual](manual.md#extension-points).
+
+## Preserve the assistant's guarantees
+
+Extensions run as trusted merchant-installed code. They must preserve the boundaries that keep
+shopper-facing answers reliable:
+
+1. **Never return a price, stock level, URL, or image from model prose.** Catalogue-aware tools
+   register retrieved products and let `FactRenderer` render those facts server-side.
+2. **Apply the merchant's blocklist before registering products.** An extension must not expose a
+   product that the core assistant would hide.
+3. **Remove unavailable capabilities.** Return `null` from a factory instead of exposing a tool that
+   can only refuse when called.
+
+The catalogue-tool example shows the required order in code. If you are unsure which tier to use,
+choose `ToolFactoryInterface`; it cannot access the catalogue and therefore cannot bypass its
+grounding rules.
+
 ## Where your code lives
 
-The seams do not care, which is the point. But the two paths differ in three small ways, and the
-examples below have to pick one — they use an `Acme\` namespace to keep the boundary visible.
+The extension points work both inside this repository and across Shopware plugin boundaries. The
+examples use an `Acme\` namespace to make that boundary visible.
 
-**Adding a capability to the starter kit itself.** Put the class beside its siblings — a tool factory
-in `src/Core/Tool/Factory/`, an extractor in `src/Core/ShopInfo/Extractor/` — and register it in this
-plugin's own `src/Resources/config/services.xml` carrying the same tag the shipped ones carry. Read
-`Acme\Assistant\…` as `Swag\AssistantStarterKit\…` throughout; nothing else changes. You may also
-just inject a list where a tag would go, but don't: the tag is what keeps the next contributor from
-having to find and edit a constructor.
+### Inside the starter kit
 
-**Shipping a capability as your own plugin.** Your code lives in your own `shopware-platform-plugin`
-with its own `composer.json` and `services.xml`. Two things make that work, and neither is obvious
-from the examples:
+Put the class beside its siblings—for example, a tool factory in `src/Core/Tool/Factory/` or an
+extractor in `src/Core/ShopInfo/Extractor/`. Register it in
+`src/Resources/config/services.xml` with the same tag as the shipped implementations. Replace
+`Acme\Assistant\…` in the examples with `Swag\AssistantStarterKit\…`.
 
-- Shopware plugins are Symfony bundles sharing **one** container. That is the entire reason a tag
-  crosses a plugin boundary — `tagged_iterator` collects your service exactly as it collects ours,
-  with nothing registered on our side.
-- **Your plugin must require this one**, and the require earns more than it looks like. Without it,
-  your tagged service sits in a shop where nothing collects that tag: no error, no log line, your
-  tool simply never reaches the model — the failure mode this whole document exists to make findable.
-  *With* it, Shopware reads the `composer.json` require as a plugin dependency and refuses to
-  deactivate us underneath you: `PluginHasActiveDependantsException`, naming your plugin. Verified on
-  6.7.13.1 with a plugin installed by hand into `custom/plugins/`, so it holds even where Composer
-  never resolved the constraint. One line in `require` converts a silent degradation into a loud
-  refusal.
+Keep the tag-based registration. Injecting a hard-coded list would force the next contributor to
+find and modify the collector's constructor.
+
+### From a separate plugin
+
+Put the code in your own `shopware-platform-plugin` with its own `composer.json` and `services.xml`.
+Two rules make cross-plugin extensions reliable:
+
+- Shopware plugins are Symfony bundles that share one container. A `tagged_iterator` therefore
+  collects your service without any registration in this plugin.
+- **Require `swag/assistant-starter-kit` from your plugin.** Without that dependency, Shopware can
+  activate your tagged service when nothing collects it. The tool silently disappears. With the
+  dependency declared, Shopware also refuses to deactivate the starter kit while your plugin depends
+  on it and raises `PluginHasActiveDependantsException` instead.
+
+This dependency behaviour was verified on Shopware 6.7.13.1 with a plugin installed manually under
+`custom/plugins/`; it does not rely on Composer resolving the constraint at installation time.
 
 Decoration — `PromptProviderInterface`, `LlmPlatformInterface`, `CommerceGatewayInterface` — works
 from either side, and from a separate plugin it is why no fork is needed.
@@ -81,39 +119,37 @@ prompt. A tool the model can see is a tool it will try, and a refusal reads to a
 
 ## Why tools are factories, not services
 
-A turn's tools share **one** gateway, one trace recorder and one fact renderer, and they must share
-the same *instances*. `AddToCartTool` reads the live cart total to enforce the merchant's
-`maxCartValue`, so a tool holding its own gateway would see an empty cart on every call — and a model
-could add one item at a time past the limit, which is exactly how a model would do it.
+Every tool in a turn must share the same gateway, trace recorder, and fact renderer instances. For
+example, `AddToCartTool` reads the live cart total when enforcing `maxCartValue`. A tool with its own
+gateway would see an empty cart on each call and could allow several individually valid additions to
+cross the total limit.
 
-A stateless tagged service cannot hold per-request objects, and one that held them across requests
-would leak one shopper's retrieved set into another's conversation. So you contribute a **factory**,
-and it is handed the turn's context.
+A stateless tagged service cannot hold per-request objects. A shared stateful service could leak one
+shopper's retrieved set into another conversation. A factory avoids both problems by receiving the
+current turn's context.
 
 ## Two tiers, and why yours is probably the first one
 
-The assistant's core promise is that the model is *structurally* incapable of inventing a price:
-prices, stock, URLs and images are rendered server-side from the retrieved record, so there is no path
-by which the model can make one up. A tool that could return `['price' => 19.90]` would end that.
+Choose the least privileged tier that can do the job. The assistant's core promise is that prices,
+stock, URLs, and images are rendered server-side from retrieved products. A tool returning
+`['price' => 19.90]` directly would break that guarantee.
 
 So there are two tiers:
 
-- **`ToolFactoryInterface`** receives a `ToolContext`: the trace and the merchant's config. It cannot
-  reach the catalogue, which means it cannot get the above wrong. Use this unless you need catalogue
-  data — a store locator, an FAQ lookup, a shipping estimate, a warranty checker.
-- **`GroundedToolFactoryInterface`** receives a `GroundedToolContext`, which is everything a shipped
-  grounded tool is built from: `gateway`, `trace`, `config`, `renderer` (`FactRenderer`),
-  `facetProbe`, `blocklist`, `variantResolver`, `queryBuilder`, `cartAvailable`, and
-  `browsingCategoryId` — the category the shopper is currently browsing, or null. Use it when your
-  tool genuinely answers from the catalogue, and render shopper-facing facts through `FactRenderer`
-  rather than returning them yourself.
+- **`ToolFactoryInterface`** receives `ToolContext`, containing the trace and merchant configuration.
+  It cannot access the catalogue. Use it for a store locator, FAQ lookup, shipping estimate, warranty
+  checker, or any other capability based on your own data.
+- **`GroundedToolFactoryInterface`** receives `GroundedToolContext`: `gateway`, `trace`, `config`,
+  `renderer`, `facetProbe`, `blocklist`, `variantResolver`, `queryBuilder`, `cartAvailable`, and the
+  optional `browsingCategoryId`. Use it only when the tool must answer from catalogue data, and route
+  shopper-facing product facts through `FactRenderer`.
 
-`browsingCategoryId` is client-supplied and never resolved, so **use it only to narrow.** As a
-`ProductQuery::$categoryId` it is AND-ed with the merchant's scope and can only ever return fewer
-products; putting it anywhere the scope is OR-ed — `CatalogScope::$includeCategoryIds` — would let a
-shopper reach products the merchant excluded. The shipped `search_products` also retries without it
-when the constraint leaves the shopper with nothing, and records `retrieve.without_category` when it
-does.
+> [!CAUTION]
+> `browsingCategoryId` is client-supplied and never resolved. Use it only as
+> `ProductQuery::$categoryId`, where it narrows the merchant's scope. Never add it to
+> `CatalogScope::$includeCategoryIds`; that OR-ed scope could expose excluded products. The shipped
+> search retries without the browsing category when it produces no result and records
+> `retrieve.without_category`.
 
 The two context classes deliberately share no parent, so an unprivileged factory cannot cast its way
 to the catalogue.
@@ -339,14 +375,19 @@ extension point rather than an analytics integration; the merchant-facing help t
 mentions the tag, because a service-container tag in a settings form is documentation in the wrong
 place. Sinks are additive, so yours runs alongside it.
 
-**It logs to a channel of its own, and the reason is worth borrowing.** Until 2026-09-02 it injected
-the shop-wide `logger` and wrote at `info` — which a stock production Shopware discards, because its
-file handler is `level: error` behind a `fingers_crossed` at `action_level: error`. The setting was
-on, the sink ran, and nothing was ever written; in `dev` the line appeared, which is why it looked
-fine. `TraceLogChannel` is now prepended onto the shop's `monolog` config and the service carries
-`<tag name="monolog.logger" channel="swag_assistant"/>`. **If your sink logs rather than enqueues,
-it has the same problem** — inject a channel of your own, or your integration is a setting that does
-nothing.
+If your sink logs instead of enqueueing, give it a dedicated Monolog channel. A stock production
+Shopware discards `info` messages sent to the general logger. The shipped sink uses
+`TraceLogChannel` and `<tag name="monolog.logger" channel="swag_assistant"/>`.
+
+<details>
+<summary>Why the logger channel matters</summary>
+
+Before 2026-09-02, the shipped sink injected the shop-wide logger and wrote at `info`. Production's
+file handler starts at `error` behind a `fingers_crossed` handler with `action_level: error`, so the
+setting was enabled and the sink ran without producing a file. Development appeared to work because
+its logging configuration differs. Use a dedicated channel to avoid the same silent failure.
+
+</details>
 
 ```php
 <?php declare(strict_types=1);
