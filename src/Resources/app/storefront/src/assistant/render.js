@@ -154,7 +154,9 @@ export function renderMessage(log, message) {
     wrapper.appendChild(buildProse(prose));
 
     // Order is the argument: the claim, then the correction, then the evidence that corrects it.
-    const warning = buildWarning(warnings, translations);
+    // Whether that evidence exists decides the wording — see warningCopy().
+    const hasCards = Array.isArray(cards) && cards.length > 0;
+    const warning = buildWarning(warnings, translations, hasCards);
     if (warning) {
         wrapper.appendChild(warning);
     }
@@ -166,7 +168,7 @@ export function renderMessage(log, message) {
         wrapper.appendChild(contact);
     }
 
-    if (Array.isArray(cards) && cards.length > 0) {
+    if (hasCards) {
         renderCards(wrapper, cards, { locale, addToCartEnabled, translations });
     }
 
@@ -234,7 +236,7 @@ function buildProse(prose) {
  * - **It does not highlight the offending phrase inline.** Underlining the model's error mid-sentence
  *   draws the eye to one failure and quietly undermines every other sentence.
  */
-function buildWarning(warnings, translations) {
+export function warningCopy(warnings, translations, hasCards) {
     const availability = warnings?.unbackedAvailabilityClaims ?? [];
     const prices = warnings?.unbackedPrices ?? [];
     const properties = warnings?.unbackedPropertyClaims ?? [];
@@ -243,22 +245,33 @@ function buildWarning(warnings, translations) {
         return null;
     }
 
+    // Availability outranks price outranks property. Being told a sold-out item is available is
+    // the failure that cancels an order; a restated number is a smaller sin; a wrong material or
+    // attribute claim is smaller still.
+    if (availability.length > 0) {
+        return (hasCards ? translations.warningAvailability : translations.warningAvailabilityNoCard) ?? '';
+    }
+
+    if (prices.length > 0) {
+        return (hasCards ? translations.warningPrice : translations.warningPriceNoCard) ?? '';
+    }
+
+    return (hasCards ? translations.warningProperty : translations.warningPropertyNoCard) ?? '';
+}
+
+function buildWarning(warnings, translations, hasCards) {
+    const text = warningCopy(warnings, translations, hasCards);
+
+    if (text === null) {
+        return null;
+    }
+
     const el = document.createElement('p');
     el.className = 'swag-assistant-warning';
     // "note" rather than "alert": it is a correction to something already on screen, not an
     // interruption, and an assertive live region would talk over the reply itself.
     el.setAttribute('role', 'note');
-
-    // Availability outranks price outranks property. Being told a sold-out item is available is
-    // the failure that cancels an order; a restated number is a smaller sin; a wrong material or
-    // attribute claim is smaller still.
-    if (availability.length > 0) {
-        el.textContent = translations.warningAvailability ?? '';
-    } else if (prices.length > 0) {
-        el.textContent = translations.warningPrice ?? '';
-    } else {
-        el.textContent = translations.warningProperty ?? '';
-    }
+    el.textContent = text;
 
     return el;
 }

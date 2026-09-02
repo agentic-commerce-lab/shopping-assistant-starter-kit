@@ -44,13 +44,16 @@
     "warning": {
       "availability": "Dieser Artikel ist nicht auf Lager. Die Karte unten ist korrekt.",
       "price": "Es gelten die Preise auf den Karten.",
-      "property": "Es gelten die Material- und Merkmalsangaben auf der Karte unten."
+      "property": "Es gelten die Material- und Merkmalsangaben auf der Karte unten.",
+      "availabilityNoCard": "Diese Verfügbarkeit ist nicht durch die Shop-Daten bestätigt. Bitte auf der Produktseite prüfen.",
+      "priceNoCard": "Diese Preise sind nicht durch die Shop-Daten bestätigt. Bitte auf der Produktseite prüfen.",
+      "propertyNoCard": "Diese Material- und Merkmalsangaben sind nicht durch die Shop-Daten bestätigt."
     },
     "error": {
       "network": "Das kam nicht durch. Nochmal versuchen?",
       "retry": "Nochmal versuchen",
       "unavailable": "Der Assistent ist gerade nicht verfügbar.",
-        "busy": "Der Shop war kurz überlastet. Nochmal versuchen?",
+      "busy": "Der Shop war kurz überlastet. Nochmal versuchen?",
       "tooLong": "Diese Nachricht ist zu lang. Bitte kürzen.",
       "cartFailed": "Konnte nicht in den Warenkorb gelegt werden."
     }
