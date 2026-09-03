@@ -34,6 +34,7 @@ final class PropertyClaimNegationTest extends TestCase
         return new FacetSet([
             new Facet('properties.Colour', FacetType::Terms, ['Red', 'Burgundy', 'Blue', 'Black', 'Navy', 'Rust']),
             new Facet('properties.Material', FacetType::Terms, ['Merino', 'Silk', 'Nylon']),
+            new Facet('properties.Terrain', FacetType::Terms, ['Road', 'Gravel', 'Trail']),
         ]);
     }
 

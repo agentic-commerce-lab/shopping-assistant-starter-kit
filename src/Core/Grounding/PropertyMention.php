@@ -42,6 +42,16 @@ final class PropertyMention
      * choice {@see AvailabilityClaimExtractor::matching()} explains: `PREG_OFFSET_CAPTURE` makes the
      * offset's type unprovable, and a regex carrying its own context beats index arithmetic.
      *
+     * **A preceding hyphen is not a word boundary, and that is asymmetric on purpose.** Measured on
+     * staging 2026-09-03: *"the one built for off-road use"* flagged `Road`, a Terrain value, because
+     * the character before it is a hyphen — not a letter or a number, so the boundary lookbehind
+     * passed. `off-road` does not claim a product's terrain is Road; if anything it says the
+     * opposite, and the same goes for `all-road` and any other compound whose modifier leads.
+     *
+     * A **following** hyphen stays a boundary, deliberately: `Merino-wool jersey` still claims
+     * Merino, and losing that would be the expensive direction — an unbacked claim nobody is warned
+     * about. So the modifier side blocks and the modified side does not.
+     *
      * **The quantifier is lazy, and that is not a style choice.** A greedy `.{0,N}` starting at the
      * top of the prose reaches forward for the *last* occurrence within its reach and swallows every
      * earlier one into its own window, so they are never examined separately. Measured on
@@ -59,7 +69,7 @@ final class PropertyMention
         // examined. Group 2 is the rest of the clause; group 3 runs on to the sentence's own
         // terminator, which is the only way to know whether this sentence is asking or telling.
         $pattern = \sprintf(
-            '/(.{0,%d}?)(?<![\p{L}\p{N}])%s(?![\p{L}\p{N}])(?=([^.!?;,\n]{0,200}))(?=([^.!?\n]{0,400}([.!?])?))/su',
+            '/(.{0,%d}?)(?<![\p{L}\p{N}\-])%s(?![\p{L}\p{N}])(?=([^.!?;,\n]{0,200}))(?=([^.!?\n]{0,400}([.!?])?))/su',
             self::WINDOW,
             preg_quote($value, '/'),
         );
