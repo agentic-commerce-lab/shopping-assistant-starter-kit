@@ -1,6 +1,6 @@
 {
     "name": "swag/assistant-starter-kit",
-    "description": "Shopper-facing, merchant-operated shopping assistant for Shopware 6.7",
+    "description": "Shopper-facing, merchant-operated shopping assistant for Shopware 6.6",
     "type": "shopware-platform-plugin",
     "license": "MIT",
     "require": {
@@ -10,12 +10,12 @@
         "ext-filter": "*",
         "ext-mbstring": "*",
         "ext-zip": "*",
-        "doctrine/dbal": "^3.9 || ^4.0",
+        "doctrine/dbal": "^3.9",
         "masterminds/html5": "^2.11",
         "psr/cache": "^3.0",
         "psr/log": "^3.0",
-        "shopware/core": "~6.6.0 || ~6.7.0",
-        "shopware/storefront": "~6.6.0 || ~6.7.0",
+        "shopware/core": "~6.6.0",
+        "shopware/storefront": "~6.6.0",
         "smalot/pdfparser": "^2.12",
         "symfony/ai-agent": "0.12.*",
         "symfony/ai-generic-platform": "0.12.*",
