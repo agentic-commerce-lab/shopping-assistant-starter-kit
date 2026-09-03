@@ -99,6 +99,37 @@ final class SystemPromptAdviceTest extends TestCase
     }
 
     /**
+     * "See all of them" has to be answered by **searching again**, not by reciting.
+     *
+     * **Measured on the staging shop, 2026-09-03, mistralai/mistral-large-2512.** A shopper narrowed
+     * from "I am looking for a helmet" to "the cheapest helmet you have" — which the model searched
+     * with `limit: 1`, the tool reporting `survivors: 16, truncated: 15` — and then asked "Show me all
+     * helmets you have". The reply named five helmets and the turn recorded `toolCalls: 0`: the model
+     * had answered entirely from names it had seen earlier in the conversation. One card rendered, the
+     * one carried over from the previous turn, because `GroundingOutputProcessor` can only resolve a
+     * name against what this turn actually retrieved.
+     *
+     * The old wording caused it. *"That limit does not apply: name every one you found"* instructs the
+     * **reply** and is satisfiable from memory, which is exactly what a literal-minded model does with
+     * it; nothing in it asked for another tool call. Two further symptoms followed from the same
+     * omission — no warning fired, because the model used names rather than ids and
+     * `inventedProductIds` was therefore empty; and `unbackedPropertyClaims` reported `Road`,
+     * `Gravel`, `Trail`, because {@see \Swag\AssistantStarterKit\Core\Grounding\ProductNameMask}
+     * can only mask the names of products the turn retrieved.
+     *
+     * So the rule now names the mechanism rather than only the intent. Asserted separately from the
+     * test above so a revert to phrasing-only advice fails here rather than passing quietly.
+     */
+    public function testSeeingEverythingIsAnsweredBySearchingAgainRatherThanFromMemory(): void
+    {
+        $prompt = SystemPrompt::build(new AssistantConfig());
+
+        self::assertStringContainsString('calling the search tool again with a higher limit', $prompt);
+        self::assertStringContainsString('Never answer this from products', $prompt);
+        self::assertStringContainsString('recited from memory', $prompt);
+    }
+
+    /**
      * A constraint nothing satisfies is an answer, not a reason to keep searching.
      *
      * **Measured live 2026-09-01.** *"Ich suche Handschuhe für den Winter, aber nichts über 35 Euro"*
