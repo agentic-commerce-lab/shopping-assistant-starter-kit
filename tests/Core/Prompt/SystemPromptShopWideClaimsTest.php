@@ -33,8 +33,12 @@ final class SystemPromptShopWideClaimsTest extends TestCase
     {
         $prompt = SystemPrompt::build(new AssistantConfig());
 
-        self::assertStringContainsString('That prohibition is about PRODUCTS', $prompt);
-        self::assertStringContainsString('does not record', $prompt);
+        self::assertStringContainsString('That prohibition is about PRODUCTS and nothing below', $prompt);
+        // The leak this closed: the carve-out used to MODEL the sentence as "this shop does not
+        // record a colour for its tyres", and `no_match_not_absence` came back with "The shop does
+        // not carry" — the same stem, a different verb. The example is now about the products.
+        self::assertStringContainsString('and never about the shop', $prompt);
+        self::assertStringNotContainsString('"this shop does not record', $prompt);
     }
 
     /**

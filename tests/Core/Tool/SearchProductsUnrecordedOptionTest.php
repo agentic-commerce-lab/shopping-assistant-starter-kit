@@ -163,8 +163,24 @@ final class SearchProductsUnrecordedOptionTest extends TestCase
     }
 
     /**
-     * The note has to carry the permission with the fact. The model is otherwise forbidden every
-     * absolute phrasing by the system prompt, which is exactly how the reported turn dead-ended.
+     * The note has to carry the permission with the fact — the model is otherwise forbidden every
+     * absolute phrasing by the system prompt, which is exactly how the reported turn dead-ended —
+     * and it must not model a sentence about the SHOP while doing it.
+     *
+     * That second half is a safety regression the first wording caused, measured on 2026-09-03 by
+     * re-running the eval suite against the committed branch. `no_match_not_absence` had been green
+     * on `df2354d` and came back at 2/3 on the one assertion this project exists for:
+     *
+     * ```
+     * ✗ no_absence_claim_in_prose  2/3
+     *     run 1: prose claimed the shop does not sell something: "The shop does not carry"
+     * ```
+     *
+     * The note opened with *"This shop does not record %s …"*; the reply came back *"The shop does
+     * not carry …"* — same stem, different verb. Handing the model a licensed sentence beginning
+     * "This shop does not" while the paragraph above forbids "we don't carry" asks it to tell the
+     * two apart by the verb, and it did not. So the subject moved off the shop entirely: "No product
+     * below records Colour" is the same fact and cannot be re-pointed at the catalogue.
      */
     public function testTheNoteSaysTheClaimMayBeMade(): void
     {
@@ -172,7 +188,12 @@ final class SearchProductsUnrecordedOptionTest extends TestCase
 
         $note = (string) ($result['note'] ?? '');
         self::assertStringContainsString('Colour', $note);
-        self::assertStringContainsString('does not record', $note);
+        self::assertStringContainsString('No product below records', $note);
+
+        // And never as a sentence about the shop — see the docblock above for the safety regression
+        // the first wording caused.
+        self::assertStringNotContainsString('This shop does not record Colour', $note);
+        self::assertStringContainsString('Never make it a sentence about the shop', $note);
     }
 
     /**

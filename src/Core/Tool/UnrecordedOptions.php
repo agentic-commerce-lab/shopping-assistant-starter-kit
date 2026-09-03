@@ -85,14 +85,14 @@ final class UnrecordedOptions
      * precisely what produced the reported dead end, because the follow-up search cannot succeed.
      */
     public const NOTE_TEMPLATE =
-        'This shop does not record %s for the products below — not one of them lists it. You MAY '
-            . 'say that plainly: it is a fact about this shop\'s own product data, not a guess about '
-            . 'its range, and it is the most useful answer there is. Say what these products ARE '
-            . 'described by, from the options each one lists. Say it with "does not record" or "does '
-            . 'not list", never with "has no": one is about the shop\'s data and the other reads as a '
-            . 'claim about its range. Do NOT turn it into a claim about what the shop sells or has in '
-            . 'stock, do NOT offer to check which other values are available — there are none to '
-            . 'check — and do NOT ask the shopper to rephrase.';
+        'No product below records %s — not one of them lists it. You MAY say that plainly, and say it '
+            . 'about THESE PRODUCTS: "these tyres have no colour recorded" is a fact about this shop\'s '
+            . 'product data and the most useful answer there is. Never make it a sentence about the '
+            . 'shop — not "the shop does not record", not "the shop does not have", not "we do not '
+            . 'carry". What the shop\'s range does or does not contain is the one thing no search can '
+            . 'establish, and this reply establishes nothing about it. Say what these products ARE '
+            . 'described by, from the options each one lists. Do NOT offer to check which other values '
+            . 'are available — there are none to check — and do NOT ask the shopper to rephrase.';
 
     private function __construct() {}
 
