@@ -770,6 +770,31 @@ Composer 2.10 blocks an advisory-affected package by default, so a shop on 6.6.1
 `audit.block-insecure: false` in its root `composer.json` before it will resolve at all. That is the
 shop's constraint, not the plugin's, but it is the first thing you meet.
 
+**The status switch speaks 6.6's `mt-switch` contract.** The kill switch is a custom component, and
+6.6's `mt-switch` is not 6.7's: its state prop is `checked` and it emits `change`, with no
+`modelValue` anywhere. Read out of the running Administration on a 6.6.10.19 shop:
+
+```text
+mt-switch props:  label, required, disabled, checked, bordered,
+                  inheritedValue, helpText, error, removeTopMargin, name
+onChange(e) { this.$emit('change', e.target.checked) }
+```
+
+Bound as `:model-value`, the value never reached the switch — Vue passed it through as a literal
+`model-value="true"` attribute on the wrapper — and `checked` defaults to `null`, so the control drew
+itself **off** while the lamp and the text beside it correctly read *Running*. `@update:model-value`
+matched no emit, so clicking it never opened the confirmation dialog. **The one control that stops
+every reply was unoperable on 6.6, and the position it showed was meaningless.** The binding is now
+`:checked` / `@change`, verified in a 6.6 Administration in both directions: the dialog opens, Cancel
+snaps the switch back, confirming writes `assistantEnabled` and the storefront drops the orb while
+the endpoint answers *"The assistant is switched off."* without calling a model.
+
+This is worth generalising. Three of the four 6.6 differences on this page were found by *looking at
+a 6.6 shop*, and this one was invisible to everything cheaper: the PHP side, the config schema, the
+built bundle and the plugin's own test suite were all correct. A custom Administration component is
+the one thing in a plugin whose contract changes between Shopware minors without any of them saying
+so.
+
 **Storefront snippets must carry the full locale.** `SnippetFileLoader` reads the locale out of the
 filename — `explode('.')`, second part — so `swag-assistant.en.json` registers under the iso `en`,
 which is not a Shopware locale. Shopware 6.7 hides that behind a translator fallback (`en-GB` falls

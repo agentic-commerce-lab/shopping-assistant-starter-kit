@@ -28,11 +28,11 @@
         <mt-switch
             :key="switchKey"
             class="swag-assistant-status-switch__control"
-            :model-value="running"
+            :checked="running"
             :disabled="disabled"
             :label="$tc('swag-assistant-settings.status.label')"
             :remove-top-margin="true"
-            @update:model-value="onToggle"
+            @change="onToggle"
         />
     </div>
     {% endblock %}
