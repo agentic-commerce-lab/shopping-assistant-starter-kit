@@ -167,6 +167,7 @@ final class SearchProductsTool
      *         options_truncated?: bool,
      *     }>,
      *     terms_without_results?: list<string>,
+     *     options_not_recorded?: list<string>,
      *     shop_sells?: list<string>,
      *     shop_sells_note?: string,
      *     note?: string,
@@ -389,8 +390,9 @@ final class SearchProductsTool
             // a wedding" against a cycling catalogue produced "could you share more details… so I can
             // try different search terms", which cannot succeed. See NoMatchOrientation.
             $result = [...$result, ...NoMatchOrientation::replyFor($this->gateway, $scope, self::NO_MATCH_NOTE)];
-        } elseif ($optionNote !== null) {
-            $result['note'] = $optionNote;
+        } else {
+            // `else`, not `elseif`: a group with no facet is dropped by QueryBuilder, note and all.
+            $result = [...$result, ...UnrecordedOptions::replyFor($optionNote, $returned, $buildResult)];
         }
 
         return $result;
