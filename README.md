@@ -111,8 +111,14 @@ Set the base URL, model ID, and API key in the plugin settings under **Language 
 evaluation, you can also configure them from the shop root:
 
 ```fish
+# Through a gateway, model ids carry a vendor prefix:
 bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://openrouter.ai/api"
-bin/console system:config:set SwagAssistantStarterKit.config.llmModel "provider/model-id"
+bin/console system:config:set SwagAssistantStarterKit.config.llmModel "openai/gpt-4o-mini"
+
+# Against a vendor's own API, they do not:
+bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://api.openai.com"
+bin/console system:config:set SwagAssistantStarterKit.config.llmModel "gpt-4o-mini"
+
 bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey "sk-…"
 ```
 

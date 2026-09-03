@@ -32,17 +32,27 @@
             <name>llmBaseUrl</name>
             <label>OpenAI-compatible base URL</label>
             <placeholder>https://api.openai.com</placeholder>
-            <helpText>Any OpenAI-compatible chat completions endpoint (Azure, OpenRouter, a local
-                model). Enter the base URL without /v1; the client adds /v1/chat/completions and
-                /v1/embeddings. The URL is checked on every request to make sure it points outside
-                your own network; a private or loopback address is rejected.</helpText>
+            <helpText>Any OpenAI-compatible chat completions endpoint — OpenAI itself
+                (https://api.openai.com), a gateway such as OpenRouter (https://openrouter.ai/api),
+                Azure, or a local model. Enter the base URL without /v1; the client adds
+                /v1/chat/completions and /v1/embeddings. Which provider you pick decides how the two
+                model fields below have to be spelled, so set this one first. The URL is checked on
+                every request to make sure it points outside your own network; a private or loopback
+                address is rejected.</helpText>
         </input-field>
 
         <input-field type="text">
             <name>llmModel</name>
             <label>Model</label>
             <placeholder>gpt-4o-mini</placeholder>
-            <helpText>The assistant is inert until this is set. A weak model reads as a bad
+            <helpText>The assistant is inert until this is set. Spell the model id exactly as YOUR
+                provider spells it — the name is passed through untouched. A gateway that fronts
+                several vendors uses a vendor prefix (OpenRouter: openai/gpt-4o-mini,
+                mistralai/mistral-large-latest); a vendor's own API does not (OpenAI: gpt-4o-mini).
+                A prefix your provider does not use, or a missing one, comes back as "model not
+                found" and the assistant stays inert.
+
+                A weak model reads as a bad
                 product: prefer a model with reliable tool calling. If you index shop documents, this
                 is also a safety setting — answers about your terms are written by this model from the
                 document text, and whether it declines when a document does not answer the question
@@ -85,9 +95,23 @@
             <label>Embedding model</label>
             <helpText>Used to index shop documents and to match a question against them. Uses the
                 same provider URL and API key as the chat model, so it must be a model your provider
-                serves at /v1/embeddings. Measured working on OpenRouter: baai/bge-m3 (1024
-                dimensions, multilingual — the one this plugin was calibrated against),
-                openai/text-embedding-3-small (1536) and openai/text-embedding-3-large (3072).
+                serves at /v1/embeddings — and spelled that provider's way, with a vendor prefix or
+                without it, exactly as for the chat model above.
+
+                Through a gateway such as OpenRouter: baai/bge-m3 (1024 dimensions, multilingual),
+                openai/text-embedding-3-small (1536) or openai/text-embedding-3-large (3072).
+                Directly against OpenAI, bge-m3 does not exist and the names carry no prefix:
+                text-embedding-3-small (1536) or text-embedding-3-large (3072).
+
+                Read this before choosing anything other than bge-m3. Retrieval keeps a fixed
+                similarity floor of 0.4, and that number was measured against bge-m3: on the German
+                statutory revocation notice, the lowest score for a question the document really
+                answers was 0.4421, comfortably above it. The same measurement on OpenAI's models put
+                answerable questions BELOW the floor — 0.3622 with text-embedding-3-small, 0.3566 and
+                0.3713 with text-embedding-3-large. On those models the floor therefore discards
+                passages that do answer the question, and the assistant says it found nothing. If you
+                use them, check your own real questions against your own pages after indexing.
+
                 Changing it makes every indexed document unusable — delete and index them again after
                 a change, which the shop information screen will tell you.</helpText>
         </input-field>
