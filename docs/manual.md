@@ -23,7 +23,7 @@ Writing code against the assistant? Go to the [extension guide](extending.md).
 
 ### Core requirements
 
-- Shopware **6.7** (`^6.7`), PHP 8.2+
+- Shopware **6.6.10.12 or newer** (`~6.6.0`), PHP 8.2+
 - An OpenAI-compatible chat-completions endpoint (`base_url` + `model` + `api_key`)
 
 ### Shop knowledge (optional)
@@ -720,33 +720,38 @@ See `.env.example` for the OpenRouter-specific gotcha around the base URL's path
 
 ## Running on Shopware 6.6
 
-The plugin supports **6.6.10.12 or newer** alongside 6.7, which needs **6.7.7.0 or newer** for the
-same reason. Three things make that work, and each was measured against a real 6.6 shop rather than
-reasoned about.
+**This branch is 6.6 only.** `shopware/core` and `shopware/storefront` are constrained to `~6.6.0`,
+and the minimum inside that line is **6.6.10.12**. Everything on this page was measured against a
+real 6.6 shop rather than reasoned about.
 
-**The Symfony pin is the version gate.** `composer.json` keeps `symfony/* ~7.4.0` deliberately. The
-Symfony AI packages this plugin is built on require `^7.3|^8.0`, and Shopware moves Symfony minors
-inside a patch line rather than at a minor boundary: 6.6 shipped Symfony 7.2 through 6.6.10.7, 7.3
-from 6.6.10.8 and 7.4 from 6.6.10.12; 6.7 shipped 7.2 through 6.7.1, 7.3 from 6.7.2 and 7.4 from
-6.7.7.0. The `~7.4.0` pin therefore refuses anything below 6.6.10.12 or 6.7.7.0 — both floors and the
-patch immediately below each were resolved with Composer to get those numbers, not read off a
-changelog. Widening the pin would let the plugin install onto a shop where the AI stack cannot run;
-leaving it narrow makes Composer refuse up front, with a message that names the real reason.
+**The Symfony pin sets the floor inside 6.6.** `composer.json` keeps `symfony/* ~7.4.0` deliberately.
+The Symfony AI packages this plugin is built on require `^7.3|^8.0`, and Shopware moves Symfony
+minors inside a patch line rather than at a minor boundary: 6.6 shipped Symfony 7.2 through 6.6.10.7,
+7.3 from 6.6.10.8 and 7.4 from 6.6.10.12. The `~7.4.0` pin therefore refuses anything below
+6.6.10.12 — that floor and the patch immediately below it were resolved with Composer to get the
+number, not read off a changelog. Widening the pin would let the plugin install onto a shop where the
+AI stack cannot run; leaving it narrow makes Composer refuse up front, with a message that names the
+real reason.
 
-**Doctrine DBAL is not actually a barrier.** 6.6 stays on DBAL 3.x and 6.7 moved to 4.x, so the
-constraint reads `^3.9 || ^4.0`. Nothing here uses a DBAL 4 API: the plugin's queries are
+**Doctrine DBAL is not actually a barrier.** 6.6 stays on DBAL 3.x, so the constraint reads `^3.9`.
+Nothing here would need a DBAL 4 API either: the plugin's queries are
 `executeStatement`, `fetchAllAssociative`, `fetchFirstColumn`, `fetchOne`, `fetchAssociative` and
 `ArrayParameterType`, all of which exist in 3.6+. All ten migrations were verified running under
 DBAL 3.10.
 
-**The administration ships two bundles.** 6.6 loads plugin admin assets from
-`Resources/public/administration/js/<name>.js` (webpack); 6.7 reads
-`Resources/public/administration/.vite/entrypoints.json` (Vite). Both layouts are committed, and each
-version picks up the one it knows. On a 6.6 shop with only the Vite layout present the plugin
-installs, migrates and answers — but the administration silently loads nothing: no Assistant menu, no
-settings form (its two custom components are missing), and none of the admin snippets. `shopware-cli
-extension build .` selects the toolchain from the `shopware/core` constraint, so building on this
-branch produces the webpack half; the Vite half must be built from a 6.7 checkout.
+**6.6 loads the webpack admin bundle.** Plugin admin assets come from
+`Resources/public/administration/js/<name>.js`, which webpack produces; the Vite layout
+(`Resources/public/administration/.vite/entrypoints.json`) is what 6.7 reads instead. With only the
+Vite layout present, a 6.6 shop installs, migrates and answers — but the administration silently
+loads nothing: no Assistant menu, no settings form (its two custom components are missing), and none
+of the admin snippets. `shopware-cli extension build .` selects the toolchain from the
+`shopware/core` constraint, so on this branch it produces the webpack half, which is the half 6.6
+needs.
+
+The Vite bundle is still committed even though nothing on this branch loads it, and it is **stale**:
+it predates the `mt-switch` fix below and still carries the 6.7 binding. It is kept deliberately,
+because 6.7 fixes are expected to be ported onto this branch — deleting it would have to be undone.
+Treat it as an artefact of the other line, not as something this branch builds or tests.
 
 **One thing 6.6 cannot have.** `config.xml` used a `<subtitle>` on each card, which 6.6's
 `config.xsd` does not define — and an unknown element makes it reject the whole file, so the plugin
