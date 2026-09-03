@@ -70,7 +70,7 @@ final class SearchProductsToolUnmatchedOptionTest extends TestCase
         self::assertIsString($note);
         self::assertSame(['fx-017'], self::ids($result));
         self::assertSame(['Colour'], $result['options_not_recorded']);
-        self::assertStringContainsString('does not record Colour', $note);
+        self::assertStringContainsString('No product below records Colour', $note);
         self::assertStringContainsString(UnmatchedOptionRetry::NOTE, $note);
     }
 
