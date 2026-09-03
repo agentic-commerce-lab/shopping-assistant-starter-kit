@@ -15,6 +15,7 @@ use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\UnmatchedOptionRetry;
 use Swag\AssistantStarterKit\Core\Tool\NoMatchOrientation;
 use Swag\AssistantStarterKit\Core\Tool\SearchProductsTool;
+use Swag\AssistantStarterKit\Core\Tool\UnrecordedOptions;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
@@ -55,12 +56,22 @@ final class SearchProductsToolUnmatchedOptionTest extends TestCase
         );
     }
 
+    /**
+     * `fx-017` has no `Colour` at all, so since 2026-09-03 the reply says which of the two cases
+     * this is rather than leaving the model to infer it — see {@see UnrecordedOptions}, and the dead
+     * end that measurement produced. This retry's own note still travels, second, because a search
+     * asking about two groups can be one of each.
+     */
     public function testAProductWithNoSuchOptionGroupIsReturnedWithANoteInsteadOfNothing(): void
     {
         $result = $this->tool()(term: 'bottle cage', options: [['Colour', 'Blue']]);
 
+        $note = $result['note'];
+        self::assertIsString($note);
         self::assertSame(['fx-017'], self::ids($result));
-        self::assertSame(UnmatchedOptionRetry::NOTE, $result['note'] ?? null);
+        self::assertSame(['Colour'], $result['options_not_recorded']);
+        self::assertStringContainsString('does not record Colour', $note);
+        self::assertStringContainsString(UnmatchedOptionRetry::NOTE, $note);
     }
 
     /** The retry is a trace stage, not a silent second query. */
