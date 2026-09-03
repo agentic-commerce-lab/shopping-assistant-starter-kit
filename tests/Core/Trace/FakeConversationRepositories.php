@@ -62,7 +62,14 @@ final class FakeConversationRepositories
         $repository->method('update')->willReturnCallback($update);
 
         $search = function (Criteria $criteria, Context $context) use (&$rows): EntitySearchResult {
-            $id = $criteria->getIds()[0] ?? null;
+            // `is_string`, not a cast. On 6.6 `Criteria::getIds()` is `getIds(): array` with no
+            // `@return`, over a `@var array<string>|array<int, array<string>>` property that 6.7
+            // replaced with a native type and a narrow annotation — so an element is
+            // `array<string, string>|string` here and a plain `string` there. This fake only ever
+            // stores rows under a single string id; a composite key is a caller mistake, and
+            // returning "not found" for it is the honest answer rather than stringifying an array.
+            $first = $criteria->getIds()[0] ?? null;
+            $id = \is_string($first) ? $first : null;
             $row = $id !== null ? $rows[$id] ?? null : null;
             $entities = $row === null ? [] : [FakeRepositoryRows::toConversationEntity($row)];
 
