@@ -76,6 +76,24 @@ final class RecentCardsContextTest extends TestCase
         self::assertMatchesRegularExpression('/anything else|something else|a different/i', $line);
     }
 
+    /**
+     * Reported from staging, 2026-09-03. Turn 1 recommended the **Race Tyre** and showed its card;
+     * turn 2 asked *"why do you think this tyre is the best?"* and the reply was about Road Tyre
+     * 28c, Touring Tyre Reflective and Plus Tyre 650b — three tyres the shopper had never seen, with
+     * not a word about the one they had asked about.
+     *
+     * Searching was not the mistake. Only the LAST search renders, so a comparison lookup replaces
+     * the shortlist, and prose has to agree with the cards — which makes abandoning the subject the
+     * cheapest way for the model to stay consistent. The clause this line was missing is that a
+     * question ABOUT one of these products is still answered about that product.
+     */
+    public function testItHoldsTheSubjectWhenTheQuestionIsAboutOneOfThem(): void
+    {
+        $line = RecentCardsContext::line([self::card('90d9b582', 'Club Jersey', ['Size' => 'M'])]);
+
+        self::assertStringContainsString('it stays the subject', $line);
+    }
+
     public function testNoCardsIsNoLine(): void
     {
         // Most turns are the first of their conversation. An empty clause on every one of them is

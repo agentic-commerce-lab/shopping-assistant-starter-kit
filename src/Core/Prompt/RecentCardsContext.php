@@ -93,8 +93,11 @@ final class RecentCardsContext
         . 'are still on their screen: %s. When they say "that", "it", "the first one" or name '
         . 'one of these, they mean the exact product listed here — use its id and do not search '
         . 'for it again, or you will land on a different size or colour of the same product and '
-        . 'tell them about one they never saw. For anything else — a different product, a '
-        . 'different variant, a new question — search as usual. Never state a figure from this '
-        . 'list: it is a turn old, and the cards carry the current ones.', implode('; ', $described));
+        . 'tell them about one they never saw. If they ask something ABOUT one of these — why it '
+        . 'suits them, how it compares, whether it is the right choice — it stays the subject: '
+        . 'answer about that product and show it. You may search for context, but do not let the '
+        . 'products that search returns quietly become the answer. For anything else — a different '
+        . 'product, a different variant, a new question — search as usual. Never state a figure '
+        . 'from this list: it is a turn old, and the cards carry the current ones.', implode('; ', $described));
     }
 }
