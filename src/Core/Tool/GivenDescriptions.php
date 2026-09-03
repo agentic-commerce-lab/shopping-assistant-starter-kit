@@ -20,8 +20,17 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  */
 final readonly class GivenDescriptions
 {
-    /** The trace stage {@see CompareProductsTool} records under. */
-    public const STAGE = 'compare.descriptions';
+    /**
+     * The trace stage the tools that hand over a product's own prose record under.
+     *
+     * Was `compare.descriptions` while {@see CompareProductsTool} was the only one. `get_product`
+     * joined it on 2026-09-03, after a shopper asked how long the Front Light 800's battery lasts:
+     * the answer is in that product's own description — *"Four hours on full, twelve on the commute
+     * setting"* — and the reply was *"the shop's data does not include battery life"*, which was true
+     * of what the model had been given and false of the shop. A stage named after one caller would
+     * have made the second caller look like a different kind of event.
+     */
+    public const STAGE = 'descriptions.given';
 
     /**
      * @return list<string>

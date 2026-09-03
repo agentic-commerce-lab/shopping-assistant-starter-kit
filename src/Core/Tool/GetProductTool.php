@@ -55,7 +55,7 @@ final class GetProductTool
      *     own facet values before resolution, so "blue" and "Blue" behave the same.
      *
      * @return array{
-     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>,
+     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>,
      *     total: int,
      *     note?: string,
      * }
@@ -118,10 +118,26 @@ final class GetProductTool
         $survivors = $filtered['cards'];
         $this->renderer->registerRetrieved($survivors);
 
+        // **With the product's own prose**, unlike `search_products`. A shopper who asks about ONE
+        // product is asking about the thing the shop describes in its own words, and withholding
+        // them made the assistant deny what the shop says: asked how long the Front Light 800 runs,
+        // it answered "the shop's data does not include battery life" while that product's
+        // description reads "Four hours on full, twelve on the commute setting" (staging,
+        // 2026-09-03). Search stays narrow — see ToolProductSummary::withDescriptions() for why the
+        // shape differs by path, and why a summary carries no figure either way.
+        $products = ToolProductSummary::withDescriptions($survivors);
+
+        // Recorded because the trace is the only record of what the model was shown, and ProseAudit
+        // asks afterwards whether a claim came from text the server supplied. The excerpts, not the
+        // raw descriptions: what was handed over is what may be relied on.
+        $this->trace->record(GivenDescriptions::STAGE, [
+            'descriptions' => array_values(array_filter(array_column($products, 'description'))),
+        ]);
+
         $result = [
             // Same shape as search_products: the model must be able to confirm WHICH variant it
             // got back, which a bare id cannot tell it. See ToolProductSummary.
-            'products' => ToolProductSummary::of($survivors),
+            'products' => $products,
             'total' => \count($survivors),
         ];
 
