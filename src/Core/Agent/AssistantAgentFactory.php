@@ -270,7 +270,13 @@ final readonly class AssistantAgentFactory
         // budget as a JSON integer, and the default rejects it against a `float` parameter
         // before the tool is entered. See that class for the measurement.
         $toolbox = new BoundedToolbox(
-            new Toolbox($tools, argumentResolver: new WholeNumberToolArguments()),
+            new Toolbox(
+                $tools,
+                // An argument-less tool otherwise reaches the provider with no `parameters` key at
+                // all, which not every provider accepts — see {@see ExplicitEmptyToolSchema}.
+                new ExplicitEmptyToolSchema(),
+                new WholeNumberToolArguments(),
+            ),
             $config->maxToolCallsPerTurn,
             $trace,
         );
