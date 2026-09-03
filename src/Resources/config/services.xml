@@ -215,6 +215,13 @@
             <tag name="swag_assistant.grounded_tool_factory"/>
         </service>
 
+        <!-- Grounded rather than plain: it reads the shopper's live cart through the gateway. No
+             merchant switch — it writes nothing and needs no configured destination, so the only
+             gate is whether this request has a cart at all. -->
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\GoToCheckoutToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider"/>
 
         <service id="Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface"
@@ -257,6 +264,10 @@
 
         <service id="Swag\AssistantStarterKit\Controller\HandoffPayload"/>
 
+        <service id="Swag\AssistantStarterKit\Controller\CheckoutPayload">
+            <argument type="service" id="router"/>
+        </service>
+
         <!-- The shopper-facing HTTP surface. The widget UI is out of this plan's scope (Robin's
              separate work); this endpoint is the contract it builds against. -->
         <service id="Swag\AssistantStarterKit\Core\Agent\ShopwareChatTurnRunner">
@@ -276,6 +287,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Policy\RequestBudget"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Controller\CheckoutPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\CardPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\HandoffPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher"/>

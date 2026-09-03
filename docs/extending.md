@@ -97,14 +97,15 @@ from either side, and from a separate plugin it is why no fork is needed.
 
 ## What already ships
 
-Before you write a tool, know what you would be duplicating. Six ship, each behind its own factory,
-and four of them are switchable by the merchant:
+Before you write a tool, know what you would be duplicating. Seven ship, each behind its own
+factory, and four of them are switchable by the merchant:
 
 | Tool | Tier | Present when |
 |---|---|---|
 | `search_products` | grounded | always |
 | `get_product` | grounded | always |
 | `add_to_cart` | grounded | `enableAddToCart` |
+| `go_to_checkout` | grounded | `cartAvailable` — no merchant switch; see ARCHITECTURE.md |
 | `compare_products` | grounded | `enableCompareProducts` (off by default) |
 | `search_shop_info` | plain | an `embeddingModel` is configured |
 | `escalate` | plain | `enableEscalation` |

@@ -132,6 +132,7 @@ export function renderMessage(log, message) {
         cards,
         warnings,
         handoff,
+        checkout,
         createdAt,
         locale,
         translations = {},
@@ -166,6 +167,14 @@ export function renderMessage(log, message) {
     const contact = buildHandoff(handoff, translations);
     if (contact) {
         wrapper.appendChild(contact);
+    }
+
+    // The reply that asked for it is the only one that gets it, and the server decides which that
+    // is. A shopper who said "take me to checkout" used to be handed the merchant's contact page
+    // beside a sentence promising a checkout link that no code rendered.
+    const toCheckout = buildCheckout(checkout, translations);
+    if (toCheckout) {
+        wrapper.appendChild(toCheckout);
     }
 
     if (hasCards) {
@@ -313,6 +322,36 @@ function buildHandoff(handoff, translations) {
     // The href is scheme-checked server-side (SystemConfigAssistantConfig::safeUrl). This is the
     // second half of that: an external destination must not get a handle on the shop's window.
     link.rel = 'noopener noreferrer';
+    el.appendChild(link);
+
+    return el;
+}
+
+/**
+ * The checkout link for a reply where the shopper asked to check out, or null.
+ *
+ * Deliberately the same shape as {@link buildHandoff}, because it is the same guarantee: the URL is
+ * generated server-side from the shop's own route and the model has never seen it. Null covers "not
+ * that kind of turn" and "the cart was empty" — the server collapses both, so this cannot render a
+ * checkout link beside a reply that just said the cart is empty.
+ *
+ * The link text is a snippet rather than the URL, matching the handoff: a raw href reads as debug
+ * output. No `rel="noopener"` here, unlike the handoff — this destination is the shop's own page,
+ * and the widget's state is worth keeping when the shopper comes back.
+ */
+function buildCheckout(checkout, translations) {
+    if (!checkout || typeof checkout.url !== 'string' || checkout.url === '') {
+        return null;
+    }
+
+    const el = document.createElement('div');
+    el.className = 'swag-assistant-checkout';
+    el.setAttribute('role', 'note');
+
+    const link = document.createElement('a');
+    link.className = 'swag-assistant-checkout__action';
+    link.href = checkout.url;
+    link.textContent = translations.checkoutAction ?? '';
     el.appendChild(link);
 
     return el;

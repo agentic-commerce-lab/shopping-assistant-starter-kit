@@ -132,6 +132,43 @@ rather than an alarm.
     }
 }
 
+/*
+The checkout link: shown on the one reply where the shopper asked to go to checkout.
+
+An action, not a note — which is why it does not take the handoff's tinted block above. The handoff
+is an offer of a different route when the assistant cannot help; this is the next step in the one
+the shopper is already on, so it takes the same filled treatment the card's add-to-cart button has.
+One accent, one action treatment, and the prose beside it already says what it is for, so it carries
+no explanatory paragraph of its own.
+*/
+.swag-assistant-checkout {
+    margin: 10px 0 0;
+
+    &__action {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 11px;
+        border: 1px solid var(--swag-assistant-primary, #{$swag-assistant-accent});
+        border-radius: $swag-assistant-radius-control;
+        background: var(--swag-assistant-primary, #{$swag-assistant-accent});
+        color: $swag-assistant-surface;
+        font-size: $swag-assistant-font-meta;
+        font-weight: 600;
+        line-height: 1.2;
+        text-decoration: none;
+        transition:
+            background-color 150ms $swag-assistant-ease,
+            border-color 150ms $swag-assistant-ease;
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
+            background: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
+            color: $swag-assistant-surface;
+        }
+    }
+}
+
 @keyframes swag-assistant-failure-in {
     from {
         transform: translateY(6px);

@@ -41,6 +41,9 @@
       "message": "Das Shop-Team kann dir hier weiterhelfen.",
       "action": "Team kontaktieren"
     },
+    "checkout": {
+      "action": "Zur Kasse"
+    },
     "warning": {
       "availability": "Dieser Artikel ist nicht auf Lager. Die Karte unten ist korrekt.",
       "price": "Es gelten die Preise auf den Karten.",

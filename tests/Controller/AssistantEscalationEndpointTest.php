@@ -58,7 +58,10 @@ final class AssistantEscalationEndpointTest extends AssistantEndpointTestCase
         $messages = $this->decode($controller->history($this->get(['token' => $token]), $this->context()))['messages'];
         self::assertIsArray($messages);
 
-        self::assertSame(['message' => '', 'url' => '/contact'], self::firstAssistantTurn($messages)['handoff']);
+        self::assertSame(
+            ['message' => '', 'url' => '/contact'],
+            AssistantTranscript::firstAssistantTurn($messages)['handoff'],
+        );
     }
 
     public function testAWithdrawnDestinationIsNotStillOfferedInHistory(): void
@@ -79,29 +82,6 @@ final class AssistantEscalationEndpointTest extends AssistantEndpointTestCase
         $messages = $this->decode($controller->history($this->get(['token' => $token]), $this->context()))['messages'];
         self::assertIsArray($messages);
 
-        self::assertNull(self::firstAssistantTurn($messages)['handoff']);
-    }
-
-    /**
-     * @param array<mixed> $messages
-     *
-     * @return array<string, mixed>
-     */
-    private static function firstAssistantTurn(array $messages): array
-    {
-        foreach ($messages as $message) {
-            self::assertIsArray($message);
-
-            if (($message['role'] ?? null) === 'assistant') {
-                $turn = [];
-                foreach ($message as $key => $value) {
-                    $turn[(string) $key] = $value;
-                }
-
-                return $turn;
-            }
-        }
-
-        self::fail('the transcript holds no assistant turn');
+        self::assertNull(AssistantTranscript::firstAssistantTurn($messages)['handoff']);
     }
 }

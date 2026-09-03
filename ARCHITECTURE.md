@@ -497,11 +497,21 @@ Note the trust boundary: **tools are trusted code the merchant installed; the mo
 | `search_products` | read | always |
 | `get_product` | read | always |
 | `add_to_cart` | write | `enableAddToCart && cartAvailable` |
+| `go_to_checkout` | read | `cartAvailable` |
 | `compare_products` | read | `enableCompareProducts` |
 | `escalate` | terminal | always |
 
 **Capability control is toolbox construction, never a prompt instruction.** An unavailable tool
 is never instantiated, so the model never sees it.
+
+`go_to_checkout` is the one shipped tool with no merchant switch. It writes nothing and needs no
+configured destination — it reads a cart the shopper already owns and reports whether anything is in
+it — so a toggle would be a setting with no failure mode to guard. It exists because nothing else
+told the assistant about the cart: `cartAvailable` is a capability flag, and a card's own add-to-cart
+button posts straight to `frontend.checkout.line-item.add` and reports back to nothing here, so a
+shopper could fill their cart and be told by the assistant that it was empty. Its link is rendered
+server-side by `CheckoutPayload` from the route, never handed to the model — the same rule as prices
+and the contact link (D3).
 
 **Not implemented — no code path exists:** `apply_discount`, `set_price`, `create_order`,
 `pay`, `read_customer_pii`, `modify_product`. This is why prompt injection has no payoff.

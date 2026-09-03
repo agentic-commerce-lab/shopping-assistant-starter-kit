@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Swag\AssistantStarterKit\Controller\AssistantController;
+use Swag\AssistantStarterKit\Controller\CheckoutPayload;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
@@ -102,6 +103,7 @@ abstract class AssistantEndpointTestCase extends TestCase
             // already holds, never `current()` — so the provider this constructor still requires is
             // never actually read here, and a request-less one is enough to satisfy the type.
             new ShoppingContextResolver(new SalesChannelContextProvider(new RequestStack())),
+            new CheckoutPayload(new FixedCheckoutRouter()),
         );
     }
 
