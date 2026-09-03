@@ -120,7 +120,7 @@ export function formatSpecChips(card, maxChips = MAX_SPEC_CHIPS) {
 /**
  * @param {HTMLElement} log
  * @param {{
- *   role: string, prose: string, cards?: Array, warnings?: object, createdAt?: string,
+ *   role: string, prose: string, cards?: Array, createdAt?: string,
  *   locale: string, translations?: object, addToCartEnabled?: boolean, animate?: boolean,
  * }} message
  * @returns {HTMLElement} the appended message element
@@ -130,7 +130,6 @@ export function renderMessage(log, message) {
         role,
         prose,
         cards,
-        warnings,
         handoff,
         checkout,
         createdAt,
@@ -154,16 +153,31 @@ export function renderMessage(log, message) {
 
     wrapper.appendChild(buildProse(prose));
 
-    // Order is the argument: the claim, then the correction, then the evidence that corrects it.
-    // Whether that evidence exists decides the wording — see warningCopy().
     const hasCards = Array.isArray(cards) && cards.length > 0;
-    const warning = buildWarning(warnings, translations, hasCards);
-    if (warning) {
-        wrapper.appendChild(warning);
-    }
 
-    // After the correction, before the evidence: an escalated reply carries no cards, so in practice
-    // this is the last thing in the message — but the order holds if that ever changes.
+    /*
+     * There used to be a grounding warning here — "The prices on the cards are the ones that
+     * apply." and its five siblings — annotating a reply whose own words the prose audit thought
+     * contradicted the cards. Removed 2026-09-03, on the merchant's report that it had never once
+     * been right in front of a shopper.
+     *
+     * The audit's own history agrees, and it is written down: a correct shipping answer flagged
+     * with four unbacked prices (2026-08-27); disclosed option values flagged, so that "what sizes
+     * is this in?" came back correct and annotated as suspect (2026-09-02); a correct returns
+     * answer flagged because `Rim` is in the property vocabulary (2026-09-02); `Trail Jersey`
+     * flagged as an invented property because the name borrows a facet value (2026-09-02); a
+     * no-match reply flagged for the colour it had just ruled out (2026-09-03). Five documented
+     * false positives with dates, and no recorded case of a shopper being warned about a real
+     * hallucination.
+     *
+     * A notice that is wrong more often than right does not make a shopper careful about one
+     * sentence; it makes them doubt every correct answer beside it. The cards remain authoritative
+     * and are still the only figures on screen — that is the guarantee, and it never depended on
+     * this paragraph. The audit still runs server-side and still writes `claims.audit`, so a
+     * merchant can see it in the trace where being wrong costs nothing.
+     */
+    // An escalated reply carries no cards, so in practice this is the last thing in the message —
+    // but the order holds if that ever changes.
     const contact = buildHandoff(handoff, translations);
     if (contact) {
         wrapper.appendChild(contact);
@@ -222,70 +236,6 @@ function buildProse(prose) {
 }
 
 /**
- * Says out loud when the reply's own words contradict the cards beside them.
- *
- * The server supplies this: `warnings.unbackedAvailabilityClaims` and `warnings.unbackedPrices`. The
- * controller's comment states the intent — *"the cards are always authoritative; this says when the
- * sentence beside them is not, so the interface can annotate it, de-emphasise it, or drop it."*
- * Ignoring it would leave the handsomest part of the product carrying its ugliest known defect: a
- * live turn once replied *"the Trail Jersey is available in Blue, size M"* beside a card reporting
- * stock 0.
- *
- * The notice can be **specific** rather than hedging, because the signal is narrow by design: an
- * availability claim is only flagged when *every* rendered card is out of stock, so the true state is
- * known rather than guessed.
- *
- * Three things this deliberately does not do:
- *
- * - **It does not edit or delete the prose.** Rewriting a reply to hide a mistake is how a product
- *   loses the right to be trusted, and phrase-level surgery would mangle sentences.
- * - **It does not dim the prose.** "De-emphasise" is one of the options the server offers, but
- *   reducing body-text contrast fails the accessibility floor. Emphasis is added to the correction,
- *   never subtracted from the text.
- * - **It does not highlight the offending phrase inline.** Underlining the model's error mid-sentence
- *   draws the eye to one failure and quietly undermines every other sentence.
- */
-export function warningCopy(warnings, translations, hasCards) {
-    const availability = warnings?.unbackedAvailabilityClaims ?? [];
-    const prices = warnings?.unbackedPrices ?? [];
-    const properties = warnings?.unbackedPropertyClaims ?? [];
-
-    if (availability.length === 0 && prices.length === 0 && properties.length === 0) {
-        return null;
-    }
-
-    // Availability outranks price outranks property. Being told a sold-out item is available is
-    // the failure that cancels an order; a restated number is a smaller sin; a wrong material or
-    // attribute claim is smaller still.
-    if (availability.length > 0) {
-        return (hasCards ? translations.warningAvailability : translations.warningAvailabilityNoCard) ?? '';
-    }
-
-    if (prices.length > 0) {
-        return (hasCards ? translations.warningPrice : translations.warningPriceNoCard) ?? '';
-    }
-
-    return (hasCards ? translations.warningProperty : translations.warningPropertyNoCard) ?? '';
-}
-
-function buildWarning(warnings, translations, hasCards) {
-    const text = warningCopy(warnings, translations, hasCards);
-
-    if (text === null) {
-        return null;
-    }
-
-    const el = document.createElement('p');
-    el.className = 'swag-assistant-warning';
-    // "note" rather than "alert": it is a correction to something already on screen, not an
-    // interruption, and an assertive live region would talk over the reply itself.
-    el.setAttribute('role', 'note');
-    el.textContent = text;
-
-    return el;
-}
-
-/**
  * The contact block for an escalated reply, or null.
  *
  * Null covers both "not an escalation" and "no destination configured" — the server collapses those
@@ -302,8 +252,8 @@ function buildHandoff(handoff, translations) {
 
     const el = document.createElement('div');
     el.className = 'swag-assistant-handoff';
-    // "note", matching the warning: it accompanies a reply already on screen rather than interrupting
-    // it, and an assertive region would talk over the reply itself.
+    // "note", not "alert": it accompanies a reply already on screen rather than interrupting it,
+    // and an assertive region would talk over the reply itself.
     el.setAttribute('role', 'note');
 
     const text = document.createElement('p');

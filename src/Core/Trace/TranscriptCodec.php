@@ -23,13 +23,12 @@ final readonly class TranscriptCodec
     public function __construct(
         private JsonShape $shape = new JsonShape(),
         private StoredTimestamp $timestamps = new StoredTimestamp(),
-        private StoredWarnings $warnings = new StoredWarnings(),
     ) {}
 
     /**
      * @return array{
      *     role: string, prose: string, cardIds: list<string>, outcome: string,
-     *     createdAt: string|null, warnings: array<string, list<string>>,
+     *     createdAt: string|null,
      * }
      */
     public function encode(ConversationTurn $turn): array
@@ -44,8 +43,9 @@ final readonly class TranscriptCodec
             // When the turn happened, not when it is read. A timestamp is the one thing here that is
             // *not* re-derived on read, because unlike a price it does not change.
             'createdAt' => $turn->createdAt?->format(\DATE_ATOM),
-            // Stored so a reload does not restore the misleading sentence without its correction.
-            'warnings' => $turn->warnings,
+            // No `warnings`. The grounding notice they were stored for is gone, so nothing reads
+            // them back — and a row written while the key existed decodes fine without it, because
+            // `decode()` reads named fields rather than a fixed shape.
         ];
     }
 
@@ -86,7 +86,6 @@ final readonly class TranscriptCodec
             cardIds: $this->shape->strings($fields['cardIds'] ?? null),
             outcome: $this->shape->text($fields['outcome'] ?? null),
             createdAt: $this->timestamps->orNull($fields['createdAt'] ?? null),
-            warnings: $this->warnings->fromStored($fields['warnings'] ?? null),
         );
     }
 }

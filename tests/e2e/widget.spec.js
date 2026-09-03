@@ -342,7 +342,6 @@ test.describe('reading what the server actually sends', () => {
                 prose: '',
                 cards: [],
                 outcome: 'product_shown',
-                warnings: { unbackedPrices: [], unbackedAvailabilityClaims: [] },
                 handoff: null,
                 ...body,
             }),
@@ -502,8 +501,8 @@ test.describe('reading what the server actually sends', () => {
             contentType: 'application/json',
             body: JSON.stringify({
                 messages: [
-                    { role: 'user', prose: 'show me everything', cardIds: [], createdAt: null, warnings: {} },
-                    { role: 'assistant', prose: 'Here they are.', cardIds: ids, createdAt: null, warnings: {} },
+                    { role: 'user', prose: 'show me everything', cardIds: [], createdAt: null },
+                    { role: 'assistant', prose: 'Here they are.', cardIds: ids, createdAt: null },
                 ],
             }),
         }));
@@ -672,13 +671,12 @@ test.describe('reading what the server actually sends', () => {
             contentType: 'application/json',
             body: JSON.stringify({
                 messages: [
-                    { role: 'user', prose: 'where is my order?', cardIds: [], createdAt: null, warnings: {}, handoff: null },
+                    { role: 'user', prose: 'where is my order?', cardIds: [], createdAt: null, handoff: null },
                     {
                         role: 'assistant',
                         prose: 'I cannot look up orders, but the shop team can.',
                         cardIds: [],
                         createdAt: null,
-                        warnings: {},
                         handoff: { message: 'Our team can help with orders.', url: '/contact' },
                     },
                 ],

@@ -44,14 +44,6 @@
     "checkout": {
       "action": "Go to checkout"
     },
-    "warning": {
-      "availability": "This is currently out of stock. The card below is correct.",
-      "price": "The prices on the cards are the ones that apply.",
-      "property": "The material and attribute details on the card below are the ones that apply.",
-      "availabilityNoCard": "This availability is not confirmed by the shop's own data. Please check the product page.",
-      "priceNoCard": "These prices are not confirmed by the shop's own data. Please check the product page.",
-      "propertyNoCard": "These material and attribute details are not confirmed by the shop's own data."
-    },
     "error": {
       "network": "That didn't get through. Try again?",
       "retry": "Try again",

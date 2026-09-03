@@ -69,44 +69,10 @@ The over-length composer state lives in `_composer.scss`, next to the field it b
 }
 
 /*
-The correction notice: shown when the server reports that the reply's prose contradicts the cards.
-Sits between the claim and the evidence — the claim, then the correction, then the evidence that
-corrects it. Orange with an icon, because the palette has no red and because colour alone must never
-carry it.
-*/
-.swag-assistant-warning {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    margin: 10px 0 0;
-    padding: 8px 10px;
-    border-radius: 8px;
-    background: rgba(248, 129, 56, 0.1);
-    color: $swag-assistant-text;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.4;
-
-    &::before {
-        content: '';
-        flex: 0 0 auto;
-        width: 14px;
-        height: 14px;
-        margin-top: 1px;
-        background: $swag-assistant-low-stock;
-        mask-image: $swag-assistant-icon-warning;
-        mask-repeat: no-repeat;
-        mask-position: center;
-        mask-size: contain;
-    }
-}
-
-/*
 The escalation handoff: shown when the assistant hands the conversation to the shop team.
 
-Deliberately *not* styled like the warning above it. That one is a correction — orange, icon,
-something went slightly wrong. This one is the answer to the question, so it reads as a normal offer
-rather than an alarm.
+Reads as a normal offer rather than an alarm: it is the answer to the question, not a correction to
+something already on screen.
 */
 .swag-assistant-handoff {
     display: flex;
