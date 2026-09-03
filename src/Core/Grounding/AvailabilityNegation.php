@@ -85,14 +85,36 @@ final class AvailabilityNegation
      * follows a letter, so the boundary never matches. It is unambiguous as a bare substring anyway,
      * which is why it needed no boundary in the first place.
      */
+    /**
+     * Words that make an availability phrase a QUESTION rather than an assertion.
+     *
+     * Measured on staging 2026-09-03. Asked to confirm a made-up discount code, the assistant
+     * answered *"if you'd like, I'll check whether a specific product is available and what it
+     * costs"* — a refusal with an offer in it — and the audit flagged `is available`. The shopper was
+     * shown a correction note under a reply that claimed nothing at all.
+     *
+     * **Only `whether` and `ob`.** `if` was considered and rejected: *"if you want the blue one, it
+     * is available"* is a real claim, and a window wide enough to catch the interrogative would
+     * swallow that too. `whether` has no such reading — nothing that follows it is being asserted —
+     * so it is safe where `if` is not. Ruling R85 cuts both ways, and the narrow list is the half of
+     * it that protects real claims.
+     */
+    private const CONDITIONALS = [
+        'whether',
+        'ob',
+    ];
+
     private const NEGATION_PATTERN = '/\b(?:%s)\b|n\'t/u';
 
     private function __construct() {}
 
-    /** Whether the text immediately BEFORE a claim phrase negates it. */
+    /**
+     * Whether the text immediately BEFORE a claim phrase takes it back — by negating it, or by
+     * making it a question ({@see self::CONDITIONALS}).
+     */
     public static function before(string $window): bool
     {
-        return self::matchesAny($window, self::NEGATIONS);
+        return self::matchesAny($window, [...self::NEGATIONS, ...self::CONDITIONALS]);
     }
 
     /**
