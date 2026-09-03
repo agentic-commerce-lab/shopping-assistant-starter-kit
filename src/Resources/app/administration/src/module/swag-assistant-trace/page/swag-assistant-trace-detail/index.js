@@ -1,8 +1,8 @@
 import './swag-assistant-trace-detail.scss';
 import template from './swag-assistant-trace-detail.html.twig';
-import { humanMs, phaseFacts } from './facts';
+import { clockMs, humanMs, phaseFacts } from './facts';
 import { alwaysVisible, prettyPayload, promptText, readTurns } from './payload';
-import { buildTimeline, shopMs, splitTurns, waitMs } from './phases';
+import { buildTimeline, rawRows, share, shopMs, spanMs, splitTurns, waitMs } from './phases';
 import { exportFileName, exportRequest, saveBlob } from '../../export';
 
 const { Criteria } = Shopware.Data;
@@ -118,17 +118,35 @@ Shopware.Component.register('swag-assistant-trace-detail', {
             return humanMs(ms);
         },
 
-        /**
-         * A row written before `elapsed_ms` existed reads 0, which is absence rather than an offset
-         * of zero. Rendering "0 ms" there would be the always-zero column ruling R62 warned about.
-         */
-        offset(ms) {
-            return ms ? `+${humanMs(ms)}` : '—';
+        /** How long a row lasted — the only time a timeline row now states. */
+        span(row) {
+            return humanMs(spanMs(row));
         },
 
-        /** Every event of a turn in order, for the raw disclosure. */
+        /**
+         * The width of a row's bar, as a percentage string.
+         *
+         * A floor of 2px so a 6ms phase beside an 8.6s model round trip is still a visible tick
+         * rather than a row that looks broken. The bar replaced the offset column: a position and
+         * a length formatted alike in adjacent columns got a 8.7s turn read as 32 seconds.
+         */
+        barWidth(row, turn) {
+            return `max(2px, ${(share(row, turn.totalMs) * 100).toFixed(2)}%)`;
+        },
+
+        /** Every event of a turn in order, with its exact offset and the gap before it. */
         rawEvents(turn) {
-            return turn.rows.filter((row) => row.type === 'phase').flatMap((row) => row.events);
+            return rawRows(turn.rows);
+        },
+
+        /** When an event was recorded, as a stopwatch reading. `null` on an untimed turn. */
+        clock(ms) {
+            return ms === null ? '—' : clockMs(ms);
+        },
+
+        /** The gap to the previous event: the amount a reader was subtracting the offsets to get. */
+        gap(ms) {
+            return ms === null ? '—' : humanMs(ms);
         },
 
         highlights(event) {

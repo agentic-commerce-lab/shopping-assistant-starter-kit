@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { phaseFacts } from '../../src/Resources/app/administration/src/module/swag-assistant-trace/page/swag-assistant-trace-detail/facts.js';
+import { clockMs, phaseFacts } from '../../src/Resources/app/administration/src/module/swag-assistant-trace/page/swag-assistant-trace-detail/facts.js';
 import {
     buildTimeline,
     phaseOf,
     shopMs,
     splitTurns,
+    rawRows,
+    share,
+    spanMs,
     waitMs,
 } from '../../src/Resources/app/administration/src/module/swag-assistant-trace/page/swag-assistant-trace-detail/phases.js';
 
@@ -48,11 +51,15 @@ test('a live turn collapses into phases separated by the model round trips', () 
 test('the shop is fast and the model is not, which is the whole point of the page', () => {
     const rows = buildTimeline(LIVE_TURN);
 
-    assert.equal(shopMs(rows), 48);
+    // 66ms, not the 48ms this asserted until 2026-09-03: the 18ms before the first event is
+    // recorded is shop work too — `facet.probe` is written after the probe returns — and the
+    // timeline used to start at that first event and throw it away. See `openFirstSpan()`.
+    assert.equal(shopMs(rows), 66);
     assert.equal(waitMs(rows), 8067);
-    // Every millisecond is accounted for: work plus waiting equals the turn. This closes because
-    // sub-threshold gaps are attributed to the phase before them; leaving them out lost 18ms.
-    assert.equal(shopMs(rows) + waitMs(rows), 8133 - 18);
+    // Every millisecond is accounted for: work plus waiting equals the turn, and equals what
+    // `TraceRecorder::turnElapsedMs()` reports to the list page. This closes because sub-threshold
+    // gaps are attributed to the phase before them, and the lead-in to the phase that opens.
+    assert.equal(shopMs(rows) + waitMs(rows), 8133);
 });
 
 test('a gap below the threshold is scheduling noise, not a round trip', () => {
@@ -268,4 +275,219 @@ test('the finish row of a failed turn names the exception rather than staying em
     assert.match(facts[0].value, /RuntimeException/);
     assert.match(facts[0].value, /upstream said no/);
     assert.doesNotMatch(facts[0].value, /Symfony/);
+});
+
+/*
+ * ── Timing honesty ───────────────────────────────────────────────────────────────────────────────
+ *
+ * Reported from the Administration on 2026-09-03: a raw trace showed eight consecutive events each
+ * marked `+4.4 s` on a turn the header said took 4.4 s, which reads as eight steps of 4.4 s each.
+ * Reproduced against the local shop's own rows (conversation 01A0610ED52E…, 14.4 s): seven rows
+ * read `+10.9 s` for stored offsets of 10851 and 10945, and the last four all read `+14.4 s` —
+ * the turn total. Three separate defects, all confirmed on that data.
+ */
+
+/**
+ * Verbatim from the local shop, conversation 01A0610E362B…: a turn that died in the agent, whose
+ * first event is 358ms in because the facet probe missed the cache and is recorded after it
+ * returns. That lead-in is the whole of defect three — the list said 496ms, the detail said 138ms.
+ */
+const SLOW_START_TURN = [
+    ev(358, 'facet.probe'),
+    ev(358, 'vocabulary.render'),
+    ev(361, 'page.context'),
+    ev(390, 'guard.check'),
+    ev(390, 'prompt', { sha256: 'abc', length: 3000 }),
+    ev(496, 'turn.failed', { exception: 'RuntimeException', message: 'no' }),
+];
+
+test('the prompt belongs to the phase that prepared it, not to Other', () => {
+    // Recorded by AssistantRunner::buildMessageBag() as the last thing before the model call, and
+    // in no phase list until now — so every single turn grew a phantom "Other" row and had its
+    // "Prepared" phase cut in half around it.
+    assert.equal(phaseOf('prompt'), 'prepare');
+
+    const rows = buildTimeline(SLOW_START_TURN);
+
+    assert.deepEqual(rows.map((row) => row.key), ['prepare', 'finish']);
+});
+
+test('a turn is measured from its start, not from its first event', () => {
+    // `TraceRecorder::turnElapsedMs()` — what the conversation's `totalMs` column and the list
+    // page report — is the last offset, measured from turn start. Starting the timeline at the
+    // first event instead dropped everything before it: 496ms in the list, 138ms here, same turn.
+    //
+    // Nothing before the first event can be model latency (the model is called after `prompt`,
+    // a prepare stage), so the lead-in is shop work and belongs to the phase that opens the turn.
+    const rows = buildTimeline(SLOW_START_TURN);
+
+    assert.equal(rows[0].startMs, 0);
+    assert.equal(shopMs(rows) + waitMs(rows), 496);
+});
+
+test('the accounting still closes on a turn whose model round trips dominate', () => {
+    const rows = buildTimeline(LIVE_TURN);
+
+    assert.equal(shopMs(rows) + waitMs(rows), 8133);
+    assert.equal(waitMs(rows), 8067);
+});
+
+test('the raw trace reports exact offsets, because rounding them is what made it lie', () => {
+    // 10851 and 10945 both round to "+10.9 s". Seven rows of it, then four rows of the turn
+    // total. The raw disclosure exists to answer "when exactly", so it may not round.
+    const rows = rawRows(buildTimeline([
+        ev(10826, 'tool.call'),
+        ev(10851, 'facet.probe'),
+        ev(10851, 'understand'),
+        ev(10945, 'retrieve'),
+    ]));
+
+    assert.deepEqual(rows.map((row) => row.atMs), [10826, 10851, 10851, 10945]);
+    assert.deepEqual(rows.map((row) => clockMs(row.atMs)), ['0:10.826', '0:10.851', '0:10.851', '0:10.945']);
+});
+
+test('the raw trace carries the gap to the previous event, so nobody subtracts by hand', () => {
+    const rows = rawRows(buildTimeline(SLOW_START_TURN));
+
+    assert.deepEqual(rows.map((row) => row.stage), [
+        'facet.probe', 'vocabulary.render', 'page.context', 'guard.check', 'prompt', 'turn.failed',
+    ]);
+    // The first row has no predecessor: its offset already says where it sits, and inventing a
+    // gap from turn start would be a second number saying the same thing.
+    assert.deepEqual(rows.map((row) => row.deltaMs), [null, 0, 3, 29, 0, 106]);
+});
+
+test('the gap is measured across a phase boundary, not restarted at each one', () => {
+    // The raw list is one flat sequence; a delta that reset per phase would report 0 for the first
+    // event after a three-second model round trip, which is the largest gap on the page.
+    const rows = rawRows(buildTimeline(LIVE_TURN));
+    const toolCall = rows.find((row) => row.stage === 'tool.call');
+
+    assert.equal(toolCall.deltaMs, 5162 - 32);
+});
+
+test('a turn written before elapsed_ms existed reports no offsets and no gaps', () => {
+    // Absence, not a turn that ran in zero milliseconds. Decided for the whole turn rather than
+    // per row: read per row, a stored 0 also swallowed the `model` stage, which is recorded at
+    // construction and so reads 0 on nearly every real turn — it printed "—" and took the gap of
+    // the row after it along with it.
+    const rows = rawRows(buildTimeline([ev(0, 'facet.probe'), ev(0, 'guard.check'), ev(0, 'turn.end')]));
+
+    assert.deepEqual(rows.map((row) => row.atMs), [null, null, null]);
+    assert.deepEqual(rows.map((row) => row.deltaMs), [null, null, null]);
+});
+
+test('a turn that does have timing keeps the real zero its first event was recorded at', () => {
+    const rows = rawRows(buildTimeline(SUMMED_TURN));
+
+    assert.deepEqual(rows.map((row) => row.atMs), [0, 6, 29, 31, 8631, 8640, 8662]);
+    assert.deepEqual(rows.map((row) => row.deltaMs), [null, 6, 23, 2, 8600, 9, 22]);
+    assert.equal(clockMs(rows[0].atMs), '0:00.000');
+});
+
+test('an empty turn produces no raw rows rather than throwing', () => {
+    assert.deepEqual(rawRows([]), []);
+});
+
+/*
+ * ── One number per row ───────────────────────────────────────────────────────────────────────────
+ *
+ * Reported again on 2026-09-03, on a turn that took 8.7s:
+ *
+ *     +8.6 s  Built the answer  cards shown 0   31 ms
+ *     +8.6 s  Finished          outcome no_result   0 ms
+ *
+ * "links steht 2x irgendwas von 8 sekunden obwohl die ganze anfrage 8 sekunden gedauert hat … das
+ * suggeriert dass die anfrage 32 sekunden dauert". Both `+8.6 s` are the same instant — the answer
+ * phase began and ended inside the same millisecond — but every row carried two time-shaped
+ * numbers, the left one prefixed with `+`, and the left column repeats. Read down, it sums.
+ *
+ * Exact milliseconds did not fix that; they made the raw column worse, because six rows of
+ * `8631 ms` still read as six amounts. A position and an amount cannot share a column shape.
+ */
+
+/** The reported turn, reconstructed from the offsets the merchant pasted. */
+const SUMMED_TURN = [
+    ev(0, 'model', { name: 'mistralai/mistral-large-2512' }),
+    ev(6, 'acme.find_store.offered'),
+    ev(29, 'page.context', { category: '01a01edcb74a70fe86a5533cf261f01b' }),
+    ev(31, 'guard.check'),
+    ev(8631, 'validate'),
+    ev(8640, 'render', { renderedIds: [] }),
+    ev(8662, 'turn.end', { outcome: 'no_result' }),
+];
+
+test("a stage this page has no phase for joins the phase that is running", () => {
+    // `acme.find_store.offered` is an extension's stage — the docs' own example plugin records it
+    // while the prompt is being built. Giving it a row of its own cut "Prepared" into two rows
+    // with a nameless "Other" of 23ms wedged between them, on every turn that shop served. Any
+    // plugin adding a stage did this, which makes it a defect in an extensible product rather
+    // than a quirk of one extension.
+    const rows = buildTimeline(SUMMED_TURN);
+
+    assert.deepEqual(rows.map((row) => (row.type === 'wait' ? 'wait' : row.key)), [
+        'prepare', 'wait', 'answer', 'finish',
+    ]);
+    // It must still be visible: the phase it joined lists it, and the raw trace prints it.
+    assert.ok(rows[0].events.some((event) => event.stage === 'acme.find_store.offered'));
+    assert.ok(rawRows(rows).some((row) => row.stage === 'acme.find_store.offered'));
+});
+
+test('an unmapped stage still opens a row of its own when no phase has begun', () => {
+    // The turn genuinely started with it, so there is no phase for it to join and "Other" is the
+    // honest name. Dropping it here would make the page silent about what ran first.
+    assert.equal(phaseOf('something.new'), 'other');
+
+    const rows = buildTimeline([ev(0, 'something.new'), ev(9, 'render')]);
+
+    assert.deepEqual(rows.map((row) => row.key), ['other', 'answer']);
+});
+
+test('the reported turn accounts for its 8.7 seconds across four rows', () => {
+    const rows = buildTimeline(SUMMED_TURN);
+
+    assert.deepEqual(rows.map((row) => spanMs(row)), [31, 8600, 31, 0]);
+    assert.equal(shopMs(rows) + waitMs(rows), 8662);
+});
+
+test('a row reports one length, whichever kind of row it is', () => {
+    // The template used to compute `row.endMs - row.startMs` for a phase and read
+    // `row.durationMs` for a wait, so the number in the column and the number the bar is drawn
+    // from could drift apart. One function, both callers.
+    const rows = buildTimeline(SUMMED_TURN);
+
+    assert.equal(spanMs(rows[1]), rows[1].durationMs);
+    assert.equal(spanMs(rows[2]), rows[2].endMs - rows[2].startMs);
+    assert.equal(rows.reduce((total, row) => total + spanMs(row), 0), 8662);
+});
+
+test('an instant is formatted as a clock reading, because clock readings do not sum', () => {
+    // The whole defect in one line: `8631 ms` and `+8.6 s` are amounts, and a column of amounts
+    // invites addition. `0:08.631` is a position on a stopwatch and reads as one.
+    assert.equal(clockMs(8631), '0:08.631');
+    assert.equal(clockMs(358), '0:00.358');
+    assert.equal(clockMs(0), '0:00.000');
+    assert.equal(clockMs(74821), '1:14.821');
+});
+
+test('the six rows that read as amounts now read as one instant, six times', () => {
+    const rows = rawRows(buildTimeline([
+        ev(8631, 'validate'), ev(8631, 'grounding.select'), ev(8631, 'render'),
+    ]));
+
+    assert.deepEqual(rows.map((row) => clockMs(row.atMs)), ['0:08.631', '0:08.631', '0:08.631']);
+    // And the gaps say what a reader was trying to work out by subtracting them.
+    assert.deepEqual(rows.map((row) => row.deltaMs), [null, 0, 0]);
+});
+
+test("a row's share of the turn is what the bar is drawn from", () => {
+    // The model round trip is 99.3% of this turn. That is the one fact the page exists to show,
+    // and a bar shows it without a second number to misread.
+    const rows = buildTimeline(SUMMED_TURN);
+    const total = shopMs(rows) + waitMs(rows);
+
+    assert.equal(share(rows[1], total), 8600 / 8662);
+    assert.equal(share(rows[3], total), 0);
+    // A turn with no measured time must not divide by zero.
+    assert.equal(share(rows[0], 0), 0);
 });

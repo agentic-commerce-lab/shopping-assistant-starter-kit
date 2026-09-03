@@ -172,6 +172,24 @@ function describeFailure(failed) {
     return `${name}${message}`;
 }
 
+/**
+ * An instant, as a stopwatch reading: `0:08.631`.
+ *
+ * Not as an amount, which is the whole of the defect this replaced. The raw column printed offsets
+ * through a duration formatter, so six events recorded inside the same millisecond of an 8.7s turn
+ * read as six amounts of 8.6s and the turn was reported as taking 32 seconds. Milliseconds at full
+ * precision did not help — `8631 ms` is still an amount. Nobody adds up clock readings.
+ */
+export function clockMs(ms) {
+    if (!Number.isFinite(ms)) {
+        return '—';
+    }
+
+    const seconds = Math.floor(ms / 1000);
+
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`;
+}
+
 /** `8183` reads as an id; `8.2 s` reads as a duration. */
 export function humanMs(ms) {
     if (!Number.isFinite(ms)) {
