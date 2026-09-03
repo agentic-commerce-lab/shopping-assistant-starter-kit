@@ -649,19 +649,23 @@ See `.env.example` for the OpenRouter-specific gotcha around the base URL's path
 
 ## Running on Shopware 6.6
 
-The plugin supports **6.6.10.23 or newer** alongside 6.7. Three things make that work, and each was
-measured against a real 6.6 shop rather than reasoned about.
+The plugin supports **6.6.10.12 or newer** alongside 6.7, which needs **6.7.7.0 or newer** for the
+same reason. Three things make that work, and each was measured against a real 6.6 shop rather than
+reasoned about.
 
 **The Symfony pin is the version gate.** `composer.json` keeps `symfony/* ~7.4.0` deliberately. The
-Symfony AI packages this plugin is built on require Symfony 7.3 or newer, and 6.6 only reached 7.4 at
-patch 6.6.10.23 — earlier 6.6 ships 7.2. Widening that pin would let the plugin install onto a shop
-where the AI stack cannot run; leaving it narrow makes Composer refuse up front, with a message that
-names the real reason.
+Symfony AI packages this plugin is built on require `^7.3|^8.0`, and Shopware moves Symfony minors
+inside a patch line rather than at a minor boundary: 6.6 shipped Symfony 7.2 through 6.6.10.7, 7.3
+from 6.6.10.8 and 7.4 from 6.6.10.12; 6.7 shipped 7.2 through 6.7.1, 7.3 from 6.7.2 and 7.4 from
+6.7.7.0. The `~7.4.0` pin therefore refuses anything below 6.6.10.12 or 6.7.7.0 — both floors and the
+patch immediately below each were resolved with Composer to get those numbers, not read off a
+changelog. Widening the pin would let the plugin install onto a shop where the AI stack cannot run;
+leaving it narrow makes Composer refuse up front, with a message that names the real reason.
 
 **Doctrine DBAL is not actually a barrier.** 6.6 stays on DBAL 3.x and 6.7 moved to 4.x, so the
 constraint reads `^3.9 || ^4.0`. Nothing here uses a DBAL 4 API: the plugin's queries are
 `executeStatement`, `fetchAllAssociative`, `fetchFirstColumn`, `fetchOne`, `fetchAssociative` and
-`ArrayParameterType`, all of which exist in 3.6+. All four migrations were verified running under
+`ArrayParameterType`, all of which exist in 3.6+. All ten migrations were verified running under
 DBAL 3.10.
 
 **The administration ships two bundles.** 6.6 loads plugin admin assets from
@@ -678,6 +682,22 @@ branch produces the webpack half; the Vite half must be built from a 6.7 checkou
 settings return HTTP 400 and the merchant sees no form at all. The subtitles are gone. Four of the
 eight only restated a field's own help text; the other four carried something of their own and were
 moved into the help text of the field they were about.
+
+**What was actually run, and where.** 6.6.10.23 carried the first pass: install, all migrations, the
+DAL seeder, search with variants, a live turn, the widget, the chat endpoint, the settings form and
+the admin modules. 6.6.10.19 was then verified the same way on its own shop — plugin installed and
+activated, ten migrations under DBAL 3.10.6, the settings schema returning its twelve cards, the
+admin bundle served, the widget rendering translated snippets — and in a browser, with
+`tests/e2e/pricing.spec.js` green and `tests/e2e/widget.spec.js` at 18 of 24 plus its two documented
+skips. The four that failed are the live-turn tests, and they fail on catalogue data rather than on
+the core version: they ask for a Trail Jersey by name, which only the bike catalogue has. Re-run with
+an equivalent phrase for the fashion catalogue, all four pass.
+
+**One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
+one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
+Composer 2.10 blocks an advisory-affected package by default, so a shop on 6.6.10.19 needs
+`audit.block-insecure: false` in its root `composer.json` before it will resolve at all. That is the
+shop's constraint, not the plugin's, but it is the first thing you meet.
 
 **Storefront snippets must carry the full locale.** `SnippetFileLoader` reads the locale out of the
 filename — `explode('.')`, second part — so `swag-assistant.en.json` registers under the iso `en`,
