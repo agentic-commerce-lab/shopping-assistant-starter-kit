@@ -67,8 +67,12 @@ final class ConfigModelNamingTest extends TestCase
         $texts = self::helpTexts();
 
         foreach (['llmModel', 'embeddingModel'] as $field) {
-            self::assertArrayHasKey($field, $texts);
-            self::assertStringContainsString('prefix', $texts[$field], $field . ' must warn about the prefix');
+            // Narrowed rather than indexed inline: this project runs mago's
+            // `strict-array-index-existence`, under which a non-literal key yields `string|null`.
+            $help = $texts[$field] ?? null;
+
+            self::assertIsString($help, $field . ' has no help text at all');
+            self::assertStringContainsString('prefix', $help, $field . ' must warn about the prefix');
         }
     }
 
