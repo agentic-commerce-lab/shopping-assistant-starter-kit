@@ -651,6 +651,17 @@
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\DalPortablePassageStore"/>
         </service>
 
+        <!-- Whether a model is configured anywhere, for the settings page's status card. The card
+             cannot work this out for itself: env vars beat stored config and are in no form field. -->
+        <service id="Swag\AssistantStarterKit\Core\Config\AssistantReadiness">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Controller\AssistantStatusController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\AssistantReadiness"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Controller\ShopInfoSyncController" public="true">
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopPageIndexer"/>
             <argument type="service" id="Swag\AssistantStarterKit\ShopInfo\ShopInfoSync"/>

@@ -28,43 +28,65 @@ final class FakeSystemConfigService extends SystemConfigService
      * getter below still reports an array the way the real service does — `getString()` on one
      * returns `''` — so a reader that has not been taught about lists keeps behaving identically.
      *
-     * @param array<string, string|int|float|bool|list<mixed>|null> $values
+     * `$perChannel` is a second, optional layer keyed by sales channel id, added when
+     * `AssistantReadiness` needed a shop configured on ONE channel and nowhere else — the case that
+     * rules out reading the settings form instead of asking the server. Values were channel-blind
+     * before that and stay so for every caller that passes nothing, which is all of them but one.
+     *
+     * The lookup mirrors the real service's inheritance: a channel's own value wins, and anything it
+     * does not override falls through to the global layer.
+     *
+     * @param array<string, string|int|float|bool|list<mixed>|null>              $values
+     * @param array<string, array<string, string|int|float|bool|list<mixed>|null>> $perChannel
      */
     public function __construct(
         private readonly array $values = [],
+        private readonly array $perChannel = [],
     ) {
         // Deliberately not calling parent::__construct(): the parent's collaborators are a
         // connection, a cache-tag collector and a clock, none of which any override below touches.
     }
 
+    /**
+     * @return string|int|float|bool|list<mixed>|null
+     */
+    private function value(string $key, ?string $salesChannelId)
+    {
+        if ($salesChannelId !== null && \array_key_exists($key, $this->perChannel[$salesChannelId] ?? [])) {
+            return $this->perChannel[$salesChannelId][$key];
+        }
+
+        return $this->values[$key] ?? null;
+    }
+
     public function get(string $key, ?string $salesChannelId = null): string|int|float|bool|array|null
     {
-        return $this->values[$key] ?? null;
+        return $this->value($key, $salesChannelId);
     }
 
     public function getString(string $key, ?string $salesChannelId = null): string
     {
-        $value = $this->values[$key] ?? null;
+        $value = $this->value($key, $salesChannelId);
 
         return \is_scalar($value) ? (string) $value : '';
     }
 
     public function getInt(string $key, ?string $salesChannelId = null): int
     {
-        $value = $this->values[$key] ?? null;
+        $value = $this->value($key, $salesChannelId);
 
         return \is_numeric($value) ? (int) $value : 0;
     }
 
     public function getFloat(string $key, ?string $salesChannelId = null): float
     {
-        $value = $this->values[$key] ?? null;
+        $value = $this->value($key, $salesChannelId);
 
         return \is_numeric($value) ? (float) $value : 0.0;
     }
 
     public function getBool(string $key, ?string $salesChannelId = null): bool
     {
-        return (bool) ($this->values[$key] ?? false);
+        return (bool) ($this->value($key, $salesChannelId) ?? false);
     }
 }

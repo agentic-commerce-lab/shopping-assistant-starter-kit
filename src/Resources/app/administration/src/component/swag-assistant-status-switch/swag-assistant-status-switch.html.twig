@@ -1,7 +1,10 @@
 {% block swag_assistant_status_switch %}
 <div
     class="swag-assistant-status-switch"
-    :class="{ 'swag-assistant-status-switch--stopped': !running }"
+    :class="{
+        'swag-assistant-status-switch--stopped': state === 'Stopped',
+        'swag-assistant-status-switch--unconfigured': state === 'Unconfigured',
+    }"
 >
 
     {% block swag_assistant_status_switch_row %}
@@ -12,15 +15,13 @@
         ></span>
 
         <div class="swag-assistant-status-switch__text">
+            {# One suffix picks the label and its explanation together, so the two cannot end up
+               describing different states. #}
             <p class="swag-assistant-status-switch__state">
-                {{ running
-                    ? $tc('swag-assistant-settings.status.stateRunning')
-                    : $tc('swag-assistant-settings.status.stateStopped') }}
+                {{ $tc('swag-assistant-settings.status.state' + state) }}
             </p>
             <p class="swag-assistant-status-switch__detail">
-                {{ running
-                    ? $tc('swag-assistant-settings.status.detailRunning')
-                    : $tc('swag-assistant-settings.status.detailStopped') }}
+                {{ $tc('swag-assistant-settings.status.detail' + state) }}
             </p>
         </div>
 

@@ -53,6 +53,17 @@ state before reading a word of it.
         }
     }
 
+    // Amber, and it keeps the glow. This state is neither the merchant's decision nor a fault: the
+    // assistant is on and waiting for one more thing, so it should read as unfinished rather than as
+    // broken (red) or as switched off (the grey above). It is the only state with something for the
+    // merchant to do, which is why it is the only one that draws the eye without alarming.
+    &--unconfigured {
+        .swag-assistant-status-switch__lamp {
+            background: #f0a020;
+            box-shadow: 0 0 0 4px rgba(240, 160, 32, 0.18);
+        }
+    }
+
     &__modal-body {
         margin: 0;
         line-height: 1.55;
