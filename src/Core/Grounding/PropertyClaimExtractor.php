@@ -19,6 +19,14 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetType;
  * one. A property value that also happens to be an ordinary English word can still produce a false
  * positive; accepted for v1 per the design spec, revisit if it proves noisy.
  *
+ * **It proved noisy in one specific way, and that one is handled.** A reply saying a value is
+ * *absent* is not claiming it — *"the search found no dresses in red or burgundy"* was flagged for
+ * `Burgundy` on the running shop on 2026-09-03, and the shopper was warned about the attributes of a
+ * colour the reply had just ruled out. Saying what is not there is the ordinary shape of a no-match
+ * reply, so every property warning recorded in that shop was this same false positive.
+ * {@see PropertyMention} reads each mention and {@see PropertyNegation} owns the vocabulary and the
+ * clause boundary that decide it; this class owns which values to ask about.
+ *
  * **Only `properties.*` facets are scanned.** `FacetSet` also carries `categoryPath` (a real Terms
  * facet, not a product attribute — measured at 399 values on the fashion eval catalogue) and `price`
  * (a Range facet already excluded by requiring `properties.` prefix, belt-and-braces with the type
@@ -48,9 +56,7 @@ final class PropertyClaimExtractor
                     continue;
                 }
 
-                $pattern = '/(?<![\p{L}\p{N}])' . preg_quote(mb_strtolower($value), '/') . '(?![\p{L}\p{N}])/u';
-
-                if (preg_match($pattern, $normalisedProse) === 1) {
+                if (PropertyMention::assertedIn($normalisedProse, mb_strtolower($value))) {
                     $found[] = $value;
                 }
             }
