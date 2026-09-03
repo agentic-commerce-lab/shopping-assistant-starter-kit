@@ -89,16 +89,25 @@ final class UnmatchedOptionRetry
     /**
      * @param list<FilterClause> $selectionFilters
      *
+     * @param string $stage the trace stage to record under. Defaults to this retry's own; a caller
+     *     composing it with another relaxation passes its own name so the trace distinguishes the
+     *     two reads — see {@see RetrievalPass}, which searches the relaxed term without options
+     *     when neither change alone was enough.
+     *
      * @return list<ProductCard>|null null when no retry applies — either no option filter was
      *                                applied in the first place, or dropping them would change
      *                                nothing
      */
+    // @mago-expect lint:excessive-parameter-list
+    // Six, and the sixth is the trace stage rather than a collaborator: the alternative is a second
+    // copy of this method's body under a different event name, which is the copy that drifts.
     public static function search(
         CommerceGatewayInterface $gateway,
         ProductQuery $query,
         array $selectionFilters,
         CatalogScope $scope,
         TraceRecorder $trace,
+        string $stage = 'retrieve.without_options',
     ): ?array {
         if ($selectionFilters === []) {
             return null;
@@ -131,7 +140,8 @@ final class UnmatchedOptionRetry
             $scope,
         );
 
-        $trace->record('retrieve.without_options', [
+        $trace->record($stage, [
+            'term' => $query->term,
             'droppedFields' => array_map(static fn(FilterClause $f): string => $f->field, $selectionFilters),
             'hits' => \count($cards),
             'retainedIds' => array_map(static fn(ProductCard $card): string => $card->id, $cards),

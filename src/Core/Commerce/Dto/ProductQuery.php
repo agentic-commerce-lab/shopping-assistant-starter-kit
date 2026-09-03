@@ -80,4 +80,25 @@ final readonly class ProductQuery
             candidateLimit: $this->candidateLimit,
         );
     }
+
+    /**
+     * The same query with different words, so two of {@see \Swag\AssistantStarterKit\Core\Retrieval\RetrievalPass}'s
+     * relaxations can be applied together instead of one at a time.
+     *
+     * Measured on staging, 2026-09-03: *"i want purple tyres"* against a shop with four tyres
+     * returned nothing, because dropping the colour kept the plural ("tyres" matches no name) and
+     * relaxing the plural kept the colour. Reaching the tyres needs both, and neither retry could
+     * express the other's change without this.
+     */
+    public function withTerm(?string $term): self
+    {
+        return new self(
+            term: $term,
+            filters: $this->filters,
+            limit: $this->limit,
+            sort: $this->sort,
+            candidateLimit: $this->candidateLimit,
+            categoryId: $this->categoryId,
+        );
+    }
 }
