@@ -51,8 +51,9 @@ This creates three structural guarantees:
 ## What ships
 
 - **Conversational product discovery:** search, inspect, compare, and add products to the cart.
-- **Six built-in tools:** `search_products`, `get_product`, `add_to_cart`, `compare_products`,
-  `search_shop_info`, and `escalate`. Disabled tools are removed from the model's toolbox.
+- **Seven built-in tools:** `search_products`, `get_product`, `add_to_cart`, `go_to_checkout`,
+  `compare_products`, `search_shop_info`, and `escalate`. Disabled tools are removed from the
+  model's toolbox.
 - **Shop knowledge:** answer from legal pages, shipping information, and uploaded documents through
   optional vector search.
 - **Merchant controls:** catalogue scope, cart limits, request limits, escalation, voice, and widget

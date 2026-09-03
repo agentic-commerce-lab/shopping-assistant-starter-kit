@@ -64,6 +64,10 @@ class AssistantController extends StorefrontController
         // in `chat()` that starts a fresh conversation rather than trusting a foreign or stale token;
         // Task 6 keeps the storage-key template work.
         private readonly ShoppingContextResolver $contextResolver,
+        // Required, for the reason `RequestBudget` above is: it needs the router to turn the
+        // checkout route into a URL, and there is no stock instance to fall back to. A defaulted
+        // null would render no checkout link at all — silently, on the one path a shopper notices.
+        private readonly CheckoutPayload $checkout,
         private readonly CardPayload $cardPayload = new CardPayload(),
         private readonly HandoffPayload $handoff = new HandoffPayload(),
         // Defaulted to an empty dispatcher so a shop with no sinks configured pays nothing and
@@ -189,6 +193,10 @@ class AssistantController extends StorefrontController
             // Rendered from the outcome and the merchant's settings, never from the prose beside it
             // — the model has never seen this URL, so it cannot have got it wrong.
             'handoff' => $this->handoff->of($turn->outcome, $config),
+            // The shop's own checkout, on the turn the shopper asked for it. Same rule as the
+            // contact link beside it: the model has never seen this URL, so a reply cannot get it
+            // wrong — and it used to get it wrong by promising a link nothing rendered.
+            'checkout' => $this->checkout->of($turn->outcome),
             // Where the prose contradicts the cards, said out loud rather than logged and forgotten.
             // A client that renders the reply verbatim needs to know: a live turn told a shopper
             // "the Trail Jersey is available in Blue, size M" beside a card reporting stock 0
@@ -312,6 +320,10 @@ class AssistantController extends StorefrontController
                 // or switched it off — the reloaded transcript must offer what works now, not what
                 // worked then.
                 'handoff' => $this->handoff->of($turn->outcome, $config),
+                // Rebuilt from the stored outcome for the same reason, and the reason the outcome
+                // carries this at all: a reloaded conversation gets its checkout link back without
+                // anything extra having been written into the transcript.
+                'checkout' => $this->checkout->of($turn->outcome),
             ];
         }
 

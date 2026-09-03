@@ -105,7 +105,7 @@ final class AddToCartTool
      *                          shop's own per-item limit).
      * @param ?array<array-key, array<array-key, string>|string> $options The option values THE SHOPPER chose, each a [group, option] pair such as [["Colour", "Blue"], ["Size", "L"]]; a bare option value on its own also works. Required for any product that has variants, and they must identify the exact variant being added — an add the shopper did not choose is refused rather than guessed at.
      *
-     * @return array{cart?: array{itemCount: int, total: float, currency: string, checkoutUrl: string}, note: string}
+     * @return array{cart?: array{itemCount: int, total: float, currency: string}, note: string}
      */
     // @mago-expect lint:excessive-parameter-list
     // Three, not two, and the third cannot be folded away: #[AsTool] derives the model-facing JSON
@@ -240,7 +240,11 @@ final class AddToCartTool
                 'itemCount' => $cart->itemCount,
                 'total' => $cart->total,
                 'currency' => $cart->currency,
-                'checkoutUrl' => $cart->checkoutUrl,
+                // No `checkoutUrl`. It was here, and the rules forbid the model from writing a URL
+                // — so a model that had just added something was holding a checkout address it was
+                // not allowed to state, and a live shop answered "here is a link to the checkout"
+                // with no link, which is the only reply that satisfies both instructions. The link
+                // is the shop's to render: `go_to_checkout` asks for it, `CheckoutPayload` draws it.
             ],
             'note' => CartCorrectionNote::text($stored, $quantity, CartCorrectionNote::reasonFor($cart, $variantId)),
         ];

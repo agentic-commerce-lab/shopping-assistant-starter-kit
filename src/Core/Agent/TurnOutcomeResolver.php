@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
-use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
@@ -64,6 +63,26 @@ final class TurnOutcomeResolver
     public const SHOP_INFO_RETRIEVED = 'shop_info_retrieved';
 
     /**
+     * The shopper asked to check out and the shop has a link to give them.
+     *
+     * **This value is what renders the link.** {@see \Swag\AssistantStarterKit\Controller\CheckoutPayload}
+     * keys off it exactly as {@see \Swag\AssistantStarterKit\Controller\HandoffPayload} keys off
+     * `escalated`, which is also why it is an outcome rather than a new field on the turn: the
+     * history endpoint rebuilds the handoff from the stored outcome, so a reloaded conversation gets
+     * its checkout link back without anything new being written into the transcript.
+     *
+     * Only when the cart had something in it — `go_to_checkout` records `empty` and this reads it. A
+     * checkout link beside "your cart is empty" is the same empty promise `HandoffPayload` exists to
+     * stop making.
+     *
+     * It ranks below `escalated`, which is a turn that reached for a human whatever else it did, and
+     * below `cart_added`, which is the one thing in this plugin that changes the shop's own state.
+     * It ranks above `product_shown` because a shopper asking to check out has said what the turn
+     * was for; cards, if any, were already on screen.
+     */
+    public const CHECKOUT_OFFERED = 'checkout_offered';
+
+    /**
      * @param list<ProductCard> $cards
      */
     public function outcome(TraceRecorder $trace, array $cards): string
@@ -72,8 +91,12 @@ final class TurnOutcomeResolver
             return 'escalated';
         }
 
-        if ($this->hasAllowedCartAdd($trace)) {
+        if (AllowedCartAddition::isIn($trace)) {
             return 'cart_added';
+        }
+
+        if (CheckoutOffer::isIn($trace)) {
+            return self::CHECKOUT_OFFERED;
         }
 
         if ($cards !== []) {
@@ -85,23 +108,5 @@ final class TurnOutcomeResolver
         }
 
         return 'no_result';
-    }
-
-    private function hasAllowedCartAdd(TraceRecorder $trace): bool
-    {
-        foreach ($trace->events() as $event) {
-            if (AddToCartTool::TRACE_STAGE !== $event->stage) {
-                continue;
-            }
-
-            if (
-                'add_to_cart' === ($event->payload['name'] ?? null)
-                && 'allowed' === ($event->payload['policyReasonCode'] ?? null)
-            ) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

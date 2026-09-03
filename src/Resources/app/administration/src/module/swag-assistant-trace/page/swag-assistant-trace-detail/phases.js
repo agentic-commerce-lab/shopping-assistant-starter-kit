@@ -40,7 +40,7 @@ const PHASES = [
      * A merchant scanning for "did it actually put something in a cart" had to read the payloads to
      * find out.
      */
-    { key: 'act', stages: ['cart.add'] },
+    { key: 'act', stages: ['cart.add', 'checkout.offered'] },
     { key: 'answer', stages: ['validate', 'grounding.select', 'render', 'claims.audit'] },
     /*
      * `turn.failed` is how a turn that died inside the agent ends — see Core/Agent/FailedTurn.php.
