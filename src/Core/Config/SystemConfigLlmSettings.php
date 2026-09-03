@@ -62,8 +62,12 @@ final readonly class SystemConfigLlmSettings
      *
      * The controller needs this to answer a shopper politely instead of turning a missing API key
      * into a 500, and the widget needs it to stay hidden on a shop that never configured a model.
+     *
+     * **The channel is optional**, because {@see \Swag\AssistantStarterKit\Controller\AssistantStatusController}
+     * asks the shop-wide question. Omitting it reads the global values, which is also what a channel
+     * with no override of its own inherits.
      */
-    public function isConfigured(string $salesChannelId): bool
+    public function isConfigured(?string $salesChannelId = null): bool
     {
         return (
             $this->setting('llmBaseUrl', 'ASSISTANT_LLM_BASE_URL', $salesChannelId) !== ''
@@ -72,7 +76,7 @@ final readonly class SystemConfigLlmSettings
         );
     }
 
-    private function setting(string $key, string $envName, string $salesChannelId): string
+    private function setting(string $key, string $envName, ?string $salesChannelId): string
     {
         $env = EnvironmentValue::of($envName);
 
