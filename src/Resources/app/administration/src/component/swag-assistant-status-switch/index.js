@@ -17,7 +17,7 @@ import { statusState } from './state';
  * flips it by accident finds out from their shoppers. Everything else in this form is a preference
  * that changes the next reply; this is the one that decides whether there is one.
  *
- * The switch is *controlled*: `model-value` is read from the prop and nothing is emitted until the
+ * The switch is *controlled*: `checked` is read from the prop and nothing is emitted until the
  * dialog is confirmed, so cancelling leaves both the stored value and the rendered switch where they
  * were. `switchKey` forces a remount on cancel, because a component that kept internal state would
  * otherwise sit in the position the merchant just backed out of.
@@ -33,6 +33,23 @@ import { statusState } from './state';
  * The answer is fetched once, on mount. It does not follow the fields as the merchant types, and
  * deliberately: an unsaved model is not a configured one, and a card that went green before Save
  * would promise what the next shopper cannot get. Saving reloads the settings page.
+ *
+ * **`checked` and `change`, not `model-value` and `update:model-value`.** This is 6.6's `mt-switch`
+ * contract and it is not interchangeable with 6.7's. Read out of the running Administration on a
+ * 6.6.10.19 shop:
+ *
+ *     mt-switch props:  label, required, disabled, checked, bordered,
+ *                       inheritedValue, helpText, error, removeTopMargin, name
+ *     onChange(e) { this.$emit('change', e.target.checked) }
+ *
+ * There is no `modelValue`, and `checked` defaults to `null`. Binding `:model-value` therefore did
+ * not reach the switch at all — Vue passed it through as a literal `model-value="true"` attribute on
+ * the wrapper — so the control drew itself **off** while the lamp and the text beside it correctly
+ * said *Running*, and `@update:model-value` matched no emit, so a click never opened the
+ * confirmation dialog. The kill switch was unreachable on 6.6: the one control that stops every
+ * reply could not be operated, and the position it showed was meaningless. Found by opening the
+ * settings form on a real 6.6 shop, which is the only place it is visible — the PHP side, the
+ * config schema and the bundle all looked correct.
  */
 Shopware.Component.register('swag-assistant-status-switch', {
     template,
