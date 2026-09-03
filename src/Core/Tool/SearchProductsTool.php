@@ -22,11 +22,11 @@ use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentCandidates;
 use Swag\AssistantStarterKit\Core\Retrieval\IntentRetrieval;
 use Swag\AssistantStarterKit\Core\Retrieval\MergedCandidates;
-use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuildResult;
 use Swag\AssistantStarterKit\Core\Retrieval\RetrievalPass;
 use Swag\AssistantStarterKit\Core\Retrieval\ShopperIntent;
+use Swag\AssistantStarterKit\Core\Retrieval\SuperlativeSort;
 use Swag\AssistantStarterKit\Core\Retrieval\TermContribution;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
@@ -136,6 +136,12 @@ final class SearchProductsTool
          * it costs the shopper an answer (P9).
          */
         private readonly ?string $browsingCategoryId = null,
+        /**
+         * The shopper's own sentence, for the orderings it asks for and nothing else. Tenth and
+         * last for the reason the ninth is ninth: positional constructions keep meaning what they
+         * meant.
+         */
+        private readonly string $shopperMessage = '',
     ) {}
 
     /**
@@ -184,7 +190,13 @@ final class SearchProductsTool
         $searchTerms = SearchTermList::of($term, $terms, 'terms');
         // Resolved through the enum, so an unknown ordering falls back to relevance rather than
         // reaching the DAL as a field name — see PriceSort.
-        $priceSort = PriceSort::fromRequest($sort);
+        //
+        // Falling back to the shopper's own words is what makes the ordering reliable rather than
+        // optional. Measured 2026-09-03: asked "what is the cheapest coat?", the model passed no
+        // sort three samples running, received relevance-ranked hits and named a coat that was not
+        // the cheapest one on screen. The parameter's use was documented only in this class's
+        // docblock, which is prose addressed to a model. See SuperlativeSort.
+        $priceSort = SuperlativeSort::applying($sort, $this->shopperMessage);
         $brand = Guard::boundedString($brand, 120, 'brand');
         $requestedLimit = Guard::boundedInt($limit, 1, self::MAX_LIMIT, 'limit');
 

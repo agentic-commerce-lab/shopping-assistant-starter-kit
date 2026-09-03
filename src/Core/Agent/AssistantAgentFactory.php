@@ -177,6 +177,7 @@ final readonly class AssistantAgentFactory
         ?ProductCard $viewing = null,
         ?string $browsingCategoryId = null,
         array $recentCards = [],
+        string $shopperMessage = '',
     ): Bundle {
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
@@ -242,6 +243,7 @@ final readonly class AssistantAgentFactory
             queryBuilder: $queryBuilder,
             cartAvailable: $cartAvailable,
             browsingCategoryId: $browsingCategoryId,
+            shopperMessage: $shopperMessage,
         );
         $context = new ToolContext($trace, $config);
 

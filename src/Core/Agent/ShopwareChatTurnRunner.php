@@ -69,6 +69,7 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
             viewing: $viewing,
             browsingCategoryId: $browsingCategoryId,
             recentCards: $this->lastShown($history, $config->scope),
+            shopperMessage: $message,
         );
 
         $bundle->trace->record('page.context', [

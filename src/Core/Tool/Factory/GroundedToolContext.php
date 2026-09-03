@@ -56,5 +56,19 @@ final readonly class GroundedToolContext
          * scope is OR-ed would turn it into a policy bypass.
          */
         public ?string $browsingCategoryId = null,
+        /**
+         * The shopper's own sentence for this turn.
+         *
+         * Client-claimed per-turn state, like `browsingCategoryId` above and for the same reason —
+         * see `ShopwareChatTurnRunner::run()` on why that provenance is never merged with what the
+         * server knows. It is here so the SHOP can read what the shopper asked for instead of relying
+         * on the model to pass it: {@see \Swag\AssistantStarterKit\Core\Retrieval\SuperlativeSort}
+         * turns "the cheapest coat" into an ordering, after a model named a coat that was not the
+         * cheapest one on screen three samples running.
+         *
+         * A tool may read it to decide HOW to search. It is not a source of facts: nothing a shopper
+         * types backs a price, a stock level or a product's existence.
+         */
+        public string $shopperMessage = '',
     ) {}
 }

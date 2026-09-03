@@ -75,6 +75,10 @@ final readonly class ProbeTurnRunner
             // would silently make the probe exercise a smaller toolbox than the widget does.
             cartAvailable: true,
             llm: $this->settings(),
+            // Carried so `swag:assistant:probe --ask` exercises the same retrieval the widget does:
+            // the shop reads orderings out of this sentence (SuperlativeSort), so a probe without it
+            // would quietly test a different pipeline than the one shoppers hit.
+            shopperMessage: $message,
         );
 
         try {

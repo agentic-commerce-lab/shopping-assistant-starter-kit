@@ -135,6 +135,10 @@ final class RetrievalPass
      */
     private static function budgeted(array $cards, ProductQuery $query, TraceRecorder $trace, bool &$narrowed): array
     {
+        // Ordered before the budget check so both post-steps see the same list, and because the
+        // ordering is what the shopper asked for while the budget check only removes.
+        $cards = OrderedByPrice::apply($cards, $query);
+
         $kept = StatedBudget::keep($cards, $query);
 
         if (\count($kept) === \count($cards)) {
