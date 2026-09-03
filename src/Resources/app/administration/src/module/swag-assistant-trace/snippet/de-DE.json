@@ -33,6 +33,9 @@
             "inShop": "Shop",
             "onModel": "Modell",
             "rawTrace": "Rohdaten",
+            "rawAt": "Zeitpunkt",
+            "rawGap": "Abstand",
+            "rawStage": "Stufe",
             "noTrace": "Für diese Konversation wurde nichts aufgezeichnet.",
             "export": "Trace exportieren",
             "exportFailed": "Der Export konnte nicht erstellt werden."

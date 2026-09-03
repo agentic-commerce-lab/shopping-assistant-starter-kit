@@ -95,20 +95,21 @@
                         :key="rowIndex"
                         :class="`swag-assistant-trace-detail__row is--${row.type}`"
                     >
-                        {# The gap between phases is where the model is thinking. It is the largest
-                           number on the page and appears nowhere in the raw events, because nothing
-                           is recorded while it happens. #}
-                        <template v-if="row.type === 'wait'">
-                            <span class="swag-assistant-trace-detail__at">{{ offset(row.startMs) }}</span>
-                            <span class="swag-assistant-trace-detail__waiting">
+                        {# One length per row, and a bar for where it sits and how much of the
+                           turn it is. There used to be an offset here too — a position and a
+                           length, both formatted as times, in adjacent columns — and the left
+                           column was read as a second set of durations and added up: a merchant
+                           reported an 8.7s turn as 32 seconds. The card header above carries the
+                           turn's total, so no row needs to restate the running sum. #}
+                        <span class="swag-assistant-trace-detail__label">
+                            {# The gap between phases is where the model is thinking. It is the
+                               longest bar on the page and appears nowhere in the raw events,
+                               because nothing is recorded while it happens. #}
+                            <span v-if="row.type === 'wait'" class="swag-assistant-trace-detail__waiting">
                                 {{ $tc('swag-assistant-trace.detail.waiting') }}
                             </span>
-                            <span class="swag-assistant-trace-detail__took">{{ duration(row.durationMs) }}</span>
-                        </template>
 
-                        <template v-else>
-                            <span class="swag-assistant-trace-detail__at">{{ offset(row.startMs) }}</span>
-                            <span class="swag-assistant-trace-detail__phase">
+                            <template v-else>
                                 <span class="swag-assistant-trace-detail__phase-name">{{ phaseLabel(row) }}</span>
                                 <span
                                     v-for="fact in facts(row)"
@@ -117,9 +118,17 @@
                                 >
                                     {{ fact.label }} <strong>{{ fact.value }}</strong>
                                 </span>
-                            </span>
-                            <span class="swag-assistant-trace-detail__took">{{ duration(row.endMs - row.startMs) }}</span>
-                        </template>
+                            </template>
+                        </span>
+
+                        <span class="swag-assistant-trace-detail__bar">
+                            <span
+                                class="swag-assistant-trace-detail__bar-fill"
+                                :style="{ width: barWidth(row, turn) }"
+                            ></span>
+                        </span>
+
+                        <span class="swag-assistant-trace-detail__took">{{ span(row) }}</span>
                     </li>
                 </ol>
                 {% endblock %}
@@ -139,17 +148,28 @@
                     </template>
 
                     <template #content>
+                        {# Two numbers, both labelled. The offset alone was reported as unreadable:
+                           rounded to a tenth of a second it printed a burst of events as one
+                           repeated value, and the last burst as the turn total, so a column of
+                           instants read as a column of durations. #}
+                        <div class="swag-assistant-trace-detail__raw-event is--head">
+                            <span class="swag-assistant-trace-detail__at">{{ $tc('swag-assistant-trace.detail.rawAt') }}</span>
+                            <span class="swag-assistant-trace-detail__delta">{{ $tc('swag-assistant-trace.detail.rawGap') }}</span>
+                            <span class="swag-assistant-trace-detail__stage">{{ $tc('swag-assistant-trace.detail.rawStage') }}</span>
+                        </div>
+
                         <div
-                            v-for="event in rawEvents(turn)"
-                            :key="event.id"
+                            v-for="row in rawEvents(turn)"
+                            :key="row.event.id"
                             class="swag-assistant-trace-detail__raw-event"
                         >
-                            <span class="swag-assistant-trace-detail__at">{{ offset(event.elapsedMs) }}</span>
-                            <span class="swag-assistant-trace-detail__stage">{{ event.stage }}</span>
+                            <span class="swag-assistant-trace-detail__at">{{ clock(row.atMs) }}</span>
+                            <span class="swag-assistant-trace-detail__delta">{{ gap(row.deltaMs) }}</span>
+                            <span class="swag-assistant-trace-detail__stage">{{ row.stage }}</span>
                             <pre
                                 class="swag-assistant-trace-detail__payload"
-                                :class="{ 'swag-assistant-trace-detail__payload--prose': promptProse(event) }"
-                            >{{ promptProse(event) || payloadJson(event) }}</pre>
+                                :class="{ 'swag-assistant-trace-detail__payload--prose': promptProse(row.event) }"
+                            >{{ promptProse(row.event) || payloadJson(row.event) }}</pre>
                         </div>
                     </template>
                 </sw-collapse>

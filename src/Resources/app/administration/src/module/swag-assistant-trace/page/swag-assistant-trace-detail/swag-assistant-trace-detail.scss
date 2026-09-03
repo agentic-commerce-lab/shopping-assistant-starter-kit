@@ -59,10 +59,15 @@
     }
 
     &__row {
-        align-items: baseline;
+        align-items: center;
         display: grid;
         gap: 12px;
-        grid-template-columns: 5.5rem 1fr auto;
+        // Label, bar, length. The offset column that used to open this row is gone: a position and
+        // a length side by side, both formatted as times, got the left column added up.
+        //
+        // The bar's track is a fixed width so its fill is comparable down the column, which is the
+        // only thing that makes a proportion legible at all.
+        grid-template-columns: 1fr 8rem 4.5rem;
         padding: 6px 0;
     }
 
@@ -75,6 +80,30 @@
 
     &__took {
         text-align: right;
+    }
+
+    /* `min-width: 0` because a grid item defaults to its content's minimum: a row whose facts are a
+       model name and a 32-character category id pushed the bar and the length off the card. */
+    &__label {
+        min-width: 0;
+    }
+
+    &__bar {
+        background: var(--color-gray-100, #eef1f4);
+        border-radius: 2px;
+        display: block;
+        height: 4px;
+        overflow: hidden;
+    }
+
+    /* One accent for every row. A merchant reads "the shop is fast, the model is not" off the
+       lengths; giving the wait its own colour would say it twice and add a second meaning to a
+       treatment that already has one. */
+    &__bar-fill {
+        background: var(--color-shopware-brand-500, #0870ff);
+        border-radius: 2px;
+        display: block;
+        height: 100%;
     }
 
     &__phase-name {
@@ -111,8 +140,30 @@
         border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
         display: grid;
         gap: 12px;
-        grid-template-columns: 5.5rem 10rem 1fr;
+        // Four columns since the offset gained a gap beside it: an unlabelled column of instants
+        // was read as a column of durations. Both numbers are right-aligned so they compare down
+        // the column, which is the only way "+94 ms" beside "10945 ms" tells you anything.
+        grid-template-columns: 5.5rem 5.5rem 10rem 1fr;
         padding: 8px 0;
+
+        &.is--head {
+            border-top: 0;
+            color: var(--color-text-secondary-default, #758ca3);
+            font-size: var(--font-size-xs, 12px);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+    }
+
+    &__delta {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+    }
+
+    &__raw-event &__at,
+    &__raw-event &__delta {
+        text-align: right;
     }
 
     &__stage {
