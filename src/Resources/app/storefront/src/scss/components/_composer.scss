@@ -291,7 +291,7 @@ it climbs reads as unstable.
     // **Not orange.** `$swag-assistant-low-stock` measures about 2.6:1 on white, well under the
     // 4.5:1 text floor — the same trap `$swag-assistant-meta` exists because of. Orange stays on the
     // field's border, which is decoration carrying state; the words that have to be read are
-    // Night Blue. This is exactly what `.swag-assistant-warning` already does: tint and icon in
+    // Night Blue. This is exactly what the failure notice already does: tint and icon in
     // orange, text in `$swag-assistant-text`.
     color: $swag-assistant-text;
     font-size: $swag-assistant-font-micro;

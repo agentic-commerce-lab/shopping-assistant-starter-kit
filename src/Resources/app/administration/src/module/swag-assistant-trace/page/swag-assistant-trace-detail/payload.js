@@ -65,19 +65,7 @@ export function readTurns(transcript) {
         prose: turn?.prose ?? '',
         cardIds: Array.isArray(turn?.cardIds) ? turn.cardIds : [],
         outcome: turn?.outcome ?? null,
-        warnings: shapeWarnings(turn?.warnings),
         createdAt: turn?.createdAt ?? null,
     }));
 }
 
-/**
- * Warnings are the assistant admitting it nearly lied — an unbacked price or an availability claim
- * with no source. They render as a warning alert on the turn, never folded away.
- */
-function shapeWarnings(warnings) {
-    const source = warnings || {};
-    const prices = Array.isArray(source.unbackedPrices) ? source.unbackedPrices : [];
-    const claims = Array.isArray(source.unbackedAvailabilityClaims) ? source.unbackedAvailabilityClaims : [];
-
-    return { prices, claims, any: prices.length > 0 || claims.length > 0 };
-}

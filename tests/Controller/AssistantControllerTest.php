@@ -99,17 +99,20 @@ final class AssistantControllerTest extends AssistantEndpointTestCase
         self::assertNotSame([], $this->store->traceEvents($token));
     }
 
-    public function testTheResponseSaysWhenTheProseContradictsTheCards(): void
+    public function testTheResponseCarriesNoGroundingWarnings(): void
     {
-        // A client that renders the reply verbatim has to know. A live turn told a shopper the Trail
-        // Jersey "is available in Blue, size M" beside a card reporting stock 0 (ruling R75), and the
-        // cards are authoritative — so the response states where the sentence beside them is not.
+        // Removed 2026-09-03, and asserted absent rather than simply deleted: the audit behind it
+        // still runs and still writes `claims.audit`, so re-exposing it here is a one-line change
+        // someone could make in good faith. Every occurrence reported from a live shop was a false
+        // positive — `GroundingOutputProcessor` records five, dated, against no true one — and a
+        // notice that is wrong more often than right costs trust in the correct answers beside it.
+        //
+        // The guarantee it appeared to provide is structural and untouched: the cards are the only
+        // figures on screen, and `FactRenderer` renders them from the catalogue.
         $payload = $this->decode($this->controller()->chat($this->post(['message' => 'hi']), $this->context()));
 
-        $warnings = $payload['warnings'] ?? null;
-        self::assertIsArray($warnings);
-        self::assertArrayHasKey('unbackedPrices', $warnings);
-        self::assertArrayHasKey('unbackedAvailabilityClaims', $warnings);
+        self::assertIsArray($payload);
+        self::assertArrayNotHasKey('warnings', $payload);
     }
 
     public function testAForeignTokenGetsAFreshConversationInsteadOfThrowing(): void

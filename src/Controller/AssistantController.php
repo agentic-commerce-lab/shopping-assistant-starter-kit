@@ -6,7 +6,6 @@ namespace Swag\AssistantStarterKit\Controller;
 
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
-use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
@@ -173,9 +172,6 @@ class AssistantController extends StorefrontController
                 cardIds: array_map(static fn($card): string => $card->id, $turn->cards),
                 outcome: $turn->outcome,
                 createdAt: $now,
-                // Persisted with the turn, not merely returned: without this a page reload restores
-                // the misleading sentence with no correction beside it.
-                warnings: self::warnings($turn),
             ),
             $result->trace,
         );
@@ -197,12 +193,12 @@ class AssistantController extends StorefrontController
             // contact link beside it: the model has never seen this URL, so a reply cannot get it
             // wrong — and it used to get it wrong by promising a link nothing rendered.
             'checkout' => $this->checkout->of($turn->outcome),
-            // Where the prose contradicts the cards, said out loud rather than logged and forgotten.
-            // A client that renders the reply verbatim needs to know: a live turn told a shopper
-            // "the Trail Jersey is available in Blue, size M" beside a card reporting stock 0
-            // (ruling R75). The cards are always authoritative; this says when the sentence beside
-            // them is not, so the interface can annotate it, de-emphasise it, or drop it.
-            'warnings' => self::warnings($turn),
+            // No `warnings`. The prose audit still runs and still writes `claims.audit` for the
+            // merchant's trace, but it is no longer shopper-facing and no longer part of this
+            // contract: the notice it fed was wrong every time it was reported from a live shop,
+            // and its own history in `GroundingOutputProcessor` records five dated false positives
+            // against no true one. The cards stay authoritative — that guarantee is structural and
+            // never depended on a sentence beside them.
         ]);
     }
 
@@ -267,21 +263,6 @@ class AssistantController extends StorefrontController
         );
     }
 
-    /**
-     * The one place the warning shape is built, so what a client receives live and what it receives
-     * from history cannot drift apart.
-     *
-     * @return array<string, list<string>>
-     */
-    private static function warnings(AssistantTurn $turn): array
-    {
-        return [
-            'unbackedPrices' => $turn->warnings->unbackedPrices,
-            'unbackedAvailabilityClaims' => $turn->warnings->unbackedAvailabilityClaims,
-            'unbackedPropertyClaims' => $turn->warnings->unbackedPropertyClaims,
-        ];
-    }
-
     #[Route(
         path: '/assistant/history',
         name: 'frontend.assistant.history',
@@ -314,8 +295,6 @@ class AssistantController extends StorefrontController
                 // timestamp for that rather than substituting the current time, which would present
                 // a figure this server never produced as fact.
                 'createdAt' => $turn->createdAt?->format(\DATE_ATOM),
-                // Unlike the figures, a warning does not go stale: it describes what that reply said.
-                'warnings' => $turn->warnings,
                 // Rebuilt, not replayed: if the merchant has since changed where escalation points —
                 // or switched it off — the reloaded transcript must offer what works now, not what
                 // worked then.

@@ -44,14 +44,6 @@
     "checkout": {
       "action": "Zur Kasse"
     },
-    "warning": {
-      "availability": "Dieser Artikel ist nicht auf Lager. Die Karte unten ist korrekt.",
-      "price": "Es gelten die Preise auf den Karten.",
-      "property": "Es gelten die Material- und Merkmalsangaben auf der Karte unten.",
-      "availabilityNoCard": "Diese Verfügbarkeit ist nicht durch die Shop-Daten bestätigt. Bitte auf der Produktseite prüfen.",
-      "priceNoCard": "Diese Preise sind nicht durch die Shop-Daten bestätigt. Bitte auf der Produktseite prüfen.",
-      "propertyNoCard": "Diese Material- und Merkmalsangaben sind nicht durch die Shop-Daten bestätigt."
-    },
     "error": {
       "network": "Das kam nicht durch. Nochmal versuchen?",
       "retry": "Nochmal versuchen",

@@ -45,11 +45,10 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         self::assertCount(1, $messages);
     }
 
-    public function testHistoryCarriesTheTurnsTimestampAndWarnings(): void
+    public function testHistoryCarriesTheTurnsTimestamp(): void
     {
-        // Both exist so a re-hydrated conversation does not lose what the turn knew: the widget
-        // once displayed the current time for a four-minute-old message, and restored a claim of
-        // availability with no correction beside the sold-out card.
+        // It exists so a re-hydrated conversation does not lose what the turn knew: the widget once
+        // displayed the current time for a four-minute-old message.
         $controller = $this->controller();
         $token = $this->store->start($this->guestScope(), 'en-GB');
         $written = new \DateTimeImmutable('2026-08-20T09:41:07+00:00');
@@ -63,7 +62,6 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
                 cardIds: [self::BLUE_M_ID],
                 outcome: 'product_shown',
                 createdAt: $written,
-                warnings: ['unbackedAvailabilityClaims' => ['is available']],
             ),
             new TraceRecorder(),
         );
@@ -78,7 +76,9 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         self::assertIsArray($message);
 
         self::assertSame($written->format(\DATE_ATOM), $message['createdAt']);
-        self::assertSame(['unbackedAvailabilityClaims' => ['is available']], $message['warnings']);
+        // No grounding warning travels with a turn any more — see
+        // `AssistantControllerTest::testTheResponseCarriesNoGroundingWarnings()`.
+        self::assertArrayNotHasKey('warnings', $message);
     }
 
     public function testATurnStoredBeforeTimestampsExistedReportsNullRatherThanNow(): void
@@ -104,7 +104,6 @@ final class AssistantHistoryEndpointTest extends AssistantEndpointTestCase
         self::assertIsArray($message);
 
         self::assertNull($message['createdAt']);
-        self::assertSame([], $message['warnings']);
     }
 
     public function testHistoryWithNoTokenIsAnEmptyConversationRatherThanAnError(): void

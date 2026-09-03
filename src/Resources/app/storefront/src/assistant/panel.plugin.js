@@ -350,7 +350,6 @@ export default class SwagAssistantPanel extends PluginBaseClass {
             role: message.role,
             prose: message.prose,
             createdAt: message.createdAt,
-            warnings: message.warnings,
             handoff: message.handoff,
             checkout: message.checkout,
             // Order preserved as the turn rendered them; anything the catalogue no longer offers is
@@ -497,7 +496,6 @@ export default class SwagAssistantPanel extends PluginBaseClass {
                 role: 'assistant',
                 prose: reply.prose,
                 cards: reply.cards,
-                warnings: reply.warnings,
                 handoff: reply.handoff,
                 checkout: reply.checkout,
                 createdAt: new Date().toISOString(),

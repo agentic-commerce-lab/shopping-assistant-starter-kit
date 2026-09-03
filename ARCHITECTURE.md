@@ -851,11 +851,18 @@ Two things that reword taught, both now load-bearing in the note: the prohibitio
 the phrasings rather than imply them, and the **decline has to lead** — the model paraphrases the first
 instruction it is given, so a handover in that slot produced a handover in the reply.
 
-It is an eval assertion rather than a runtime `warning` on purpose. Price and availability warnings
-exist because the prose contradicts a **rendered card**, and the client needs telling which to trust.
-A handoff claim contradicts nothing in the response — it is false because of how the plugin is built —
-so there is no card to prefer, and a warning reading "the assistant said it contacted the team; it did
-not" serves that shopper worse than the sentence never being written.
+It is an eval assertion rather than a shopper-facing notice on purpose, and as of 2026-09-03 that is
+the only kind there is: the runtime notice the price, availability and property audits used to render
+beside a reply has been removed. Every occurrence a merchant reported from a live shop was a false
+positive — five are recorded with dates in `Core\Agent\GroundingOutputProcessor`, against no logged
+case of a shopper being warned about a real invention — and a notice that is wrong more often than
+right does not make a shopper careful about one sentence, it makes them doubt the correct answers
+beside it.
+
+The audits still run, still write `claims.audit`, and still back the eval assertions below; a merchant
+sees them in the trace, where being wrong costs nothing. The guarantee the notice appeared to provide
+never depended on it: the cards are the only figures on screen, and `FactRenderer` renders them from
+the catalogue.
 
 The switched-off branch is pinned the same way, by `order_status_declines`: with no tool in the
 toolbox, declining is prompt-only, and this branch passing first run is a measurement rather than an

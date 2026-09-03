@@ -31,17 +31,6 @@ final class TranscriptCodecFieldsTest extends TestCase
         self::assertSame($written->format(\DATE_ATOM), $turn->createdAt?->format(\DATE_ATOM));
     }
 
-    public function testItRoundTripsWarnings(): void
-    {
-        $turn = $this->roundTrip(new ConversationTurn(
-            role: 'assistant',
-            prose: 'Yes, it is available.',
-            warnings: ['unbackedAvailabilityClaims' => ['is available']],
-        ));
-
-        self::assertSame(['unbackedAvailabilityClaims' => ['is available']], $turn->warnings);
-    }
-
     /**
      * @return iterable<string, array{mixed}>
      */
@@ -63,24 +52,25 @@ final class TranscriptCodecFieldsTest extends TestCase
         self::assertNull($turn->createdAt);
     }
 
-    public function testMalformedWarningsDecodeToAnEmptyArray(): void
+    public function testATurnStoredWithWarningsStillDecodes(): void
     {
-        $turn = $this->decodeOne(['role' => 'assistant', 'prose' => 'ok', 'warnings' => 'unbackedPrices']);
-
-        self::assertSame([], $turn->warnings);
-    }
-
-    public function testAnEmptyWarningListIsNotStored(): void
-    {
-        // `{"unbackedPrices": []}` carries no information, and keeping it would push an
-        // empty-versus-absent distinction onto every reader.
+        // Turns written before 2026-09-03 carry a `warnings` key. The grounding notice they fed is
+        // gone and nothing reads them, so the requirement is only that their presence is harmless:
+        // `decode()` reads the fields it still uses and ignores the rest.
         $turn = $this->decodeOne([
             'role' => 'assistant',
-            'prose' => 'ok',
-            'warnings' => ['unbackedPrices' => [], 'unbackedAvailabilityClaims' => ['is available']],
+            'prose' => 'Yes, it is available.',
+            'warnings' => ['unbackedAvailabilityClaims' => ['is available']],
         ]);
 
-        self::assertSame(['unbackedAvailabilityClaims' => ['is available']], $turn->warnings);
+        self::assertSame('Yes, it is available.', $turn->prose);
+    }
+
+    public function testTheEncodedTurnCarriesNoWarningsKey(): void
+    {
+        $encoded = (new TranscriptCodec())->encode(new ConversationTurn(role: 'assistant', prose: 'ok'));
+
+        self::assertArrayNotHasKey('warnings', $encoded);
     }
 
     private function roundTrip(ConversationTurn $turn): ConversationTurn
