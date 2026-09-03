@@ -64,6 +64,10 @@ final readonly class IntentRetrieval
             'limitRequested' => $limit,
             'candidateLimit' => $candidateLimit,
             'categoryId' => $this->browsingCategoryId,
+            // The ordering, because its absence is invisible otherwise. A wrong price superlative
+            // was diagnosed from `filtersApplied: []` alone on 2026-09-03, which says nothing about
+            // sorting — the one fact that turn hinged on. Null is this shop's relevance ranking.
+            'sort' => $buildResult->query->sort?->value,
         ]);
 
         // QueryBuilder::build() does not carry a limit — ShopperIntent has none — so the guarded limit

@@ -4,17 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Core\Tool;
 
-use PHPUnit\Framework\TestCase;
-use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
-use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
-use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
-use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
-use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
-use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
-use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
-use Swag\AssistantStarterKit\Core\Tool\SearchProductsTool;
-use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
  * "What is the cheapest jersey" must be answerable.
@@ -33,29 +23,8 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * carries a single jersey family, which cannot tell a price ordering from a relevance one — and an
  * assertion that passes because there is only one candidate proves nothing.
  */
-final class SearchPriceSortTest extends TestCase
+final class SearchPriceSortTest extends PriceSortTestCase
 {
-    private string $catalogue = '';
-
-    protected function setUp(): void
-    {
-        $products = [
-            self::family('Budget Jersey', 49.90, stock: 0),
-            self::family('Club Jersey', 59.00, stock: 7),
-            self::family('Thermal Jersey Long Sleeve', 69.00, stock: 4),
-        ];
-
-        $this->catalogue = tempnam(sys_get_temp_dir(), 'pricesort') . '.json';
-        file_put_contents($this->catalogue, json_encode(['products' => $products], \JSON_THROW_ON_ERROR));
-    }
-
-    protected function tearDown(): void
-    {
-        if ($this->catalogue !== '' && is_file($this->catalogue)) {
-            unlink($this->catalogue);
-        }
-    }
-
     public function testTheCheapestMatchComesFirst(): void
     {
         self::assertSame('Budget Jersey', $this->names('price_asc')[0]);
@@ -97,55 +66,5 @@ final class SearchPriceSortTest extends TestCase
         self::assertNull(PriceSort::fromRequest(null));
         self::assertSame(PriceSort::Ascending, PriceSort::fromRequest(' PRICE_ASC '));
         self::assertSame(PriceSort::Descending, PriceSort::fromRequest('price_desc'));
-    }
-
-    /** @return list<string> */
-    private function names(?string $sort): array
-    {
-        return array_map(static fn(array $p): string => (string) $p['name'], $this->products($sort));
-    }
-
-    /** @return list<array<string, mixed>> the products the search returned, in its own order */
-    private function products(?string $sort): array
-    {
-        $gateway = FixtureCommerceGateway::fromFile($this->catalogue);
-        $trace = new TraceRecorder();
-
-        $tool = new SearchProductsTool(
-            $gateway,
-            new FacetProbe($gateway, $trace),
-            new QueryBuilder(),
-            new VariantResolver($gateway, $trace),
-            new BlocklistFilter(),
-            new FactRenderer($trace),
-            $trace,
-            new AssistantConfig(),
-        );
-
-        /** @var list<array<string, mixed>> $products */
-        $products = $tool('jersey', limit: 5, sort: $sort)['products'];
-
-        return $products;
-    }
-
-    /** @return array<string, mixed> */
-    private static function family(string $name, float $price, int $stock): array
-    {
-        $slug = strtolower(str_replace(' ', '-', $name));
-
-        return [
-            'id' => $slug,
-            'name' => $name,
-            'description' => 'A cycling jersey.',
-            'price' => $price,
-            'stock' => $stock * 3,
-            'url' => '/p/' . $slug,
-            'categoryPath' => ['Apparel'],
-            'properties' => ['Material' => ['Polyester']],
-            'variants' => [
-                ['id' => $slug . '-m', 'options' => ['Size' => 'M'], 'price' => $price, 'stock' => $stock],
-                ['id' => $slug . '-l', 'options' => ['Size' => 'L'], 'price' => $price, 'stock' => $stock],
-            ],
-        ];
     }
 }

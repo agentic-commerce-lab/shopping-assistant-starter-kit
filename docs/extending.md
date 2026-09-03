@@ -140,9 +140,19 @@ So there are two tiers:
   It cannot access the catalogue. Use it for a store locator, FAQ lookup, shipping estimate, warranty
   checker, or any other capability based on your own data.
 - **`GroundedToolFactoryInterface`** receives `GroundedToolContext`: `gateway`, `trace`, `config`,
-  `renderer`, `facetProbe`, `blocklist`, `variantResolver`, `queryBuilder`, `cartAvailable`, and the
-  optional `browsingCategoryId`. Use it only when the tool must answer from catalogue data, and route
-  shopper-facing product facts through `FactRenderer`.
+  `renderer`, `facetProbe`, `blocklist`, `variantResolver`, `queryBuilder`, `cartAvailable`, the
+  optional `browsingCategoryId`, and `shopperMessage` — the shopper's own sentence for this turn. Use
+  it only when the tool must answer from catalogue data, and route shopper-facing product facts
+  through `FactRenderer`.
+
+> [!NOTE]
+> `shopperMessage` decides **how** you search, never what you report. It exists because a capability
+> the model must remember to ask for is not one the shop can promise: `search_products` takes a
+> `sort`, its use was documented only in that tool's docblock, and asked *"what is the cheapest
+> coat?"* a model passed no sort three samples running — then named a coat that was not the cheapest
+> one on screen. `SuperlativeSort` reads the superlative out of this sentence and the shop sorts,
+> the same move `StatedBudget` makes for a stated price range. Nothing a shopper types backs a
+> price, a stock level or a product's existence, so treat it as input to a query and never as a fact.
 
 > [!CAUTION]
 > `browsingCategoryId` is client-supplied and never resolved. Use it only as
