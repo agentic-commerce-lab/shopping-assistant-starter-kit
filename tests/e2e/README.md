@@ -78,6 +78,12 @@ money and takes minutes. It is not in CI for exactly that reason.
 
 ## Shop data these checks assume
 
+**`widget.spec.js` needs the bike catalogue.** Its four live-turn tests ask for the *Trail Jersey* by
+name, in blue and in black, and the cart test asserts that string in the shop's own cart. On a shop
+carrying only the fashion catalogue all four fail with no card rendered — a data mismatch that reads
+exactly like a broken widget. Swap the phrases for something that catalogue has before concluding
+anything from a red run.
+
 `pricing.spec.js` needs at least one product carrying advanced (tiered/rule-based) prices. The demo
 shop has hundreds, and the SQL that finds them is in `pricing.spec.js`'s own docblock — see there
 rather than here, so the query and the test it serves cannot drift apart.
