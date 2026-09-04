@@ -31,7 +31,13 @@ const PHASES = [
      */
     { key: 'prepare', stages: ['model', 'options.disclosed', 'page.context', 'facet.probe', 'vocabulary.render', 'guard.check', 'prompt'] },
     { key: 'understand', stages: ['tool.call', 'understand', 'query.build', 'tool.arguments.rejected'] },
-    { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'retrieve.without_category', 'retrieve.relaxTerm', 'variant.resolve', 'blocklist.filter'] },
+    /*
+     * `retrieve.relaxTerm_without_options` joins its three siblings here rather than relying on
+     * `joinsRunningPhase()` to absorb it. It would be absorbed correctly — `retrieve` always fires
+     * first, so it can never be the event that opens the phase — but a list holding three of the
+     * four relaxations and not the fourth is a trap for whoever adds the fifth.
+     */
+    { key: 'search', stages: ['retrieve', 'retrieve.narrow', 'retrieve.without_options', 'retrieve.without_category', 'retrieve.relaxTerm', 'retrieve.relaxTerm_without_options', 'variant.resolve', 'blocklist.filter'] },
     /*
      * The one phase where something changed.
      *

@@ -17,6 +17,32 @@ export function phaseFacts(row) {
     const lastPayload = (stage) =>
         row.events.filter((event) => event.stage === stage).at(-1)?.payload ?? null;
 
+    /**
+     * The last catalogue read of the turn, whichever of retrieval's attempts it was.
+     *
+     * **Matched on shape, not on a list of names, and that is the fix rather than an aesthetic.**
+     * `lastPayload('retrieve')` was right while the only repeat was the category retry, which
+     * records under `retrieve` again. A relaxation does not: it records under `retrieve.relaxTerm`,
+     * `retrieve.without_options` or `retrieve.relaxTerm_without_options`, so a turn answered by one
+     * produced a row reading *"found 0, kept 4"* about four products the shopper was shown
+     * (reported by review, 2026-09-04). Naming those three here would have been the same bug with a
+     * longer fuse — the fourth of them was added on 2026-09-03, and the fifth will not arrive with a
+     * reminder to update this file.
+     *
+     * `hits` is what makes an event a read: `retrieve.narrow` counts survivors, `retrieve.shopinfo`
+     * counts accepted passages, and `retrieve.without_category` marks a decision and carries no
+     * count at all — none of them claim a `hits`, so none of them can answer this question by
+     * accident.
+     */
+    const lastRetrieval = () =>
+        row.events
+            .filter(
+                (event) =>
+                    event.stage?.startsWith('retrieve')
+                    && typeof event.payload?.hits === 'number',
+            )
+            .at(-1)?.payload ?? null;
+
     switch (row.key) {
         case 'prepare':
             return prepareFacts(payload('page.context'), payload('model'));
@@ -24,7 +50,7 @@ export function phaseFacts(row) {
             return understandFacts(payload('understand'), payload('query.build'));
         case 'search':
             return searchFacts(
-                lastPayload('retrieve'),
+                lastRetrieval(),
                 payload('retrieve.narrow'),
                 payload('blocklist.filter'),
                 payload('retrieve.without_category'),
