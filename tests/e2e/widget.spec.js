@@ -17,10 +17,13 @@ const SHOP = process.env.SHOP_URL ?? 'http://127.0.0.1:8000';
 /**
  * A real turn against a live model was measured at 16–19 seconds in isolation.
  *
- * 90, not 60. The suite fires three live turns, and **the server finishes a turn even when the client
- * has gone** — measured — so a test that navigated away leaves work in flight and the next model call
- * queues behind it. At 60 s the card assertion passed in isolation (27.5 s) and flaked in the full
- * run, which is the worst kind of green.
+ * 90, not 60. The suite fires four live turns — this constant's own four uses are the census — and
+ * **the server finishes a turn even when the client has gone** — measured — so a test that navigated
+ * away leaves work in flight and the next model call queues behind it. At 60 s the card assertion
+ * passed in isolation (27.5 s) and flaked in the full run, which is the worst kind of green.
+ *
+ * Kept at 90 even though the full run on 2026-09-04 came back in 1.4 minutes with no live turn over
+ * 13.1 s: the headroom is for the queueing above, not for the median.
  */
 const TURN_TIMEOUT = 90_000;
 
