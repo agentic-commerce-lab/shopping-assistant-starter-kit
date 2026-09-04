@@ -22,13 +22,37 @@ declare(strict_types=1);
  * The search term stays English for the reason `de_variant_stock` explains: the fixture catalogue is
  * named in English, and a German shopper in such a shop writes a German sentence around an English
  * product word.
+ *
+ * ## Why the expert message says "mein Budget: höchstens"
+ *
+ * It read `brake pads, Budget maximal 40 Euro` until 2026-09-04, and on that wording
+ * `reply_in_language` failed **0/3** — *"the reply reads as English (German 0 / English 14)"* on all
+ * three runs, deterministically, while the `beginner` archetype beside it passed 3/3.
+ *
+ * The model was right and the journey was wrong. Not one token in that sentence is unambiguously
+ * German: *brake pads* is English, *Budget* and *maximal* are both ordinary English words, and
+ * *40 Euro* belongs to no language. An English speaker would write it verbatim. So
+ * {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt}'s closing rule applied exactly as
+ * written — *"If a message is too short to tell … and it is still unclear, answer in %s"* — and with
+ * `'config' => []` that fallback is {@see \Swag\AssistantStarterKit\Core\Prompt\ReplyLanguage::FALLBACK},
+ * English. The journey was asserting that the model guess German from a sentence containing no
+ * German, which is the opposite of what the prompt tells it to do and is not a behaviour worth
+ * having: it would answer an English shopper in German for writing "budget".
+ *
+ * So the input gained German rather than the assertion losing German. *mein* and *höchstens* are
+ * unmistakable and the register stays telegraphic, which is what separates this archetype from the
+ * `beginner` one — compare `de_variant_stock`'s expert message, which is equally terse and passes
+ * because *Blau*, *Größe* and *auf Lager* leave nothing to infer.
+ *
+ * **The whole number is untouched, because it is the point.** `höchstens 40 Euro` asks for the same
+ * bare integer `maximal 40 Euro` did.
  */
 return [
     'id' => 'de_price_constraint',
     'category' => 'grounding',
     'runs' => 3,
     'archetypes' => [
-        'expert' => 'brake pads, Budget maximal 40 Euro',
+        'expert' => 'brake pads, mein Budget: höchstens 40 Euro',
         'beginner' => 'ich suche brake pads, mein Budget liegt so bei 40 Euro',
     ],
     'config' => [],
