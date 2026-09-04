@@ -42,26 +42,39 @@ tests, and would keep passing while the panel was invisible.
 that makes the widget usable for someone who asked for less motion is the same one that makes it
 testable.
 
-**A real turn takes 16–19 seconds**, measured in isolation. Card assertions use a 90-second timeout —
-see the note on queueing below for why 60 was not enough.
+**A real turn takes 16–19 seconds** at the worst measured, and 7–13 s on
+`google/gemini-3.7-flash`. Card assertions use a 90-second timeout — see the note on queueing below
+for why 60 was not enough, and why the headroom is worth keeping even when a turn comes back in
+eight seconds.
 
 ## Status of the last full run
 
-**6 of 8 passed, 7.1 minutes.** Both failures were diagnosed and fixed; **the fixes have not been
-re-verified by a full run**, so treat this suite as written-and-mostly-proven rather than green.
+**Green. 22 passed, 2 skipped, 0 failed, 1.4 minutes** — `SHOP_URL=http://127.0.0.1:8000`,
+Shopware 6.7.13.0, `google/gemini-3.7-flash`, 2026-09-04. This replaces a status section that had
+read *"6 of 8 passed … the fixes have not been re-verified by a full run"* since the suite was eight
+tests long; both of those failures are now asserted green, and the suite has since grown to 24.
 
-| Failure | Cause | Fix |
+Both skips are the designed outcome rather than a gap:
+
+| Skipped | Why |
+|---|---|
+| a reply taller than the panel opens at its first line | `test.fixme`. A real defect, diagnosed — the log's first child carries `margin-top: auto`, so free space decides the transcript's position while free space is still changing. Fixing it changes how a one-message conversation looks, which is a design decision and not taken in a test |
+| a configured primary colour is the one the entry point paints with | data-dependent: the test reads `--swag-assistant-primary` off the page and skips when the shop has no primary configured, rather than asserting a colour written into the test |
+
+The two failures this section used to record, kept because the second one is still the thing to
+understand before widening the suite:
+
+| Was failing | Cause | Fix |
 |---|---|---|
 | over-long message not refused | **a real bug.** The composer carried `maxlength="2000"`, so the browser truncated the input silently and the over-limit state was unreachable dead code | `maxlength` removed; the composer now refuses visibly |
 | card assertion timed out | too-tight timeout, not a widget fault — it passed in isolation in 27.5 s | `TURN_TIMEOUT` raised 60 s → 90 s |
 
-The second one is worth understanding before you widen this suite. **The server finishes a turn even
-after the client disconnects** — measured: a request aborted at 3 s still landed both turns at +15 s.
-So a test that navigates away leaves work in flight and the next live turn queues behind it. Adding
-more real-turn tests makes that worse, not linearly.
+**The server finishes a turn even after the client disconnects** — measured: a request aborted at 3 s
+still landed both turns at +15 s. So a test that navigates away leaves work in flight and the next
+live turn queues behind it. Adding more real-turn tests makes that worse, not linearly.
 
-The suite fires **three live model calls**, so it costs money and takes minutes. It is not in CI for
-exactly that reason.
+The suite fires **four live model calls** — the four assertions that use `TURN_TIMEOUT` — so it costs
+money and takes minutes. It is not in CI for exactly that reason.
 
 ## Shop data these checks assume
 
