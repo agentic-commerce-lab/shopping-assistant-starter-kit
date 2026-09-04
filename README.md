@@ -145,18 +145,35 @@ secret storage.
 The screenshot shows one example provider. Use the URL and model-ID format required by your own
 provider.
 
-### Choose the assistant's behaviour
+### Finish the merchant setup
 
-Use the remaining cards to decide what fits the shop:
+The table below starts from the plugin's **Configure** page unless it points to **Settings**:
 
-- turn the assistant or only the shipped widget on and off;
-- block products or complete category branches before they reach the model;
-- enable cart actions, comparisons, match reasons, shop knowledge, and escalation;
-- set cart, request, and tool-loop limits, then choose retention and logging settings;
-- edit the assistant name, greeting, suggestion chips, colours, and entry-point style.
+| What you want to configure | Where to find it |
+|---|---|
+| Assistant and widget availability | **Assistant status** |
+| Tone and products or categories the assistant must not see | **Voice and catalogue scope** |
+| Cart actions, cart limits, and maximum tool calls | **Limits** |
+| Per-shopper throttling and the optional daily spend ceiling | **Request limits** |
+| Handover destination, message, comparisons, and match reasons | **Handing over to a human** |
+| Assistant name and greeting | **Storefront widget** |
+| Suggested questions | **Things a shopper could ask** |
+| Entry-point style and colours | **Appearance** |
+| Operational logging and conversation retention | **Logging** and **Data retention** |
+| Shop-knowledge model and automatic indexing | **Shop knowledge** |
+| Shop pages and uploaded documents | **Settings › Assistant shop information** |
+| Full conversations, traces, and JSON exports | **Settings › Assistant conversations** |
 
-The [manual](docs/manual.md#assistant-behaviour-and-limits) explains every control and its default.
-Widget copy and appearance are covered under [The storefront widget](docs/manual.md#the-storefront-widget).
+Most plugin settings apply to the sales channel selected on the configuration page. Greeting and
+suggestion fields are language snippets instead. To use different copy in different storefronts,
+assign their domains to different snippet sets under **Settings › Snippets**.
+
+Before showing the assistant to shoppers, test a product search, a variant question, an enabled cart
+action, and an unsupported request. Then open **Settings › Assistant conversations** and inspect the
+recorded turn. The manual explains the defaults and consequences for [behaviour and limits](docs/manual.md#assistant-behaviour-and-limits),
+[request limits](docs/manual.md#request-limits), [escalation](docs/manual.md#escalation),
+[widget appearance](docs/manual.md#appearance), [logging](docs/manual.md#logging), and
+[data retention](docs/manual.md#data-retention).
 
 ### Agent voice and the system prompt
 
