@@ -8,6 +8,7 @@ use Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 use Swag\AssistantStarterKit\Core\Agent\AssistantRunner;
 use Swag\AssistantStarterKit\Core\Agent\AssistantTurn;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
+use Swag\AssistantStarterKit\Core\Config\EnvironmentValue;
 use Swag\AssistantStarterKit\Core\Llm\LlmException;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
@@ -26,6 +27,12 @@ use Symfony\AI\Platform\Message\MessageBag;
  * the three variables the eval suite reads so one `.env` configures both. All three are required
  * (ruling R43: checking only the base URL once meant a run with two of three set attempted a real
  * network call).
+ *
+ * Read through {@see EnvironmentValue} and not `getenv()`, which is the fix this class was owed
+ * since 2026-09-01. `getenv()` sees only the real process environment, and Symfony's runtime boots
+ * Dotenv with `usePutenv(false)` — so all three variables in the shop's own `.env` left this command
+ * answering *"Not configured"* about a shop whose storefront was answering fine. See
+ * `ProbeEnvironmentSourcesTest`.
  *
  * @return array{turn: AssistantTurn, trace: string}
  */
@@ -46,9 +53,7 @@ final readonly class ProbeTurnRunner
         $missing = [];
 
         foreach (self::REQUIRED_ENV as $name) {
-            $value = getenv($name);
-
-            if (!\is_string($value) || trim($value) === '') {
+            if (EnvironmentValue::of($name) === '') {
                 $missing[] = $name;
             }
         }
@@ -98,23 +103,16 @@ final readonly class ProbeTurnRunner
 
     private function settings(): LlmSettings
     {
-        $model = $this->env('ASSISTANT_LLM_MODEL');
+        $model = EnvironmentValue::of('ASSISTANT_LLM_MODEL');
 
         if ($model === '') {
             throw new LlmException('ASSISTANT_LLM_MODEL is empty.');
         }
 
         return new LlmSettings(
-            baseUrl: $this->env('ASSISTANT_LLM_BASE_URL'),
-            apiKey: $this->env('ASSISTANT_LLM_API_KEY'),
+            baseUrl: EnvironmentValue::of('ASSISTANT_LLM_BASE_URL'),
+            apiKey: EnvironmentValue::of('ASSISTANT_LLM_API_KEY'),
             model: $model,
         );
-    }
-
-    private function env(string $name): string
-    {
-        $value = getenv($name);
-
-        return \is_string($value) ? trim($value) : '';
     }
 }

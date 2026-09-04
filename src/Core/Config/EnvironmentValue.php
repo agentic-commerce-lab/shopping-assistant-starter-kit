@@ -24,8 +24,9 @@ namespace Swag\AssistantStarterKit\Core\Config;
  * **Its own class rather than a private method** on {@see SystemConfigLlmSettings}: that class is at
  * the complexity the gate allows, and this is a separate piece of knowledge anyway — where an
  * environment variable lives has nothing to do with how a sales channel's model is configured.
- * `Command\ProbeTurnRunner` reads the same three variables through `getenv()` alone and has the same
- * bug; it should come here too.
+ * `Command\ProbeTurnRunner` read the same three variables through `getenv()` alone and had the same
+ * bug — a probe answering "Not configured" about a shop whose storefront answered fine. It comes
+ * here as of 2026-09-04; `ProbeEnvironmentSourcesTest` holds it.
  */
 final readonly class EnvironmentValue
 {
