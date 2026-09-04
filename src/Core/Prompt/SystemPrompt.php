@@ -158,14 +158,6 @@ final class SystemPrompt
         PROMPT;
 
     /**
-     * Everything after the escalation clause.
-     *
-     * Split from {@see self::RULES} rather than appended at the end, because the clause between them
-     * opens with "If asked about any of those" — and "those" is the paragraph {@see self::RULES} ends
-     * on. Appending it to the finished prompt instead put an unrelated instruction between the
-     * pronoun and its antecedent, which is how a rule stops being read as a rule.
-     */
-    /**
      * How long a reply may be, and the measurement behind it.
      *
      * Generation time scales with output tokens and nothing else in the turn comes close. Measured on
@@ -201,6 +193,14 @@ final class SystemPrompt
         only when the answer would change what you recommend.
         PROMPT;
 
+    /**
+     * Everything after the escalation clause.
+     *
+     * Split from {@see self::RULES} rather than appended at the end, because the clause between them
+     * opens with "If asked about any of those" — and "those" is the paragraph {@see self::RULES} ends
+     * on. Appending it to the finished prompt instead put an unrelated instruction between the
+     * pronoun and its antecedent, which is how a rule stops being read as a rule.
+     */
     private const CLOSING = <<<'PROMPT'
         Answer in the language the shopper writes in, and stay in it for the whole conversation.
         If a message is too short to tell — a size, a colour, a product name, "ok" — carry on in
