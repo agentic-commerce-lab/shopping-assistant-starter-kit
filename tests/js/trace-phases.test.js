@@ -221,6 +221,49 @@ test('the search row reports the retrieval that actually answered', () => {
     assert.equal(phaseFacts(search).find((fact) => fact.label === 'found').value, '6');
 });
 
+test('the search row reports a retrieval that a relaxation answered', () => {
+    /*
+     * Reported by review, 2026-09-04. `found` was read from `retrieve` alone, and a relaxation
+     * records under its OWN stage — so a turn answered by one produced a row reading
+     *
+     *     found 0    kept 4
+     *
+     * about four products the shopper was actually shown. Same defect as the two `retrieve` events
+     * above, arriving through a different door: `lastPayload('retrieve')` cannot see an event that
+     * is not called `retrieve`.
+     *
+     * The measurement this replays is in `RetrievalPass::composed()` — `probe --ask="i want purple
+     * tyres"` against a shop selling four tyres, where the first three reads came back empty and
+     * the fourth found them.
+     */
+    const rows = buildTimeline([
+        ev(0, 'retrieve', { hits: 0 }),
+        ev(2, 'retrieve.without_options', { hits: 0 }),
+        ev(4, 'retrieve.relaxTerm', { relaxedTerm: 'tyre', hits: 0 }),
+        ev(6, 'retrieve.relaxTerm_without_options', { hits: 4 }),
+        ev(8, 'retrieve.narrow', { survivors: 4 }),
+        ev(9, 'render', { renderedIds: [] }),
+    ]);
+
+    const search = rows.find((row) => row.key === 'search');
+
+    assert.equal(phaseFacts(search).find((fact) => fact.label === 'found').value, '4');
+});
+
+test('a search that every relaxation failed still reports the zero it measured', () => {
+    // The other direction: "found 0" is the right answer when nothing was found, and it must not
+    // become undefined just because the last event was a relaxation.
+    const rows = buildTimeline([
+        ev(0, 'retrieve', { hits: 0 }),
+        ev(2, 'retrieve.relaxTerm', { relaxedTerm: 'tyre', hits: 0 }),
+        ev(4, 'retrieve.narrow', { survivors: 0 }),
+    ]);
+
+    const search = rows.find((row) => row.key === 'search');
+
+    assert.equal(phaseFacts(search).find((fact) => fact.label === 'found').value, '0');
+});
+
 test('leaving the category is reported without a count it does not have', () => {
     // The retry is recorded before the second pass runs, so it cannot know how many it found —
     // printing `hits` there produced a confident 0 on every turn that had one.
