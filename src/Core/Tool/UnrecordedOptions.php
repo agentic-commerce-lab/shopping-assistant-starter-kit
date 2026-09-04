@@ -155,21 +155,51 @@ final class UnrecordedOptions
             return [];
         }
 
+        // Keyed by the normalised name and holding the asked spelling, because the two jobs differ:
+        // the key decides whether a returned product already records this group, and the value is
+        // what a note would name. See self::normalised() for the case this exists for.
         $asked = [];
 
         foreach ($selections as $selection) {
             if ($selection->group !== null) {
-                $asked[$selection->group] = true;
+                $asked[self::normalised($selection->group)] = $selection->group;
             }
         }
 
         foreach ($returned as $card) {
             foreach ([...array_keys($card->options), ...array_keys($card->properties)] as $group) {
-                unset($asked[(string) $group]);
+                unset($asked[self::normalised((string) $group)]);
             }
         }
 
-        return array_keys($asked);
+        return array_values($asked);
+    }
+
+    /**
+     * Case and punctuation folded away, so a group is compared by which group it IS.
+     *
+     * Reported by review, 2026-09-04, and it made this class state the one thing its own docblock
+     * says it must never state. {@see \Swag\AssistantStarterKit\Core\Retrieval\Filter\VariantSelectionFilterResolver}
+     * canonicalises an option's VALUE against the facet's own values and takes the GROUP name as
+     * exact — its docblock says so, and {@see \Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet::get()}
+     * compares fields with `===`. So `["season", "Summer"]` matched no `properties.season` facet,
+     * the clause was dropped, the canonical selection kept the model's lowercase spelling, and an
+     * exact comparison against the cards' `Season` key reported a group every returned tyre
+     * records. The note then licensed *"these tyres have no season recorded"* about two tyres that
+     * each list one — a false claim about product data, reachable by changing one letter's case.
+     *
+     * Folding is the conservative direction and only that direction: it can only ever REMOVE a
+     * group from the disclosure, never add one, so the worst it can do is stay silent about a group
+     * whose name collides with a recorded one after folding.
+     *
+     * **What it does not fix.** A group named in words the shop does not use at all — "Colour" for
+     * a shop whose facet is "Farbe" — still reads as unrecorded, because nothing here can know the
+     * two mean the same thing. That is a separate decision (it wants the shop's facet set, which
+     * {@see SearchProductsTool} has and this class is not given) and it is not a casing bug.
+     */
+    private static function normalised(string $group): string
+    {
+        return (string) preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($group));
     }
 
     /** @param list<string> $groups */
