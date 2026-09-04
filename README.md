@@ -4,17 +4,21 @@
 [![Release](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/actions/workflows/release.yml/badge.svg)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-189eff)](LICENSE)
 
-A shopper-facing conversational assistant for Shopware 6.7, grounded in the merchant's own
-catalogue and operated entirely inside the shop.
+A customizable starter kit for merchants, agencies, and developers building a shopper-facing
+assistant for Shopware 6.7. It provides a working reference implementation that you can evaluate in
+a real shop, adapt to a merchant's catalogue, and use as the foundation for a custom assistant.
 
-Ask *"Do you have the trail jersey in blue, size M?"* and the assistant can find the correct
-variant, show its current price and stock, and link to the real product. Ask it to add the item to
-the cart and it uses the shopper's existing Shopware cart. Checkout remains Shopware's normal
-checkout.
+This is **not a finished assistant or a production-ready Shopware Store extension**. It is a
+starting point: connect your model, decide what the assistant may see and do, tailor the storefront
+experience, and test the result against your own catalogue.
 
 > [!IMPORTANT]
 > **Research preview / lab prototype.** This is not production software. It comes without support,
 > upgrade guarantees, or a Shopware Store release.
+
+[Download](#download) · [What ships](#what-ships) · [Watch the demo](#see-it-in-action) ·
+[Quick start](#quick-start) · [Configure](#configure-it-for-your-shop) ·
+[Extend](#extend-it-without-forking-the-core)
 
 ## Download
 
@@ -26,19 +30,47 @@ The archive contains the compiled plugin, but not its PHP dependencies. Follow t
 dependencies in the shop's vendor directory. Developing the plugin instead? Use the
 [Composer path-repository setup](docs/manual.md#from-a-composer-path-repository).
 
+## What ships
+
+- **A working reference assistant:** shoppers can search and inspect products, select variants, add
+  eligible items to their existing cart, and continue through Shopware's normal checkout.
+- **Seven built-in tools:** `search_products`, `get_product`, `add_to_cart`, `go_to_checkout`,
+  `compare_products`, `search_shop_info`, and `escalate`. Disabled tools are removed from the
+  model's toolbox.
+- **Grounded product cards:** prices, stock, URLs, images, options, and availability are rendered
+  from Shopware's live `SalesChannelContext`, not copied from model prose.
+- **Optional shop knowledge:** answer from legal pages, shipping information, and uploaded
+  documents through vector search.
+- **Merchant controls:** configure catalogue scope, cart and request limits, escalation, voice,
+  greeting, suggestions, and widget appearance in the Administration.
+- **Built-in guard rails:** per-caller throttling, an optional daily spend ceiling, a maximum cart
+  value, bounded tool loops, and SSRF protection for the model endpoint.
+- **Observability:** inspect conversations, retrieval steps, refusals, and rendered results in the
+  Administration, or export traces as JSON.
+- **A compiled storefront widget:** no Node toolchain is needed in the shop. The 1.5 KB gzipped
+  entry point loads first; larger chunks arrive only when the shopper opens the panel.
+- **A live eval suite:** 36 journeys exercise grounding, safety, cart behaviour, retrieval, and
+  escalation against a real model endpoint.
+
+The starter kit deliberately does **not** complete checkout or take payment, change or negotiate
+prices, access account or order data, or pretend that a human was notified. Unsupported requests
+are declined or, when configured, answered with a merchant-provided contact link.
+
 ## See it in action
 
-[![Shopping Assistant demo showing a grounded storefront conversation](https://raw.githubusercontent.com/agentic-commerce-lab/shopping-assistant-starter-kit/main/docs/assets/shopping-assistant-demo-preview.gif)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/blob/main/docs/assets/shopping-assistant-demo.mp4)
+[![Click to watch the Shopping Assistant demo](https://raw.githubusercontent.com/agentic-commerce-lab/shopping-assistant-starter-kit/main/docs/assets/shopping-assistant-demo-preview.gif)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/blob/main/docs/assets/shopping-assistant-demo.mp4)
 
-Watch the 73-second flow from a shopper's question to grounded product cards, cart interaction,
-Administration traces, and the extension seam behind the assistant.
+**[Watch the full 73-second demo →](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/blob/main/docs/assets/shopping-assistant-demo.mp4)**
 
-## Why this is more than a chatbot shell
+Follow the complete flow from a shopper's question to grounded product cards, cart interaction,
+Administration traces, and the extension point behind the assistant.
 
-The model selects product IDs; the plugin then renders the product cards — including prices, stock,
-URLs, and images — from Shopware's live `SalesChannelContext`. Customer-group pricing, rules, and
-the current session therefore stay authoritative. The accompanying model prose is audited separately
-for unsupported price, availability, and property claims.
+## How product answers stay grounded
+
+The model selects product IDs. The plugin then renders prices, stock, URLs, images, and options from
+Shopware's live `SalesChannelContext`. Customer-group pricing, rules, and the current session remain
+authoritative. The accompanying model prose is audited separately for unsupported price,
+availability, and property claims.
 
 This creates three structural guarantees:
 
@@ -48,30 +80,7 @@ This creates three structural guarantees:
   not from an aggregate parent product.
 - **A real catalogue boundary:** blocked products never enter the model context.
 
-## What ships
-
-- **Conversational product discovery:** search, inspect, compare, and add products to the cart.
-- **Seven built-in tools:** `search_products`, `get_product`, `add_to_cart`, `go_to_checkout`,
-  `compare_products`, `search_shop_info`, and `escalate`. Disabled tools are removed from the
-  model's toolbox.
-- **Shop knowledge:** answer from legal pages, shipping information, and uploaded documents through
-  optional vector search.
-- **Merchant controls:** catalogue scope, cart limits, request limits, escalation, voice, and widget
-  appearance.
-- **Guard rails:** per-caller throttling, an optional daily spend ceiling, a maximum cart value, and
-  SSRF protection for the model endpoint.
-- **Observability:** inspect each turn, retrieval step, refusal, and rendered result in the
-  Administration; export traces as JSON.
-- **A compiled storefront widget:** no Node toolchain is needed in the shop. The entry point loads
-  1.5 KB gzipped; larger chunks arrive only after the shopper opens the panel.
-- **A live eval suite:** 36 journeys exercise grounding, safety, cart behaviour, retrieval, and
-  escalation against a real model endpoint.
-
-The assistant deliberately does **not** complete checkout or take payment, change or negotiate
-prices, access account or order data, or pretend that a human was notified. Unsupported requests are
-declined or sent to a merchant-configured contact route.
-
-## Install and configure
+## Quick start
 
 You need:
 
@@ -105,33 +114,63 @@ Choose one route:
 The release archive contains the compiled plugin, but not its PHP dependencies. Those dependencies
 must be installed in the shop's own vendor directory.
 
-### 3. Connect a model
+### 3. Connect a model and compile the theme
 
-Set the base URL, model ID, and API key in the plugin settings under **Language model**. For a local
-evaluation, you can also configure them from the shop root:
+Set the base URL, model ID, and API key under **Language model** in the plugin configuration. The
+[configuration walkthrough](#configure-it-for-your-shop) below shows the Administration fields; the
+[manual](docs/manual.md#configuring-a-model) also covers environment variables and CLI setup.
 
-```fish
-# Through a gateway, model ids carry a vendor prefix:
-bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://openrouter.ai/api"
-bin/console system:config:set SwagAssistantStarterKit.config.llmModel "openai/gpt-4o-mini"
-
-# Against a vendor's own API, they do not:
-bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://api.openai.com"
-bin/console system:config:set SwagAssistantStarterKit.config.llmModel "gpt-4o-mini"
-
-bin/console system:config:set SwagAssistantStarterKit.config.llmApiKey "sk-…"
-```
-
-For production, prefer `ASSISTANT_LLM_BASE_URL`, `ASSISTANT_LLM_MODEL`, and
-`ASSISTANT_LLM_API_KEY`: environment values take precedence, while Shopware system configuration is
-not secret storage. The base URL must not include `/v1`; the platform appends
-`/v1/chat/completions` itself.
-
-Continue with [model configuration](docs/manual.md#configuring-a-model), then compile the theme:
+Then compile the theme:
 
 ```fish
 bin/console theme:compile
 ```
+
+## Configure it for your shop
+
+Open **Extensions › My extensions › Shopping Assistant Starter Kit › Configure** in the Shopware
+Administration. Configuration is scoped to the selected sales channel unless a field explicitly
+says otherwise.
+
+### Connect the model
+
+Set an OpenAI-compatible base URL, the exact model ID expected by that provider, and an API key.
+The assistant remains hidden and the chat endpoint returns **503** until all three values are
+available. For production, prefer the environment variables documented in
+[Configuring a model](docs/manual.md#configuring-a-model); Shopware system configuration is not
+secret storage.
+
+![Language model settings in the Shopware Administration](docs/assets/assistant-language-model-settings.png)
+
+The screenshot shows one example provider. Use the URL and model-ID format required by your own
+provider.
+
+### Choose the assistant's behaviour
+
+Use the remaining cards to decide what fits the shop:
+
+- turn the assistant or only the shipped widget on and off;
+- block products or complete category branches before they reach the model;
+- enable cart actions, comparisons, match reasons, shop knowledge, and escalation;
+- set cart, request, and tool-loop limits, then choose retention and logging settings;
+- edit the assistant name, greeting, suggestion chips, colours, and entry-point style.
+
+The [manual](docs/manual.md#assistant-behaviour-and-limits) explains every control and its default.
+Widget copy and appearance are covered under [The storefront widget](docs/manual.md#the-storefront-widget).
+
+### Agent voice and the system prompt
+
+**Is the system prompt editable in the Administration?** Only the voice layer. The
+[**Agent voice** field](docs/manual.md#agent-voice-and-system-prompt) controls tone and personality;
+it cannot add capabilities or override grounding and safety rules. The shipped system prompt is not
+editable as unrestricted text in the Administration.
+
+Developers can extend or replace the system prompt by decorating `PromptProviderInterface`. The
+[prompt customization guide](docs/extending.md#example-3-change-the-system-prompt) shows the safe
+default—append to the shipped prompt so its grounding, injection-defence, page-context, and
+escalation rules stay intact.
+
+![Agent voice and catalogue scope settings in the Shopware Administration](docs/assets/assistant-voice-settings.png)
 
 ## How it fits into Shopware
 

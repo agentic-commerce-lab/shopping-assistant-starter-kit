@@ -175,7 +175,8 @@ Install `symfony/ai-maria-db-store` on MariaDB 11.7+ if you want the native stor
 
 ### Chat model
 
-Configure the model in the plugin settings under **Language model**, or use the CLI:
+In the Administration, open **Extensions › My extensions**, find **Shopping Assistant Starter Kit**,
+and select **Configure**. Set the model under **Language model**, or use the CLI:
 
 ```fish
 bin/console system:config:set SwagAssistantStarterKit.config.llmBaseUrl "https://openrouter.ai/api"
@@ -252,6 +253,19 @@ These settings control what the assistant can see and do:
 
 Disabled capabilities are removed from the toolbox instead of being described as forbidden in the
 prompt. Blocked products and categories are filtered before model context is built.
+
+### Agent voice and system prompt
+
+The **Agent voice** field is the merchant-editable part of the assistant's prompt. Use it for tone,
+personality, and response style—for example, “Warm and concise. Never oversell.” It is appended as
+style guidance after the starter kit's rules and cannot add a tool, reveal a blocked product, or
+override grounding and safety behaviour.
+
+The complete system prompt is deliberately not a free-form Administration field. Developers who
+need shop-specific instructions can decorate `PromptProviderInterface`; start with the
+[worked example in the extension guide](extending.md#example-3-change-the-system-prompt). Decorating
+and appending preserves the shipped rules. Replacing the prompt means taking responsibility for
+those rules and running the live eval suite again.
 
 The **Limits** card bounds cart actions and tool loops:
 
