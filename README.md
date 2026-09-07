@@ -58,12 +58,11 @@ are declined or, when configured, answered with a merchant-provided contact link
 
 ## See it in action
 
-[![Click to watch the Shopping Assistant demo](https://raw.githubusercontent.com/agentic-commerce-lab/shopping-assistant-starter-kit/main/docs/assets/shopping-assistant-demo-preview.gif)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/blob/main/docs/assets/shopping-assistant-demo.mp4)
+<!-- For an inline player, replace this comment with a bare github.com/user-attachments/assets/<uuid> URL on its own line. -->
 
-**[Watch the full 73-second demo →](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/blob/main/docs/assets/shopping-assistant-demo.mp4)**
+[![Shopping Assistant demo](https://raw.githubusercontent.com/agentic-commerce-lab/shopping-assistant-starter-kit/main/docs/assets/shopping-assistant-demo-preview.gif)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/shopping-assistant-demo.mp4)
 
-Follow the complete flow from a shopper's question to grounded product cards, cart interaction,
-Administration traces, and the extension point behind the assistant.
+**[Watch the full 73-second demo →](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/shopping-assistant-demo.mp4)**
 
 ## How product answers stay grounded
 
@@ -85,7 +84,8 @@ This creates three structural guarantees:
 You need:
 
 - Shopware 6.7 and PHP 8.2 or newer;
-- an OpenAI-compatible chat-completions endpoint;
+- any OpenAI-compatible chat-completions endpoint — OpenAI itself, a gateway such as
+  OpenRouter, Azure, or a model you host;
 - Composer access to the shop for the plugin's PHP dependencies.
 
 ### 1. Protect the shop from Symfony Flex recipes
@@ -144,6 +144,39 @@ secret storage.
 
 The screenshot shows one example provider. Use the URL and model-ID format required by your own
 provider.
+
+#### You are not tied to one model
+
+The plugin speaks the OpenAI chat-completions protocol and **passes the model ID through
+untouched**, so the base URL decides which models you can reach:
+
+| Base URL | Model IDs it expects | What you can run |
+|---|---|---|
+| `https://api.openai.com` | bare, e.g. `gpt-4o-mini` | that vendor's own models |
+| `https://openrouter.ai/api` | vendor-prefixed, e.g. `openai/gpt-4o-mini`, `google/gemini-3.7-flash`, `mistralai/mistral-large-latest` | many vendors' models behind one key |
+| your own endpoint | whatever it defines | a self-hosted or private model |
+
+A gateway is therefore the cheap way to **compare models on your own catalogue**: change the base
+URL, the model ID and the key, ask the same question again, and read the difference in the
+Administration trace. Nothing in the plugin is written for one vendor.
+
+Two things to know before switching:
+
+- **Spell the ID exactly as your provider spells it.** A prefix your provider does not use, or a
+  missing one, comes back as "model not found" and the assistant stays inert. Enter the base URL
+  without `/v1` — the client appends `/v1/chat/completions` and `/v1/embeddings` itself.
+- **Tool calling is the capability that matters**, not benchmark scores. The assistant answers by
+  calling tools, so a model with unreliable tool calling reads as a bad shop rather than a weak
+  model. This repository carries an eval suite (`tests/Journeys/`, not part of the release zip) for
+  measuring a candidate against your own expectations before you ship it.
+
+**Shop knowledge uses the same provider, and constrains the choice.** If you index shop documents,
+the embedding model is read from that one base URL and key too, so the provider must also serve
+`/v1/embeddings` — a gateway that only proxies chat completions answers 404 there. And
+`search_shop_info`'s recall floor is measured against `baai/bge-m3`; the two OpenAI embedding models
+score answerable passages *below* it, so a shop on those silently discards passages that do answer
+the question. That is the one model change with a caveat rather than a free choice — see the help
+text on that field and [Configuring a model](docs/manual.md#configuring-a-model).
 
 ### Finish the merchant setup
 
