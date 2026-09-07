@@ -60,9 +60,7 @@ are declined or, when configured, answered with a merchant-provided contact link
 
 <!-- For an inline player, replace this comment with a bare github.com/user-attachments/assets/<uuid> URL on its own line. -->
 
-[![Shopping Assistant demo](https://raw.githubusercontent.com/agentic-commerce-lab/shopping-assistant-starter-kit/main/docs/assets/shopping-assistant-demo-preview.gif)](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/shopping-assistant-demo.mp4)
-
-**[Watch the full 73-second demo →](https://github.com/agentic-commerce-lab/shopping-assistant-starter-kit/releases/latest/download/shopping-assistant-demo.mp4)**
+[![Shopping Assistant demo](docs/assets/shopping-assistant-demo-preview.gif)](docs/assets/shopping-assistant-demo.mp4)
 
 ## How product answers stay grounded
 
