@@ -22,3 +22,16 @@ var/
 # Per-machine Claude Code permissions. Until now this was invisible only because of a
 # personal ~/.config/git/ignore entry — a fresh clone showed it as untracked.
 .claude/settings.local.json
+
+# Session planning material (plans, specs, reports). Untracked on 2026-09-07: 49 files
+# that nothing links to and that the release zip already excluded, in a repository meant
+# to be read by merchants and agencies.
+#
+# The history is deliberately NOT rewritten, so the documents that ~24 files under src/ and
+# tests/ cite by path are still retrievable:
+#
+#   git show 2f3aca8:docs/superpowers/reports/2026-08-25-shopinfo-threshold.md
+#
+# (any commit before the removal works). Kept out of the zip by .shopware-extension.yml
+# too, which stays as it is so a local copy can never reach an artefact.
+docs/superpowers/
