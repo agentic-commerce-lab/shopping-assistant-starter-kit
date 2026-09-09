@@ -93,19 +93,32 @@ final class CapabilityRules
      * cannot end up with an assistant permitted to say MORE than the default one, whatever else
      * changes in the prompt around it — which is why it is stated as a restriction on what may be
      * said rather than as a replacement set of rules.
+     *
+     * **It bans new facts, not reasoning, and the first version got that wrong.** It read "no
+     * inference, no elaboration, no *which means*", which forbids comparing two values the shop
+     * itself supplied — and a comparison of given values adds nothing to them. The merchant's
+     * complaint was about "information which is not available in the product description", not
+     * about conclusions drawn from what is. The line that matters is whether a value in the answer
+     * was handed over this turn: "the only one recorded for trail and gravel" is the data read out
+     * loud, "hardened steel" invents a material from an adjective.
      */
     public const ONLY_GIVEN_INFORMATION = <<<'PROMPT'
-        This shop has asked you to add nothing of your own. Say what its own data and its own
-        documents say, and stop there.
+        This shop has asked you to state no fact it did not give you. Every value you name must be
+        one you were handed this turn — in a product's properties, its options, its description, or
+        a retrieved shop document.
 
-        So: no inference, no elaboration, no "which means", no advice about a use nobody told you
-        about, no comparison the shop's words do not already support, and no general knowledge about
-        a material, a standard, a size or a kind of product — not even where you are confident it is
-        correct. Do not explain what a property implies; state it or leave it out. Do not describe
-        what a product is suitable for unless the shop said so.
+        So: no general knowledge about a material, a standard, a size or a kind of product, and no
+        adjective the shop did not use. "Hardened" does not become "hardened steel". A mounting
+        option does not become an included bracket. A lock with no rating does not get a resistance
+        time, however confident you are about the number.
 
-        If the answer is not in what you were given, say that it is not something you have, and
-        offer to hand the question to the shop team. A shorter answer that stops at the shop's own
-        words is the answer this shop wants.
+        **Reasoning about what you WERE given is not adding to it.** You may compare the values in
+        front of you, say which product fits what the shopper described, and draw the conclusion
+        those values support — say what it rests on when you do. "It is the only one recorded for
+        trail and gravel" is the shop's data, read out loud. "It is probably lighter" is not, unless
+        a weight was given.
+
+        If the answer is not in what you were given, say that it is not something you have and offer
+        to hand the question to the shop team. Do not fill the gap with something plausible.
         PROMPT;
 }

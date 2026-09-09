@@ -7,7 +7,6 @@ namespace Swag\AssistantStarterKit\Tests\Core\Agent;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\DisclosureGuardOutputProcessor;
-use Swag\AssistantStarterKit\Core\Agent\PlainProseOutputProcessor;
 use Swag\AssistantStarterKit\Core\Agent\WithheldReplyMessage;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Output;
@@ -20,17 +19,23 @@ use Symfony\AI\Platform\Tool\ExecutionReference;
 use Symfony\AI\Platform\Tool\Tool;
 
 /**
- * The two corrections the server makes to a reply on its way out, wired as the agent wires them.
+ * The one correction the server makes to a reply on its way out.
  *
- * Both exist because a prompt rule is a request. The plain-prose rule lost 78 of 104 measured
- * replies; the non-disclosure rule was obeyed in six of nine injection attempts and lost the other
- * three, two of them completely. Neither correction can change a fact about a product — one removes
- * syntax, the other declines — which is what makes them safe to make here rather than only to ask
- * for. A claim about a product is still not corrected on the way out, and
+ * It exists because a prompt rule is a request: the non-disclosure rule was obeyed in six of nine
+ * injection attempts across 34 real conversations and lost the other three, two of them completely.
+ * Declining cannot change a fact about a product, which is what makes it safe to do here rather
+ * than only to ask for. A claim about a product is still never corrected on the way out, and
  * {@see \Swag\AssistantStarterKit\Core\Grounding\ProseAudit} explains why.
+ *
+ * **A markdown strip briefly sat beside this and was removed the same day.** It was written on the
+ * belief that the widget renders the reply as plain text, so a shopper read the model's asterisks.
+ * It does not: `src/Resources/app/storefront/src/assistant/markdown.js` is a purpose-built reader
+ * that turns four inline and four block forms into DOM nodes — written in August for exactly that
+ * complaint — so stripping server-side removed formatting the shipped surface renders properly. The
+ * prompt's plain-prose rule stays as what it always was: a portability request for surfaces that
+ * have no such reader, or no screen at all.
  */
 #[CoversClass(DisclosureGuardOutputProcessor::class)]
-#[CoversClass(PlainProseOutputProcessor::class)]
 final class ReplyLeavesTheProcessCleanTest extends TestCase
 {
     /**
@@ -41,9 +46,7 @@ final class ReplyLeavesTheProcessCleanTest extends TestCase
         $trace = new TraceRecorder();
         $output = new Output('test-model', new TextResult($prose), new MessageBag());
 
-        // The order the factory wires: disclosure before plain prose, both after grounding.
         (new DisclosureGuardOutputProcessor($this->toolbox(), $trace, $language))->processOutput($output);
-        (new PlainProseOutputProcessor($trace))->processOutput($output);
 
         $result = $output->getResult();
         self::assertInstanceOf(TextResult::class, $result);
@@ -70,12 +73,15 @@ final class ReplyLeavesTheProcessCleanTest extends TestCase
         };
     }
 
-    public function testAnOrdinaryReplyLosesItsMarkupAndNothingElse(): void
+    /**
+     * Markdown reaches the shopper untouched, and that is deliberate — the client reads it.
+     */
+    public function testAnOrdinaryReplyIsNotTouchedAtAll(): void
     {
         [$prose, $trace] = $this->process('The **Gravel Helmet** comes in M and L.');
 
-        self::assertSame('The Gravel Helmet comes in M and L.', $prose);
-        self::assertSame(['prose.plain'], $this->stages($trace));
+        self::assertSame('The **Gravel Helmet** comes in M and L.', $prose);
+        self::assertSame([], $this->stages($trace));
     }
 
     /**
@@ -106,15 +112,13 @@ final class ReplyLeavesTheProcessCleanTest extends TestCase
 
         $event = $trace->events()[0] ?? null;
 
-        // Narrowed the way `GroundingOutputProcessorTest` narrows a gateway lookup: the analyzer
-        // reads an assertion, not a count.
         self::assertNotNull($event);
         self::assertSame('disclosure.withheld', $event->stage);
         self::assertSame(['search_products', 'add_to_cart'], $event->payload['toolNames'] ?? null);
         self::assertSame(50, $event->payload['withheldChars'] ?? null);
     }
 
-    public function testAReplyThatWasAlreadyPlainAndDiscreetIsNotTouchedAtAll(): void
+    public function testAReplyThatIsDiscreetIsLeftAlone(): void
     {
         $reply = 'I can escalate this to the shop team if you like.';
 

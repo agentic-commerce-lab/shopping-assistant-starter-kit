@@ -295,7 +295,6 @@ One turn, stage by stage. Each stage emits a trace event.
 | 11 | Generate | `Agent\AgentLoop` + LLM | prose + optional tool call. **Not product ids** — see the correction below stage 15 |
 | 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
 | 12b | Withhold a disclosure | `Agent\DisclosureGuardOutputProcessor` | records `disclosure.withheld` and replaces the reply when it recites a tool name. The prompt forbids describing the tools; this is the part that does not depend on the model agreeing. Runs **after** grounding, so `validate` and `claims.audit` still record what the model wrote |
-| 12c | Plain prose | `Agent\PlainProseOutputProcessor` | records `prose.plain` and strips markdown on the way out. Measured over 34 real conversations: 78 of 104 replies carried markup the prompt bans by name, and the shipped widget renders the reply as text nodes |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
 | 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 20) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
 | 15 | Record | `Trace\TraceRecorder` | persist conversation + events |
@@ -923,7 +922,6 @@ replies had no answer in the data:
 |---|---|---|
 | `tool.result` | `Agent\BoundedToolbox` | what a tool returned — its key list and its counted fields, never the payload. A search reply carries eight product summaries and the two cart tools read the shopper's live basket, so `Agent\ToolResultShape` records shape rather than content |
 | `turn.repeat` | `Agent\AssistantRunner` | that the shopper has asked this before, with which turn and how close. Absent on a new ask. Fires on 18 of the 104 replies in that corpus and covers six of its eight worst sessions |
-| `prose.plain` | `Agent\PlainProseOutputProcessor` | that markdown was stripped, and how many characters went |
 | `disclosure.withheld` | `Agent\DisclosureGuardOutputProcessor` | that a reply reciting tool names was replaced, which names, and how much text went nowhere — never the text |
 
 `elapsed_ms` is milliseconds from turn start to when the event was recorded — an offset, not a
@@ -936,6 +934,15 @@ way, which is why it survived — every test had one turn. `TraceRecorder::recor
 and a *completion* marker at others (`SearchProductsTool`), so a gap-to-next duration would mean a
 different thing per row. The Administration renders gaps visually and claims no durations. This
 table previously listed `duration_ms`, which never existed in code (ruling R62).
+
+**A `prose.plain` stage briefly existed and was removed the same day.** It stripped markdown
+server-side, on the belief that the widget renders the reply as plain text. It does not:
+`src/Resources/app/storefront/src/assistant/markdown.js` is a purpose-built reader that turns four
+inline and four block forms into DOM nodes — no `innerHTML` anywhere, so HTML never renders and
+markdown does. It was written in August for exactly the complaint the strip was meant to fix.
+Stripping server-side therefore removed formatting the shipped surface renders properly. The
+prompt's plain-prose rule stays as what it always was, and as its own wording says: a portability
+request for a surface with no such reader, or no screen at all.
 
 ### Optional dev trace sink
 

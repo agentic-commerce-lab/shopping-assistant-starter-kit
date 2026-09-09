@@ -596,6 +596,23 @@ If your gateway returns cards whose `parentId` is null for genuine family member
 wrong in the direction that over-promises. That is the same obligation the DTO section below states
 for `parentId` generally, and this is what depends on it.
 
+#### `all_shown` is the only licence to say there is nothing more
+
+The prompt lets the assistant tell a shopper plainly that there are no more products of a kind —
+which a shopper asking "more please" is owed — but only when the reply carries **`all_shown`**. That
+field appears when two things hold together: nothing is withheld, and the candidate window did not
+fill up. The second half is the one a model cannot work out: `matched` is a floor rather than a
+census whenever the window saturated (`more: true`), so whole families may exist beyond it that
+retrieval never saw.
+
+Implementing `MatchCountReader` makes the difference visible — an exact count settles the total, so
+`more` is false and the licence is available on a saturated window too. Without it, a large result
+set never carries `all_shown`, which is the safe direction.
+
+`all_shown` says "this search", never "the shop". An exhausted search establishes only that these
+words matched nothing further; `SearchProductsTool::NO_MATCH_NOTE` owns that distinction and this
+field must not be read as weakening it.
+
 ### The DTOs grew, and a gateway that ignores that lies quietly
 
 Two shapes crossing this boundary carry obligations that did not exist when the interface was six

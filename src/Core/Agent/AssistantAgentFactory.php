@@ -296,14 +296,13 @@ final readonly class AssistantAgentFactory
             outputProcessors: [
                 $toolProcessor,
                 new GroundingOutputProcessor($renderer, $trace, $facets),
-                // Both of these rewrite the reply, and both are kept AFTER grounding on purpose:
-                // its audits record what the MODEL wrote, and would report on a rewritten sentence
-                // if they ran second. See each class's docblock.
+                // This rewrites the reply, and it is kept AFTER grounding on purpose: those audits
+                // record what the MODEL wrote, and would report on the replacement sentence if they
+                // ran second.
                 // The raw setting, exactly as IncompleteTurnMessage and FailedTurnMessage are given it:
                 // each message class owns its own fallback, so an unknown value is declined in
                 // English rather than resolved twice in two places.
                 new DisclosureGuardOutputProcessor($toolbox, $trace, $config->defaultReplyLanguage),
-                new PlainProseOutputProcessor($trace),
             ],
         );
 

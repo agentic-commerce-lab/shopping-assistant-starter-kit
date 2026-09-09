@@ -48,7 +48,7 @@ final class SearchResultCounts
      * @param bool              $saturated whether the candidate window filled up
      * @param int|null          $exact     an authoritative match count, when the gateway could give one
      *
-     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>, total: int, matched: int, more: bool, withheld?: int}
+     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>, total: int, matched: int, more: bool, withheld?: int, all_shown?: true, all_shown_note?: string}
      */
     public static function of(
         array $products,
@@ -57,6 +57,8 @@ final class SearchResultCounts
         bool $saturated,
         ?int $exact = null,
     ): array {
+        $withheld = WithheldCount::replyFor($survivors, $returned);
+
         return [
             // id + name + options, never a figure — see ToolProductSummary for why bare ids made
             // variant identification cost one tool call per candidate.
@@ -67,7 +69,11 @@ final class SearchResultCounts
             // **The cards, not the counts.** `withheld` is measured in products rather than rows,
             // and only the card lists carry which rows belong to the same product. See
             // {@see WithheldCount} for the session that makes the difference load-bearing.
-            ...WithheldCount::replyFor($survivors, $returned),
+            ...$withheld,
+            // The one condition under which the assistant may say there is nothing more. Needs both
+            // halves — nothing withheld AND an unsaturated window — so it is computed here, where
+            // both are known, rather than left to the model to combine. See {@see EverythingShown}.
+            ...EverythingShown::replyFor($withheld !== [], $exact === null && $saturated),
         ];
     }
 }
