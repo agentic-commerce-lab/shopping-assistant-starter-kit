@@ -114,6 +114,11 @@ factory, and four of them are switchable by the merchant:
 model is handed: `enableMatchReasons` (deterministic reason codes for *why* a product was retrieved)
 and the bounded `properties` list every product summary now includes.
 
+One further switch changes what the model may *say* rather than what it is handed, so it constructs
+no tool and appears in no table above: **`onlyGivenInformation`** appends a prompt block confining
+the reply to what the shop's data and documents state. Off by default. See ARCHITECTURE.md's
+*Configuration* section for what it does and does not guarantee.
+
 A factory returning `null` is how all four switches work, and it is the pattern to copy: a tool that
 is never constructed is never in the schema the model sees, which keeps capability control out of the
 prompt. A tool the model can see is a tool it will try, and a refusal reads to a shopper as a failure.
@@ -573,6 +578,23 @@ Two contract obligations that are easy to get wrong and impossible to detect fro
   number beside `matched` is worse than one nobody can tell which to trust.
 - **`categories()` with an unknown `$parentId` returns an empty list, never the top level.** A caller
   that mistyped an id must not silently get the whole tree back.
+
+#### `withheld` counts products, not rows
+
+A search reply carries `total` (how many are in `products`), `matched` (how many the search found)
+and, since 2026-09-09, **`withheld`** — how many more *products* the shopper could still be shown.
+Only when there are any.
+
+It is not `matched` minus `total`, and the difference is load-bearing. `FamilyDiversifier` returns
+one card per product family, so a result of nine rows across four families is four cards at any limit
+the model asks for. Subtracting rows would report five more lights that do not exist as separate
+products; those five are sizes and colours of the four already on screen, and `TruncatedFamilies`
+discloses them in those terms. So `withheld` counts distinct product identities — a card's
+`parentId` when it has one, its own id when it does not.
+
+If your gateway returns cards whose `parentId` is null for genuine family members, this count is
+wrong in the direction that over-promises. That is the same obligation the DTO section below states
+for `parentId` generally, and this is what depends on it.
 
 ### The DTOs grew, and a gateway that ignores that lies quietly
 

@@ -280,7 +280,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | # | Stage | Class | Note |
 |---|---|---|---|
 | 0 | Budget | `Policy\RequestBudget` | per-caller window then per-channel daily budget, **before the first database call**. A refusal is a 429 with `Retry-After`, and writes nothing |
-| 1 | Guard | `Policy\GuardCheck` | `assistantEnabled`. Rejects before any model cost |
+| 1 | Guard | `Policy\GuardCheck` | `assistantEnabled`, and **nothing else** — the payload carries `control: kill_switch` because the stage name does not say so. It is the merchant's off switch, not an injection guard; there is no instruction-plane guard in this pipeline, by the design decision recorded under *Tools* below. Rejects before any model cost |
 | 2 | Session load | `AssistantController` | history + inferred shopper profile |
 | 2b | Page context | `Agent\ShopwareChatTurnRunner` | records `page.context` `{reported: bool, resolved: ?string, category: ?string}`. The reported product id is resolved through `gateway->product($id, $config->scope)` — a **hint, not an authority**: what does not resolve is ignored, so the blocklist and the excluded categories decide what the assistant may see, not the client. A resolved card is registered on the `FactRenderer` and named in the prompt by `Prompt\ViewingContext` as id, name and options — **never a figure**. A reported category id is not resolved at all; it becomes a `ProductQuery` constraint, and `retrieve.without_category` is recorded when a search that found nothing is retried without it |
 | 3 | Understand | *(no separate step)* | With tool calling the model's tool arguments **are** the extracted intent. `SearchProductsTool` records the `understand` stage from its own validated arguments. The guarantee that matters — the model never supplies a field name — is enforced in `QueryBuilder`, not here. Saves one LLM round trip per turn |
@@ -294,6 +294,8 @@ One turn, stage by stage. Each stage emits a trace event.
 | 10b | Prompt | `Prompt\PromptProviderInterface`, recorded by `AssistantRunner` | the system message this turn ran with, **in full**. Recorded before the platform is called, so a blocked turn has none |
 | 11 | Generate | `Agent\AgentLoop` + LLM | prose + optional tool call. **Not product ids** — see the correction below stage 15 |
 | 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
+| 12b | Withhold a disclosure | `Agent\DisclosureGuardOutputProcessor` | records `disclosure.withheld` and replaces the reply when it recites a tool name. The prompt forbids describing the tools; this is the part that does not depend on the model agreeing. Runs **after** grounding, so `validate` and `claims.audit` still record what the model wrote |
+| 12c | Plain prose | `Agent\PlainProseOutputProcessor` | records `prose.plain` and strips markdown on the way out. Measured over 34 real conversations: 78 of 104 replies carried markup the prompt bans by name, and the shipped widget renders the reply as text nodes |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
 | 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 20) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
 | 15 | Record | `Trace\TraceRecorder` | persist conversation + events |
@@ -914,8 +916,23 @@ they are the four ways this class of product lies:
 
 `filtersDropped` · `inventedProductIds` · `modelClaimsDiscarded` · `stockSource`
 
+**Stages added after the September 2026 trace review**, each because a question about 104 real
+replies had no answer in the data:
+
+| Stage | Recorded by | Answers |
+|---|---|---|
+| `tool.result` | `Agent\BoundedToolbox` | what a tool returned — its key list and its counted fields, never the payload. A search reply carries eight product summaries and the two cart tools read the shopper's live basket, so `Agent\ToolResultShape` records shape rather than content |
+| `turn.repeat` | `Agent\AssistantRunner` | that the shopper has asked this before, with which turn and how close. Absent on a new ask. Fires on 18 of the 104 replies in that corpus and covers six of its eight worst sessions |
+| `prose.plain` | `Agent\PlainProseOutputProcessor` | that markdown was stripped, and how many characters went |
+| `disclosure.withheld` | `Agent\DisclosureGuardOutputProcessor` | that a reply reciting tool names was replaced, which names, and how much text went nowhere — never the text |
+
 `elapsed_ms` is milliseconds from turn start to when the event was recorded — an offset, not a
-span. `TraceRecorder::record()` is an *entry* marker at some call sites (`BoundedToolbox::execute()`)
+span. **It restarts at zero on every turn, so `seq` is the only field that orders a whole
+conversation.** Ordering a multi-turn conversation by `elapsed_ms` interleaves its turns, and
+anything that then measures gaps between adjacent rows is measuring across a turn boundary:
+`TraceExportSummary` did exactly that until 2026-09-09, and reported 11.6 s of model time on an
+eleven-reply conversation that spent 66.0 s waiting. Single-turn conversations reconciled either
+way, which is why it survived — every test had one turn. `TraceRecorder::record()` is an *entry* marker at some call sites (`BoundedToolbox::execute()`)
 and a *completion* marker at others (`SearchProductsTool`), so a gap-to-next duration would mean a
 different thing per row. The Administration renders gaps visually and claims no durations. This
 table previously listed `duration_ms`, which never existed in code (ruling R62).
@@ -958,7 +975,15 @@ Shopware system config has no real secret storage) · `agentVoice` ·
 `blockedProducts` · `blockedCategories` · `enableAddToCart` · `maxItemQuantity` ·
 `maxCartValue` · `assistantEnabled` · `maxToolCallsPerTurn` · `requestsPerMinute` ·
 `dailyRequestCap` · `traceRetentionDays` · `embeddingModel` · `autoIndexShopPages` ·
-`enableMatchReasons` · `enableCompareProducts`
+`enableMatchReasons` · `enableCompareProducts` · `onlyGivenInformation`
+
+**`onlyGivenInformation` narrows what the assistant may say, and never widens it.** On, it appends
+one block to the system prompt and changes nothing else: the assistant states what the shop's data
+and documents say and adds no inference, no elaboration and no general knowledge about a material or
+a standard. Off by default, because the grounding rules already forbid inventing the facts under an
+explanation and most shoppers are asking for the explanation. It is a prompt block, so it narrows
+rather than seals — measured on the staging shop it removed an invented lock-resistance time and
+left a softer claim standing. Requested in writing by a merchant evaluating the assistant.
 
 **`embeddingModel` switches shop information on.** Empty is off, and off means the model is offered no
 shop-information tool at all rather than one that fails. It must be a model the configured provider
