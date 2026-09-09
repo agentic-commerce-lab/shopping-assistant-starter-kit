@@ -108,6 +108,7 @@ factory, and four of them are switchable by the merchant:
 | `go_to_checkout` | grounded | `cartAvailable` — no merchant switch; see ARCHITECTURE.md |
 | `compare_products` | grounded | `enableCompareProducts` (off by default) |
 | `search_shop_info` | plain | an `embeddingModel` is configured |
+| `browse_categories` | grounded | the gateway implements `CategoryTreeReader` |
 | `escalate` | plain | `enableEscalation` |
 
 `search_products` also carries two opt-in behaviours worth knowing about because they change what the
@@ -564,7 +565,7 @@ assistant simply gets worse:
 | `BatchProductLookup` | `products(array $ids, CatalogScope): list<ProductCard>` | `CardResolver` falls back to one `product()` call per id — correct, and an N+1 on every rendered shortlist |
 | `MatchCountReader` | `countMatches(ProductQuery, CatalogScope): int` | The model only ever sees `matched`, which is a floor capped at the 50-product candidate window. It cannot tell *"here are all six occasion dresses"* from *"here are four of three hundred"* |
 | `FamilyVariantLookup` | `variantsOf(string $parentId, CatalogScope): list<ProductCard>` | `WholeFamilyResolver` returns nothing, so the assistant cannot describe a family whose variants did not all fit in the candidate window. `add_to_cart` is unaffected: both of its variant refusals read the card it already loaded — `StockSource::Parent` for a family, and `parentId` plus `resolveVariant()` for a variant the shopper never chose — precisely so the one tool with write authority never fails open on an optional interface |
-| `CategoryTreeReader` | `categories(?string $parentId, CatalogScope): list<CategoryNode>` | A search that finds nothing offers no orientation: the shopper is told there are no results and given nowhere to go |
+| `CategoryTreeReader` | `categories(?string $parentId, CatalogScope): list<CategoryNode>` | Two things are lost. A search that finds nothing offers no orientation — the shopper is told there are no results and given nowhere to go. And `browse_categories` is never constructed, so an assortment question ("do you sell bikes?", "what do you carry?") has no tool that answers it and gets answered from a product search instead, which matches words in names rather than kinds of thing |
 
 Implement all four unless you have a reason not to. `DalCommerceGateway` implements every one and is
 the reference to read.

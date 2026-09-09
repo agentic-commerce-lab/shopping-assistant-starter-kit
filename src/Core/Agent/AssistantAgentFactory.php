@@ -27,6 +27,7 @@ use Swag\AssistantStarterKit\Core\Retrieval\FacetProbe;
 use Swag\AssistantStarterKit\Core\Retrieval\QueryBuilder;
 use Swag\AssistantStarterKit\Core\Retrieval\SharedFacetCache;
 use Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\BrowseCategoriesToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\CompareProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\EscalateToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GetProductToolFactory;
@@ -117,6 +118,7 @@ final readonly class AssistantAgentFactory
                 new GetProductToolFactory(),
                 new AddToCartToolFactory(),
                 new CompareProductsToolFactory(),
+                new BrowseCategoriesToolFactory(),
             ],
             new SystemPromptProvider(),
             new SymfonyAiPlatform($http),
@@ -296,12 +298,10 @@ final readonly class AssistantAgentFactory
             outputProcessors: [
                 $toolProcessor,
                 new GroundingOutputProcessor($renderer, $trace, $facets),
-                // This rewrites the reply, and it is kept AFTER grounding on purpose: those audits
-                // record what the MODEL wrote, and would report on the replacement sentence if they
-                // ran second.
-                // The raw setting, exactly as IncompleteTurnMessage and FailedTurnMessage are given it:
-                // each message class owns its own fallback, so an unknown value is declined in
-                // English rather than resolved twice in two places.
+                // Kept AFTER grounding on purpose: those audits record what the MODEL wrote, and
+                // would report on the replacement sentence if they ran second. The language is the
+                // raw setting, exactly as IncompleteTurnMessage and FailedTurnMessage are given it —
+                // each owns its own fallback rather than resolving one twice in two places.
                 new DisclosureGuardOutputProcessor($toolbox, $trace, $config->defaultReplyLanguage),
             ],
         );

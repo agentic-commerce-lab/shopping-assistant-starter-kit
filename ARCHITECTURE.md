@@ -500,10 +500,26 @@ Note the trust boundary: **tools are trusted code the merchant installed; the mo
 | `add_to_cart` | write | `enableAddToCart && cartAvailable` |
 | `go_to_checkout` | read | `cartAvailable` |
 | `compare_products` | read | `enableCompareProducts` |
+| `browse_categories` | read | the gateway implements `CategoryTreeReader` |
 | `escalate` | terminal | always |
 
 **Capability control is toolbox construction, never a prompt instruction.** An unavailable tool
 is never instantiated, so the model never sees it.
+
+`browse_categories` answers a question about the RANGE rather than about a product, and it exists
+because there was no tool that did. Measured over the 34-conversation export of 2026-09-09: *"do you
+sell bikes?"* was asked in eight conversations and answered in all eight with a bottle of cleaning
+fluid — `bike` is a token in *Bike Wash 1L*, so the search matched and a non-empty result skips the
+orientation `NoMatchOrientation` attaches to an empty one. *"What do you sell?"* was asked
+five times and answered five times with **no tool call at all**, from the facet vocabulary in the
+prompt, differently on each run.
+
+It reads the shop's own category tree, returns names only — no ids, no counts, `CategoryNode`
+refuses the latter by design — and drops empty departments. Its guidance sits in its own description
+rather than in the system prompt, which is the D6 corollary: the prompt cannot know whether this
+turn constructed the tool, and an instruction to call an absent one is worse than none. The tree
+supports *"there is no department for that"* and never *"the shop does not sell that"*; a product
+can be filed somewhere unexpected, which is the prohibition `NO_MATCH_NOTE` already owns.
 
 `go_to_checkout` is the one shipped tool with no merchant switch. It writes nothing and needs no
 configured destination — it reads a cart the shopper already owns and reports whether anything is in
