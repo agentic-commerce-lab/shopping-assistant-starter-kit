@@ -175,7 +175,17 @@ final class BoundedToolbox implements ToolboxInterface
         }
 
         try {
-            return $this->inner->execute($toolCall);
+            $result = $this->inner->execute($toolCall);
+
+            // What came back, described rather than copied — see ToolResultShape for the three
+            // questions a trace review could not answer, and for why the payload itself is not
+            // written here.
+            $this->trace->record('tool.result', [
+                'name' => $toolCall->getName(),
+                ...ToolResultShape::of($result->getResult()),
+            ]);
+
+            return $result;
         } catch (ToolExecutionException $e) {
             // Null means "not bad model input" — a genuine server fault, which must
             // keep propagating rather than becoming a note the model shrugs off.

@@ -32,6 +32,34 @@ use Symfony\AI\Platform\Result\TextResult;
  */
 final class AssistantRunner
 {
+    /**
+     * The sampling temperature every turn is invoked with, and why it is zero.
+     *
+     * **A merchant evaluating the assistant on 2026-09-09 reported it first:** *"I get different
+     * answers, with different information when asking the same question twice."* Nothing in this
+     * plugin was setting a temperature, so every turn ran at whatever the provider defaults to —
+     * for the OpenAI-compatible endpoints this platform targets, typically 0.7 or higher. Two
+     * identical questions were therefore two different samples by construction, and the shopper was
+     * right to read that as the shop being unsure of its own catalogue.
+     *
+     * Zero is the right value for this product rather than merely a safe one. The assistant's job is
+     * to report what the shop's data says; there is no part of that job that improves with sampling
+     * entropy, and the same entropy is a documented source of the embellishment
+     * {@see \Swag\AssistantStarterKit\Core\Grounding\ProseAudit} exists to catch. It also makes
+     * the eval suite mean something: a journey that passes at temperature 0.9 passed one sample.
+     *
+     * **Sent as an option rather than baked into {@see \Swag\AssistantStarterKit\Core\Llm\LlmSettings}**,
+     * because `Agent::call()` forwards options to the platform and `Toolbox\AgentProcessor` carries
+     * them into every nested tool round — so one value here covers the whole turn, including the
+     * rounds this class never sees. `temperature` is in the OpenAI chat-completions contract every
+     * provider this bridge targets implements, which is what separates it from a token cap: see
+     * {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt}'s brevity docblock for why the
+     * limit fields cannot be set the same way.
+     *
+     * Not a merchant setting. Reproducibility is a property of a grounded assistant, not a taste.
+     */
+    private const TEMPERATURE = 0.0;
+
     public function __construct(
         private readonly AssistantConfig $config,
         private readonly Bundle $bundle,
@@ -62,17 +90,36 @@ final class AssistantRunner
             return new AssistantTurn($decision->message, [], 'error');
         }
 
+        // `control` names what this stage actually examined, and it was added because the stage name
+        // does not. A trace review in September 2026 read 104 `guard.check: allow` verdicts as an
+        // injection guard that never fired, and wrote a whole section on the strength of it —
+        // {@see \Swag\AssistantStarterKit\Core\Policy\GuardCheck} is the merchant's on/off switch
+        // and has never had a pattern to miss. The stage name itself stays: it is a recorded value in
+        // every trace already written, and the argument for keeping `kill_switch` stable as a reason
+        // code applies to it word for word.
         $this->bundle->trace->record('guard.check', [
             'verdict' => 'allow',
             'reasonCode' => $decision->reasonCode,
+            'control' => 'kill_switch',
         ]);
 
         // Before the model runs: the price audit needs to know which figures the SHOPPER introduced,
         // so it does not flag the model for restating them (ruling R85).
         $this->bundle->renderer->registerShopperMessage($message);
 
+        // Only when the shopper has asked this before. See RepeatedAsk: it is the signal that every
+        // one of the review's eight worst sessions shared, and the one a merchant cannot find by
+        // reading. A turn that is not a repeat records nothing, so the stage's presence is the fact.
+        $repeated = RepeatedAsk::in($message, $history);
+
+        if ($repeated !== null) {
+            $this->bundle->trace->record('turn.repeat', $repeated);
+        }
+
         try {
-            $result = $this->bundle->agent->call($this->buildMessageBag($message, $history));
+            $result = $this->bundle->agent->call($this->buildMessageBag($message, $history), [
+                'temperature' => self::TEMPERATURE,
+            ]);
         } catch (MaxIterationsExceededException) {
             // A confused model that keeps requesting tool calls is a foreseeable
             // condition, not a server fault — BoundedToolbox's cap firing is this
