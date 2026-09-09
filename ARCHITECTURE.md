@@ -517,9 +517,16 @@ prompt, differently on each run.
 It reads the shop's own category tree, returns names only — no ids, no counts, `CategoryNode`
 refuses the latter by design — and drops empty departments. Its guidance sits in its own description
 rather than in the system prompt, which is the D6 corollary: the prompt cannot know whether this
-turn constructed the tool, and an instruction to call an absent one is worse than none. The tree
-supports *"there is no department for that"* and never *"the shop does not sell that"*; a product
-can be filed somewhere unexpected, which is the prohibition `NO_MATCH_NOTE` already owns.
+turn constructed the tool, and an instruction to call an absent one is worse than none.
+
+**It licenses no absence claim, and its first version did.** That version offered the model *"you
+may say the shop has no department for it"* — defensible on the face of it, since the tree is the
+shop's own statement of its departments, and it took `no_match_not_absence` to 0 of 3 on both
+archetypes against a documented 2/3–3/3 band. `NoAbsenceClaimInProse` matches on the SUBJECT (`the
+shop has no`, `we do not carry`) and deliberately cannot tell "no department for bikes" from "no
+bikes"; a shopper reads the gist, and a department tree is not an assortment — a bike filed under
+Components is the case `NO_MATCH_NOTE` exists for. The tool now states what the shop **has** and
+never what it lacks, which is one degree less direct and is what the safety rule requires.
 
 `go_to_checkout` is the one shipped tool with no merchant switch. It writes nothing and needs no
 configured destination — it reads a cart the shopper already owns and reports whether anything is in
@@ -950,6 +957,14 @@ way, which is why it survived — every test had one turn. `TraceRecorder::recor
 and a *completion* marker at others (`SearchProductsTool`), so a gap-to-next duration would mean a
 different thing per row. The Administration renders gaps visually and claims no durations. This
 table previously listed `duration_ms`, which never existed in code (ruling R62).
+
+`grounding.select` carries one further field, `continuedNames`, and only when there is something to
+report: a retrieved product's name with another capitalised word stuck to the end of it. Measured on
+staging 2026-09-09 — *"Road Helmet Aero Mirror"*, *"Gravel Helmet Visor"*, *"Kids Helmet Light"* —
+each of which rendered the real helmet's card, with its real price and add button, beneath a product
+that does not exist. `validate` reported `inventedProductIds: []` and was right: the ids were real.
+`ContinuedProductNames` now withholds the card and counts the phrase, which is what a real detector
+for this class needs first.
 
 **A `prose.plain` stage briefly existed and was removed the same day.** It stripped markdown
 server-side, on the belief that the widget renders the reply as plain text. It does not:

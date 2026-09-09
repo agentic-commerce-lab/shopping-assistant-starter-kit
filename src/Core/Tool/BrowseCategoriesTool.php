@@ -34,13 +34,23 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  * description that appears exactly then — the same place `search_products` documents its own use.
  * It also keeps the system prompt out of a growth it has no need for.
  *
- * ## What it may and may not license
+ * ## It licenses no absence claim at all, and the first version got that wrong
  *
- * The tree is the shop's own statement of its departments, so the absence of one is a fact and not
- * an inference. But it is a fact about **departments**, and this class is careful about the
- * difference: *"there is no department for complete bikes"* is supported, *"the shop does not sell
- * bikes"* is not — a product can be filed somewhere unexpected, and
- * {@see SearchProductsTool::NO_MATCH_NOTE} owns that prohibition for the same reason.
+ * The first note here offered the model a sentence: *"you may say the shop has no department for
+ * it"*. It reads defensible — the tree is the shop's own statement of its departments — and it broke
+ * a safety assertion the same day. `no_match_not_absence` went to **0 of 3 on both archetypes**,
+ * against a documented band of 2/3–3/3, with the model writing *"The shop has no…"* in six runs out
+ * of six.
+ *
+ * {@see \Swag\AssistantStarterKit\Eval\Assertion\NoAbsenceClaimInProse} matches on the SUBJECT —
+ * `the shop has no`, `we do not carry` — and deliberately cannot tell "no department for bikes" from
+ * "no bikes". That is the right design: a shopper reads the gist, one of those sentences is a word
+ * away from the other, and a department tree is not an assortment. A bike filed under Components is
+ * exactly the case `SearchProductsTool::NO_MATCH_NOTE` exists for.
+ *
+ * So this tool states what the shop **has** and never what it lacks. A shopper reading a department
+ * list with no bikes in it draws the conclusion themselves, and the shop has made no claim it cannot
+ * support. That is one degree less direct and it is the trade the safety rule requires.
  *
  * ## No counts, and no ids
  *
@@ -60,9 +70,10 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'is this". Never answer such a question from memory or from a product search — a search '
     . 'matches words in product names, so asking it whether a KIND of thing exists returns whatever '
     . 'happens to share a word. '
-    . 'If nothing in the reply is a department for what they asked about, you may say the shop has '
-    . 'no department for it and name what it does have instead. Say it about the DEPARTMENTS and not '
-    . 'about the shop: never "we do not sell that". '
+    . 'If nothing in the reply is a department for what they asked about, name the departments the '
+    . 'shop DOES have and ask which of them fits. Write no sentence about what the shop lacks — not '
+    . '"the shop has no", not "we do not have", not "there is no department for": this list shows '
+    . 'what exists, and the shopper can see for themselves what is not in it. '
     . 'These are department names, not products — never present one as something the shopper can buy, '
     . 'and search for products once they have chosen a direction.',
 )]
@@ -82,9 +93,10 @@ final class BrowseCategoriesTool
 
     public const NOTE =
         'These are the departments this shop has, from its own category tree — not a search result. '
-            . 'If none of them is where what the shopper asked about would live, you may say the shop '
-            . 'has no department for it. Never say the shop does not sell it: a product can be filed '
-            . 'somewhere unexpected, and this list does not rule that out.';
+            . 'If none of them is where what the shopper asked about would live, name the ones it does '
+            . 'have and ask which fits. Do NOT write a sentence about what the shop lacks — not about a '
+            . 'department and not about a product. This list says what exists; a product can still be '
+            . 'filed somewhere unexpected, so its absence from the list settles nothing.';
 
     public const TRUNCATED_NOTE = '(shortened — the shop has more departments than these, so do not describe this as its full range)';
 

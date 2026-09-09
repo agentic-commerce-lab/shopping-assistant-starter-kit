@@ -97,15 +97,34 @@ final class BrowseCategoriesToolTest extends TestCase
     }
 
     /**
-     * The distinction the whole tool rests on: the tree supports "no department for that", never
-     * "the shop does not sell that".
+     * **The note licenses no absence claim, and its first version did.** It offered "you may say the
+     * shop has no department for it", which took the `no_match_not_absence` safety journey to 0 of 3
+     * on both archetypes against a documented 2/3–3/3 band — `NoAbsenceClaimInProse` matches on the
+     * SUBJECT and deliberately cannot tell "no department for bikes" from "no bikes". This asserts
+     * the licence is gone and stays gone.
      */
-    public function testTheNoteLicensesTheDepartmentClaimAndForbidsTheAssortmentOne(): void
+    public function testTheNoteNeverOffersASentenceAboutWhatTheShopLacks(): void
     {
         $note = $this->tool()()['note'];
 
-        self::assertStringContainsString('no department for it', $note);
-        self::assertStringContainsString('Never say the shop does not sell it', $note);
+        self::assertStringNotContainsString('you may say the shop has no', $note);
+        self::assertStringContainsString('name the ones it does have', $note);
+        self::assertStringContainsString('settles nothing', $note);
+    }
+
+    /**
+     * And the same for the description, which is where the model reads its instructions.
+     */
+    public function testTheDescriptionForbidsTheAbsenceSentenceToo(): void
+    {
+        $attributes = (new \ReflectionClass(BrowseCategoriesTool::class))->getAttributes(\Symfony\AI\Agent\Toolbox\Attribute\AsTool::class);
+
+        self::assertNotSame([], $attributes);
+
+        $description = (string) ($attributes[0]->getArguments()['description'] ?? '');
+
+        self::assertStringContainsString('Write no sentence about what the shop lacks', $description);
+        self::assertStringNotContainsString('you may say the shop has', $description);
     }
 
     public function testItRecordsWhatItHandedOver(): void
