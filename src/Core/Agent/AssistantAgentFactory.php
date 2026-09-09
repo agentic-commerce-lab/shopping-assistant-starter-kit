@@ -293,7 +293,18 @@ final readonly class AssistantAgentFactory
             $this->platform->of($llm),
             $llm->model,
             inputProcessors: [new SlidingWindowInputProcessor(), $toolProcessor],
-            outputProcessors: [$toolProcessor, new GroundingOutputProcessor($renderer, $trace, $facets)],
+            outputProcessors: [
+                $toolProcessor,
+                new GroundingOutputProcessor($renderer, $trace, $facets),
+                // Both of these rewrite the reply, and both are kept AFTER grounding on purpose:
+                // its audits record what the MODEL wrote, and would report on a rewritten sentence
+                // if they ran second. See each class's docblock.
+                // The raw setting, exactly as IncompleteTurnMessage and FailedTurnMessage are given it:
+                // each message class owns its own fallback, so an unknown value is declined in
+                // English rather than resolved twice in two places.
+                new DisclosureGuardOutputProcessor($toolbox, $trace, $config->defaultReplyLanguage),
+                new PlainProseOutputProcessor($trace),
+            ],
         );
 
         $familyOptions = self::familyOptionsOf($gateway, $viewing, $config->scope);

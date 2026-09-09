@@ -49,6 +49,15 @@ final readonly class AssistantConfig
         public string $escalationMessage = '',
         public bool $enableMatchReasons = false,
         public bool $enableCompareProducts = false,
+        /**
+         * Whether the assistant may say anything the shop's own data and documents do not say.
+         *
+         * On, it appends {@see \Swag\AssistantStarterKit\Core\Prompt\CapabilityRules::ONLY_GIVEN_INFORMATION}
+         * and nothing else: a merchant asking for a thinner assistant gets a narrower prompt, never
+         * a different pipeline. Off by default, because the grounding rules already forbid inventing
+         * the facts underneath an explanation and most shoppers are asking for the explanation.
+         */
+        public bool $onlyGivenInformation = false,
         public bool $logTraces = true,
         /**
          * The sales channel this config was built for.
