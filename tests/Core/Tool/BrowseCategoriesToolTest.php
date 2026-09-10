@@ -117,14 +117,33 @@ final class BrowseCategoriesToolTest extends TestCase
      */
     public function testTheDescriptionForbidsTheAbsenceSentenceToo(): void
     {
+        $description = self::descriptionOfTool();
+
+        self::assertStringContainsString('Write no sentence about what the shop lacks', $description);
+        self::assertStringNotContainsString('you may say the shop has', $description);
+    }
+
+    /**
+     * The second trigger: a search that came back with the wrong KIND of thing. Measured on staging,
+     * the model knew the tool was there and asked permission — so the shopper got a bottle of cleaner
+     * and a question instead of an answer.
+     */
+    public function testTheDescriptionChainsItAfterAMismatchedSearchWithoutAsking(): void
+    {
+        $description = self::descriptionOfTool();
+
+        self::assertStringContainsString('WITHOUT ASKING FIRST', $description);
+        self::assertStringContainsString('is the kind of thing the shopper asked for', $description);
+        self::assertStringContainsString('do not name the mismatched product', $description);
+    }
+
+    private static function descriptionOfTool(): string
+    {
         $attributes = (new \ReflectionClass(BrowseCategoriesTool::class))->getAttributes(\Symfony\AI\Agent\Toolbox\Attribute\AsTool::class);
 
         self::assertNotSame([], $attributes);
 
-        $description = (string) ($attributes[0]->getArguments()['description'] ?? '');
-
-        self::assertStringContainsString('Write no sentence about what the shop lacks', $description);
-        self::assertStringNotContainsString('you may say the shop has', $description);
+        return (string) ($attributes[0]->getArguments()['description'] ?? '');
     }
 
     public function testItRecordsWhatItHandedOver(): void

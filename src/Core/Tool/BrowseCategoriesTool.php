@@ -26,6 +26,25 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  * tool that answered one. Asked twice, the invented answer even differed — "bike care products" in
  * one run, "bags and storage" in the next — because there was nothing for it to be consistent with.
  *
+ * ## Two triggers, and the second one was measured after the first shipped
+ *
+ * The obvious one is a question about the range. The second is a product search that came back with
+ * the wrong KIND of thing, and it is here because of what the model did when it had the tool but no
+ * instruction to chain it. Measured on staging 2026-09-09, *"I want to buy a bike"*:
+ *
+ * > The search found no bikes, only a **Bike Wash 1L** in stock. Would you like me to check what
+ * > kinds of products the shop *does* carry for cycling?
+ *
+ * It knew the tool was there and asked permission — so the shopper still got a bottle of cleaner and
+ * a question instead of an answer. *"Do you sell bikes?"* was already fixed, because that reads as a
+ * question about the range; *"I want to buy a bike"* reads as a product request and goes to the
+ * search. Five of the corpus's eight Bike-Wash conversations used the first phrasing and two or three
+ * the second.
+ *
+ * So the description says: do not offer, do not wait, and do not name the mismatched product. An
+ * instruction rather than a "wrong kind of product" detector, which this project twice declined to
+ * guess at — the candidate rule, that the term names no category, fails on *waterproof* and *gloves*.
+ *
  * ## Why the guidance is here and not in the system prompt
  *
  * Capability control is toolbox construction, not a prompt instruction (D6), and the corollary holds
@@ -74,6 +93,10 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'shop DOES have and ask which of them fits. Write no sentence about what the shop lacks — not '
     . '"the shop has no", not "we do not have", not "there is no department for": this list shows '
     . 'what exists, and the shopper can see for themselves what is not in it. '
+    . 'Call it WITHOUT ASKING FIRST in one more case: a product search came back, but nothing in it '
+    . 'is the kind of thing the shopper asked for — they wanted a bike and the search matched a bike '
+    . 'cleaner because both names carry the word. Do not offer to check and wait for a yes, and do '
+    . 'not name the mismatched product: call this, then answer with the departments the shop has. '
     . 'These are department names, not products — never present one as something the shopper can buy, '
     . 'and search for products once they have chosen a direction.',
 )]
