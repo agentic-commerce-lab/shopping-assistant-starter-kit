@@ -41,6 +41,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *     variants: list<FixtureVariant>,
  *     minPurchase?: int,
  *     purchaseSteps?: int,
+ *     bundleItems?: list<array{name: string, quantity?: int, required?: bool}>,
  * }
  */
 final class FixtureIndex
@@ -100,6 +101,7 @@ final class FixtureIndex
             properties: $product['properties'],
             minPurchase: $product['minPurchase'] ?? 1,
             purchaseSteps: $product['purchaseSteps'] ?? 1,
+            bundleItems: FixtureBundleItems::of($product['bundleItems'] ?? []),
         );
     }
 

@@ -63,24 +63,9 @@ namespace Swag\AssistantStarterKit\Core\Grounding;
  */
 final readonly class SuppliedFactClaimExtractor
 {
-    /**
-     * The grammar of "this comes with" and "this is rated as", in both languages the assistant
-     * answers in.
-     *
-     * Ordered longest-first within each family so `comes complete with` is not matched as `comes
-     * with` and left pointing at the wrong words.
-     */
-    private const MARKERS = 'comes complete with|comes with|supplied with|ships with|bundled with|delivered with|includ(?:es|ed)|geliefert mit|im lieferumfang|certified(?:\s+(?:to|for|as))?|rated(?:\s+(?:to|for|as))?|approved(?:\s+(?:to|for))?|compliant with|zertifiziert(?:\s+(?:nach|für))?';
-
-    /**
-     * How many words after the marker are read as the thing being claimed.
-     *
-     * Four covers every measured case — `the included bracket` needs two, `rated for high-security
-     * use` needs three — and stopping there is what keeps the claim's own noun from being diluted by
-     * the rest of the sentence. A wider window would drag in words the shop's prose happens to
-     * contain and report the claim as supported on the strength of them.
-     */
-    private const WORDS_AFTER = 4;
+    public function __construct(
+        private ListedFactClaims $listed = new ListedFactClaims(),
+    ) {}
 
     /**
      * @return list<string> the claim phrases, first appearance order, each reported once
@@ -94,8 +79,8 @@ final readonly class SuppliedFactClaimExtractor
         $pattern = \sprintf(
             '/(.{0,%3$d}?)((?:\b(?:%1$s)\b|\b[\p{L}]+-rated\b)'
             . '(?:[\s,]+[\p{L}\p{N}][\p{L}\p{N}\-]*){0,%2$d})(?=([^.!?\n]{0,300}([.!?])?))/isu',
-            self::MARKERS,
-            self::WORDS_AFTER,
+            ClaimPhrase::GRAMMAR,
+            ClaimPhrase::WORDS_AFTER,
             ClaimStands::CHARS,
         );
 
@@ -107,31 +92,18 @@ final readonly class SuppliedFactClaimExtractor
 
         foreach ($matches as $match) {
             if (ClaimStands::at($match[1] ?? '', $match[4] ?? '')) {
-                $claims[self::tidied($match[2] ?? '')] = true;
+                $claims[ClaimPhrase::tidied($match[2] ?? '')] = true;
             }
+        }
+
+        // The other grammar, and one this pattern structurally cannot reach: a marker followed by
+        // a colon and a bullet list. See {@see ListedFactClaims} for the reply that went unreported.
+        foreach ($this->listed->in($text) as $claim) {
+            $claims[$claim] = true;
         }
 
         unset($claims['']);
 
         return array_map(strval(...), array_keys($claims));
-    }
-
-    /**
-     * The phrase as a merchant should read it in the trace.
-     *
-     * The window stops after a fixed number of words, so it routinely ends mid-thought on a
-     * conjunction or a filler — `comes with a frame mount and`. Those words are already discarded as
-     * noise by {@see ClaimTokens}, so this changes nothing about what is flagged; it only stops the
-     * `claims.audit` payload from reading like a truncation bug to the person it is written for.
-     */
-    private static function tidied(string $phrase): string
-    {
-        return (string) preg_replace(
-            '/(?:[\s,]+(?:and|or|that|which|while|where|when|but|so|if|would|will|should|can|could|may|might'
-            . '|often|usually|typically|used|using|also|both|very|more|most'
-            . '|und|oder|wenn|die|der|das|is|are|the|a|an))+$/iu',
-            '',
-            trim($phrase),
-        );
     }
 }

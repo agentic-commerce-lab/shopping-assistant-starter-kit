@@ -23,7 +23,7 @@ trait BuildsProductCards
      * A minimal `products` array in the shape {@see \Swag\AssistantStarterKit\Core\Tool\ToolProductSummary}
      * produces. Its contents are irrelevant to the counts; the declared shape is not.
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>}>
      */
     private static function summaries(): array
     {

@@ -145,6 +145,10 @@ final class AddToCartTool
                 'name' => 'add_to_cart',
                 'policyVerdict' => 'block',
                 'policyReasonCode' => 'not_found',
+                // The id that was not found, so a merchant reading a trace can tell a model that
+                // invented an id apart from a real product this lookup cannot reach. Without it
+                // the two are the same event, and telling them apart took a code change.
+                'variantId' => $variantId,
             ]);
 
             return ['note' => 'No such product in this shop.'];
@@ -210,6 +214,11 @@ final class AddToCartTool
         //
         // The difference, not the line total: the shopper may already have had some of this
         // variant, and `$existingQuantity` was read from the live cart before the write.
+        // **A bundle is the exception, because it has no line of its own to count.** Shopware
+        // expands it into its member products (see CartCorrectionNote::bundleText()), so the
+        // lookup below can only ever return zero for one — which this class then reported as
+        // "Nothing was added" over a cart it had just filled. Which of the two a result describes
+        // is decided by CartCorrectionNote, where every other wording decision already lives.
         $stored = max(0, CartCorrectionNote::lineQuantity($cart, $variantId) - $existingQuantity);
 
         // Register the variant that was ACTUALLY added, so it is the card the shopper sees beside
@@ -232,7 +241,10 @@ final class AddToCartTool
             // Requested, and kept under its original key so existing trace readers do not shift
             // meaning underneath them. What the cart holds is the new key beside it.
             'quantity' => $quantity,
-            'storedQuantity' => $stored,
+            // For a bundle there is no line to read a stored quantity off, and reporting the
+            // requested figure as though Shopware had confirmed it would be the same guess this
+            // stage exists to avoid. The flag says which case a merchant is looking at.
+            ...CartCorrectionNote::traceFields($card, $stored),
         ]);
 
         return [
@@ -246,7 +258,12 @@ final class AddToCartTool
                 // with no link, which is the only reply that satisfies both instructions. The link
                 // is the shop's to render: `go_to_checkout` asks for it, `CheckoutPayload` draws it.
             ],
-            'note' => CartCorrectionNote::text($stored, $quantity, CartCorrectionNote::reasonFor($cart, $variantId)),
+            'note' => CartCorrectionNote::noteFor(
+                $card,
+                $stored,
+                $quantity,
+                CartCorrectionNote::reasonFor($cart, $variantId),
+            ),
         ];
     }
 

@@ -33,6 +33,7 @@ final readonly class DalCriteriaBuilder
 {
     public function __construct(
         private DalFilterTranslator $translator = new DalFilterTranslator(),
+        private BundleSupport $bundles = new BundlesUnavailable(),
     ) {}
 
     public function build(ProductQuery $query, CatalogScope $scope, string $salesChannelId): Criteria
@@ -69,6 +70,16 @@ final readonly class DalCriteriaBuilder
         // The mapper reads these and drops anything it cannot resolve, so a missing
         // association costs every card its options silently rather than loudly.
         $criteria->addAssociations(['options.group', 'properties.group', 'deliveryTime', 'cover.media']);
+
+        // **Guarded, because naming an unknown field fails the whole read.** `bundleItems` exists
+        // only where Shopware Commercial's `ProductExtension` registered it, and this builder is on
+        // the path of every product read the assistant makes — search, direct lookup and the cart's
+        // own pre-check — so an unconditional association would break all three in any shop without
+        // Commercial. The nested `.product` is what carries the member's name; the join row alone
+        // holds an id and a quantity. See DalBundleItems for the read at the other end.
+        if ($this->bundles->isAvailable()) {
+            $criteria->addAssociation(DalBundleItems::ASSOCIATION . '.product');
+        }
 
         return $criteria;
     }

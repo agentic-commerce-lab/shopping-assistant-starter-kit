@@ -103,6 +103,14 @@ final readonly class ClaimTokens
         'just',
         // The markers. Present in the shop's own prose constantly, so they must never be what makes
         // a claim look supported — see the class docblock.
+        // The generic noun for a bundle's members, and grammar rather than content for the same
+        // reason the markers below are: a reply saying a bundle "includes all items" names no
+        // product, so the claim could never be supported whatever the shop's prose said. Measured
+        // live 2026-09-10, when that exact sentence — the correct answer about what a bundle price
+        // covers — was reported as an invented delivery claim (ruling R85).
+        'item',
+        'items',
+        'even',
         'includ',
         'include',
         'includes',

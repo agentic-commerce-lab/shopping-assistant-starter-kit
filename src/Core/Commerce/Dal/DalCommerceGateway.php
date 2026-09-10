@@ -196,6 +196,15 @@ final readonly class DalCommerceGateway implements
 
     public function product(string $productId, CatalogScope $scope): ?ProductCard
     {
+        // **An id the DAL cannot parse is not found, not a raised exception.** A model that names a
+        // product instead of identifying it — "Merino Socks" — otherwise reached `EqualsFilter`,
+        // which throws `InvalidUuidException`, which is not a shape `MalformedToolArgumentRejection`
+        // unwraps: the turn ended and the shopper read "Sorry — I could not finish that just now."
+        // See {@see DalLookupIds} for why the check lives here rather than in the tools' `Guard`.
+        if (DalLookupIds::one($productId) === null) {
+            return null;
+        }
+
         $context = $this->contextProvider->current();
 
         // The scope goes in as well as the id: this is the direct-lookup half of the blocklist
@@ -229,6 +238,11 @@ final readonly class DalCommerceGateway implements
      */
     public function products(array $productIds, CatalogScope $scope): array
     {
+        // Unparseable ids are dropped rather than raising, exactly as in `product()` above; the
+        // ids that CAN be looked up still are, so a compare of one real and one named product
+        // answers for the real one instead of failing the turn.
+        $productIds = DalLookupIds::usable($productIds);
+
         if ([] === $productIds) {
             return [];
         }
@@ -264,6 +278,14 @@ final readonly class DalCommerceGateway implements
      */
     public function variantsOf(string $parentId, CatalogScope $scope): array
     {
+        // `EqualsFilter('parentId', …)` raises on an unparseable id exactly as the id filter does.
+        // Callers pass a card's own parent id rather than anything a model wrote, so this has not
+        // been observed failing — it is guarded because the class of bug is the same one and the
+        // honest answer for an id that cannot be parsed is "no variants".
+        if (DalLookupIds::one($parentId) === null) {
+            return [];
+        }
+
         $context = $this->contextProvider->current();
 
         $criteria = $this->criteriaBuilder->build(
@@ -281,6 +303,10 @@ final readonly class DalCommerceGateway implements
 
     public function resolveVariant(string $parentId, array $selections, CatalogScope $scope): ?ProductCard
     {
+        if (DalLookupIds::one($parentId) === null) {
+            return null;
+        }
+
         return $this->variantFinder->find($parentId, $selections, $scope, $this->contextProvider->current());
     }
 

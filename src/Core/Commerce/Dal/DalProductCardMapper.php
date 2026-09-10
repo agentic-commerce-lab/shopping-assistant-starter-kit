@@ -53,6 +53,7 @@ final readonly class DalProductCardMapper
         private ProductUrlResolver $urls,
         private PropertyGroupOptionReader $options = new PropertyGroupOptionReader(),
         private DalApplicablePrice $prices = new DalApplicablePrice(),
+        private DalBundleItems $bundleItems = new DalBundleItems(),
     ) {}
 
     /**
@@ -105,6 +106,9 @@ final readonly class DalProductCardMapper
             // the DTO lying about a field its class docblock calls a fact.
             minPurchase: $quantity,
             purchaseSteps: max(1, $product->getPurchaseSteps() ?? 1),
+            // Empty for every product in a shop without Commercial installed, which is most of
+            // them; see DalBundleItems for why the read cannot name a Commercial type.
+            bundleItems: $this->bundleItems->of($product),
         );
     }
 

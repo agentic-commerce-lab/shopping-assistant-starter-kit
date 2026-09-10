@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartNoticeReason;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 
 /**
  * Turns what Shopware's cart actually holds into the sentence {@see AddToCartTool} returns.
@@ -70,6 +71,59 @@ final class CartCorrectionNote
         }
 
         return sprintf('Added %d rather than %d%s.', $stored, $requested, self::because($reason));
+    }
+
+    /**
+     * What a bundle add reports, instead of a corrected quantity.
+     *
+     * **A bundle does not occupy a line of its own.** Dumped from the live cart on 2026-09-10, one
+     * added Roadside Repair Kit is four top-level `product` lines — its members, one of them at
+     * quantity two — each carrying a `discount` child labelled with the bundle's name, and a cart
+     * total equal to the bundle price. No line references the bundle's own product id.
+     *
+     * So {@see self::lineQuantity()} finds nothing and {@see self::text()} concluded "Nothing was
+     * added", which the model relayed as *"already in your cart, and the quantity has not changed"*
+     * — on a fresh session, over a cart it had just filled. Both halves false, from one absent line.
+     *
+     * There is no quantity to correct here: Shopware did not adjust anything, it expanded one line
+     * into several. This says what happened and what the shopper will see on the cart page, so the
+     * difference between the confirmation and the cart is explained rather than discovered.
+     */
+    public static function bundleText(string $name): string
+    {
+        return sprintf(
+            'Added the %s to the cart. A bundle goes in as its individual items, so the cart lists '
+            . 'those separately under the bundle\'s name rather than as one row, and the cart '
+            . 'total is the bundle price.',
+            $name,
+        );
+    }
+
+    /**
+     * The note for whatever was added, bundle or not.
+     *
+     * The branch lives here rather than at the call site because this class already owns every
+     * wording decision, and because {@see \Swag\AssistantStarterKit\Core\Tool\AddToCartTool} sits
+     * on the complexity gate — the standing constraints answer that with a split, not a suppression.
+     */
+    public static function noteFor(ProductCard $card, int $stored, int $requested, ?CartNoticeReason $reason): string
+    {
+        return $card->bundleItems === [] ? self::text($stored, $requested, $reason) : self::bundleText($card->name);
+    }
+
+    /**
+     * The quantity fields the `cart.add` trace stage carries.
+     *
+     * A bundle has no line of its own to read a stored quantity off, and reporting the requested
+     * figure as though Shopware had confirmed it would be the guess that stage exists to avoid. The
+     * flag says which case a merchant is looking at; `storedQuantity` keeps its meaning for
+     * everything else, so existing trace readers do not shift underneath them.
+     *
+     * @return array{storedQuantity: int}|array{bundleExpanded: true}
+     */
+    public static function traceFields(ProductCard $card, int $stored): array
+    {
+        return $card->bundleItems === [] ? ['storedQuantity' => $stored] : ['bundleExpanded' => true];
     }
 
     private static function because(?CartNoticeReason $reason): string
