@@ -33,6 +33,28 @@ final readonly class GivenDescriptions
     public const STAGE = 'descriptions.given';
 
     /**
+     * Write the hand-over that {@see self::from()} later reads back.
+     *
+     * **The excerpts, not the raw descriptions**: what was handed over is what may be relied on, and
+     * {@see DescriptionExcerpt} may have shortened it. Recorded even when every excerpt is empty —
+     * "the server was willing and there was nothing to give" is a different fact from "this path
+     * hands nothing over", and only the recorded stage tells them apart.
+     *
+     * Lives here rather than in each caller because there are now three of them
+     * ({@see CompareProductsTool}, {@see GetProductTool} and {@see ShortlistDescriptions}) and the
+     * class that owns {@see self::STAGE} and reads the payload back should own writing it too. A
+     * fourth copy of the `array_column`/`array_filter` line is how the reader and the writer drift.
+     *
+     * @param list<array{description?: string, ...}> $products summaries as the tools return them
+     */
+    public static function record(TraceRecorder $trace, array $products): void
+    {
+        $trace->record(self::STAGE, [
+            'descriptions' => array_values(array_filter(array_column($products, 'description'))),
+        ]);
+    }
+
+    /**
      * @return list<string>
      */
     public static function from(TraceRecorder $trace): array

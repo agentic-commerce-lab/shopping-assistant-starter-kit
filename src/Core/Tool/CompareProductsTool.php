@@ -130,12 +130,7 @@ final class CompareProductsTool
         // narrower shape is not an oversight — see ToolProductSummary::withDescriptions().
         $products = ToolProductSummary::withDescriptions($survivors);
 
-        // Recorded because the trace is the only record of what the model was shown, and ProseAudit
-        // has to be able to ask afterwards whether a claim came from text the server supplied. The
-        // excerpts, not the raw descriptions: what was handed over is what may be relied on.
-        $this->trace->record(GivenDescriptions::STAGE, [
-            'descriptions' => array_values(array_filter(array_column($products, 'description'))),
-        ]);
+        GivenDescriptions::record($this->trace, $products);
 
         $result = [
             'products' => $products,
