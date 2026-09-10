@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Grounding\ContinuedProductNames;
 use Swag\AssistantStarterKit\Core\Grounding\ContradictedVariants;
 use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
@@ -119,6 +120,9 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         $this->trace->record('grounding.select', [
             'source' => $fromProse ? 'prose' : 'last_tool_batch',
             'selectedIds' => $toRender,
+            // Countable, so an invented name wearing a real one stops being something only a
+            // hand-read review finds. Empty on a clean reply — see ContinuedProductNames.
+            ...ContinuedProductNames::payload($text, ProductNames::of($this->renderer->retrievedCards())),
         ]);
 
         // Set before the work, not after: `render()` and the audits below are the work this guard

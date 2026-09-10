@@ -64,13 +64,22 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'a suit, say — do NOT search twice: pass both words in "terms" in this one call, and the '
     . 'shop will show some of each. Searching twice shows the shopper only the second one, so '
     . 'anything you named from the first search would be described but not shown. '
+    . 'USE "terms" THE SAME WAY WHEN THE SHOPPER IS NOT WRITING IN THE CATALOGUE\'S OWN LANGUAGE. '
+    . 'This shop matches the words its products are actually written in, and the catalogue '
+    . 'vocabulary in your context is in that language — so a shopper asking for "Sattel" against an '
+    . 'English catalogue matches nothing. Pass BOTH: their word and its equivalent in the '
+    . 'catalogue\'s language, as two entries in "terms" of one call. Never only your translation: '
+    . 'a shop can carry a product actually named "Sattel", translations mislead ("Rock" is a skirt '
+    . 'in German and a stone in English), and their own word costs one entry. '
     . 'The reply also tells you how many products MATCHED, which is often far more than the few it '
     . 'returns. If it matched only a handful, show them and do not ask anything — a question buys '
     . 'nothing. If it matched many more than you are showing, do not present those few as if they '
     . 'were the whole answer: say plainly that there are many and ask ONE question that would narrow '
     . 'them (dress code, season, budget, size), or name what you are showing as a few examples. '
     . 'Always show products alongside such a question — never reply with a question and no products, '
-    . 'and never ask a narrowing question twice in one conversation.',
+    . 'and never ask a narrowing question twice in one conversation. '
+    . 'When the reply carries "withheld", that is how many matching products you are NOT showing: '
+    . 'say that number plainly instead of presenting the few you have as the whole answer.',
 )]
 final class SearchProductsTool
 {
@@ -326,34 +335,15 @@ final class SearchProductsTool
         // received would widen what counts as "not invented" and reopen R47's gap.
         $this->renderer->registerRetrieved($returned);
 
-        $result = [
-            // id + name + options, never a figure — see ToolProductSummary for why bare ids made
-            // variant identification cost one tool call per candidate.
-            'products' => ToolProductSummary::of($returned, $matchReasons),
-            // `total` deliberately keeps meaning "how many are in products" (T3). The model has
-            // learned it; redefining a number in place is how something else quietly breaks.
-            'total' => \count($returned),
-            // What the search actually found, which is the number `total` was being read as. Excludes
-            // superseded parents: RedundantParentFilter removed them because their own variants are
-            // present, and counting one back in would report a product twice.
-            'matched' => \count($survivors),
-            // `matched` is a floor, not a census, whenever the candidate window filled up (T4) — UNLESS
-            // the gateway can count, in which case it is exact and `more` means what it says. See
-            // MatchCountReader for why the difference matters: at the 50-unit window the assistant
-            // could not tell "all six occasion dresses" from "four of three hundred".
-            'more' => $windowSaturated,
-        ];
-
-        $exact = ExactMatchCount::of($this->gateway, $candidates, $scope);
-
-        if ($exact !== null) {
-            // `more` keeps meaning what T4 gave it — *`matched` is a floor rather than a census* — so
-            // an exact count makes it false rather than "there are more than I showed". That second
-            // fact is already in the reply: `matched` against `total`. Redefining a field the model has
-            // learned is how something else quietly breaks (the same argument T3 makes for `total`).
-            $result['matched'] = $exact;
-            $result['more'] = false;
-        }
+        // The four counted fields the model reads, plus the one it was doing arithmetic for.
+        // {@see SearchResultCounts} owns what each of them means and why none of them is renamed.
+        $result = SearchResultCounts::of(
+            ToolProductSummary::of($returned, $matchReasons),
+            $returned,
+            $survivors,
+            $windowSaturated,
+            ExactMatchCount::of($this->gateway, $candidates, $scope),
+        );
 
         // Only when there is something to disclose. A family returned whole is already fully
         // described by `products`, and an empty array is context the model pays to read.

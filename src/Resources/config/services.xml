@@ -215,6 +215,13 @@
             <tag name="swag_assistant.grounded_tool_factory"/>
         </service>
 
+        <!-- Grounded because it reads the catalogue's own category tree. Constructed only when the
+             gateway implements CategoryTreeReader, which is optional — see the factory. No merchant
+             switch: it exposes the same department names the storefront navigation already shows. -->
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\BrowseCategoriesToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
         <!-- Grounded rather than plain: it reads the shopper's live cart through the gateway. No
              merchant switch — it writes nothing and needs no configured destination, so the only
              gate is whether this request has a cart at all. -->

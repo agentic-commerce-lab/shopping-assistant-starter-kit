@@ -39,21 +39,41 @@ final class TraceExportSummary
     public static function of(ConversationEntity $conversation, string $salesChannelName): array
     {
         $events = array_values($conversation->getEvents()?->getElements() ?? []);
-        usort(
-            $events,
-            static fn(TraceEventEntity $a, TraceEventEntity $b): int => $a->getElapsedMs() <=> $b->getElapsedMs(),
-        );
+
+        // **Sorted by `seq`, not by `elapsedMs`, and that was the bug.** `elapsedMs` is measured from
+        // the start of ITS OWN TURN and restarts at zero on the next one, so ordering a whole
+        // conversation by it interleaves the turns: turn two's fifth millisecond sorted ahead of turn
+        // one's third second. The walk below then measured gaps between events from different turns
+        // and called the result model time.
+        //
+        // Measured on the September 2026 export: single-reply conversations reconciled exactly, and
+        // an eleven-reply one reported 11,554 ms of model time against roughly 65,800 ms of actual
+        // waiting. Every multi-turn row in that export was wrong, and the shape of the error — right
+        // for one turn, wrong for many — is why it survived.
+        //
+        // `seq` is written in event order across the whole conversation and is monotonic, so it is
+        // the only field that orders these correctly.
+        usort($events, static fn(TraceEventEntity $a, TraceEventEntity $b): int => $a->getSeq() <=> $b->getSeq());
 
         $modelMs = 0;
         $toolCalls = 0;
         $previous = 0;
 
         foreach ($events as $event) {
-            if (($event->getElapsedMs() - $previous) >= self::WAIT_THRESHOLD_MS) {
-                $modelMs += $event->getElapsedMs() - $previous;
+            $elapsed = $event->getElapsedMs();
+
+            // `max(0, ...)` is the turn boundary, and it is arithmetic rather than a branch on
+            // purpose. A boundary shows as the clock going backwards; there is no gap across it, and
+            // the first event of a turn sits within a millisecond or two of its own zero anyway. It
+            // is read from the value rather than from `turn.end`, because a turn that failed inside
+            // the agent never wrote one, and a walk that trusted the marker would merge two turns.
+            $gap = max(0, $elapsed - $previous);
+
+            if ($gap >= self::WAIT_THRESHOLD_MS) {
+                $modelMs += $gap;
             }
 
-            $previous = $event->getElapsedMs();
+            $previous = $elapsed;
 
             if ($event->getStage() === 'tool.call') {
                 ++$toolCalls;

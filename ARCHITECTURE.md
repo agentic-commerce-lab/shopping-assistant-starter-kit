@@ -280,7 +280,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | # | Stage | Class | Note |
 |---|---|---|---|
 | 0 | Budget | `Policy\RequestBudget` | per-caller window then per-channel daily budget, **before the first database call**. A refusal is a 429 with `Retry-After`, and writes nothing |
-| 1 | Guard | `Policy\GuardCheck` | `assistantEnabled`. Rejects before any model cost |
+| 1 | Guard | `Policy\GuardCheck` | `assistantEnabled`, and **nothing else** — the payload carries `control: kill_switch` because the stage name does not say so. It is the merchant's off switch, not an injection guard; there is no instruction-plane guard in this pipeline, by the design decision recorded under *Tools* below. Rejects before any model cost |
 | 2 | Session load | `AssistantController` | history + inferred shopper profile |
 | 2b | Page context | `Agent\ShopwareChatTurnRunner` | records `page.context` `{reported: bool, resolved: ?string, category: ?string}`. The reported product id is resolved through `gateway->product($id, $config->scope)` — a **hint, not an authority**: what does not resolve is ignored, so the blocklist and the excluded categories decide what the assistant may see, not the client. A resolved card is registered on the `FactRenderer` and named in the prompt by `Prompt\ViewingContext` as id, name and options — **never a figure**. A reported category id is not resolved at all; it becomes a `ProductQuery` constraint, and `retrieve.without_category` is recorded when a search that found nothing is retried without it |
 | 3 | Understand | *(no separate step)* | With tool calling the model's tool arguments **are** the extracted intent. `SearchProductsTool` records the `understand` stage from its own validated arguments. The guarantee that matters — the model never supplies a field name — is enforced in `QueryBuilder`, not here. Saves one LLM round trip per turn |
@@ -294,6 +294,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 10b | Prompt | `Prompt\PromptProviderInterface`, recorded by `AssistantRunner` | the system message this turn ran with, **in full**. Recorded before the platform is called, so a blocked turn has none |
 | 11 | Generate | `Agent\AgentLoop` + LLM | prose + optional tool call. **Not product ids** — see the correction below stage 15 |
 | 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
+| 12b | Withhold a disclosure | `Agent\DisclosureGuardOutputProcessor` | records `disclosure.withheld` and replaces the reply when it recites a tool name. The prompt forbids describing the tools; this is the part that does not depend on the model agreeing. Runs **after** grounding, so `validate` and `claims.audit` still record what the model wrote |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
 | 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 20) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
 | 15 | Record | `Trace\TraceRecorder` | persist conversation + events |
@@ -499,10 +500,33 @@ Note the trust boundary: **tools are trusted code the merchant installed; the mo
 | `add_to_cart` | write | `enableAddToCart && cartAvailable` |
 | `go_to_checkout` | read | `cartAvailable` |
 | `compare_products` | read | `enableCompareProducts` |
+| `browse_categories` | read | the gateway implements `CategoryTreeReader` |
 | `escalate` | terminal | always |
 
 **Capability control is toolbox construction, never a prompt instruction.** An unavailable tool
 is never instantiated, so the model never sees it.
+
+`browse_categories` answers a question about the RANGE rather than about a product, and it exists
+because there was no tool that did. Measured over the 34-conversation export of 2026-09-09: *"do you
+sell bikes?"* was asked in eight conversations and answered in all eight with a bottle of cleaning
+fluid — `bike` is a token in *Bike Wash 1L*, so the search matched and a non-empty result skips the
+orientation `NoMatchOrientation` attaches to an empty one. *"What do you sell?"* was asked
+five times and answered five times with **no tool call at all**, from the facet vocabulary in the
+prompt, differently on each run.
+
+It reads the shop's own category tree, returns names only — no ids, no counts, `CategoryNode`
+refuses the latter by design — and drops empty departments. Its guidance sits in its own description
+rather than in the system prompt, which is the D6 corollary: the prompt cannot know whether this
+turn constructed the tool, and an instruction to call an absent one is worse than none.
+
+**It licenses no absence claim, and its first version did.** That version offered the model *"you
+may say the shop has no department for it"* — defensible on the face of it, since the tree is the
+shop's own statement of its departments, and it took `no_match_not_absence` to 0 of 3 on both
+archetypes against a documented 2/3–3/3 band. `NoAbsenceClaimInProse` matches on the SUBJECT (`the
+shop has no`, `we do not carry`) and deliberately cannot tell "no department for bikes" from "no
+bikes"; a shopper reads the gist, and a department tree is not an assortment — a bike filed under
+Components is the case `NO_MATCH_NOTE` exists for. The tool now states what the shop **has** and
+never what it lacks, which is one degree less direct and is what the safety rule requires.
 
 `go_to_checkout` is the one shipped tool with no merchant switch. It writes nothing and needs no
 configured destination — it reads a cart the shopper already owns and reports whether anything is in
@@ -914,11 +938,42 @@ they are the four ways this class of product lies:
 
 `filtersDropped` · `inventedProductIds` · `modelClaimsDiscarded` · `stockSource`
 
+**Stages added after the September 2026 trace review**, each because a question about 104 real
+replies had no answer in the data:
+
+| Stage | Recorded by | Answers |
+|---|---|---|
+| `tool.result` | `Agent\BoundedToolbox` | what a tool returned — its key list and its counted fields, never the payload. A search reply carries eight product summaries and the two cart tools read the shopper's live basket, so `Agent\ToolResultShape` records shape rather than content |
+| `turn.repeat` | `Agent\AssistantRunner` | that the shopper has asked this before, with which turn and how close. Absent on a new ask. Fires on 18 of the 104 replies in that corpus and covers six of its eight worst sessions |
+| `disclosure.withheld` | `Agent\DisclosureGuardOutputProcessor` | that a reply reciting tool names was replaced, which names, and how much text went nowhere — never the text |
+
 `elapsed_ms` is milliseconds from turn start to when the event was recorded — an offset, not a
-span. `TraceRecorder::record()` is an *entry* marker at some call sites (`BoundedToolbox::execute()`)
+span. **It restarts at zero on every turn, so `seq` is the only field that orders a whole
+conversation.** Ordering a multi-turn conversation by `elapsed_ms` interleaves its turns, and
+anything that then measures gaps between adjacent rows is measuring across a turn boundary:
+`TraceExportSummary` did exactly that until 2026-09-09, and reported 11.6 s of model time on an
+eleven-reply conversation that spent 66.0 s waiting. Single-turn conversations reconciled either
+way, which is why it survived — every test had one turn. `TraceRecorder::record()` is an *entry* marker at some call sites (`BoundedToolbox::execute()`)
 and a *completion* marker at others (`SearchProductsTool`), so a gap-to-next duration would mean a
 different thing per row. The Administration renders gaps visually and claims no durations. This
 table previously listed `duration_ms`, which never existed in code (ruling R62).
+
+`grounding.select` carries one further field, `continuedNames`, and only when there is something to
+report: a retrieved product's name with another capitalised word stuck to the end of it. Measured on
+staging 2026-09-09 — *"Road Helmet Aero Mirror"*, *"Gravel Helmet Visor"*, *"Kids Helmet Light"* —
+each of which rendered the real helmet's card, with its real price and add button, beneath a product
+that does not exist. `validate` reported `inventedProductIds: []` and was right: the ids were real.
+`ContinuedProductNames` now withholds the card and counts the phrase, which is what a real detector
+for this class needs first.
+
+**A `prose.plain` stage briefly existed and was removed the same day.** It stripped markdown
+server-side, on the belief that the widget renders the reply as plain text. It does not:
+`src/Resources/app/storefront/src/assistant/markdown.js` is a purpose-built reader that turns four
+inline and four block forms into DOM nodes — no `innerHTML` anywhere, so HTML never renders and
+markdown does. It was written in August for exactly the complaint the strip was meant to fix.
+Stripping server-side therefore removed formatting the shipped surface renders properly. The
+prompt's plain-prose rule stays as what it always was, and as its own wording says: a portability
+request for a surface with no such reader, or no screen at all.
 
 ### Optional dev trace sink
 
@@ -958,7 +1013,15 @@ Shopware system config has no real secret storage) · `agentVoice` ·
 `blockedProducts` · `blockedCategories` · `enableAddToCart` · `maxItemQuantity` ·
 `maxCartValue` · `assistantEnabled` · `maxToolCallsPerTurn` · `requestsPerMinute` ·
 `dailyRequestCap` · `traceRetentionDays` · `embeddingModel` · `autoIndexShopPages` ·
-`enableMatchReasons` · `enableCompareProducts`
+`enableMatchReasons` · `enableCompareProducts` · `onlyGivenInformation`
+
+**`onlyGivenInformation` narrows what the assistant may say, and never widens it.** On, it appends
+one block to the system prompt and changes nothing else: the assistant states what the shop's data
+and documents say and adds no inference, no elaboration and no general knowledge about a material or
+a standard. Off by default, because the grounding rules already forbid inventing the facts under an
+explanation and most shoppers are asking for the explanation. It is a prompt block, so it narrows
+rather than seals — measured on the staging shop it removed an invented lock-resistance time and
+left a softer claim standing. Requested in writing by a merchant evaluating the assistant.
 
 **`embeddingModel` switches shop information on.** Empty is off, and off means the model is offered no
 shop-information tool at all rather than one that fails. It must be a model the configured provider

@@ -108,11 +108,17 @@ factory, and four of them are switchable by the merchant:
 | `go_to_checkout` | grounded | `cartAvailable` — no merchant switch; see ARCHITECTURE.md |
 | `compare_products` | grounded | `enableCompareProducts` (off by default) |
 | `search_shop_info` | plain | an `embeddingModel` is configured |
+| `browse_categories` | grounded | the gateway implements `CategoryTreeReader` |
 | `escalate` | plain | `enableEscalation` |
 
 `search_products` also carries two opt-in behaviours worth knowing about because they change what the
 model is handed: `enableMatchReasons` (deterministic reason codes for *why* a product was retrieved)
 and the bounded `properties` list every product summary now includes.
+
+One further switch changes what the model may *say* rather than what it is handed, so it constructs
+no tool and appears in no table above: **`onlyGivenInformation`** appends a prompt block confining
+the reply to what the shop's data and documents state. Off by default. See ARCHITECTURE.md's
+*Configuration* section for what it does and does not guarantee.
 
 A factory returning `null` is how all four switches work, and it is the pattern to copy: a tool that
 is never constructed is never in the schema the model sees, which keeps capability control out of the
@@ -559,7 +565,7 @@ assistant simply gets worse:
 | `BatchProductLookup` | `products(array $ids, CatalogScope): list<ProductCard>` | `CardResolver` falls back to one `product()` call per id — correct, and an N+1 on every rendered shortlist |
 | `MatchCountReader` | `countMatches(ProductQuery, CatalogScope): int` | The model only ever sees `matched`, which is a floor capped at the 50-product candidate window. It cannot tell *"here are all six occasion dresses"* from *"here are four of three hundred"* |
 | `FamilyVariantLookup` | `variantsOf(string $parentId, CatalogScope): list<ProductCard>` | `WholeFamilyResolver` returns nothing, so the assistant cannot describe a family whose variants did not all fit in the candidate window. `add_to_cart` is unaffected: both of its variant refusals read the card it already loaded — `StockSource::Parent` for a family, and `parentId` plus `resolveVariant()` for a variant the shopper never chose — precisely so the one tool with write authority never fails open on an optional interface |
-| `CategoryTreeReader` | `categories(?string $parentId, CatalogScope): list<CategoryNode>` | A search that finds nothing offers no orientation: the shopper is told there are no results and given nowhere to go |
+| `CategoryTreeReader` | `categories(?string $parentId, CatalogScope): list<CategoryNode>` | Two things are lost. A search that finds nothing offers no orientation — the shopper is told there are no results and given nowhere to go. And `browse_categories` is never constructed, so an assortment question ("do you sell bikes?", "what do you carry?") has no tool that answers it and gets answered from a product search instead, which matches words in names rather than kinds of thing |
 
 Implement all four unless you have a reason not to. `DalCommerceGateway` implements every one and is
 the reference to read.
@@ -573,6 +579,40 @@ Two contract obligations that are easy to get wrong and impossible to detect fro
   number beside `matched` is worse than one nobody can tell which to trust.
 - **`categories()` with an unknown `$parentId` returns an empty list, never the top level.** A caller
   that mistyped an id must not silently get the whole tree back.
+
+#### `withheld` counts products, not rows
+
+A search reply carries `total` (how many are in `products`), `matched` (how many the search found)
+and, since 2026-09-09, **`withheld`** — how many more *products* the shopper could still be shown.
+Only when there are any.
+
+It is not `matched` minus `total`, and the difference is load-bearing. `FamilyDiversifier` returns
+one card per product family, so a result of nine rows across four families is four cards at any limit
+the model asks for. Subtracting rows would report five more lights that do not exist as separate
+products; those five are sizes and colours of the four already on screen, and `TruncatedFamilies`
+discloses them in those terms. So `withheld` counts distinct product identities — a card's
+`parentId` when it has one, its own id when it does not.
+
+If your gateway returns cards whose `parentId` is null for genuine family members, this count is
+wrong in the direction that over-promises. That is the same obligation the DTO section below states
+for `parentId` generally, and this is what depends on it.
+
+#### `all_shown` is the only licence to say there is nothing more
+
+The prompt lets the assistant tell a shopper plainly that there are no more products of a kind —
+which a shopper asking "more please" is owed — but only when the reply carries **`all_shown`**. That
+field appears when two things hold together: nothing is withheld, and the candidate window did not
+fill up. The second half is the one a model cannot work out: `matched` is a floor rather than a
+census whenever the window saturated (`more: true`), so whole families may exist beyond it that
+retrieval never saw.
+
+Implementing `MatchCountReader` makes the difference visible — an exact count settles the total, so
+`more` is false and the licence is available on a saturated window too. Without it, a large result
+set never carries `all_shown`, which is the safe direction.
+
+`all_shown` says "this search", never "the shop". An exhausted search establishes only that these
+words matched nothing further; `SearchProductsTool::NO_MATCH_NOTE` owns that distinction and this
+field must not be read as weakening it.
 
 ### The DTOs grew, and a gateway that ignores that lies quietly
 

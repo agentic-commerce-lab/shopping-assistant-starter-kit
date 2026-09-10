@@ -315,6 +315,18 @@
             <defaultValue>false</defaultValue>
         </input-field>
 
+        <input-field type="bool">
+            <name>onlyGivenInformation</name>
+            <label>Only say what the shop's own data says</label>
+            <defaultValue>false</defaultValue>
+            <helpText>When on, the assistant states what your product data and shop documents say
+                and adds nothing of its own — no explanation of what a property implies, no advice
+                about a use you have not recorded, no general knowledge about a material or a
+                standard. Answers get shorter and plainer. Turn it on if your descriptions are
+                sparse and you would rather the assistant said less than said something you cannot
+                see on the product page.</helpText>
+        </input-field>
+
         <input-field type="text">
             <name>escalationUrl</name>
             <label>Where shoppers reach a human</label>

@@ -91,7 +91,11 @@ final class ProseProductNames
         $remaining = $prose;
 
         foreach ($index->namesLongestFirst() as $name) {
-            $at = stripos($remaining, $name);
+            // The first occurrence that STANDS ON ITS OWN. A name continued by another capitalised
+            // word is a different, invented product wearing this one's name — see
+            // {@see ContinuedProductNames} for the reply that rendered three real helmets as a
+            // mirror, a visor and a lamp.
+            $at = self::standaloneOccurrence($remaining, $name);
 
             if ($at === false) {
                 continue;
@@ -122,5 +126,29 @@ final class ProseProductNames
         ksort($found);
 
         return array_values($found);
+    }
+
+    /**
+     * Where `$name` first appears without another capitalised word stuck to it, or false.
+     *
+     * Every occurrence is examined rather than only the first: a reply naming a product once as
+     * itself and once inside an invented composite must still render its card, and which order they
+     * appear in is the model's business.
+     *
+     * @return int|false a byte offset, matching `stripos()` — see the call site on why bytes
+     */
+    private static function standaloneOccurrence(string $prose, string $name): int|false
+    {
+        $at = 0;
+
+        while (($at = stripos($prose, $name, $at)) !== false) {
+            if (!ContinuedProductNames::continuesAfter($prose, $at, $name)) {
+                return $at;
+            }
+
+            $at += \strlen($name);
+        }
+
+        return false;
     }
 }
