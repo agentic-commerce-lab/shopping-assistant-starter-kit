@@ -23,7 +23,11 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * `inventedProductIds: []` on **all 104 turns** — the card layer was already honest — and the
  * expensive inventions were all in the prose, in claims no vocabulary enumerates. A bracket that
  * does not exist, a security rating nobody issued, a cut time nobody measured.
- * {@see SuppliedFactClaimExtractor} explains how those are found without a list of them.
+ *
+ * Two grammars carry them, so there are two extractors and one support test:
+ * {@see SuppliedFactClaimExtractor} for what a product **comes with or is rated as**, and
+ * {@see PerformanceClaimExtractor} for **how long it holds out**. Each explains how its claims are
+ * found without a list of them, and {@see ClaimStands} carries the three tests they share.
  *
  * ## Support is asserted, not merely present
  *
@@ -64,6 +68,7 @@ final readonly class DescriptionAudit
     public function __construct(
         private SuppliedFactClaimExtractor $claims = new SuppliedFactClaimExtractor(),
         private PropertyClaimExtractor $properties = new PropertyClaimExtractor(),
+        private PerformanceClaimExtractor $performance = new PerformanceClaimExtractor(),
     ) {}
 
     /**
@@ -86,8 +91,14 @@ final readonly class DescriptionAudit
         // honest, and concatenating on a space would hand it a sentence the shop never wrote.
         $given = mb_strtolower(implode('. ', $shopProse));
 
+        // Two grammars, one support test. `SuppliedFactClaimExtractor` finds what a product comes
+        // with or is rated as; `PerformanceClaimExtractor` finds how long it holds out. They are
+        // separate classes because they read differently and are revised for different reasons, and
+        // one list because a merchant reading `claims.audit` wants the sentences, not a taxonomy.
+        $stated = [...$this->claims->extract($prose), ...$this->performance->extract($prose)];
+
         return array_values(array_filter(
-            $this->claims->extract($prose),
+            array_unique($stated),
             fn(string $claim): bool => !$this->supported($claim, $given, $facets),
         ));
     }

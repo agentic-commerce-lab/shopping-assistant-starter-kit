@@ -61,6 +61,19 @@ final readonly class ShortlistDescriptions
      * Three rather than five: at four and five the qualifying share of searches barely moves (17 of
      * 60 against 15), so the extra descriptions buy almost no coverage and are paid for on searches
      * where the shopper has narrowed nothing.
+     *
+     * **The evidence for it is thinner than that sentence sounds, and it is the weakest number in
+     * this change.** It comes from a single export of 34 conversations on one catalogue, and the
+     * margin it rests on is two searches out of sixty. It is not a merchant setting on purpose — a
+     * shop owner cannot reason about "how many search survivors before descriptions are handed
+     * over", and putting it in `config.xml` would be a knob nobody can turn well. It is a constant
+     * in one place with {@see \Swag\AssistantStarterKit\Tests\Core\Tool\ShortlistDescriptionsTest}
+     * pinning the boundary, so moving it is one edit and a failing test.
+     *
+     * What would justify moving it: a count, from live traces, of how often a shopper asks a
+     * *factual* question about a product after a search returning four or five matches. If that is
+     * common, three is too low. Nothing in the corpus answers it, because the corpus predates the
+     * `tool.result` stage that would record the result size alongside the question.
      */
     public const MAX_SURVIVORS = 3;
 

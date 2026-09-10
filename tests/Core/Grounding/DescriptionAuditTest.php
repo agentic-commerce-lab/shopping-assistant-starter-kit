@@ -19,14 +19,27 @@ use Swag\AssistantStarterKit\Core\Grounding\DescriptionAudit;
  * this audit produced on its first pass over those 104 replies — it went from 15 findings with 4
  * true ones to 4 findings all of which are true, and each exclusion below is one of the reasons.
  *
- * **The recall figure belongs here too, because it is not high.** The corpus has twelve replies
- * carrying an invented product fact and this catches four. The clearest miss is
- * *"would typically take much longer to cut than 3 minutes — often 10 minutes or more with standard
- * tools"*: a resistance-time claim, which uses none of the grammar of delivery or certification and
- * so is invisible to {@see \Swag\AssistantStarterKit\Core\Grounding\SuppliedFactClaimExtractor}.
- * Catching that needs a fourth claim family, and this class is deliberately a floor rather than a
- * guarantee — the same honesty {@see \Swag\AssistantStarterKit\Core\Grounding\PassageAudit} applies
- * to its own.
+ * **Two measurements, and they say different things.**
+ *
+ * *In sample*, over the 104 real replies: 4 replies flagged, 5 claims, all five true. The first pass
+ * gave 15 findings with 4 true ones, and the exclusions below are why.
+ *
+ * *Out of sample*, over 15 replies generated against a live shop on 2026-09-10 and never used to
+ * tune anything: **0 findings** — every one of the fifteen was correct behaviour. Before
+ * {@see \Swag\AssistantStarterKit\Core\Grounding\ClaimStands}' negation test it was 2, both of
+ * them the assistant correctly declining. That test exists because of this measurement and nothing
+ * else: the in-sample corpus could not have found it, because there the model invented rather than
+ * declined.
+ *
+ * **The recall figure belongs here too, because it is not high — and the fourth claim family did
+ * not move it.** Twelve replies in the corpus carry an invented product fact and this flags four.
+ * {@see \Swag\AssistantStarterKit\Core\Grounding\PerformanceClaimExtractor} was added for the
+ * worst single line in the export — *"often 10 minutes or more with standard tools"* — and it
+ * does catch it, but that sentence sits in a reply already flagged for *"rated for high-security
+ * use"*. So it bought one more **claim** and not one more **reply**. On this evidence it is
+ * insurance against a reply that invents a time without also inventing a bracket, not a measured
+ * coverage gain. This class is deliberately a floor rather than a guarantee — the same honesty
+ * {@see \Swag\AssistantStarterKit\Core\Grounding\PassageAudit} applies to its own.
  */
 final class DescriptionAuditTest extends TestCase
 {
@@ -107,6 +120,54 @@ final class DescriptionAuditTest extends TestCase
         ];
         yield 'German enthaelt is plain containment' => [
             'Prueft, ob der Warenkorb des Kunden Artikel enthält, und leitet ihn zum Checkout weiter.',
+            [],
+            false,
+        ];
+
+        // The two out-of-sample false positives, measured 2026-09-10 against a live shop. Both are
+        // the assistant correctly declining, and both fired before ClaimStands got its negation
+        // test. They are the reason that test exists.
+        yield 'a refusal that names the scope of delivery' => [
+            'The shop does not list any additional items or accessories included in the scope of '
+                . 'delivery for the Trail Jersey, so you receive the jersey itself.',
+            [],
+            false,
+        ];
+        yield 'a refusal that names the thing it cannot confirm' => [
+            'The shop details mention a breathable mesh back panel and three rear pockets, but there '
+                . 'is no mention of an included repair kit, so I do not have that detail.',
+            ['Lightweight long-sleeve jersey for trail riding. Breathable mesh back panel, three rear pockets.'],
+            false,
+        ];
+
+        // The performance family: a figure standing beside a physical verb.
+        yield 'a resistance time the shop never published' => [
+            'It would typically take much longer to cut than 3 minutes - often 10 minutes or more '
+                . 'with standard tools.',
+            [self::THIN],
+            true,
+        ];
+        yield 'a figure the description does state' => [
+            'It runs for four hours on full.',
+            ['800 lumen USB-C front light with a shaped beam. Four hours on full, twelve on the commute setting.'],
+            false,
+        ];
+        yield 'a comparative carries no figure to check' => [
+            'It is far harder to cut than a cable lock.',
+            [self::THIN],
+            false,
+        ];
+        // Regression guard. The performance pattern's terminator is group 4, not 5 — every
+        // alternative inside the phrase is non-capturing, NumberWords' included. Reading group 5
+        // handed ClaimStands an empty terminator, which made the question test silently inert and
+        // reported this offer as a claim.
+        yield 'a question about a performance figure is still a question' => [
+            'Would you like to know how long it resists cutting in 10 minutes?',
+            [],
+            false,
+        ];
+        yield 'a delivery period belongs to PassageAudit' => [
+            'You have 14 days to return it, and delivery takes 3 days.',
             [],
             false,
         ];

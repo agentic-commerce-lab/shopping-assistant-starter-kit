@@ -37,40 +37,21 @@ namespace Swag\AssistantStarterKit\Core\Grounding;
  *
  * ## Three shapes that wear the grammar without making the claim
  *
- * All three were false positives measured by replaying this class over the 104 real replies, and
- * each is excluded here rather than downstream, because a claim that was never made cannot be
- * supported or contradicted by anything.
- *
- * | Reply | Why it is not a delivery claim |
- * |---|---|
- * | "**Handlebar & stem** (including bar tape or grips)" | `including` enumerates a category |
- * | "The shop's **card includes** any technical specifications" | the subject is the card, not the product |
- * | "Diese **Produktbeschreibung enthält** zwei Ebenen" | the subject is the description |
- *
  * `including` is dropped from the marker list outright. It was responsible for four of the eleven
- * false positives and for none of the true ones — every measured invention used `included`,
- * `supplied with`, `comes with`, `rated for` or `im Lieferumfang`. A shop enumerating what a
- * category contains is the ordinary shape of a helpful answer, which is the same argument
- * {@see PropertyNegation} makes about no-match replies.
+ * false positives measured over the 104 real replies and for none of the true ones — every
+ * invention used `included`, `supplied with`, `comes with`, `rated for` or `im Lieferumfang`. A
+ * shop enumerating what a category contains is the ordinary shape of a helpful answer.
  *
  * Bare `enthält` is dropped for the same reason and it is the sharper case: German has no separate
  * word for "is included in the delivery", so `enthält` is simply "contains". The measured false
- * positive was the assistant describing its own tools — *"prüft, ob der Warenkorb des Kunden Artikel
- * enthält"* — where the subject is a cart and no meta-subject noun is in front of it. The one real
- * German finding said *"im Lieferumfang enthalten ist"*, which `im lieferumfang` matches, so nothing
- * measured is lost.
+ * positive was the assistant describing its own tools — *"prüft, ob der Warenkorb des Kunden
+ * Artikel enthält"*. The one real German finding said *"im Lieferumfang enthalten ist"*, which
+ * `im lieferumfang` matches, so nothing measured is lost.
  *
- * The subject test reads the two words in front of the marker. It is narrow on purpose: *"the lock's
- * box includes a bracket"* has to survive it, so the list is nouns that name the *answer* rather
- * than the product — a description, a card, the shop's data. Bare `shop` is deliberately absent,
- * because "the shop supplies it with a bracket" is a real claim.
- *
- * ## A question offers, it does not state
- *
- * *"Would you like me to include it in your cart?"* is the grammar of a delivery claim and asserts
- * nothing. {@see PropertyMention::stands()} draws the same distinction for the same reason and it is
- * just as load-bearing here: without it every offer of help becomes a finding, and ruling R85 says
- * what a warning that fires on correct behaviour is worth.
+ * The remaining three exclusions — a question, the reply denying its own claim, and a subject that
+ * is the answer rather than the product — are {@see ClaimStands}, shared with
+ * {@see PerformanceClaimExtractor}. The second of those was found out of sample and is the most
+ * important of the three; that class carries the measurement.
  *
  * ## What it cannot see
  *
@@ -102,38 +83,6 @@ final readonly class SuppliedFactClaimExtractor
     private const WORDS_AFTER = 4;
 
     /**
-     * Nouns that make the sentence a statement about the *answer* rather than about the product.
-     *
-     * Matched as substrings, so `beschreibung` covers `Produktbeschreibung`.
-     */
-    private const META_SUBJECTS = [
-        'description',
-        'beschreibung',
-        'card',
-        'karte',
-        'data',
-        'daten',
-        'information',
-        'katalog',
-        'catalogue',
-        'liste',
-        'list',
-        'results',
-        'suche',
-        'search',
-        'message',
-        'nachricht',
-        'answer',
-        'antwort',
-        'reply',
-    ];
-
-    /**
-     * How many words in front of the marker are read to find the sentence's subject.
-     */
-    private const WORDS_BEFORE = 2;
-
-    /**
      * @return list<string> the claim phrases, first appearance order, each reported once
      */
     public function extract(string $text): array
@@ -143,11 +92,11 @@ final readonly class SuppliedFactClaimExtractor
         // PropertyMention::assertedIn(): a consumed tail would swallow a later claim in the same
         // sentence and it would never be examined.
         $pattern = \sprintf(
-            '/((?:[\p{L}\p{N}\x{2019}\'-]+[\s]+){0,%3$d})((?:\b(?:%1$s)\b|\b[\p{L}]+-rated\b)'
-            . '(?:[\s,]+[\p{L}\p{N}][\p{L}\p{N}\-]*){0,%2$d})(?=([^.!?\n]{0,300}([.!?])?))/iu',
+            '/(.{0,%3$d}?)((?:\b(?:%1$s)\b|\b[\p{L}]+-rated\b)'
+            . '(?:[\s,]+[\p{L}\p{N}][\p{L}\p{N}\-]*){0,%2$d})(?=([^.!?\n]{0,300}([.!?])?))/isu',
             self::MARKERS,
             self::WORDS_AFTER,
-            self::WORDS_BEFORE,
+            ClaimStands::CHARS,
         );
 
         if (preg_match_all($pattern, $text, $matches, \PREG_SET_ORDER) === false) {
@@ -157,7 +106,7 @@ final readonly class SuppliedFactClaimExtractor
         $claims = [];
 
         foreach ($matches as $match) {
-            if (self::states($match[1] ?? '', $match[4] ?? '')) {
+            if (ClaimStands::at($match[1] ?? '', $match[4] ?? '')) {
                 $claims[self::tidied($match[2] ?? '')] = true;
             }
         }
@@ -165,27 +114,6 @@ final readonly class SuppliedFactClaimExtractor
         unset($claims['']);
 
         return array_map(strval(...), array_keys($claims));
-    }
-
-    /**
-     * Whether this occurrence of the grammar actually states something about a product.
-     */
-    private static function states(string $before, string $terminator): bool
-    {
-        // A question offers, it does not state. See the class docblock.
-        if ($terminator === '?') {
-            return false;
-        }
-
-        $subject = mb_strtolower($before);
-
-        foreach (self::META_SUBJECTS as $meta) {
-            if (str_contains($subject, $meta)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
