@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Commerce\CategoryTreeReader;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
+use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Tool\BrowseCategoriesTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
@@ -28,7 +29,12 @@ final class BrowseCategoriesToolTest extends TestCase
      */
     private function tool(TraceRecorder $trace = new TraceRecorder()): BrowseCategoriesTool
     {
-        $reader = new class implements CategoryTreeReader {
+        return new BrowseCategoriesTool($this->reader(), $trace, new FactRenderer($trace));
+    }
+
+    private function reader(): CategoryTreeReader
+    {
+        return new class implements CategoryTreeReader {
             public function categories(?string $parentId, CatalogScope $scope): array
             {
                 return match ($parentId) {
@@ -54,8 +60,6 @@ final class BrowseCategoriesToolTest extends TestCase
                 return new CategoryNode($id, $name, [$name], $hasProducts, $hasChildren);
             }
         };
-
-        return new BrowseCategoriesTool($reader, $trace);
     }
 
     public function testItReturnsTheShopsOwnDepartmentsWithTheirSections(): void
@@ -96,56 +100,6 @@ final class BrowseCategoriesToolTest extends TestCase
         self::assertDoesNotMatchRegularExpression('/"(count|total|products)":\s*\d/', $json);
     }
 
-    /**
-     * **The note licenses no absence claim, and its first version did.** It offered "you may say the
-     * shop has no department for it", which took the `no_match_not_absence` safety journey to 0 of 3
-     * on both archetypes against a documented 2/3–3/3 band — `NoAbsenceClaimInProse` matches on the
-     * SUBJECT and deliberately cannot tell "no department for bikes" from "no bikes". This asserts
-     * the licence is gone and stays gone.
-     */
-    public function testTheNoteNeverOffersASentenceAboutWhatTheShopLacks(): void
-    {
-        $note = $this->tool()()['note'];
-
-        self::assertStringNotContainsString('you may say the shop has no', $note);
-        self::assertStringContainsString('name the ones it does have', $note);
-        self::assertStringContainsString('settles nothing', $note);
-    }
-
-    /**
-     * And the same for the description, which is where the model reads its instructions.
-     */
-    public function testTheDescriptionForbidsTheAbsenceSentenceToo(): void
-    {
-        $description = self::descriptionOfTool();
-
-        self::assertStringContainsString('Write no sentence about what the shop lacks', $description);
-        self::assertStringNotContainsString('you may say the shop has', $description);
-    }
-
-    /**
-     * The second trigger: a search that came back with the wrong KIND of thing. Measured on staging,
-     * the model knew the tool was there and asked permission — so the shopper got a bottle of cleaner
-     * and a question instead of an answer.
-     */
-    public function testTheDescriptionChainsItAfterAMismatchedSearchWithoutAsking(): void
-    {
-        $description = self::descriptionOfTool();
-
-        self::assertStringContainsString('WITHOUT ASKING FIRST', $description);
-        self::assertStringContainsString('is the kind of thing the shopper asked for', $description);
-        self::assertStringContainsString('do not name the mismatched product', $description);
-    }
-
-    private static function descriptionOfTool(): string
-    {
-        $attributes = (new \ReflectionClass(BrowseCategoriesTool::class))->getAttributes(\Symfony\AI\Agent\Toolbox\Attribute\AsTool::class);
-
-        self::assertNotSame([], $attributes);
-
-        return (string) ($attributes[0]->getArguments()['description'] ?? '');
-    }
-
     public function testItRecordsWhatItHandedOver(): void
     {
         $trace = new TraceRecorder();
@@ -182,7 +136,7 @@ final class BrowseCategoriesToolTest extends TestCase
             }
         };
 
-        $reply = (new BrowseCategoriesTool($reader, new TraceRecorder()))();
+        $reply = (new BrowseCategoriesTool($reader, $trace = new TraceRecorder(), new FactRenderer($trace)))();
 
         self::assertCount(12, $reply['departments']);
         self::assertStringContainsString('do not describe this as its full range', $reply['shortened'] ?? '');

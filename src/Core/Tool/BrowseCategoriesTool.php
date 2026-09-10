@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\CategoryTreeReader;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
@@ -126,6 +127,7 @@ final class BrowseCategoriesTool
     public function __construct(
         private readonly CategoryTreeReader $categories,
         private readonly TraceRecorder $trace,
+        private readonly FactRenderer $renderer,
         private readonly CatalogScope $scope = new CatalogScope(),
     ) {}
 
@@ -147,6 +149,18 @@ final class BrowseCategoriesTool
 
             $departments[] = $department;
         }
+
+        // **An answer with no products in it must not inherit the last search's cards.** Measured on
+        // staging after this tool shipped: *"I want to buy a bike"* produced the right prose — the
+        // shop's real departments, no cleaner named — with a Bike Wash 1L card underneath it, because
+        // the model searched first and `GroundingOutputProcessor` falls back to the last retrieved
+        // batch when the prose names nothing. An empty registration is the documented honest default
+        // for "the last call returned nothing", and it is what {@see \Swag\AssistantStarterKit\Core\Grounding\PreGrounding}
+        // already does one step earlier for the same reason.
+        //
+        // It replaces the last batch, never the authoritative index — so a reply that goes on to name
+        // a product the turn really did retrieve still renders its card.
+        $this->renderer->registerRetrieved([]);
 
         $this->trace->record('categories.browsed', [
             'departments' => \count($departments),

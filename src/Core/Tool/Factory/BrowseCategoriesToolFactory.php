@@ -29,6 +29,11 @@ final readonly class BrowseCategoriesToolFactory implements GroundedToolFactoryI
             return null;
         }
 
-        return new BrowseCategoriesTool($context->gateway, $context->trace, $context->config->scope);
+        return new BrowseCategoriesTool(
+            $context->gateway,
+            $context->trace,
+            $context->renderer,
+            $context->config->scope,
+        );
     }
 }
