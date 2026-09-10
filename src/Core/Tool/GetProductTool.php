@@ -127,12 +127,7 @@ final class GetProductTool
         // shape differs by path, and why a summary carries no figure either way.
         $products = ToolProductSummary::withDescriptions($survivors);
 
-        // Recorded because the trace is the only record of what the model was shown, and ProseAudit
-        // asks afterwards whether a claim came from text the server supplied. The excerpts, not the
-        // raw descriptions: what was handed over is what may be relied on.
-        $this->trace->record(GivenDescriptions::STAGE, [
-            'descriptions' => array_values(array_filter(array_column($products, 'description'))),
-        ]);
+        GivenDescriptions::record($this->trace, $products);
 
         $result = [
             // Same shape as search_products: the model must be able to confirm WHICH variant it

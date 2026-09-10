@@ -8,6 +8,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Grounding\ContinuedProductNames;
 use Swag\AssistantStarterKit\Core\Grounding\ContradictedVariants;
+use Swag\AssistantStarterKit\Core\Grounding\DescriptionAudit;
 use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\ProductNameMask;
@@ -93,6 +94,7 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         private readonly FactRenderer $renderer,
         private readonly TraceRecorder $trace,
         private readonly FacetSet $facets = new FacetSet(),
+        private readonly DescriptionAudit $descriptions = new DescriptionAudit(),
     ) {}
 
     public function processOutput(Output $output): void
@@ -170,6 +172,25 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
             $this->facets,
             [...GivenDescriptions::from($this->trace), ...RetrievedPassages::from($this->trace)],
             DisclosedOptions::from($this->trace),
+        );
+
+        // The open-vocabulary audit, and the one the three above could not be: each of them works
+        // against a closed vocabulary — a currency figure, a facet value, a normalised period — and
+        // the trace export of 34 real conversations showed what that leaves open. `validate` reported
+        // `inventedProductIds: []` on all 104 turns, and the expensive inventions were all in the
+        // prose beside an honest card: a bracket the shop never supplies, a security rating nobody
+        // issued. See DescriptionAudit, which owns both the judgement and the trace write — the write
+        // lives there because a branch here puts this class over the gate's complexity budget, and
+        // because the finding is the audit's to report.
+        //
+        // Its sources of truth are the prose, the descriptions handed over and the facet vocabulary,
+        // all three of which this class already holds — so unlike its three siblings it needs no
+        // rendered card and does not belong on FactRenderer.
+        $this->descriptions->recordUnsupportedFactClaims(
+            $this->trace,
+            $text,
+            [...GivenDescriptions::from($this->trace), ...RetrievedPassages::from($this->trace)],
+            $this->facets,
         );
     }
 

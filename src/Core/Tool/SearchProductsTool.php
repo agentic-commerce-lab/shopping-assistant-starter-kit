@@ -164,7 +164,7 @@ final class SearchProductsTool
      * @param ?string $sort Ordering: "price_asc" for cheapest first, "price_desc" for most expensive first. Pass it when the shopper asks a superlative — "the cheapest jersey", "your most expensive helmet" — and then name the FIRST product in the result as the cheapest or dearest one. You still may not state its price. Leave it out otherwise: without it the shop ranks by how well each product matches, which is the better answer to every other question.
      *
      * @return array{
-     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>,
+     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>,
      *     total: int,
      *     matched: int,
      *     more: bool,
@@ -338,7 +338,7 @@ final class SearchProductsTool
         // The four counted fields the model reads, plus the one it was doing arithmetic for.
         // {@see SearchResultCounts} owns what each of them means and why none of them is renamed.
         $result = SearchResultCounts::of(
-            ToolProductSummary::of($returned, $matchReasons),
+            ShortlistDescriptions::of($returned, $matchReasons, \count($survivors), $this->trace),
             $returned,
             $survivors,
             $windowSaturated,

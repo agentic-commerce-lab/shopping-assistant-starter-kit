@@ -26,7 +26,7 @@ final class BikeWear
             [
                 'number' => 'bk-jacket-gravel',
                 'name' => 'Gravel Jacket',
-                'description' => 'A wind- and shower-proof shell cut for a riding position, with a dropped tail and a zipped rear pocket.',
+                'description' => 'A wind- and shower-proof nylon shell cut for a riding position, with a dropped tail, a zipped rear pocket and elasticated cuffs. Uninsulated, so it goes over a jersey or a base layer. Water-repellent rather than waterproof: it turns a shower, not an hour of steady rain.',
                 'price' => 149.0,
                 'stock' => 7,
                 'manufacturer' => 'Kestrel Works',
@@ -43,7 +43,7 @@ final class BikeWear
             [
                 'number' => 'bk-jacket-rain-packable',
                 'name' => 'Packable Rain Jacket',
-                'description' => 'Folds into its own pocket and weighs little enough to carry on days it may not be needed.',
+                'description' => 'A waterproof nylon shell with taped seams that folds into its own rear pocket, light enough to carry on days it may not be needed. Uninsulated. Being fully waterproof costs breathability, so on a hard climb it holds sweat in: a layer to put on and take off.',
                 'price' => 99.0,
                 'stock' => 4,
                 'manufacturer' => 'Kestrel Works',
@@ -59,7 +59,7 @@ final class BikeWear
             [
                 'number' => 'bk-jacket-windbreaker',
                 'name' => 'Lightweight Windbreaker',
-                'description' => 'An unlined windproof layer for cool starts and warm afternoons.',
+                'description' => 'An unlined windproof nylon layer for cool starts and warm afternoons, with a half zip and one rear pocket. Uninsulated and not water-repellent: it stops wind chill and nothing else, so rain goes straight through. It packs down to roughly the size of a fist.',
                 'price' => 79.0,
                 'stock' => 0,
                 'manufacturer' => 'Kestrel Works',
@@ -77,7 +77,7 @@ final class BikeWear
             [
                 'number' => 'bk-jersey-thermal-ls',
                 'name' => 'Thermal Jersey Long Sleeve',
-                'description' => 'A brushed-back long sleeve jersey with three rear pockets and a zipped valuables pocket.',
+                'description' => 'A brushed-back polyester long sleeve jersey with a full-length zip, three rear pockets and a zipped valuables pocket. The brushed inner face is the insulation. Breathable but not windproof, so it wants a shell over it much below ten degrees.',
                 'price' => 69.0,
                 'stock' => 9,
                 'manufacturer' => 'Kestrel Works',
@@ -93,7 +93,7 @@ final class BikeWear
             [
                 'number' => 'bk-jersey-club',
                 'name' => 'Club Jersey',
-                'description' => 'A regular-fit short sleeve jersey in the club colours, with a full-length zip.',
+                'description' => 'A regular-fit short sleeve polyester jersey in the club colours, with a full-length zip, three rear pockets and gripper elastic at the hem. Regular fit rather than race fit, so it does not cling. Uninsulated and unlined: a summer jersey that needs layers when it cools.',
                 'price' => 59.0,
                 'stock' => 12,
                 'manufacturer' => 'Kestrel Works',
@@ -111,7 +111,7 @@ final class BikeWear
             [
                 'number' => 'bk-bib-tights',
                 'name' => 'Bib Tights',
-                'description' => 'Full-length thermal bibs with a seat pad rated for long winter rides.',
+                'description' => 'Full-length thermal bibs in brushed polyester with a seat pad rated for long winter rides, ankle zips and reflective tabs at the heel. Insulated but neither windproof nor waterproof, so driving rain and a hard headwind both get through and want a shell over the top.',
                 'price' => 109.0,
                 'stock' => 5,
                 'manufacturer' => 'Kestrel Works',
@@ -126,7 +126,7 @@ final class BikeWear
             [
                 'number' => 'bk-bib-shorts-cargo',
                 'name' => 'Cargo Bib Shorts',
-                'description' => 'Bib shorts with mesh leg pockets, for riders who would rather not use a jersey pocket.',
+                'description' => 'Bib shorts in breathable polyester with a mesh pocket on each thigh, for riders who would rather not load a jersey pocket. Laser-cut leg grippers and a mid-density pad. The pockets take a phone or a bar; loaded much heavier than that they sag and rub.',
                 'price' => 89.0,
                 'stock' => 6,
                 'manufacturer' => 'Kestrel Works',
@@ -144,7 +144,7 @@ final class BikeWear
             [
                 'number' => 'bk-base-layer-sleeveless',
                 'name' => 'Base Layer Sleeveless',
-                'description' => 'A sleeveless mesh base layer that moves sweat off the skin without adding warmth.',
+                'description' => 'A sleeveless polyester mesh base layer that moves sweat off the skin without adding warmth, with flatlock seams that sit flat under a jersey. A summer layer: the open mesh does nothing against wind chill, where a brushed long-sleeve cut does the opposite job.',
                 'price' => 29.9,
                 'stock' => 14,
                 'manufacturer' => 'Kestrel Works',
@@ -162,7 +162,7 @@ final class BikeWear
             [
                 'number' => 'bk-socks-merino',
                 'name' => 'Merino Socks',
-                'description' => 'Mid-height merino socks that stay comfortable wet or dry.',
+                'description' => 'Mid-height socks in a merino blend that stay comfortable wet or dry, since merino still insulates damp where a synthetic stops. Sold as one pair. Merino wants a cool wash and no tumble dryer, and it wears through at the heel sooner than a polyester sock.',
                 'price' => 16.9,
                 'stock' => 22,
                 'manufacturer' => 'Kestrel Works',
@@ -177,7 +177,7 @@ final class BikeWear
             [
                 'number' => 'bk-socks-summer-3pack',
                 'name' => 'Summer Socks 3-Pack',
-                'description' => 'Three pairs of lightweight mesh-panel socks.',
+                'description' => 'Three pairs of lightweight polyester socks with mesh panels over the instep, sold as one pack of three, with a mid-height cuff. The mesh is what keeps them cool and also what makes them the wrong sock for a cold wet ride, where a wool blend does better.',
                 'price' => 22.0,
                 'stock' => 18,
                 'manufacturer' => 'Kestrel Works',
@@ -195,7 +195,7 @@ final class BikeWear
             [
                 'number' => 'bk-gloves-winter',
                 'name' => 'Winter Gloves',
-                'description' => 'Insulated full-finger gloves with a windproof back and a wiping panel on the thumb.',
+                'description' => 'Insulated full-finger gloves with a windproof back, a wiping panel on the thumb and a long cuff that tucks under a sleeve. Windproof but not waterproof: they hold warmth in cold dry air and wet through in sustained rain, after which they stay cold.',
                 'price' => 39.0,
                 'stock' => 8,
                 'manufacturer' => 'Kestrel Works',
@@ -211,7 +211,7 @@ final class BikeWear
             [
                 'number' => 'bk-gloves-long-finger',
                 'name' => 'Long Finger Gloves',
-                'description' => 'A light full-finger glove for shoulder-season riding.',
+                'description' => 'A light full-finger glove for shoulder-season riding, in breathable polyester with a padded palm and a touchscreen-friendly index finger. Uninsulated and not windproof, so they take the edge off a cool morning and are not a winter glove.',
                 'price' => 29.9,
                 'stock' => 0,
                 'manufacturer' => 'Kestrel Works',
@@ -229,7 +229,7 @@ final class BikeWear
             [
                 'number' => 'bk-overshoes-neoprene',
                 'name' => 'Neoprene Overshoes',
-                'description' => 'Neoprene overshoes with a reinforced sole cut-out and a rear zip.',
+                'description' => 'Neoprene overshoes with a reinforced sole cut-out for cleat and heel, and a rear zip with a storm flap. Neoprene insulates even when soaked, which is the point of it. Sold as one pair. Cut for road shoes, so they pull tight over a bulky trail sole.',
                 'price' => 44.0,
                 'stock' => 6,
                 'manufacturer' => 'Kestrel Works',
@@ -245,7 +245,7 @@ final class BikeWear
             [
                 'number' => 'bk-overshoes-toe-covers',
                 'name' => 'Toe Covers',
-                'description' => 'Covers just the toe box, for mornings that do not warrant full overshoes.',
+                'description' => 'Neoprene covers for the toe box only, for mornings that do not warrant full overshoes, with a cut-out for a road cleat. Sold as one pair. They stop wind over the toes and leave the rest of the shoe open, so they do little once water runs down the leg.',
                 'price' => 24.9,
                 'stock' => 11,
                 'manufacturer' => 'Kestrel Works',
@@ -263,7 +263,7 @@ final class BikeWear
             [
                 'number' => 'bk-helmet-road-aero',
                 'name' => 'Road Helmet Aero',
-                'description' => 'A vented aero road helmet with an adjustable cradle.',
+                'description' => 'A vented aero road helmet certified to EN 1078, with an in-mould polycarbonate shell, an adjustable rear cradle and a washable pad set. Sized by head circumference: S 51-55, M 55-59, L 59-63 cm. No visor, no mirror and no light are supplied or fitted.',
                 'price' => 129.0,
                 'stock' => 5,
                 'manufacturer' => 'Kestrel Works',
@@ -278,7 +278,7 @@ final class BikeWear
             [
                 'number' => 'bk-helmet-gravel',
                 'name' => 'Gravel Helmet',
-                'description' => 'Deeper coverage at the back of the head and larger vents than the road shell.',
+                'description' => 'Deeper coverage at the back of the head and larger vents than the road shell, certified to EN 1078, with an in-mould shell and an adjustable cradle. Sized M 55-59 and L 59-63 cm. EN 1078 is the only rating it carries: there is no separate trail or downhill certification.',
                 'price' => 109.0,
                 'stock' => 7,
                 'manufacturer' => 'Kestrel Works',
@@ -293,7 +293,7 @@ final class BikeWear
             [
                 'number' => 'bk-helmet-kids',
                 'name' => 'Kids Helmet',
-                'description' => 'A small-shell helmet with a pinch-free buckle.',
+                'description' => 'A small-shell helmet certified to EN 1078, with a pinch-free buckle and an adjustable cradle. One size, S, for head circumferences of 48 to 52 cm. Measure before buying, because the cradle takes up slack rather than a size gap and a loose helmet does not protect.',
                 'price' => 49.0,
                 'stock' => 9,
                 'manufacturer' => 'Kestrel Works',
@@ -307,7 +307,7 @@ final class BikeWear
             [
                 'number' => 'bk-helmet-rain-cover',
                 'name' => 'Helmet Rain Cover',
-                'description' => 'A stretch cover that closes a helmet\'s vents in heavy rain.',
+                'description' => 'A stretch nylon cover that closes the vents of a helmet in heavy rain, with an elasticated edge that pulls under the shell. One size, cut to fit an adult road or gravel shell. It is not protective equipment and does nothing for impact: it keeps rain off a head.',
                 'price' => 14.9,
                 'stock' => 26,
                 'manufacturer' => 'Kestrel Works',

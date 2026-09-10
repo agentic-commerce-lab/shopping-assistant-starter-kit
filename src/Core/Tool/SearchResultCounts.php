@@ -42,13 +42,13 @@ final class SearchResultCounts
     private function __construct() {}
 
     /**
-     * @param list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}> $products already summarised by {@see ToolProductSummary}
+     * @param list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}> $products already summarised by {@see ToolProductSummary} — carrying `description` when {@see ShortlistDescriptions} judged the match set a shortlist
      * @param list<ProductCard> $returned  the cards the shopper will see
      * @param list<ProductCard> $survivors what retrieval found, after the redundant-parent filter
      * @param bool              $saturated whether the candidate window filled up
      * @param int|null          $exact     an authoritative match count, when the gateway could give one
      *
-     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>, total: int, matched: int, more: bool, withheld?: int, all_shown?: true, all_shown_note?: string}
+     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>, total: int, matched: int, more: bool, withheld?: int, all_shown?: true, all_shown_note?: string}
      */
     public static function of(
         array $products,
