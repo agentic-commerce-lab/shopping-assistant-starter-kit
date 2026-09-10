@@ -19,6 +19,7 @@ final readonly class ProductCard
      * @param array<string, string>   $options      e.g. ['Colour' => 'Blue', 'Size' => 'M']
      * @param list<string>            $categoryPath
      * @param array<string, list<string>> $properties
+     * @param list<BundleItem>        $bundleItems  empty for every ordinary product
      */
     // @mago-expect lint:excessive-parameter-list
     // The parameter list mirrors the allowlisted shopper-facing fields exactly (see class
@@ -67,6 +68,25 @@ final readonly class ProductCard
          * `ProductEntity::purchaseSteps`. See {@see self::$minPurchase}.
          */
         public int $purchaseSteps = 1,
+        /**
+         * What a Shopware Commercial bundle is made of, in the merchant's own item order.
+         *
+         * **Not a passthrough, and the class docblock's ban still stands.** This is a list of a
+         * typed DTO built field by field from `bundle_item` rows, exactly as `options` and
+         * `properties` are built from their own associations — not a raw entity and not an
+         * arbitrary array. Nothing about a member product crosses the seam except the three facts
+         * {@see BundleItem} names.
+         *
+         * **Empty is the ordinary case.** `shopware/commercial` is not a dependency of this plugin,
+         * so in most shops the `bundleItems` extension does not exist at all; a bundle is the
+         * exception and every other product reports `[]`.
+         *
+         * Its reason for existing is measured: asked what was in a bundle, the assistant answered
+         * with a "Gear brush" the catalogue has never contained and a "Chain lube 120 ml" that is
+         * 100 ml, while the shop held the exact contents in `bundle_item` all along. The card could
+         * not say, so the model said instead.
+         */
+        public array $bundleItems = [],
     ) {}
 
     public function isInStock(): bool

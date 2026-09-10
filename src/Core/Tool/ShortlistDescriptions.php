@@ -86,7 +86,7 @@ final readonly class ShortlistDescriptions
      * @param int                         $survivors   how many products matched before narrowing —
      *                                                 the figure `retrieve.narrow` records
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
      */
     public static function of(array $returned, array $reasons, int $survivors, TraceRecorder $trace): array
     {

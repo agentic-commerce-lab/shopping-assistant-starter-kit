@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Tool;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\BundleItem;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
@@ -67,7 +68,7 @@ final class ToolProductSummary
      *                                              {@see MatchReasons::of()} — empty unless
      *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>}>
      */
     public static function of(array $cards, array $reasons = []): array
     {
@@ -84,6 +85,16 @@ final class ToolProductSummary
                     // card.
                     'properties' => BoundedProperties::of($card->properties),
                 ];
+
+                // **What a bundle is made of, and the one widening here that closes a fabrication
+                // surface rather than opening one.** Names and composition quantities only — see
+                // self::contents() — so the standing "never widen this with a figure" rule holds.
+                // Without it the model had a bundle's name, its price and nothing about its
+                // contents, and answered "what is in it?" from priors: a "Gear brush" the catalogue
+                // has never held, beside a card whose price and stock were perfectly honest.
+                if ($card->bundleItems !== []) {
+                    $summary['bundle'] = self::contents($card->bundleItems);
+                }
 
                 // **Only ever true, never false.** An absent key means what it always meant: the model
                 // has been told nothing about buyability and may claim none. A `false` would be a
@@ -126,6 +137,38 @@ final class ToolProductSummary
     }
 
     /**
+     * A bundle's members, as small as the facts allow.
+     *
+     * Two omissions are deliberate and both follow rules this class already keeps. **`quantity`
+     * appears only above one**, because one is the default a key would merely restate — the same
+     * reasoning {@see \Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard::$priceQuantity}
+     * gives for its own. **`optional` appears only when true**, like `soldOut` and `available`, so
+     * an absent key means the item is part of the bundle as sold; the asymmetry is chosen by what
+     * each error costs, and telling a shopper they may decline an item the shop will charge them
+     * for is the expensive direction.
+     *
+     * @param list<BundleItem> $items
+     *
+     * @return list<array{name: string, quantity?: int, optional?: true}>
+     */
+    private static function contents(array $items): array
+    {
+        return array_map(static function (BundleItem $item): array {
+            $entry = ['name' => $item->name];
+
+            if ($item->quantity > 1) {
+                $entry['quantity'] = $item->quantity;
+            }
+
+            if (!$item->required) {
+                $entry['optional'] = true;
+            }
+
+            return $entry;
+        }, $items);
+    }
+
+    /**
      * {@see self::of()} plus each product's own description, for the comparison path only.
      *
      * **A named method rather than a flag on `of()`**, so the call site says which contract it asked
@@ -143,7 +186,7 @@ final class ToolProductSummary
      * @param list<ProductCard>           $cards
      * @param array<string, list<string>> $reasons
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
      */
     public static function withDescriptions(array $cards, array $reasons = []): array
     {

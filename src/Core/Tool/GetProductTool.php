@@ -55,9 +55,10 @@ final class GetProductTool
      *     own facet values before resolution, so "blue" and "Blue" behave the same.
      *
      * @return array{
-     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>,
+     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>,
      *     total: int,
      *     note?: string,
+     *     bundle_note?: string,
      * }
      */
     public function __invoke(string $productId, ?array $options = null): array
@@ -134,6 +135,11 @@ final class GetProductTool
             // got back, which a bare id cannot tell it. See ToolProductSummary.
             'products' => $products,
             'total' => \count($survivors),
+            // **This path above all.** A shopper asking about ONE product is the shopper asking
+            // what is in a bundle, and Commercial's price covers optional items its stock ignores.
+            // Wired here as well as into SearchResultCounts so the caveat cannot depend on which
+            // call the model happened to reach for — the same failure mode descriptions had.
+            ...BundlePriceNote::replyFor($survivors),
         ];
 
         if ($survivors === []) {

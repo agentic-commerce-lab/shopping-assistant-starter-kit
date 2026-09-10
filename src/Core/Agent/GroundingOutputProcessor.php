@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Agent;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Grounding\BundleContents;
 use Swag\AssistantStarterKit\Core\Grounding\ContinuedProductNames;
 use Swag\AssistantStarterKit\Core\Grounding\ContradictedVariants;
 use Swag\AssistantStarterKit\Core\Grounding\DescriptionAudit;
@@ -168,7 +169,13 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // property (staging, 2026-09-02). The price and availability audits above get the unmasked
         // reply on purpose — neither vocabulary collides with a product name the way this one does.
         $this->renderer->unbackedPropertiesInProse(
-            ProductNameMask::strip($text, ProductNames::of($this->renderer->retrievedCards())),
+            // **Bundle member names are masked too.** They are names the server supplied, and an
+            // unmasked one whose text contains a facet value became a property claim the shop could
+            // not back: "Tubeless Rim Tape" was reported as an unbacked `Rim` brake system, live on
+            // 2026-09-10. Deliberately NOT ProductNames::of() here and deliberately still
+            // ProductNames::of() at the ContinuedProductNames call above — that detector exists to
+            // notice a name no card corroborates, which is every bundle member by construction.
+            ProductNameMask::strip($text, ProductNames::withBundleItems($this->renderer->retrievedCards())),
             $this->facets,
             [...GivenDescriptions::from($this->trace), ...RetrievedPassages::from($this->trace)],
             DisclosedOptions::from($this->trace),
@@ -186,10 +193,23 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         // Its sources of truth are the prose, the descriptions handed over and the facet vocabulary,
         // all three of which this class already holds — so unlike its three siblings it needs no
         // rendered card and does not belong on FactRenderer.
+        //
+        // **A retrieved bundle's contents join the corpus here and nowhere else.** Since the
+        // extractor learned to read a contents list, every answer about a bundle is a
+        // scope-of-delivery claim — the correct ones included — so a shop that supplied its item
+        // rows must not have the right answer reported against it (ruling R85). It is added to this
+        // call only, and deliberately not to `unbackedPropertiesInProse()` above: an item named
+        // "Alloy Bottle Cage" would put a Material facet value into that audit's supporting text
+        // and exempt an `alloy` property claim on the strength of a product name, which is a
+        // widening of a measured audit that nothing here has measured.
         $this->descriptions->recordUnsupportedFactClaims(
             $this->trace,
             $text,
-            [...GivenDescriptions::from($this->trace), ...RetrievedPassages::from($this->trace)],
+            [
+                ...GivenDescriptions::from($this->trace),
+                ...RetrievedPassages::from($this->trace),
+                ...BundleContents::of($this->renderer->retrievedCards()),
+            ],
             $this->facets,
         );
     }

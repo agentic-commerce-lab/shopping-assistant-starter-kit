@@ -28,7 +28,22 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader"/>
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalRangeBounds"/>
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFilterTranslator"/>
-        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
+
+        <!-- Whether this shop's product entity carries Shopware Commercial's bundle association.
+             The criteria builder must be told: its default is BundlesUnavailable, because naming a
+             field the DAL does not know fails every product read, and `shopware/commercial` is not
+             a dependency of this plugin. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalBundleSupport">
+            <argument type="service" id="Shopware\Core\Content\Product\ProductDefinition"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"
+                 alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalBundleSupport"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFilterTranslator"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"/>
+        </service>
 
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\RouterProductUrlResolver">
             <argument type="service" id="router"/>
