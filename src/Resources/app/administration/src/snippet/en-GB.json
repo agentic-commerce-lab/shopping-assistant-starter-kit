@@ -1,30 +1,40 @@
 {
-    "swag-assistant-settings": {
-        "status": {
-            "label": "Assistant active",
-            "stateRunning": "Running",
-            "stateStopped": "Stopped",
-            "stateUnconfigured": "Not answering yet",
-            "detailRunning": "Shoppers can chat with the assistant, and each reply spends model credit on your account.",
-            "detailStopped": "Every message is refused before it reaches the model, so nothing is being spent. The assistant is hidden from your storefront while it is stopped.",
-            "detailUnconfigured": "The assistant is switched on but has no language model, so every message is refused and nothing is being spent. Set a model under Language model below.",
-            "confirmStopTitle": "Stop the assistant?",
-            "confirmStopBody": "Shoppers stop getting replies straight away, and the assistant disappears from your storefront. Nothing else changes — your settings, saved conversations and history all stay as they are, and you can start it again at any time.",
-            "confirmStopAction": "Stop the assistant",
-            "confirmStartTitle": "Start the assistant?",
-            "confirmStartBody": "Shoppers will be able to chat with the assistant as soon as you save, and every reply will spend model credit on your account. Check the limits below first if you want a ceiling on that.",
-            "confirmStartAction": "Start the assistant"
-        },
-        "escalation": {
-            "nothingIsSent": "Nothing is sent anywhere. No ticket is opened, no email goes out and nobody is notified — the assistant declines the question and shows your link, and the shopper decides whether to follow it. The assistant is explicitly instructed never to claim someone will get back to them.",
-            "shopperAsks": "Where is my order #10023?",
-            "withLinkHeading": "With a link set",
-            "withLinkReply": "I can't look up order details here. Our team can help with orders, returns and anything account-related.",
-            "withLinkAction": "Contact the team",
-            "withLinkNote": "Your handover message appears above the button, and the button goes to the address you set. The assistant never writes the address itself, so it cannot get it wrong.",
-            "withoutLinkHeading": "With no link set",
-            "withoutLinkReply": "I can't help with that kind of question here. I can look up a product, its price or whether it's in stock.",
-            "withoutLinkNote": "With nowhere to send the shopper, the assistant says what it can do instead. It will not mention your team or promise a reply, because there is nothing behind either."
-        }
+  "swag-assistant-settings": {
+    "status": {
+      "label": "Assistant active",
+      "stateRunning": "Running",
+      "stateStopped": "Stopped",
+      "stateUnconfigured": "Not answering yet",
+      "detailRunning": "Shoppers can chat with the assistant, and each reply spends model credit on your account.",
+      "detailStopped": "Every message is refused before it reaches the model, so nothing is being spent. The assistant is hidden from your storefront while it is stopped.",
+      "detailUnconfigured": "The assistant is switched on but has no language model, so every message is refused and nothing is being spent. Set a model under Language model below.",
+      "confirmStopTitle": "Stop the assistant?",
+      "confirmStopBody": "Shoppers stop getting replies straight away, and the assistant disappears from your storefront. Nothing else changes — your settings, saved conversations and history all stay as they are, and you can start it again at any time.",
+      "confirmStopAction": "Stop the assistant",
+      "confirmStartTitle": "Start the assistant?",
+      "confirmStartBody": "Shoppers will be able to chat with the assistant as soon as you save, and every reply will spend model credit on your account. Check the limits below first if you want a ceiling on that.",
+      "confirmStartAction": "Start the assistant"
+    },
+    "escalation": {
+      "nothingIsSent": "Nothing is sent anywhere. No ticket is opened, no email goes out and nobody is notified — the assistant declines the question and shows your link, and the shopper decides whether to follow it. The assistant is explicitly instructed never to claim someone will get back to them.",
+      "shopperAsks": "Where is my order #10023?",
+      "withLinkHeading": "With a link set",
+      "withLinkReply": "I can't look up order details here. Our team can help with orders, returns and anything account-related.",
+      "withLinkAction": "Contact the team",
+      "withLinkNote": "Your handover message appears above the button, and the button goes to the address you set. The assistant never writes the address itself, so it cannot get it wrong.",
+      "withoutLinkHeading": "With no link set",
+      "withoutLinkReply": "I can't help with that kind of question here. I can look up a product, its price or whether it's in stock.",
+      "withoutLinkNote": "With nowhere to send the shopper, the assistant says what it can do instead. It will not mention your team or promise a reply, because there is nothing behind either."
+    },
+    "systemPrompt": {
+      "toggle": "Show the assistant's instructions",
+      "loading": "Loading…",
+      "failed": "The instructions could not be loaded:",
+      "scope": "These are the saved instructions for \"%channel%\". Changes in this form apply after you save.",
+      "otherChannels": "Another sales channel with its own settings will differ.",
+      "characters": "%count% characters.",
+      "perTurnOmitted": "Your catalogue's own vocabulary and the product a shopper is looking at are added per conversation and are not shown here.",
+      "noStorefront": "This shop has no active Storefront sales channel."
     }
+  }
 }

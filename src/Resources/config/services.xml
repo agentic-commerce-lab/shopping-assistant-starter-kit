@@ -459,6 +459,23 @@
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedCompletion"/>
         </service>
 
+        <!-- Bundles, so the assistant's bundle behaviour is reproducible rather than hand-built.
+             Ids are derived from the product number, so a re-run updates in place. Writes through
+             the DAL because every /api/product-bundle route is gated on Commercial's Routes
+             licence; BundleSupport is what turns a shop without Commercial into a sentence
+             rather than a DAL exception. -->
+        <service id="Swag\AssistantStarterKit\Command\Seed\Bundle\DalBundleMemberReader">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Command\SeedBundlesCommand">
+            <argument type="service" id="product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bundle\DalBundleMemberReader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Command\DefaultSalesChannel"/>
+            <tag name="console.command"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Command\SeedBikeCatalogueCommand">
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bike\BikeSeedRunner"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
@@ -690,6 +707,14 @@
         <service id="Swag\AssistantStarterKit\Core\Config\AssistantReadiness">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
             <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <!-- Read-only: lets the settings form show what the merchant's own instructions are
+             appended to. Composed rather than templated, because the prompt depends on several
+             switches and a hardcoded copy would drift from SystemPrompt. -->
+        <service id="Swag\AssistantStarterKit\Controller\AssistantSystemPromptController" public="true">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Controller\AssistantStatusController" public="true">

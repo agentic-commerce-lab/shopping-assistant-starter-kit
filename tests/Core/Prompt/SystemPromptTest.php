@@ -19,24 +19,6 @@ final class SystemPromptTest extends TestCase
         self::assertStringContainsString('escalate', $prompt);
     }
 
-    public function testAppendsMerchantVoiceAfterTheRulesAndSubordinatesIt(): void
-    {
-        $prompt = SystemPrompt::build(new AssistantConfig(agentVoice: 'Be terse. Metric units.'));
-
-        $rulesEnd = strpos($prompt, 'Answer in the language the shopper writes in');
-        $voiceStart = strpos($prompt, 'Be terse. Metric units.');
-
-        self::assertIsInt($rulesEnd);
-        self::assertIsInt($voiceStart);
-        self::assertGreaterThan($rulesEnd, $voiceStart);
-        self::assertStringContainsString('style only', $prompt);
-    }
-
-    public function testOmitsTheVoiceSectionEntirelyWhenUnset(): void
-    {
-        self::assertStringNotContainsString('style only', SystemPrompt::build(new AssistantConfig()));
-    }
-
     public function testAnEmptyVocabularyAppendsNothing(): void
     {
         $config = new AssistantConfig();

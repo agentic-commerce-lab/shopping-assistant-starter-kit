@@ -130,19 +130,27 @@
 
     <card>
         <name>voiceAndScope</name>
-        <title>Voice and catalogue scope</title>
+        <title>Instructions and catalogue scope</title>
         <subtitle>Anything listed here is hidden from the assistant entirely: it is never looked up,
             so it cannot be mentioned, recommended or added to a cart.</subtitle>
 
         <input-field type="textarea">
             <name>agentVoice</name>
-            <label>Agent voice</label>
+            <label>Your own instructions for the assistant</label>
             <placeholder>Warm and concise. Speak like a knowledgeable shop assistant, not a
-                salesperson. Never oversell — if something is not a good fit, say so.</placeholder>
-            <helpText>Tone and personality only. Nothing written here can give the assistant a new
-                ability: what it is allowed to do is decided by the switches in this form, never by
-                instructions in this box.</helpText>
+                salesperson. Never oversell — if something is not a good fit, say so. Always mention
+                our 30-day returns. Do not advise on frame sizing; point those questions at us.</placeholder>
+            <helpText>Added to the end of the assistant's instructions, so you can set its tone, what
+                it should always mention, and what it should leave alone. Two things it cannot do:
+                it cannot give the assistant a new ability — that is decided by the switches in this
+                form — and it cannot override the assistant's own rules, so where your text and those
+                rules disagree, the rules win. Expand "the assistant's instructions" below to read
+                what your text is added to.</helpText>
         </input-field>
+
+        <component name="swag-assistant-system-prompt">
+            <name>systemPromptPreview</name>
+        </component>
 
         <component name="sw-entity-multi-id-select">
             <name>blockedProducts</name>
