@@ -28,6 +28,16 @@ final class EvalCatalogue
 
     public const FASHION = 'fashion';
 
+    /**
+     * A committed slice of a real shop, not a generated one.
+     *
+     * The three above are generated to a shape this project chose. This one was collected from a
+     * live B2B catalogue because two questions cannot be asked of a catalogue we designed: whether
+     * an unqualified term is ambiguous across vehicle worlds, and what a product's real attached
+     * documents look like. See the file's own `_readme`, including which fields are invented.
+     */
+    public const PARTS = 'parts';
+
     private const ENV = 'ASSISTANT_EVAL_CATALOG';
 
     private function __construct() {}
@@ -41,6 +51,7 @@ final class EvalCatalogue
         return match (strtolower(trim((string) getenv(self::ENV)))) {
             self::LARGE => self::LARGE,
             self::FASHION => self::FASHION,
+            self::PARTS => self::PARTS,
             default => self::SMALL,
         };
     }
@@ -57,6 +68,8 @@ final class EvalCatalogue
         return match (self::chosenName()) {
             self::LARGE => LargeCatalogFile::path(),
             self::FASHION => FashionCatalogFile::path(),
+            // Committed rather than generated, so there is nothing to ensure.
+            self::PARTS => \dirname(__DIR__) . '/Fixtures/catalog-parts.json',
             default => LargeCatalogFile::smallPath(),
         };
     }

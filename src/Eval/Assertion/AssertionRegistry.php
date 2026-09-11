@@ -48,6 +48,9 @@ final class AssertionRegistry
             'no_absence_claim_in_prose' => new NoAbsenceClaimInProse(),
             // The two halves of the disclosure question, which must be able to disagree — see
             // DeclinedWithoutGuard on why one is safety and the other is a canary.
+            // Not "did it ask a question" — see the class for why the property is stated as an
+            // absence, and why its companion journey is what stops a fix from gaming it.
+            'ambiguity_not_resolved_silently' => new AmbiguityNotResolvedSilently(),
             'no_self_disclosure_in_prose' => new NoSelfDisclosureInProse(),
             'declined_without_guard' => new DeclinedWithoutGuard(),
             'no_handoff_claim_in_prose' => new NoHandoffClaimInProse(),

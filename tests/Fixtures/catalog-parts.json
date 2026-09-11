@@ -1,0 +1,2258 @@
+{
+ "_readme": [
+  "A deliberately small, structured slice of a real Shopware B2B catalogue (the source shop),",
+  "collected 2026-09-11 for two questions the generated catalogues cannot ask.",
+  "",
+  "AMBIGUITY: 72 products are tyres, 24 in each of three vehicle worlds — car, motorcycle,",
+  "bicycle. 'Reifen' therefore matches across all three, which is the shape a shopper's",
+  "unqualified question runs into. The vehicle world is the FIRST element of categoryPath.",
+  "",
+  "DOCUMENTS: 21 motorcycle batteries carry real attached PDFs, up to eleven per product,",
+  "because tyres almost never carry one. Several are the same datasheet in eight languages.",
+  "",
+  "PRICES AND STOCK ARE INVENTED. This shop shows prices only to logged-in dealers, so",
+  "nothing here was scraped; both are derived from the product number and are meaningless.",
+  "Names, category paths are real; document URLs are placeholders.",
+  "",
+  "IDS ARE PREFIXED 'pt-'. A bare parts product number is a numeric string, which PHP coerces",
+  "to an int when used as an array key — FactRenderer::retrievedIds() then returns ints and",
+  "GroundingOutputProcessor crashes on str_contains(). Real Shopware ids are 32-char hex."
+ ],
+ "products": [
+  {
+   "id": "pt-89530036",
+   "name": "G-Fit 4S (LH71) Ganzjahresreifen",
+   "description": null,
+   "price": 36.7,
+   "stock": 0,
+   "url": "/detail/pt-89530036",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "LAUFENN"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Technisches Datenblatt DE",
+     "url": "/media/datasheet-0023.pdf"
+    },
+    {
+     "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) DA",
+     "url": "/media/datasheet-0010.pdf"
+    },
+    {
+     "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) DE",
+     "url": "/media/datasheet-0049.pdf"
+    },
+    {
+     "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) EN",
+     "url": "/media/datasheet-0091.pdf"
+    },
+    {
+     "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) ES",
+     "url": "/media/datasheet-0012.pdf"
+    },
+    {
+     "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) FR",
+     "url": "/media/datasheet-0098.pdf"
+    },
+    {
+     "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) IT",
+     "url": "/media/datasheet-0082.pdf"
+    },
+    {
+     "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) NL",
+     "url": "/media/datasheet-0015.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-89528026",
+   "name": "Kinergy 4S 2 (H750) Ganzjahresreifen",
+   "description": null,
+   "price": 67.89,
+   "stock": 39,
+   "url": "/detail/pt-89528026",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89532167",
+   "name": "Kinergy 4S 2 (H750) Ganzjahresreifen",
+   "description": null,
+   "price": 145.52,
+   "stock": 2,
+   "url": "/detail/pt-89532167",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528039",
+   "name": "i*cept RS3 (W462) Winterreifen",
+   "description": null,
+   "price": 160.3,
+   "stock": 0,
+   "url": "/detail/pt-89528039",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528093",
+   "name": "i*cept RS3 (W462) Winterreifen",
+   "description": null,
+   "price": 184.09,
+   "stock": 19,
+   "url": "/detail/pt-89528093",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89530050",
+   "name": "Kinergy 4S (H740) Ganzjahresreifen",
+   "description": null,
+   "price": 149.31,
+   "stock": 21,
+   "url": "/detail/pt-89530050",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528057",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 11.23,
+   "stock": 13,
+   "url": "/detail/pt-89528057",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-53187641",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 149.03,
+   "stock": 33,
+   "url": "/detail/pt-53187641",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528033",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 212.18,
+   "stock": 28,
+   "url": "/detail/pt-89528033",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Danish",
+     "url": "/media/datasheet-0110.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 German",
+     "url": "/media/datasheet-0054.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 English",
+     "url": "/media/datasheet-0047.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Spanish",
+     "url": "/media/datasheet-0032.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 French",
+     "url": "/media/datasheet-0063.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Italian",
+     "url": "/media/datasheet-0071.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Dutch",
+     "url": "/media/datasheet-0077.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-89528003",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 141.86,
+   "stock": 36,
+   "url": "/detail/pt-89528003",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Danish",
+     "url": "/media/datasheet-0092.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 German",
+     "url": "/media/datasheet-0034.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 English",
+     "url": "/media/datasheet-0028.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Spanish",
+     "url": "/media/datasheet-0033.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 French",
+     "url": "/media/datasheet-0066.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Italian",
+     "url": "/media/datasheet-0044.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Dutch",
+     "url": "/media/datasheet-0059.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-89528036",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 232.45,
+   "stock": 15,
+   "url": "/detail/pt-89528036",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-53189441",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 153.51,
+   "stock": 1,
+   "url": "/detail/pt-53189441",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528031",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 133.91,
+   "stock": 1,
+   "url": "/detail/pt-89528031",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528049",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 198.92,
+   "stock": 22,
+   "url": "/detail/pt-89528049",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528017",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 208.42,
+   "stock": 12,
+   "url": "/detail/pt-89528017",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528052",
+   "name": "AllSeasonContact 2 Ganzjahresreifen",
+   "description": null,
+   "price": 161.3,
+   "stock": 20,
+   "url": "/detail/pt-89528052",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "CONTINENTAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89591400",
+   "name": "N´blue 4season Ganzjahresreifen",
+   "description": null,
+   "price": 84.26,
+   "stock": 36,
+   "url": "/detail/pt-89591400",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "NEXEN TIRE"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528193",
+   "name": "N´blue 4season Ganzjahresreifen",
+   "description": null,
+   "price": 158.1,
+   "stock": 20,
+   "url": "/detail/pt-89528193",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "NEXEN TIRE"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Danish",
+     "url": "/media/datasheet-0124.pdf"
+    },
+    {
+     "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season German",
+     "url": "/media/datasheet-0073.pdf"
+    },
+    {
+     "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season English",
+     "url": "/media/datasheet-0114.pdf"
+    },
+    {
+     "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Spanish",
+     "url": "/media/datasheet-0070.pdf"
+    },
+    {
+     "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season French",
+     "url": "/media/datasheet-0074.pdf"
+    },
+    {
+     "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Italian",
+     "url": "/media/datasheet-0057.pdf"
+    },
+    {
+     "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Dutch",
+     "url": "/media/datasheet-0109.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-89528065",
+   "name": "N´blue 4season Ganzjahresreifen",
+   "description": null,
+   "price": 148.1,
+   "stock": 20,
+   "url": "/detail/pt-89528065",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "NEXEN TIRE"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89530007",
+   "name": "N´blue 4season Ganzjahresreifen",
+   "description": null,
+   "price": 121.98,
+   "stock": 8,
+   "url": "/detail/pt-89530007",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "NEXEN TIRE"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89530070",
+   "name": "Ventus Prime 4 Sommerreifen",
+   "description": null,
+   "price": 232.18,
+   "stock": 28,
+   "url": "/detail/pt-89530070",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528187",
+   "name": "Ventus Prime 4 Sommerreifen",
+   "description": null,
+   "price": 21.84,
+   "stock": 34,
+   "url": "/detail/pt-89528187",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89530045",
+   "name": "Ventus Prime 4 Sommerreifen",
+   "description": null,
+   "price": 59.36,
+   "stock": 26,
+   "url": "/detail/pt-89530045",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "HANKOOK"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-89528058",
+   "name": "AllSeason Expert 2 Ganzjahresreifen",
+   "description": null,
+   "price": 62.29,
+   "stock": 39,
+   "url": "/detail/pt-89528058",
+   "categoryPath": [
+    "Autoteile und Zubehör",
+    "Reifen",
+    "Reifen",
+    "UNIROYAL"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Danish",
+     "url": "/media/datasheet-0084.pdf"
+    },
+    {
+     "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 German",
+     "url": "/media/datasheet-0021.pdf"
+    },
+    {
+     "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 English",
+     "url": "/media/datasheet-0128.pdf"
+    },
+    {
+     "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Spanish",
+     "url": "/media/datasheet-0067.pdf"
+    },
+    {
+     "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 French",
+     "url": "/media/datasheet-0111.pdf"
+    },
+    {
+     "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Italian",
+     "url": "/media/datasheet-0025.pdf"
+    },
+    {
+     "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Dutch",
+     "url": "/media/datasheet-0017.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05630215",
+   "name": "K36 + K36/1 Reifen",
+   "description": null,
+   "price": 222.74,
+   "stock": 4,
+   "url": "/detail/pt-05630215",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05630223",
+   "name": "K36 + K36/1 Reifen",
+   "description": null,
+   "price": 17.9,
+   "stock": 0,
+   "url": "/detail/pt-05630223",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05630231",
+   "name": "K36 + K36/1 Reifen",
+   "description": null,
+   "price": 150.87,
+   "stock": 17,
+   "url": "/detail/pt-05630231",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-04904629",
+   "name": "K36 + K36/1 Reifen",
+   "description": null,
+   "price": 212.55,
+   "stock": 25,
+   "url": "/detail/pt-04904629",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05646625",
+   "name": "K56 Reifen",
+   "description": null,
+   "price": 221.86,
+   "stock": 36,
+   "url": "/detail/pt-05646625",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05646849",
+   "name": "K56 Reifen",
+   "description": null,
+   "price": 154.04,
+   "stock": 14,
+   "url": "/detail/pt-05646849",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-04904603",
+   "name": "M3 Reifen",
+   "description": null,
+   "price": 79.76,
+   "stock": 26,
+   "url": "/detail/pt-04904603",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-04904611",
+   "name": "M3 Reifen",
+   "description": null,
+   "price": 148.33,
+   "stock": 3,
+   "url": "/detail/pt-04904611",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-04904660",
+   "name": "M3 Reifen",
+   "description": null,
+   "price": 36.62,
+   "stock": 32,
+   "url": "/detail/pt-04904660",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645726",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 245.01,
+   "stock": 31,
+   "url": "/detail/pt-05645726",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645908",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 36.65,
+   "stock": 35,
+   "url": "/detail/pt-05645908",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645783",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 181.35,
+   "stock": 25,
+   "url": "/detail/pt-05645783",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05647367",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 224.01,
+   "stock": 11,
+   "url": "/detail/pt-05647367",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05646005",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 77.27,
+   "stock": 17,
+   "url": "/detail/pt-05646005",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05647375",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 144.35,
+   "stock": 5,
+   "url": "/detail/pt-05647375",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645791",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 242.03,
+   "stock": 13,
+   "url": "/detail/pt-05645791",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05646252",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 92.14,
+   "stock": 24,
+   "url": "/detail/pt-05646252",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05641220",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 186.64,
+   "stock": 34,
+   "url": "/detail/pt-05641220",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645718",
+   "name": "K66 + K66/1 Reifen",
+   "description": null,
+   "price": 188.16,
+   "stock": 26,
+   "url": "/detail/pt-05645718",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645122",
+   "name": "K58 Reifen",
+   "description": null,
+   "price": 52.64,
+   "stock": 34,
+   "url": "/detail/pt-05645122",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645106",
+   "name": "K58 Reifen",
+   "description": null,
+   "price": 22.65,
+   "stock": 35,
+   "url": "/detail/pt-05645106",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645569",
+   "name": "K58 Reifen",
+   "description": null,
+   "price": 40.61,
+   "stock": 31,
+   "url": "/detail/pt-05645569",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05646344",
+   "name": "K58 Reifen",
+   "description": null,
+   "price": 226.3,
+   "stock": 0,
+   "url": "/detail/pt-05646344",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05645130",
+   "name": "K58 Reifen",
+   "description": null,
+   "price": 200.87,
+   "stock": 17,
+   "url": "/detail/pt-05645130",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Bereifung",
+    "Heidenau"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08532574",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 209.52,
+   "stock": 2,
+   "url": "/detail/pt-08532574",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08532582",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 203.66,
+   "stock": 16,
+   "url": "/detail/pt-08532582",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03548856",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 228.49,
+   "stock": 19,
+   "url": "/detail/pt-03548856",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03548864",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 115.79,
+   "stock": 29,
+   "url": "/detail/pt-03548864",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03548872",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 17.43,
+   "stock": 33,
+   "url": "/detail/pt-03548872",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03548880",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 160.98,
+   "stock": 28,
+   "url": "/detail/pt-03548880",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03548898",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 94.76,
+   "stock": 6,
+   "url": "/detail/pt-03548898",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03548906",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 105.99,
+   "stock": 9,
+   "url": "/detail/pt-03548906",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03548914",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 97.71,
+   "stock": 21,
+   "url": "/detail/pt-03548914",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-07545924",
+   "name": "Marathon Plus Performance Line Reifen",
+   "description": null,
+   "price": 231.09,
+   "stock": 39,
+   "url": "/detail/pt-07545924",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545324",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 190.58,
+   "stock": 28,
+   "url": "/detail/pt-08545324",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545335",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 240.94,
+   "stock": 24,
+   "url": "/detail/pt-08545335",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545346",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 141.72,
+   "stock": 22,
+   "url": "/detail/pt-08545346",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545246",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 152.13,
+   "stock": 23,
+   "url": "/detail/pt-08545246",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545357",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 234.35,
+   "stock": 5,
+   "url": "/detail/pt-08545357",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545280",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 226.73,
+   "stock": 3,
+   "url": "/detail/pt-08545280",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545202",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 228.22,
+   "stock": 32,
+   "url": "/detail/pt-08545202",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545368",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 175.54,
+   "stock": 4,
+   "url": "/detail/pt-08545368",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545213",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 157.72,
+   "stock": 22,
+   "url": "/detail/pt-08545213",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-08545257",
+   "name": "Green Marathon Performance Line Reifen",
+   "description": null,
+   "price": 91.31,
+   "stock": 21,
+   "url": "/detail/pt-08545257",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03531274",
+   "name": "Ride Tour Reifen",
+   "description": null,
+   "price": 110.31,
+   "stock": 1,
+   "url": "/detail/pt-03531274",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03531266",
+   "name": "Ride Tour Reifen",
+   "description": null,
+   "price": 103.33,
+   "stock": 23,
+   "url": "/detail/pt-03531266",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03531357",
+   "name": "Ride Tour Reifen",
+   "description": null,
+   "price": 62.59,
+   "stock": 29,
+   "url": "/detail/pt-03531357",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-03531340",
+   "name": "Ride Tour Reifen",
+   "description": null,
+   "price": 16.88,
+   "stock": 18,
+   "url": "/detail/pt-03531340",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Reifen & Schläuche",
+    "Reifen"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": []
+  },
+  {
+   "id": "pt-05379946",
+   "name": "BTX7L / BTX7L-BS Batterie",
+   "description": null,
+   "price": 234.71,
+   "stock": 1,
+   "url": "/detail/pt-05379946",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Danish",
+     "url": "/media/datasheet-0113.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS German",
+     "url": "/media/datasheet-0094.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS English",
+     "url": "/media/datasheet-0100.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Spanish",
+     "url": "/media/datasheet-0129.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS French",
+     "url": "/media/datasheet-0078.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Italian",
+     "url": "/media/datasheet-0116.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Dutch",
+     "url": "/media/datasheet-0107.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0055.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0035.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378872",
+   "name": "BTX7L / BTX7L-BS Batterie",
+   "description": null,
+   "price": 194.09,
+   "stock": 19,
+   "url": "/detail/pt-05378872",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0104.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0002.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379953",
+   "name": "BTX7A / BTX7A-BS Batterie",
+   "description": null,
+   "price": 141.47,
+   "stock": 37,
+   "url": "/detail/pt-05379953",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Danish",
+     "url": "/media/datasheet-0043.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS German",
+     "url": "/media/datasheet-0007.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS English",
+     "url": "/media/datasheet-0101.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Spanish",
+     "url": "/media/datasheet-0080.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS French",
+     "url": "/media/datasheet-0024.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Italian",
+     "url": "/media/datasheet-0060.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Dutch",
+     "url": "/media/datasheet-0058.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0041.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0048.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378864",
+   "name": "BTX7A / BTX7A-BS Batterie",
+   "description": null,
+   "price": 116.13,
+   "stock": 23,
+   "url": "/detail/pt-05378864",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0132.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0076.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379920",
+   "name": "BTX9 / BTX9-BS Batterie",
+   "description": null,
+   "price": 245.53,
+   "stock": 3,
+   "url": "/detail/pt-05379920",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0121.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0037.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378856",
+   "name": "BTX9 / BTX9-BS Batterie",
+   "description": null,
+   "price": 99.82,
+   "stock": 32,
+   "url": "/detail/pt-05378856",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0016.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0103.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379870",
+   "name": "BTX12 / BTX12-BS Batterie",
+   "description": null,
+   "price": 154.43,
+   "stock": 13,
+   "url": "/detail/pt-05379870",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Danish",
+     "url": "/media/datasheet-0088.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS German",
+     "url": "/media/datasheet-0062.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS English",
+     "url": "/media/datasheet-0115.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Spanish",
+     "url": "/media/datasheet-0133.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS French",
+     "url": "/media/datasheet-0123.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Italian",
+     "url": "/media/datasheet-0126.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Dutch",
+     "url": "/media/datasheet-0069.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0087.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0018.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378831",
+   "name": "BTX12 / BTX12-BS Batterie",
+   "description": null,
+   "price": 187.32,
+   "stock": 22,
+   "url": "/detail/pt-05378831",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0009.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0108.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379904",
+   "name": "BTZ10S / BTZ10S-BS Batterie",
+   "description": null,
+   "price": 227.18,
+   "stock": 8,
+   "url": "/detail/pt-05379904",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0122.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0005.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378971",
+   "name": "BTZ10S / BTZ10S-BS Batterie",
+   "description": null,
+   "price": 111.98,
+   "stock": 8,
+   "url": "/detail/pt-05378971",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0095.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0127.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379987",
+   "name": "BTX4L-BS Batterie",
+   "description": null,
+   "price": 122.22,
+   "stock": 32,
+   "url": "/detail/pt-05379987",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Danish",
+     "url": "/media/datasheet-0112.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS German",
+     "url": "/media/datasheet-0038.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS English",
+     "url": "/media/datasheet-0051.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Spanish",
+     "url": "/media/datasheet-0013.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS French",
+     "url": "/media/datasheet-0105.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Italian",
+     "url": "/media/datasheet-0117.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Dutch",
+     "url": "/media/datasheet-0119.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt",
+     "url": "/media/datasheet-0040.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0045.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378054",
+   "name": "BTX4L-BS Batterie",
+   "description": null,
+   "price": 96.17,
+   "stock": 27,
+   "url": "/detail/pt-05378054",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Danish",
+     "url": "/media/datasheet-0030.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS German",
+     "url": "/media/datasheet-0131.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS English",
+     "url": "/media/datasheet-0081.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Spanish",
+     "url": "/media/datasheet-0001.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS French",
+     "url": "/media/datasheet-0083.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Italian",
+     "url": "/media/datasheet-0014.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Dutch",
+     "url": "/media/datasheet-0022.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0045.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378898",
+   "name": "BTX4L+ / BTZ5S Batterie",
+   "description": null,
+   "price": 214.41,
+   "stock": 11,
+   "url": "/detail/pt-05378898",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0027.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0064.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379821",
+   "name": "BTX14 / BTX14-BS Batterie",
+   "description": null,
+   "price": 232.76,
+   "stock": 6,
+   "url": "/detail/pt-05379821",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0039.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Danish",
+     "url": "/media/datasheet-0011.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS German",
+     "url": "/media/datasheet-0029.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS English",
+     "url": "/media/datasheet-0061.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Spanish",
+     "url": "/media/datasheet-0090.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS French",
+     "url": "/media/datasheet-0050.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Italian",
+     "url": "/media/datasheet-0106.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Dutch",
+     "url": "/media/datasheet-0130.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0036.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378823",
+   "name": "BTX14 / BTX14-BS Batterie",
+   "description": null,
+   "price": 132.06,
+   "stock": 16,
+   "url": "/detail/pt-05378823",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0089.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0026.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378666",
+   "name": "BB9-B Batterie",
+   "description": null,
+   "price": 222.52,
+   "stock": 22,
+   "url": "/detail/pt-05378666",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0042.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0052.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379623",
+   "name": "BB9-B Batterie",
+   "description": null,
+   "price": 169.96,
+   "stock": 6,
+   "url": "/detail/pt-05379623",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0099.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Danish",
+     "url": "/media/datasheet-0031.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B German",
+     "url": "/media/datasheet-0004.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B English",
+     "url": "/media/datasheet-0046.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Spanish",
+     "url": "/media/datasheet-0120.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B French",
+     "url": "/media/datasheet-0056.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Italian",
+     "url": "/media/datasheet-0093.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Dutch",
+     "url": "/media/datasheet-0096.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0097.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0008.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378047",
+   "name": "Batterie YB4L-B BB4L-B Batterie",
+   "description": null,
+   "price": 151.93,
+   "stock": 3,
+   "url": "/detail/pt-05378047",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0065.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378708",
+   "name": "Batterie YB4L-B BB4L-B Batterie",
+   "description": null,
+   "price": 48.25,
+   "stock": 35,
+   "url": "/detail/pt-05378708",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0020.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0102.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0003.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05378039",
+   "name": "Batterie YB4L-B BB4L-B Batterie",
+   "description": null,
+   "price": 41.05,
+   "stock": 35,
+   "url": "/detail/pt-05378039",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0099.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0006.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-05379672",
+   "name": "Batterie YB4L-B BB4L-B Batterie",
+   "description": null,
+   "price": 171.96,
+   "stock": 6,
+   "url": "/detail/pt-05379672",
+   "categoryPath": [
+    "Motorrad- und Rollerteile",
+    "Elektrik",
+    "Batterien",
+    "Standard, MTF, SLA, Gel"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0099.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Danish",
+     "url": "/media/datasheet-0068.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B German",
+     "url": "/media/datasheet-0053.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B English",
+     "url": "/media/datasheet-0079.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Spanish",
+     "url": "/media/datasheet-0118.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B French",
+     "url": "/media/datasheet-0086.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Italian",
+     "url": "/media/datasheet-0019.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Dutch",
+     "url": "/media/datasheet-0125.pdf"
+    },
+    {
+     "title": "Technisches Datenblatt EN",
+     "url": "/media/datasheet-0075.pdf"
+    },
+    {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0072.pdf"
+    },
+    {
+     "title": "Konformitätserklärung",
+     "url": "/media/datasheet-0006.pdf"
+    }
+   ]
+  }
+ ]
+}
