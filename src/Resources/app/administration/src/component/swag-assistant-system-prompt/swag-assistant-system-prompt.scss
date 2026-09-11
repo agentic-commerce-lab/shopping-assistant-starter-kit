@@ -1,0 +1,56 @@
+/*
+Literal colours rather than SCSS variables, following the escalation preview beside it: the
+administration's variables are not in scope for a plugin's own stylesheet, and `$color-darkgray-200`
+failed the build with "Undefined variable" before this was written out longhand.
+*/
+.swag-assistant-system-prompt {
+    margin-bottom: 24px;
+
+    &__toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: #64748b;
+        cursor: pointer;
+        font-size: 13px;
+
+        &:hover {
+            color: #0870ff;
+        }
+    }
+
+    &__body {
+        margin-top: 12px;
+    }
+
+    /*
+    Monospace and scrollable rather than wrapped tight: the prompt's own line breaks separate its
+    rule blocks, and losing them turns twelve thousand characters into one wall of text. Capped in
+    height so the card stays a card.
+    */
+    &__text {
+        max-height: 420px;
+        overflow: auto;
+        margin: 12px 0 4px;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f9fafb;
+        color: #0f172a;
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        user-select: text;
+    }
+
+    &__meta {
+        margin: 4px 0 0;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+}

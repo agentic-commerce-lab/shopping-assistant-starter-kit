@@ -1,0 +1,77 @@
+{% block swag_assistant_system_prompt %}
+<div class="swag-assistant-system-prompt">
+
+    {% block swag_assistant_system_prompt_toggle %}
+    <button
+        type="button"
+        class="swag-assistant-system-prompt__toggle"
+        :aria-expanded="expanded ? 'true' : 'false'"
+        @click="toggle"
+    >
+        <mt-icon
+            :name="expanded ? 'regular-chevron-down-xs' : 'regular-chevron-right-xs'"
+            size="12px"
+        />
+        {{ $tc('swag-assistant-settings.systemPrompt.toggle') }}
+    </button>
+    {% endblock %}
+
+    {% block swag_assistant_system_prompt_body %}
+    <div
+        v-if="expanded"
+        class="swag-assistant-system-prompt__body"
+    >
+
+        {% block swag_assistant_system_prompt_loading %}
+        <p
+            v-if="loading"
+            class="swag-assistant-system-prompt__meta"
+        >
+            {{ $tc('swag-assistant-settings.systemPrompt.loading') }}
+        </p>
+        {% endblock %}
+
+        {% block swag_assistant_system_prompt_error %}
+        <mt-banner
+            v-else-if="error"
+            variant="critical"
+            :closable="false"
+        >
+            {{ $tc('swag-assistant-settings.systemPrompt.failed') }} {{ error }}
+        </mt-banner>
+        {% endblock %}
+
+        {% block swag_assistant_system_prompt_content %}
+        <template v-else>
+
+            {% block swag_assistant_system_prompt_scope %}
+            <mt-banner
+                variant="info"
+                :closable="false"
+            >
+                {{ $tc('swag-assistant-settings.systemPrompt.scope', 0, { channel: channelName }) }}
+                <template v-if="channelCount > 1">
+                    {{ $tc('swag-assistant-settings.systemPrompt.otherChannels') }}
+                </template>
+            </mt-banner>
+            {% endblock %}
+
+            {% block swag_assistant_system_prompt_text %}
+            <pre class="swag-assistant-system-prompt__text">{{ prompt }}</pre>
+            {% endblock %}
+
+            {% block swag_assistant_system_prompt_meta %}
+            <p class="swag-assistant-system-prompt__meta">
+                {{ $tc('swag-assistant-settings.systemPrompt.characters', 0, { count: characters }) }}
+                {{ $tc('swag-assistant-settings.systemPrompt.perTurnOmitted') }}
+            </p>
+            {% endblock %}
+
+        </template>
+        {% endblock %}
+
+    </div>
+    {% endblock %}
+
+</div>
+{% endblock %}

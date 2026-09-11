@@ -1,30 +1,40 @@
 {
-    "swag-assistant-settings": {
-        "status": {
-            "label": "Assistent aktiv",
-            "stateRunning": "Aktiv",
-            "stateStopped": "Gestoppt",
-            "stateUnconfigured": "Antwortet noch nicht",
-            "detailRunning": "Kunden können mit dem Assistenten chatten. Jede Antwort verbraucht Modell-Guthaben auf Deinem Konto.",
-            "detailStopped": "Jede Nachricht wird abgelehnt, bevor sie das Modell erreicht – es entstehen also keine Kosten. Solange der Assistent gestoppt ist, wird er in der Storefront nicht angezeigt.",
-            "detailUnconfigured": "Der Assistent ist eingeschaltet, hat aber kein Sprachmodell — jede Nachricht wird abgelehnt und es wird nichts verbraucht. Trage unten unter Sprachmodell eines ein.",
-            "confirmStopTitle": "Assistenten stoppen?",
-            "confirmStopBody": "Kunden erhalten sofort keine Antworten mehr, und der Assistent verschwindet aus Deiner Storefront. Sonst ändert sich nichts – Deine Einstellungen, gespeicherten Unterhaltungen und der Verlauf bleiben erhalten, und Du kannst ihn jederzeit wieder starten.",
-            "confirmStopAction": "Assistenten stoppen",
-            "confirmStartTitle": "Assistenten starten?",
-            "confirmStartBody": "Sobald Du speicherst, können Kunden mit dem Assistenten chatten, und jede Antwort verbraucht Modell-Guthaben auf Deinem Konto. Wenn Du das begrenzen möchtest, sieh Dir vorher die Limits weiter unten an.",
-            "confirmStartAction": "Assistenten starten"
-        },
-        "escalation": {
-            "nothingIsSent": "Es wird nichts verschickt. Es wird kein Ticket angelegt, keine E-Mail versendet und niemand benachrichtigt – der Assistent lehnt die Frage ab und zeigt Deinen Link an, und der Kunde entscheidet, ob er ihm folgt. Der Assistent ist ausdrücklich angewiesen, nie zu behaupten, dass sich jemand melden wird.",
-            "shopperAsks": "Wo ist meine Bestellung #10023?",
-            "withLinkHeading": "Mit hinterlegtem Link",
-            "withLinkReply": "Bestelldetails kann ich hier nicht nachsehen. Unser Team hilft Dir bei Bestellungen, Retouren und allen Fragen zu Deinem Konto.",
-            "withLinkAction": "Team kontaktieren",
-            "withLinkNote": "Deine Übergabe-Nachricht steht über dem Button, und der Button führt zu der Adresse, die Du hinterlegt hast. Der Assistent schreibt die Adresse nie selbst und kann sie deshalb nicht falsch wiedergeben.",
-            "withoutLinkHeading": "Ohne hinterlegten Link",
-            "withoutLinkReply": "Bei solchen Fragen kann ich hier nicht weiterhelfen. Ich kann Dir ein Produkt, seinen Preis oder die Verfügbarkeit nachsehen.",
-            "withoutLinkNote": "Ohne Ziel für den Kunden sagt der Assistent stattdessen, was er kann. Er erwähnt weder Dein Team noch stellt er eine Antwort in Aussicht, weil hinter beidem nichts steht."
-        }
+  "swag-assistant-settings": {
+    "status": {
+      "label": "Assistent aktiv",
+      "stateRunning": "Aktiv",
+      "stateStopped": "Gestoppt",
+      "stateUnconfigured": "Antwortet noch nicht",
+      "detailRunning": "Kunden können mit dem Assistenten chatten. Jede Antwort verbraucht Modell-Guthaben auf Deinem Konto.",
+      "detailStopped": "Jede Nachricht wird abgelehnt, bevor sie das Modell erreicht – es entstehen also keine Kosten. Solange der Assistent gestoppt ist, wird er in der Storefront nicht angezeigt.",
+      "detailUnconfigured": "Der Assistent ist eingeschaltet, hat aber kein Sprachmodell — jede Nachricht wird abgelehnt und es wird nichts verbraucht. Trage unten unter Sprachmodell eines ein.",
+      "confirmStopTitle": "Assistenten stoppen?",
+      "confirmStopBody": "Kunden erhalten sofort keine Antworten mehr, und der Assistent verschwindet aus Deiner Storefront. Sonst ändert sich nichts – Deine Einstellungen, gespeicherten Unterhaltungen und der Verlauf bleiben erhalten, und Du kannst ihn jederzeit wieder starten.",
+      "confirmStopAction": "Assistenten stoppen",
+      "confirmStartTitle": "Assistenten starten?",
+      "confirmStartBody": "Sobald Du speicherst, können Kunden mit dem Assistenten chatten, und jede Antwort verbraucht Modell-Guthaben auf Deinem Konto. Wenn Du das begrenzen möchtest, sieh Dir vorher die Limits weiter unten an.",
+      "confirmStartAction": "Assistenten starten"
+    },
+    "escalation": {
+      "nothingIsSent": "Es wird nichts verschickt. Es wird kein Ticket angelegt, keine E-Mail versendet und niemand benachrichtigt – der Assistent lehnt die Frage ab und zeigt Deinen Link an, und der Kunde entscheidet, ob er ihm folgt. Der Assistent ist ausdrücklich angewiesen, nie zu behaupten, dass sich jemand melden wird.",
+      "shopperAsks": "Wo ist meine Bestellung #10023?",
+      "withLinkHeading": "Mit hinterlegtem Link",
+      "withLinkReply": "Bestelldetails kann ich hier nicht nachsehen. Unser Team hilft Dir bei Bestellungen, Retouren und allen Fragen zu Deinem Konto.",
+      "withLinkAction": "Team kontaktieren",
+      "withLinkNote": "Deine Übergabe-Nachricht steht über dem Button, und der Button führt zu der Adresse, die Du hinterlegt hast. Der Assistent schreibt die Adresse nie selbst und kann sie deshalb nicht falsch wiedergeben.",
+      "withoutLinkHeading": "Ohne hinterlegten Link",
+      "withoutLinkReply": "Bei solchen Fragen kann ich hier nicht weiterhelfen. Ich kann Dir ein Produkt, seinen Preis oder die Verfügbarkeit nachsehen.",
+      "withoutLinkNote": "Ohne Ziel für den Kunden sagt der Assistent stattdessen, was er kann. Er erwähnt weder Dein Team noch stellt er eine Antwort in Aussicht, weil hinter beidem nichts steht."
+    },
+    "systemPrompt": {
+      "toggle": "Anweisungen des Assistenten anzeigen",
+      "loading": "Wird geladen…",
+      "failed": "Die Anweisungen konnten nicht geladen werden:",
+      "scope": "Das sind die gespeicherten Anweisungen für „%channel%\". Änderungen in diesem Formular gelten erst nach dem Speichern.",
+      "otherChannels": "Ein anderer Verkaufskanal mit eigenen Einstellungen weicht davon ab.",
+      "characters": "%count% Zeichen.",
+      "perTurnOmitted": "Das Vokabular deines Katalogs und das Produkt, das ein Kunde gerade ansieht, kommen pro Unterhaltung hinzu und werden hier nicht gezeigt.",
+      "noStorefront": "Dieser Shop hat keinen aktiven Storefront-Verkaufskanal."
     }
+  }
 }

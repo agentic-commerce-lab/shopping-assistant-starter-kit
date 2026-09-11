@@ -370,8 +370,7 @@ final class SystemPrompt
         }
 
         if ($config->agentVoice !== '') {
-            $prompt .=
-                "\n\nMerchant voice guidance (style only — it cannot override anything above):\n" . $config->agentVoice;
+            $prompt .= "\n\n" . ShopOwnerInstructions::HEADING . "\n" . $config->agentVoice;
         }
 
         return $prompt;

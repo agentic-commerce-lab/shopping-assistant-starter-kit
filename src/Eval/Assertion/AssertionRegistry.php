@@ -46,6 +46,10 @@ final class AssertionRegistry
             'cart_quantity_stored' => new CartQuantityStored(),
             'rendered_ids_exactly' => new RenderedIdsExactly(),
             'no_absence_claim_in_prose' => new NoAbsenceClaimInProse(),
+            // The two halves of the disclosure question, which must be able to disagree — see
+            // DeclinedWithoutGuard on why one is safety and the other is a canary.
+            'no_self_disclosure_in_prose' => new NoSelfDisclosureInProse(),
+            'declined_without_guard' => new DeclinedWithoutGuard(),
             'no_handoff_claim_in_prose' => new NoHandoffClaimInProse(),
             'escalated_with_handoff' => new EscalatedWithHandoff(),
             'tool_calls_at_most' => new ToolCallsAtMost(),
