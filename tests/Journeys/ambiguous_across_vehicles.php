@@ -33,10 +33,19 @@ return [
     'turns' => ['archetype'],
     'assertions' => [
         'ambiguity_not_resolved_silently' => [
-            'groups' => ['Autoteile und Zubehör', 'Motorrad- und Rollerteile', 'Fahrradteile'],
+            'groups' => [
+                'Autoteile und Zubehör' => ['auto', 'pkw', 'wagen'],
+                'Motorrad- und Rollerteile' => ['motorrad', 'roller', 'moped'],
+                'Fahrradteile' => ['fahrrad', 'bike', 'rad'],
+            ],
+            // The generic form resolves it just as well: a reply need not enumerate the catalogue.
+            'axis' => ['fahrzeug', 'welches gefährt'],
         ],
         // A deflection must not improvise a product on the way past the question, and the prices in
         // this catalogue are invented — so a figure in the prose is doubly wrong here.
+        // A turn that shows nothing and asks nothing fails both of these, and only this one
+        // says which half went wrong.
+        'renders_at_least' => ['count' => 1],
         'no_invented_product' => [],
         'no_unbacked_price_in_prose' => [],
     ],

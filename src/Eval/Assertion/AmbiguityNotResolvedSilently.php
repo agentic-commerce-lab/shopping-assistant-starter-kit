@@ -59,12 +59,9 @@ final class AmbiguityNotResolvedSilently implements Assertion
     }
 
     /**
-     * @param array<string, mixed> $expectations `groups`: the competing readings, each named by the
-     *        first element of a product's `categoryPath` — the vehicle world in this catalogue
-     */
-    /**
-     * @param array<string, mixed> $expectations `groups`: the competing readings, each named by the
-     *        first element of a product's `categoryPath` — see {@see CompetingGroups}
+     * @param array<string, mixed> $expectations `groups`: group name => words naming it in prose;
+     *        `axis`: optional words naming the DIMENSION generically ("Fahrzeug") — see
+     *        {@see CompetingGroups}
      */
     public function evaluate(AssistantTurn $turn, TraceRecorder $trace, array $expectations): AssertionResult
     {
@@ -78,23 +75,41 @@ final class AmbiguityNotResolvedSilently implements Assertion
             );
         }
 
-        $questions = ProseQuestions::in($turn->prose);
-
-        if ($questions !== []) {
-            return new AssertionResult(
-                $this->name(),
-                true,
-                \sprintf('the reply asked rather than guessed: "%s"', $questions[0]),
-            );
-        }
-
         $rendered = CompetingGroups::renderedIn($turn, $groups);
 
         if (\count($rendered) > 1) {
             return new AssertionResult(
                 $this->name(),
                 true,
-                \sprintf('no question, but the cards show the ambiguity: %s', implode(', ', $rendered)),
+                \sprintf('the cards themselves show the ambiguity: %s', implode(', ', $rendered)),
+            );
+        }
+
+        $mentioned = GroupVocabulary::mentionedIn($turn->prose, $groups);
+
+        if (\count($mentioned) > 1) {
+            return new AssertionResult(
+                $this->name(),
+                true,
+                \sprintf('the reply put the ambiguity in words: %s', implode(', ', $mentioned)),
+            );
+        }
+
+        $axis = CompetingGroups::named(['x' => $expectations['axis'] ?? []])['x'] ?? [];
+
+        if (ProseQuestions::in($turn->prose) !== [] && GroupVocabulary::asksTheAxis($turn->prose, $axis)) {
+            return new AssertionResult($this->name(), true, 'the reply asked which reading was meant');
+        }
+
+        // Two very different failures, and collapsing them into one sentence sent a reader looking
+        // for an ambiguity problem when the turn had simply shown nothing. `renders_at_least` is
+        // what names that properly; this only has to stop claiming otherwise.
+        if ($rendered === []) {
+            return new AssertionResult(
+                $this->name(),
+                false,
+                'nothing was rendered and nothing was asked, so the shopper was left with neither an '
+                . 'answer nor the question — see renders_at_least for the half this cannot judge',
             );
         }
 
@@ -102,8 +117,9 @@ final class AmbiguityNotResolvedSilently implements Assertion
             $this->name(),
             false,
             \sprintf(
-                'the ambiguity was resolved silently — no question asked, and every card came from %s',
-                $rendered === [] ? 'nowhere (no cards rendered at all)' : '"' . $rendered[0] . '"',
+                'the ambiguity was resolved silently — every card came from "%s", and nothing in the '
+                . 'reply names another reading or asks which was meant',
+                $rendered[0],
             ),
         );
     }
