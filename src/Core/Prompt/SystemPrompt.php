@@ -330,6 +330,10 @@ final class SystemPrompt
             . "\n"
             . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE);
 
+        // After that pair, never between them: the escalation clause's "any of those" points back at
+        // the paragraph RULES ends on. Nothing in this block refers backwards, so it is safe here.
+        $prompt .= "\n\n" . DocumentRules::ATTACHED_DOCUMENTS;
+
         if ($config->enableMatchReasons) {
             $prompt .= "\n\n" . CapabilityRules::MATCH_REASONS_AVAILABLE;
         }

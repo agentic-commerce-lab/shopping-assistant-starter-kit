@@ -54,6 +54,7 @@ final readonly class DalProductCardMapper
         private PropertyGroupOptionReader $options = new PropertyGroupOptionReader(),
         private DalApplicablePrice $prices = new DalApplicablePrice(),
         private DalBundleItems $bundleItems = new DalBundleItems(),
+        private DalProductDocuments $documents = new DalProductDocuments(),
     ) {}
 
     /**
@@ -109,6 +110,9 @@ final readonly class DalProductCardMapper
             // Empty for every product in a shop without Commercial installed, which is most of
             // them; see DalBundleItems for why the read cannot name a Commercial type.
             bundleItems: $this->bundleItems->of($product),
+            // Empty for every product whose gallery holds only images, which is most of them —
+            // the allowlist in DalProductDocuments is what makes that true rather than assumed.
+            documents: $this->documents->of($product),
         );
     }
 

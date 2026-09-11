@@ -20,6 +20,7 @@
     },
     "card": {
       "view": "Produkt ansehen",
+      "document": "Dokument",
       "add": "In den Warenkorb",
       "noImage": "Kein Bild verfügbar",
       "inStock": "Auf Lager",

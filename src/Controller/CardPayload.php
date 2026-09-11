@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Controller;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductDocument;
 use Swag\AssistantStarterKit\Core\Tool\BoundedProperties;
 
 /**
@@ -48,6 +49,15 @@ final readonly class CardPayload
                 'imageUrl' => $card->imageUrl,
                 'options' => $card->options,
                 'properties' => BoundedProperties::of($card->properties),
+                // The one place a document's URL crosses a boundary, and deliberately the HTTP one
+                // rather than the model's. The shop renders this link exactly as it renders `url`
+                // and `imageUrl`; ToolProductSummary hands the model the titles alone, so nothing
+                // the model writes can invent, alter or misattribute the address.
+                'documents' => array_map(static fn(ProductDocument $document): array => [
+                    'title' => $document->title,
+                    'url' => $document->url,
+                    'extension' => $document->extension,
+                ], $card->documents),
             ],
             $cards,
         );

@@ -97,6 +97,12 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
     }
 
     info.appendChild(buildFacts(card, { locale, translations }));
+
+    const documents = buildDocuments(card, translations);
+    if (documents !== null) {
+        info.appendChild(documents);
+    }
+
     info.appendChild(buildActions(card, { addToCartEnabled, translations }));
     el.appendChild(info);
 
@@ -184,6 +190,44 @@ function buildStock(card, translations) {
     stock.appendChild(document.createTextNode(label));
 
     return stock;
+}
+
+/**
+ * The documents the merchant attached to this product, as links the SHOP renders.
+ *
+ * This is the whole of the feature's first stage on the client: the assistant may say a datasheet
+ * exists, and the address comes from here rather than from anything it wrote. The server never hands
+ * the model a URL for exactly that reason — see `ToolProductSummary`.
+ *
+ * `rel="noopener"` because these open in a new tab, and the title is set as text rather than as
+ * markup: a media title is merchant-entered content, and nothing in this file builds HTML out of it.
+ */
+function buildDocuments(card, translations) {
+    const documents = Array.isArray(card.documents) ? card.documents.filter((doc) => doc && doc.url) : [];
+
+    if (documents.length === 0) {
+        return null;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'swag-assistant-card__documents';
+
+    documents.forEach((doc) => {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+
+        link.className = 'swag-assistant-card__document';
+        link.href = doc.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        // The extension is the format badge, so a title that already carries it is not repeated.
+        link.textContent = doc.title || translations.document || '';
+
+        item.appendChild(link);
+        list.appendChild(item);
+    });
+
+    return list;
 }
 
 function buildActions(card, { addToCartEnabled, translations }) {

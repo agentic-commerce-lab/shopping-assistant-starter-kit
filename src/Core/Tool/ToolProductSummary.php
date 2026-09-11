@@ -68,7 +68,7 @@ final class ToolProductSummary
      *                                              {@see MatchReasons::of()} — empty unless
      *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, soldOut?: true, available?: true, reasons?: list<string>}>
      */
     public static function of(array $cards, array $reasons = []): array
     {
@@ -95,6 +95,18 @@ final class ToolProductSummary
                 if ($card->bundleItems !== []) {
                     $summary['bundle'] = self::contents($card->bundleItems);
                 }
+
+                // **Titles only, and never the URL.** The prompt forbids the model to state a URL at
+                // all — the shop renders every link, as it renders every figure — so handing it one
+                // here would be handing it the exact string it is not allowed to use. What it needs
+                // is smaller: that a document exists, and what it is called, so it can offer it in
+                // words while the card carries the link.
+                //
+                // Nothing here licenses a claim about the CONTENTS. The document has not been read
+                // by anything in this process; see ProductDocument on why that split is deliberate
+                // rather than a staging convenience, and the prompt's own rule for the sentence that
+                // holds the model to it.
+                $summary += DocumentTitles::keyFor($card->documents);
 
                 // **Only ever true, never false.** An absent key means what it always meant: the model
                 // has been told nothing about buyability and may claim none. A `false` would be a
@@ -186,7 +198,7 @@ final class ToolProductSummary
      * @param list<ProductCard>           $cards
      * @param array<string, list<string>> $reasons
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
      */
     public static function withDescriptions(array $cards, array $reasons = []): array
     {
