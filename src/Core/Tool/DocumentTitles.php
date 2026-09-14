@@ -22,11 +22,16 @@ final class DocumentTitles
     private function __construct() {}
 
     /**
-     * Deduplicated, in the merchant's own order.
+     * Deduplicated, in the merchant's own order, with the language each title ends in removed first.
      *
      * A merchant who attached the same datasheet twice has told the shopper nothing twice, and a
-     * model reading "Datenblatt, Datenblatt" describes two documents. The card still renders both
-     * rows: that is the shop's own record of what is attached, and this is only what the model is
+     * model reading "Datenblatt, Datenblatt" describes two documents. **Exact titles were not
+     * enough**: a real product carries the same sheet in eight languages, whose titles differ only
+     * in the last word, so dedup on its own removed one of eleven. See
+     * {@see DocumentLanguageSuffix} for the measurement — 348 titles to 102, no false merges.
+     *
+     * The card still renders every row: that is the shop's own record of what is attached, and a
+     * shopper who wants the Dutch sheet must be able to reach it. This is only what the model is
      * told about it.
      *
      * @param list<ProductDocument> $documents
@@ -36,7 +41,7 @@ final class DocumentTitles
     public static function of(array $documents): array
     {
         return array_values(array_unique(array_map(
-            static fn(ProductDocument $document): string => $document->title,
+            static fn(ProductDocument $document): string => DocumentLanguageSuffix::strip($document->title),
             $documents,
         )));
     }

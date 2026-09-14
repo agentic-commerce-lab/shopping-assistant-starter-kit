@@ -92,6 +92,7 @@ final readonly class DalCommerceGateway implements
         private DalProductCardMapper $mapper,
         private DalFacetReader $facetReader,
         private SalesChannelContextProvider $contextProvider,
+        private DalDepartments $departments,
         private DalVariantFinder $variantFinder,
         private DalCartAdapter $cartAdapter,
         private DalCategoryTreeReader $categoryTreeReader,
@@ -340,6 +341,8 @@ final readonly class DalCommerceGateway implements
     private function mapAll(array $entities, string $currency): array
     {
         $cards = [];
+        // Once for the whole batch, never per card — see DalDepartments.
+        $departments = $this->departments->of($this->contextProvider->current());
 
         foreach ($entities as $entity) {
             if (!$entity instanceof SalesChannelProductEntity) {
@@ -350,6 +353,7 @@ final readonly class DalCommerceGateway implements
                 $entity,
                 StockSource::forProductRow($entity->getParentId(), $entity->getChildCount()),
                 $currency,
+                $departments,
             );
 
             // A product whose price the calculator never touched: the mapper already decided this

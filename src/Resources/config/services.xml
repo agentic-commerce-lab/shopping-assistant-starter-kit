@@ -74,6 +74,10 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartSummariser"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalDepartments">
+            <argument type="service" id="sales_channel.category.repository"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway">
             <argument type="service" id="sales_channel.product.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
@@ -83,6 +87,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalDepartments"/>
         </service>
 
         <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper
