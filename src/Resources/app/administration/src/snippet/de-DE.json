@@ -30,9 +30,9 @@
       "toggle": "Anweisungen des Assistenten anzeigen",
       "loading": "Wird geladen…",
       "failed": "Die Anweisungen konnten nicht geladen werden:",
-      "scope": "Das sind die gespeicherten Anweisungen für „%channel%\". Änderungen in diesem Formular gelten erst nach dem Speichern.",
+      "scope": "Das sind die gespeicherten Anweisungen für „{channel}\". Änderungen in diesem Formular gelten erst nach dem Speichern.",
       "otherChannels": "Ein anderer Verkaufskanal mit eigenen Einstellungen weicht davon ab.",
-      "characters": "%count% Zeichen.",
+      "characters": "{count} Zeichen.",
       "perTurnOmitted": "Das Vokabular deines Katalogs und das Produkt, das ein Kunde gerade ansieht, kommen pro Unterhaltung hinzu und werden hier nicht gezeigt.",
       "noStorefront": "Dieser Shop hat keinen aktiven Storefront-Verkaufskanal."
     }
