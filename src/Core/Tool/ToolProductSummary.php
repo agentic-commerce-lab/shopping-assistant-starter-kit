@@ -68,7 +68,7 @@ final class ToolProductSummary
      *                                              {@see MatchReasons::of()} — empty unless
      *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>}>
      */
     public static function of(array $cards, array $reasons = []): array
     {
@@ -85,6 +85,12 @@ final class ToolProductSummary
                     // card.
                     'properties' => BoundedProperties::of($card->properties),
                 ];
+
+                // **What the cap left out, so the model cannot mistake four values for the list.**
+                // Without it a brake pad's four visible model years read as its only years, and the
+                // reply asserted a fit for a motorcycle built outside them. See PropertiesWithheld
+                // for the measurement, and PropertyRules for what the model is told to do with it.
+                $summary += PropertiesWithheld::keyFor($card->properties);
 
                 // **What a bundle is made of, and the one widening here that closes a fabrication
                 // surface rather than opening one.** Names and composition quantities only — see
@@ -210,7 +216,7 @@ final class ToolProductSummary
      * @param list<ProductCard>           $cards
      * @param array<string, list<string>> $reasons
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
      */
     public static function withDescriptions(array $cards, array $reasons = []): array
     {
