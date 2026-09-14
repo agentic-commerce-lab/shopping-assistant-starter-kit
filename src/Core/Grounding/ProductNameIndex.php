@@ -75,6 +75,27 @@ final readonly class ProductNameIndex
      *
      * @param list<string> $preferredIds
      */
+    /**
+     * The names it holds, keyed by id, with exclusions already applied.
+     *
+     * Exposed for {@see NamesakeCards}, which needs the same filtered map to decide how many cards a
+     * name is worth — and must not re-derive it, or an excluded variant would come back as a card.
+     *
+     * @return array<string, string>
+     */
+    public function namesById(): array
+    {
+        return $this->namesById;
+    }
+
+    /**
+     * The single id this name points at, or null when none answers to it.
+     *
+     * A preferred id wins over registration order — see the class docblock and
+     * {@see NamesakeCards}, which applies the same tie-break once per family.
+     *
+     * @param list<string> $preferredIds
+     */
     public function idFor(string $name, array $preferredIds): ?string
     {
         foreach ($preferredIds as $preferred) {

@@ -37,6 +37,29 @@ final class ProductNames
     }
 
     /**
+     * Which family each retrieved card belongs to, keyed by id.
+     *
+     * `parentId ?? id` — the same key {@see \Swag\AssistantStarterKit\Core\Tool\FamilyDiversifier}
+     * groups by. It is what separates two VARIANTS that share a name, where one card is right,
+     * from two PRODUCTS that share one, where one card is wrong. See
+     * {@see ProductNameIndex::idsFor()} for the live failure that made the distinction necessary.
+     *
+     * @param list<ProductCard> $cards
+     *
+     * @return array<string, string> product id => family key
+     */
+    public static function familiesOf(array $cards): array
+    {
+        $families = [];
+
+        foreach ($cards as $card) {
+            $families[$card->id] = $card->parentId ?? $card->id;
+        }
+
+        return $families;
+    }
+
+    /**
      * {@see self::of()} plus the name of every bundle member those cards carry.
      *
      * **For masking only, and that is why it is a separate method.** A bundle's members are names
