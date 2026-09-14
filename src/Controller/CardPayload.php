@@ -47,6 +47,9 @@ final readonly class CardPayload
                 'deliveryTime' => $card->deliveryTime,
                 'url' => $card->url,
                 'imageUrl' => $card->imageUrl,
+                // The shop's own department for this product, so a card can disclose an ambiguity
+                // the prose may not mention. Empty for a catalogue that records no path.
+                'department' => $card->categoryPath[0] ?? null,
                 'options' => $card->options,
                 'properties' => BoundedProperties::of($card->properties),
                 // The one place a document's URL crosses a boundary, and deliberately the HTTP one

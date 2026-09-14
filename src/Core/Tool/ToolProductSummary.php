@@ -68,7 +68,7 @@ final class ToolProductSummary
      *                                              {@see MatchReasons::of()} — empty unless
      *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, soldOut?: true, available?: true, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>}>
      */
     public static function of(array $cards, array $reasons = []): array
     {
@@ -107,6 +107,18 @@ final class ToolProductSummary
                 // rather than a staging convenience, and the prompt's own rule for the sentence that
                 // holds the model to it.
                 $summary += DocumentTitles::keyFor($card->documents);
+
+                // **The shop's own department, and the one fact that makes an ambiguous word
+                // visible.** Measured 2026-09-14: asked "ich brauche schrauben" against a catalogue
+                // holding an "Innensechskantschraube" in both the motorcycle and the bicycle
+                // department, the assistant returned a different department on each of three runs
+                // and never said a choice had been made — because nothing here ever told it there
+                // was one. The names carry no clue: a bolt is a bolt.
+                //
+                // A department is not an internal field name. It is the shop's own navigation, the
+                // words a shopper reads in the menu, which is why it may be said out loud where a
+                // property group name may not.
+                $summary += Departments::keyFor($card->categoryPath);
 
                 // **Only ever true, never false.** An absent key means what it always meant: the model
                 // has been told nothing about buyability and may claim none. A `false` would be a
@@ -198,7 +210,7 @@ final class ToolProductSummary
      * @param list<ProductCard>           $cards
      * @param array<string, list<string>> $reasons
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
      */
     public static function withDescriptions(array $cards, array $reasons = []): array
     {

@@ -66,6 +66,13 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
 
     info.appendChild(text('h3', 'swag-assistant-card__name', card.name));
 
+    // The shop's own department, when the gateway records one. It sits directly under the name
+    // because that is where it answers the question it exists for: two cards called
+    // "Innensechskantschraube" are two different products, and only this line says so.
+    if (typeof card.department === 'string' && card.department !== '') {
+        info.appendChild(text('p', 'swag-assistant-card__department', card.department));
+    }
+
     const options = Object.values(card.options ?? {});
     if (options.length > 0) {
         info.appendChild(text('p', 'swag-assistant-card__options', options.join(' · ')));

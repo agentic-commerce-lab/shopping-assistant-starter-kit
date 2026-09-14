@@ -55,7 +55,7 @@ final class GetProductTool
      *     own facet values before resolution, so "blue" and "Blue" behave the same.
      *
      * @return array{
-     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>,
+     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>,
      *     total: int,
      *     note?: string,
      *     bundle_note?: string,
