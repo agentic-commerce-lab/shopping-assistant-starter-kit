@@ -124,8 +124,29 @@ final class FixtureTermMatcher
 
     private static function contains(ProductCard $unit, string $word): bool
     {
-        return (
-            str_contains(strtolower($unit->name), $word) || str_contains(strtolower($unit->description ?? ''), $word)
-        );
+        $name = self::joinUnits(strtolower($unit->name));
+        $description = self::joinUnits(strtolower($unit->description ?? ''));
+
+        return str_contains($name, $word) || str_contains($description, $word);
+    }
+
+    /**
+     * Closes the gap between a number and the unit that follows it: `750 ml` reads as `750ml`.
+     *
+     * **Because the real shop does.** Verified against Shopware 2026-09-14 with two products created
+     * for the purpose, `Alloy Water Bottle 750ml` and `Alloy Water Bottle 750 ml`: searching the
+     * glued spelling returns BOTH. This fixture returned only the glued one, which is why
+     * `scale_deep_duplicate` reported `fx-008` missing on every run since the journey was written —
+     * a grounding failure the shop does not have. This class's own docblock names that as the thing
+     * it exists to prevent.
+     *
+     * **Only across a digit/letter boundary.** Stripping every space would let `waterbottle` match
+     * `Water Bottle` and quietly widen every any-token pass; bridging just the unit boundary fixes
+     * the measured case and leaves ordinary word boundaries alone. Tokens below
+     * {@see self::MIN_WORD_LENGTH} are dropped before this runs, so `M6 Schraube` is unaffected.
+     */
+    private static function joinUnits(string $text): string
+    {
+        return (string) preg_replace('/(?<=\d)\s+(?=\p{L})/u', '', $text);
     }
 }
