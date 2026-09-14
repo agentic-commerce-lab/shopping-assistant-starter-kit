@@ -21,6 +21,7 @@
     "card": {
       "view": "View product",
       "document": "Document",
+      "documentsMore": "+%count% more",
       "add": "Add to cart",
       "noImage": "No image available",
       "inStock": "In stock",

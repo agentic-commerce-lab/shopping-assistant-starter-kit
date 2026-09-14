@@ -21,6 +21,7 @@
     "card": {
       "view": "Produkt ansehen",
       "document": "Dokument",
+      "documentsMore": "+%count% weitere",
       "add": "In den Warenkorb",
       "noImage": "Kein Bild verfügbar",
       "inStock": "Auf Lager",

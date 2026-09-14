@@ -77,6 +77,36 @@ final class CardPayloadDocumentsTest extends TestCase
         self::assertSame([], $this->payloadOf($this->card([]))['documents']);
     }
 
+    /**
+     * The live rendering that made this necessary: six files, four of them one datasheet in four
+     * languages, and a card capped at three rows offering the Dutch one while hiding the English.
+     */
+    public function testLanguageVariantsCollapseToOneRowPerDocument(): void
+    {
+        $payload = $this->payloadOf($this->card([
+            new ProductDocument('Technical datasheet Hex Bolt M5 German', '/media/a/de.pdf', 'pdf'),
+            new ProductDocument('Technical datasheet Hex Bolt M5 English', '/media/a/en.pdf', 'pdf'),
+            new ProductDocument('Technical datasheet Hex Bolt M5 Dutch', '/media/a/nl.pdf', 'pdf'),
+            new ProductDocument('Safety data sheet EN', '/media/a/sds.pdf', 'pdf'),
+        ]));
+
+        $documents = $payload['documents'];
+        self::assertIsArray($documents);
+
+        $rows = array_map(static fn(mixed $d): mixed => (
+            \is_array($d) ? [$d['title'] ?? null, $d['url'] ?? null] : null
+        ), $documents);
+
+        // The merchant's first file wins its document's row; the rest live on the product page.
+        self::assertSame(
+            [
+                ['Technical datasheet Hex Bolt M5', '/media/a/de.pdf'],
+                ['Safety data sheet',               '/media/a/sds.pdf'],
+            ],
+            array_values($rows),
+        );
+    }
+
     public function testEveryDocumentIsSentInTheMerchantsOrder(): void
     {
         $payload = $this->payloadOf($this->card([

@@ -19,6 +19,10 @@ object when you point at it.
 
     &--row {
         display: flex;
+        // Top-aligned, NOT stretched. Flex's default `stretch` gave every card the height of the
+        // tallest, so one product carrying six documents padded its neighbours with an empty
+        // column of whitespace under their buttons. Reported 2026-09-14.
+        align-items: flex-start;
         gap: 10px;
         // The row scrolls inside its own container so the panel never scrolls sideways.
         overflow-x: auto;
@@ -169,6 +173,62 @@ object when you point at it.
 .swag-assistant-card__delivery,
 .swag-assistant-card__specs {
     margin: 3px 0 0;
+    color: $swag-assistant-meta;
+    font-size: $swag-assistant-font-micro;
+    line-height: 1.35;
+}
+
+// The shop's own department, directly under the name. It is what tells two products of the same name
+// apart — "Hex Bolt M5" exists in both Brakes and Components on the demo shop — so it belongs where
+// the eye lands after the name and before the figures, in the same quiet register as the specs.
+.swag-assistant-card__department {
+    margin: 2px 0 0;
+    color: $swag-assistant-meta;
+    font-size: $swag-assistant-font-micro;
+    line-height: 1.35;
+}
+
+/*
+The attached documents, as a plain list of links rather than a panel.
+
+**No surface of its own.** A bordered or tinted box here would be a card inside a card, which is the
+lazy container; spacing and type carry the grouping instead.
+
+Each title is clamped to one line. Real datasheet titles run long — "Technical datasheet Hex Bolt M5
+German" — and wrapping them turned a 176px card into a paragraph. The count is capped in
+`card.js`; this only has to keep each row to one line.
+*/
+.swag-assistant-card__documents {
+    margin: 7px 0 0;
+    padding: 0;
+    list-style: none;
+
+    li + li {
+        margin-top: 2px;
+    }
+}
+
+.swag-assistant-card__document {
+    display: block;
+    overflow: hidden;
+    color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
+    font-size: $swag-assistant-font-micro;
+    line-height: 1.35;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover,
+    &:focus-visible {
+        color: var(--swag-assistant-primary, #{$swag-assistant-accent});
+    }
+}
+
+// What the cap left out. Not a link: the product page is where the rest live, and "View product"
+// below it already goes there — a second link to the same place would be two labels for one intent.
+.swag-assistant-card__documents-more {
+    margin-top: 2px;
     color: $swag-assistant-meta;
     font-size: $swag-assistant-font-micro;
     line-height: 1.35;

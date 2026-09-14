@@ -209,6 +209,15 @@ function buildStock(card, translations) {
  * `rel="noopener"` because these open in a new tab, and the title is set as text rather than as
  * markup: a media title is merchant-entered content, and nothing in this file builds HTML out of it.
  */
+/**
+ * How many document links a card shows before it starts counting instead.
+ *
+ * Three, measured against the surface rather than chosen: a card in the row is 176px wide and its
+ * other rows — name, department, price, stock — come to about the same height again. Four links
+ * already made the card taller than the product photograph beside it.
+ */
+const MAX_DOCUMENTS = 3;
+
 function buildDocuments(card, translations) {
     const documents = Array.isArray(card.documents) ? card.documents.filter((doc) => doc && doc.url) : [];
 
@@ -219,7 +228,13 @@ function buildDocuments(card, translations) {
     const list = document.createElement('ul');
     list.className = 'swag-assistant-card__documents';
 
-    documents.forEach((doc) => {
+    // Capped, because a real product carries more files than a 176px card can hold: the shop this
+    // was built for attaches up to eleven, most of them the same datasheet in eight languages. The
+    // model is told the collapsed set (see DocumentLanguageSuffix); the card shows the first few and
+    // says how many it left, and "View product" below already leads to all of them.
+    const shown = documents.slice(0, MAX_DOCUMENTS);
+
+    shown.forEach((doc) => {
         const item = document.createElement('li');
         const link = document.createElement('a');
 
@@ -233,6 +248,15 @@ function buildDocuments(card, translations) {
         item.appendChild(link);
         list.appendChild(item);
     });
+
+    const hidden = documents.length - shown.length;
+
+    if (hidden > 0) {
+        const more = document.createElement('li');
+        more.className = 'swag-assistant-card__documents-more';
+        more.textContent = (translations.documentsMore ?? '+%count% more').replace('%count%', hidden);
+        list.appendChild(more);
+    }
 
     return list;
 }
