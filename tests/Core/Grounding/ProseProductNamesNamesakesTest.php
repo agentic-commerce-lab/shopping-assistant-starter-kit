@@ -106,6 +106,50 @@ final class ProseProductNamesNamesakesTest extends TestCase
     }
 
     /**
+     * The `scale_deep_duplicate` trio, which is the same shape one space apart.
+     *
+     * A reply naming "Alloy Water Bottle 750ml" means every product the shop spells that way,
+     * including the one whose own name carries the space. Before this, retrieval returned all three
+     * and only two rendered — the shopper read an answer about three bottles beside two cards.
+     */
+    public function testASpacedMeasurementAnswersToTheGluedSpelling(): void
+    {
+        $ids = $this->resolve('There are three Alloy Water Bottle 750ml options.', [
+            $this->card('fx-007', 'Alloy Water Bottle 750ml'),
+            $this->card('fx-008', 'Alloy Water Bottle 750 ml'),
+            $this->card('sc-deep-duplicate', 'Alloy Water Bottle 750ml'),
+        ]);
+
+        self::assertSame(['fx-007', 'fx-008', 'sc-deep-duplicate'], $ids);
+    }
+
+    /**
+     * And the other direction, because a merchant writes both and a model copies whichever it saw.
+     */
+    public function testTheGluedSpellingAnswersToASpacedMention(): void
+    {
+        $ids = $this->resolve('The Alloy Water Bottle 750 ml is in stock.', [
+            $this->card('fx-007', 'Alloy Water Bottle 750ml'),
+        ]);
+
+        self::assertSame(['fx-007'], $ids);
+    }
+
+    /**
+     * Only the unit boundary closes. Two ordinary words must not run together, or every any-token
+     * match in the plugin quietly widens.
+     */
+    public function testOrdinaryWordBoundariesAreNotClosed(): void
+    {
+        self::assertSame(
+            [],
+            $this->resolve('We sell a waterbottle.', [
+                $this->card('fx-007', 'Water Bottle'),
+            ]),
+        );
+    }
+
+    /**
      * Namesakes stay adjacent and keep the position of the name that found them, so a second
      * product mentioned later still sorts after both of them.
      */

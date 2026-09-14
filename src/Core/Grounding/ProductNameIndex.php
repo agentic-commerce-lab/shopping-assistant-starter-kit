@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
+use Swag\AssistantStarterKit\Core\Commerce\UnitSpacing;
+
 /**
  * The names a turn's retrieved products answer to, and which id each name stands for.
  *
@@ -30,7 +32,15 @@ final readonly class ProductNameIndex
      */
     public function __construct(array $namesById, array $excludedIds = [])
     {
-        $this->namesById = array_diff_key($namesById, array_flip($excludedIds));
+        // Normalised on the way in, so the two spellings of one measurement are ONE name here:
+        // "Alloy Water Bottle 750 ml" and "Alloy Water Bottle 750ml" index as the same string and
+        // therefore answer to the same mention in a reply. Doing it per lookup instead would give
+        // them separate entries, and the longer one would mask the mention away from the shorter —
+        // dropping the very card this exists to render. See {@see UnitSpacing} for why the shop
+        // already treats them as one.
+        $kept = array_diff_key($namesById, array_flip($excludedIds));
+
+        $this->namesById = array_map(UnitSpacing::join(...), $kept);
     }
 
     /**

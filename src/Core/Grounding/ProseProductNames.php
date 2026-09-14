@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
+use Swag\AssistantStarterKit\Core\Commerce\UnitSpacing;
+
 /**
  * Which of the retrieved products a reply actually names.
  *
@@ -93,7 +95,11 @@ final class ProseProductNames
 
         $index = new ProductNameIndex($namesById, $excludedIds);
         $found = [];
-        $remaining = $prose;
+        // The working copy is normalised the same way the index is, so a reply writing "750ml"
+        // reaches a product the shop calls "750 ml". Safe despite the byte-offset note below: the
+        // offsets this collects are only ever a SORT KEY — nothing maps them back to the original
+        // prose — so a copy of a different length stays internally consistent.
+        $remaining = UnitSpacing::join($prose);
 
         foreach ($index->namesLongestFirst() as $name) {
             // The first occurrence that STANDS ON ITS OWN. A name continued by another capitalised
