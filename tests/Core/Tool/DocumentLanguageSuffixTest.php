@@ -38,6 +38,14 @@ final class DocumentLanguageSuffixTest extends TestCase
         yield 'after a dash' => ['Montageanleitung - Dutch', 'Montageanleitung'];
 
         yield 'no language at all' => ['Konformitätserklärung', 'Konformitätserklärung'];
+
+        // The live defect of 2026-09-14, verbatim: rendered on a card as "Installation gui",
+        // because `DE` matched the last two letters of "guide". The separator before the token is
+        // required for exactly this, and these are the words that find it.
+        yield 'a word merely ending in a language code' => ['Installation guide', 'Installation guide'];
+        yield 'a title that is one such word' => ['Guide', 'Guide'];
+        yield 'a language name inside a longer word' => ['Sweden', 'Sweden'];
+        yield 'a word ending in a language name' => ['Kurzanleitung Polish', 'Kurzanleitung'];
         yield 'a language in the middle stays' => [
             'German Standard Datenblatt',
             'German Standard Datenblatt',

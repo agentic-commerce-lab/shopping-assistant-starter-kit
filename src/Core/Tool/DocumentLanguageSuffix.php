@@ -69,7 +69,12 @@ final class DocumentLanguageSuffix
      */
     public static function strip(string $title): string
     {
-        $stripped = preg_replace(\sprintf('/\s*[-–(\[]?\s*(?:%s)\s*[)\]]?\s*$/ui', self::LANGUAGES), '', $title);
+        // The separator is REQUIRED, not optional. Without it the token may sit glued to the end of
+        // an ordinary word: measured live 2026-09-14, "Installation guide" rendered on a card as
+        // "Installation gui", because `DE` matched the last two letters of "guide". The earlier
+        // measurement over 54 products reported no false merges only because that catalogue happens
+        // to contain no title ending in a language substring.
+        $stripped = preg_replace(\sprintf('/[\s\-–(\[]+\s*(?:%s)\s*[)\]]?\s*$/ui', self::LANGUAGES), '', $title);
 
         $stripped = trim((string) $stripped);
 
