@@ -33,9 +33,21 @@ use Swag\AssistantStarterKit\Eval\AssertionResult;
  * looking instead of by typing.
  *
  * So the property is the one that actually matters, stated as an absence: **the ambiguity must not
- * be resolved silently.** A turn passes when it asked a question, or when what it rendered spans
- * more than one of the competing groups. It fails only when every card comes from a single group and
- * nothing was asked — which is precisely the guess nobody can see.
+ * be resolved silently.** A turn passes when the REPLY names more than one reading, or asks which
+ * was meant. It fails when neither happens.
+ *
+ * ## What used to count and no longer does
+ *
+ * Rendering cards from two different groups was a third way to pass, on the reasoning that a car
+ * tyre beside a bicycle tyre discloses the ambiguity without a word. **Checked 2026-09-14, and it
+ * does not:** `CardPayload` never sends `categoryPath` and `card.js` never renders it, so a shopper
+ * looking at "Innensechskantschraube 4,20 €" and "Nummernschildschraube 8,90 €" has no way to know
+ * one is a bicycle part. The branch was reading a field that reaches nobody — the same mistake, in
+ * the same file, as counting a question about screw size as a resolution.
+ *
+ * It returns the day a card shows its world. The retrieval already spreads across groups as a side
+ * effect of {@see \Swag\AssistantStarterKit\Core\Tool\FamilyDiversifier}; what is missing is
+ * telling anyone that it did.
  *
  * This also survives a fix that would otherwise game it. An assistant rewritten to ask "for which
  * vehicle?" on every message passes here and fails its companion journey, where an already-qualified
@@ -75,15 +87,9 @@ final class AmbiguityNotResolvedSilently implements Assertion
             );
         }
 
+        // Still read, but no longer a pass on its own: see the class docblock. The shopper is
+        // never told which world a card belongs to, so cards spanning two of them disclose nothing.
         $rendered = CompetingGroups::renderedIn($turn, $groups);
-
-        if (\count($rendered) > 1) {
-            return new AssertionResult(
-                $this->name(),
-                true,
-                \sprintf('the cards themselves show the ambiguity: %s', implode(', ', $rendered)),
-            );
-        }
 
         $mentioned = GroupVocabulary::mentionedIn($turn->prose, $groups);
 

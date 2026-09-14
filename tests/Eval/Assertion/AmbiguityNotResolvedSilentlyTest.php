@@ -15,7 +15,7 @@ use Swag\AssistantStarterKit\Eval\Assertion\CompetingGroups;
 use Swag\AssistantStarterKit\Eval\Assertion\GroupVocabulary;
 
 /**
- * The three ways a turn may legitimately handle an ambiguous word, and the one way it may not.
+ * The two ways a turn may legitimately handle an ambiguous word, and the ways it may not.
  *
  * **The middle case is why this file exists.** The first version of this assertion counted any
  * question as a pass, and `ambiguous_fasteners` then went green while the assistant showed three
@@ -66,9 +66,14 @@ final class AmbiguityNotResolvedSilentlyTest extends TestCase
         )->passed;
     }
 
-    public function testCardsFromTwoWorldsShowTheAmbiguityWithoutSayingAnything(): void
+    /**
+     * This used to pass, on the reasoning that two worlds side by side disclose the ambiguity.
+     * They do not: the shopper is never told which world a card belongs to — `CardPayload` does not
+     * send `categoryPath` and `card.js` does not render it — so these two cards read as two screws.
+     */
+    public function testCardsFromTwoWorldsDiscloseNothingTheShopperCanSee(): void
     {
-        self::assertTrue($this->evaluate('Hier sind ein paar Schrauben.', [
+        self::assertFalse($this->evaluate('Hier sind ein paar Schrauben.', [
             $this->card('Motorrad- und Rollerteile', 'Zylinderschraube'),
             $this->card('Fahrradteile', 'Hutmutter'),
         ]));

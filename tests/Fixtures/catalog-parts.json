@@ -1,28 +1,29 @@
 {
  "_readme": [
   "A deliberately small, structured slice of a real Shopware B2B catalogue (the source shop),",
-  "collected 2026-09-11 for questions the generated catalogues cannot ask.",
+  "collected 2026-09-11, corrected 2026-09-14, for questions the generated catalogues cannot ask.",
   "",
-  "AMBIGUITY, EASY AXIS: 72 tyres, 24 in each of three vehicle worlds — car, motorcycle,",
-  "bicycle. 'Reifen' matches all three. The names carry hints ('Ganzjahresreifen',",
-  "'Marathon Plus'), so a model has something to go on even before the category.",
+  "AMBIGUITY, EASY AXIS: 72 tyres, 24 in each of three vehicle worlds. 'Reifen' matches all",
+  "three, and the NAMES carry hints ('Ganzjahresreifen', 'Marathon Plus'), so a model has",
+  "something to go on even before the category.",
   "",
-  "AMBIGUITY, HARD AXIS: 43 fasteners — 19 motorcycle, 24 bicycle. This shop has no car",
-  "bolt category, so it is a TWO-way ambiguity and the journey says so. What makes it hard",
-  "is that NONE of the 43 names contains a vehicle word: 'Zylinderschraube',",
-  "'Unterlegscheibe', 'Sechskantmutter'. The category path is the only signal there is.",
+  "AMBIGUITY, HARD AXIS: fasteners. 19 motorcycle screws and 5 bicycle screws, and BOTH worlds",
+  "contain a product named exactly 'Innensechskantschraube' — the same name, different vehicle,",
+  "nothing in the name to tell them apart. The remaining 28 bicycle fasteners are washers and",
+  "nuts, which is why an earlier slice of this category produced a FALSE ambiguity: its first 24",
+  "products contained no screw at all, so answering 'Schrauben' with motorcycle parts only was",
+  "correct rather than a silent guess. Keep screws in both worlds or this axis measures nothing.",
   "",
-  "DOCUMENTS: 21 motorcycle batteries carry real attached PDFs, up to eleven per product,",
-  "because tyres and bolts almost never carry one. Several are the same datasheet in eight",
-  "languages, which is a shape the document feature does not yet collapse.",
+  "DOCUMENTS: 21 motorcycle batteries carry real attached PDFs, up to eleven per product, several",
+  "being the same datasheet in eight languages — a shape the document feature does not collapse.",
   "",
-  "PRICES AND STOCK ARE INVENTED. This shop shows prices only to logged-in dealers, so",
-  "nothing here was scraped; both are derived from the product number and are meaningless.",
-  "Names, category paths are real; document URLs are placeholders.",
+  "PRICES AND STOCK ARE INVENTED. This shop shows prices only to logged-in dealers, so nothing",
+  "here was scraped; both derive from the product number and are meaningless. Names, category",
+  "paths are real; document URLs are placeholders.",
   "",
-  "IDS ARE PREFIXED 'pt-'. A bare parts product number is a numeric string, which PHP coerces",
-  "to an int when used as an array key — FactRenderer::retrievedIds() then returns ints and",
-  "GroundingOutputProcessor crashes on str_contains(). Real Shopware ids are 32-char hex."
+  "IDS ARE PREFIXED 'pt-'. A bare product number is a numeric string, which PHP coerces to an int",
+  "as an array key — FactRenderer::retrievedIds() then returns ints and GroundingOutputProcessor",
+  "crashes on str_contains(). Real Shopware ids are 32-char hex."
  ],
  "products": [
   {
@@ -43,35 +44,35 @@
    "documents": [
     {
      "title": "Technisches Datenblatt DE",
-     "url": "/media/datasheet-0047.pdf"
+     "url": "/media/datasheet-0057.pdf"
     },
     {
      "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) DA",
-     "url": "/media/datasheet-0024.pdf"
+     "url": "/media/datasheet-0026.pdf"
     },
     {
      "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) DE",
-     "url": "/media/datasheet-0098.pdf"
+     "url": "/media/datasheet-0117.pdf"
     },
     {
      "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) EN",
-     "url": "/media/datasheet-0176.pdf"
+     "url": "/media/datasheet-0217.pdf"
     },
     {
      "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) ES",
-     "url": "/media/datasheet-0027.pdf"
+     "url": "/media/datasheet-0029.pdf"
     },
     {
      "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) FR",
-     "url": "/media/datasheet-0186.pdf"
+     "url": "/media/datasheet-0229.pdf"
     },
     {
      "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) IT",
-     "url": "/media/datasheet-0158.pdf"
+     "url": "/media/datasheet-0195.pdf"
     },
     {
      "title": "Produktdatenblatt laufenn Ganzjahresreifen G-Fit 4S (LH71) NL",
-     "url": "/media/datasheet-0032.pdf"
+     "url": "/media/datasheet-0037.pdf"
     }
    ]
   },
@@ -212,31 +213,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Danish",
-     "url": "/media/datasheet-0217.pdf"
+     "url": "/media/datasheet-0262.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 German",
-     "url": "/media/datasheet-0104.pdf"
+     "url": "/media/datasheet-0124.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 English",
-     "url": "/media/datasheet-0093.pdf"
+     "url": "/media/datasheet-0112.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Spanish",
-     "url": "/media/datasheet-0062.pdf"
+     "url": "/media/datasheet-0075.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 French",
-     "url": "/media/datasheet-0130.pdf"
+     "url": "/media/datasheet-0156.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Italian",
-     "url": "/media/datasheet-0145.pdf"
+     "url": "/media/datasheet-0176.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Dutch",
-     "url": "/media/datasheet-0152.pdf"
+     "url": "/media/datasheet-0186.pdf"
     }
    ]
   },
@@ -258,31 +259,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Danish",
-     "url": "/media/datasheet-0177.pdf"
+     "url": "/media/datasheet-0219.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 German",
-     "url": "/media/datasheet-0066.pdf"
+     "url": "/media/datasheet-0080.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 English",
-     "url": "/media/datasheet-0056.pdf"
+     "url": "/media/datasheet-0067.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Spanish",
-     "url": "/media/datasheet-0064.pdf"
+     "url": "/media/datasheet-0078.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 French",
-     "url": "/media/datasheet-0136.pdf"
+     "url": "/media/datasheet-0164.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Italian",
-     "url": "/media/datasheet-0087.pdf"
+     "url": "/media/datasheet-0106.pdf"
     },
     {
      "title": "Produktdatenblatt Continental Ganzjahresreifen AllSeasonContact 2 Dutch",
-     "url": "/media/datasheet-0116.pdf"
+     "url": "/media/datasheet-0141.pdf"
     }
    ]
   },
@@ -423,31 +424,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Danish",
-     "url": "/media/datasheet-0240.pdf"
+     "url": "/media/datasheet-0293.pdf"
     },
     {
      "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season German",
-     "url": "/media/datasheet-0148.pdf"
+     "url": "/media/datasheet-0181.pdf"
     },
     {
      "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season English",
-     "url": "/media/datasheet-0221.pdf"
+     "url": "/media/datasheet-0268.pdf"
     },
     {
      "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Spanish",
-     "url": "/media/datasheet-0142.pdf"
+     "url": "/media/datasheet-0171.pdf"
     },
     {
      "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season French",
-     "url": "/media/datasheet-0149.pdf"
+     "url": "/media/datasheet-0182.pdf"
     },
     {
      "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Italian",
-     "url": "/media/datasheet-0111.pdf"
+     "url": "/media/datasheet-0132.pdf"
     },
     {
      "title": "Produktdatenblatt NEXEN TIRE Ganzjahresreifen N´blue 4season Dutch",
-     "url": "/media/datasheet-0216.pdf"
+     "url": "/media/datasheet-0261.pdf"
     }
    ]
   },
@@ -554,31 +555,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Danish",
-     "url": "/media/datasheet-0167.pdf"
+     "url": "/media/datasheet-0205.pdf"
     },
     {
      "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 German",
-     "url": "/media/datasheet-0042.pdf"
+     "url": "/media/datasheet-0047.pdf"
     },
     {
      "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 English",
-     "url": "/media/datasheet-0248.pdf"
+     "url": "/media/datasheet-0303.pdf"
     },
     {
      "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Spanish",
-     "url": "/media/datasheet-0137.pdf"
+     "url": "/media/datasheet-0165.pdf"
     },
     {
      "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 French",
-     "url": "/media/datasheet-0218.pdf"
+     "url": "/media/datasheet-0265.pdf"
     },
     {
      "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Italian",
-     "url": "/media/datasheet-0050.pdf"
+     "url": "/media/datasheet-0061.pdf"
     },
     {
      "title": "Produktdatenblatt UNIROYAL Ganzjahresreifen AllSeason Expert 2 Dutch",
-     "url": "/media/datasheet-0035.pdf"
+     "url": "/media/datasheet-0040.pdf"
     }
    ]
   },
@@ -1409,31 +1410,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Dresselhaus Zylinderschraube 0300 Danish",
-     "url": "/media/datasheet-0247.pdf"
+     "url": "/media/datasheet-0302.pdf"
     },
     {
      "title": "Produktdatenblatt Dresselhaus Zylinderschraube 0300 German",
-     "url": "/media/datasheet-0200.pdf"
+     "url": "/media/datasheet-0244.pdf"
     },
     {
      "title": "Produktdatenblatt Dresselhaus Zylinderschraube 0300 English",
-     "url": "/media/datasheet-0222.pdf"
+     "url": "/media/datasheet-0269.pdf"
     },
     {
      "title": "Produktdatenblatt Dresselhaus Zylinderschraube 0300 Spanish",
-     "url": "/media/datasheet-0124.pdf"
+     "url": "/media/datasheet-0150.pdf"
     },
     {
      "title": "Produktdatenblatt Dresselhaus Zylinderschraube 0300 French",
-     "url": "/media/datasheet-0070.pdf"
+     "url": "/media/datasheet-0084.pdf"
     },
     {
      "title": "Produktdatenblatt Dresselhaus Zylinderschraube 0300 Italian",
-     "url": "/media/datasheet-0175.pdf"
+     "url": "/media/datasheet-0216.pdf"
     },
     {
      "title": "Produktdatenblatt Dresselhaus Zylinderschraube 0300 Dutch",
-     "url": "/media/datasheet-0045.pdf"
+     "url": "/media/datasheet-0053.pdf"
     }
    ]
   },
@@ -1744,31 +1745,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Danish",
-     "url": "/media/datasheet-0201.pdf"
+     "url": "/media/datasheet-0245.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe German",
-     "url": "/media/datasheet-0171.pdf"
+     "url": "/media/datasheet-0209.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe English",
-     "url": "/media/datasheet-0250.pdf"
+     "url": "/media/datasheet-0305.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0199.pdf"
+     "url": "/media/datasheet-0243.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe French",
-     "url": "/media/datasheet-0023.pdf"
+     "url": "/media/datasheet-0025.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Italian",
-     "url": "/media/datasheet-0103.pdf"
+     "url": "/media/datasheet-0123.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0159.pdf"
+     "url": "/media/datasheet-0197.pdf"
     }
    ]
   },
@@ -1790,23 +1791,23 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Danish",
-     "url": "/media/datasheet-0053.pdf"
+     "url": "/media/datasheet-0064.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe German",
-     "url": "/media/datasheet-0080.pdf"
+     "url": "/media/datasheet-0096.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe English",
-     "url": "/media/datasheet-0204.pdf"
+     "url": "/media/datasheet-0248.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0239.pdf"
+     "url": "/media/datasheet-0292.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe French",
-     "url": "/media/datasheet-0198.pdf"
+     "url": "/media/datasheet-0242.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Italian",
@@ -1814,7 +1815,7 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0246.pdf"
+     "url": "/media/datasheet-0301.pdf"
     }
    ]
   },
@@ -1836,19 +1837,19 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Danish",
-     "url": "/media/datasheet-0052.pdf"
+     "url": "/media/datasheet-0063.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe German",
-     "url": "/media/datasheet-0084.pdf"
+     "url": "/media/datasheet-0102.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe English",
-     "url": "/media/datasheet-0105.pdf"
+     "url": "/media/datasheet-0126.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0232.pdf"
+     "url": "/media/datasheet-0284.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe French",
@@ -1856,11 +1857,11 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Italian",
-     "url": "/media/datasheet-0249.pdf"
+     "url": "/media/datasheet-0304.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0128.pdf"
+     "url": "/media/datasheet-0154.pdf"
     }
    ]
   },
@@ -1882,11 +1883,11 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Danish",
-     "url": "/media/datasheet-0252.pdf"
+     "url": "/media/datasheet-0309.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe German",
-     "url": "/media/datasheet-0044.pdf"
+     "url": "/media/datasheet-0050.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe English",
@@ -1894,19 +1895,19 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0117.pdf"
+     "url": "/media/datasheet-0142.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe French",
-     "url": "/media/datasheet-0025.pdf"
+     "url": "/media/datasheet-0027.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Italian",
-     "url": "/media/datasheet-0109.pdf"
+     "url": "/media/datasheet-0130.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0233.pdf"
+     "url": "/media/datasheet-0285.pdf"
     }
    ]
   },
@@ -1928,31 +1929,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Danish",
-     "url": "/media/datasheet-0225.pdf"
+     "url": "/media/datasheet-0276.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe German",
-     "url": "/media/datasheet-0182.pdf"
+     "url": "/media/datasheet-0224.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe English",
-     "url": "/media/datasheet-0257.pdf"
+     "url": "/media/datasheet-0315.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0264.pdf"
+     "url": "/media/datasheet-0326.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe French",
-     "url": "/media/datasheet-0069.pdf"
+     "url": "/media/datasheet-0083.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Italian",
-     "url": "/media/datasheet-0210.pdf"
+     "url": "/media/datasheet-0254.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0090.pdf"
+     "url": "/media/datasheet-0109.pdf"
     }
    ]
   },
@@ -1974,11 +1975,11 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Danish",
-     "url": "/media/datasheet-0258.pdf"
+     "url": "/media/datasheet-0316.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe German",
-     "url": "/media/datasheet-0262.pdf"
+     "url": "/media/datasheet-0323.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe English",
@@ -1986,19 +1987,19 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0051.pdf"
+     "url": "/media/datasheet-0062.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe French",
-     "url": "/media/datasheet-0256.pdf"
+     "url": "/media/datasheet-0313.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Italian",
-     "url": "/media/datasheet-0261.pdf"
+     "url": "/media/datasheet-0322.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0112.pdf"
+     "url": "/media/datasheet-0133.pdf"
     }
    ]
   },
@@ -2020,15 +2021,15 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Danish",
-     "url": "/media/datasheet-0166.pdf"
+     "url": "/media/datasheet-0204.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe German",
-     "url": "/media/datasheet-0146.pdf"
+     "url": "/media/datasheet-0177.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe English",
-     "url": "/media/datasheet-0021.pdf"
+     "url": "/media/datasheet-0023.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Spanish",
@@ -2036,7 +2037,7 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe French",
-     "url": "/media/datasheet-0115.pdf"
+     "url": "/media/datasheet-0139.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Italian",
@@ -2044,7 +2045,7 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0081.pdf"
+     "url": "/media/datasheet-0097.pdf"
     }
    ]
   },
@@ -2066,7 +2067,7 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Danish",
-     "url": "/media/datasheet-0040.pdf"
+     "url": "/media/datasheet-0045.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter German",
@@ -2074,23 +2075,23 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter English",
-     "url": "/media/datasheet-0058.pdf"
+     "url": "/media/datasheet-0070.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Spanish",
-     "url": "/media/datasheet-0212.pdf"
+     "url": "/media/datasheet-0257.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter French",
-     "url": "/media/datasheet-0096.pdf"
+     "url": "/media/datasheet-0115.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Italian",
-     "url": "/media/datasheet-0073.pdf"
+     "url": "/media/datasheet-0088.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Dutch",
-     "url": "/media/datasheet-0037.pdf"
+     "url": "/media/datasheet-0042.pdf"
     }
    ]
   },
@@ -2112,19 +2113,19 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Danish",
-     "url": "/media/datasheet-0181.pdf"
+     "url": "/media/datasheet-0223.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter German",
-     "url": "/media/datasheet-0224.pdf"
+     "url": "/media/datasheet-0271.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter English",
-     "url": "/media/datasheet-0202.pdf"
+     "url": "/media/datasheet-0246.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Spanish",
-     "url": "/media/datasheet-0097.pdf"
+     "url": "/media/datasheet-0116.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter French",
@@ -2132,11 +2133,11 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Italian",
-     "url": "/media/datasheet-0135.pdf"
+     "url": "/media/datasheet-0162.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Sechskantmutter Dutch",
-     "url": "/media/datasheet-0161.pdf"
+     "url": "/media/datasheet-0199.pdf"
     }
    ]
   },
@@ -2243,11 +2244,11 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Danish",
-     "url": "/media/datasheet-0089.pdf"
+     "url": "/media/datasheet-0108.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe German",
-     "url": "/media/datasheet-0144.pdf"
+     "url": "/media/datasheet-0174.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe English",
@@ -2255,11 +2256,11 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Spanish",
-     "url": "/media/datasheet-0163.pdf"
+     "url": "/media/datasheet-0201.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe French",
-     "url": "/media/datasheet-0164.pdf"
+     "url": "/media/datasheet-0202.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Italian",
@@ -2267,7 +2268,7 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Dutch",
-     "url": "/media/datasheet-0187.pdf"
+     "url": "/media/datasheet-0230.pdf"
     }
    ]
   },
@@ -2289,31 +2290,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Danish",
-     "url": "/media/datasheet-0048.pdf"
+     "url": "/media/datasheet-0058.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe German",
-     "url": "/media/datasheet-0215.pdf"
+     "url": "/media/datasheet-0260.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe English",
-     "url": "/media/datasheet-0095.pdf"
+     "url": "/media/datasheet-0114.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Spanish",
-     "url": "/media/datasheet-0207.pdf"
+     "url": "/media/datasheet-0251.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe French",
-     "url": "/media/datasheet-0043.pdf"
+     "url": "/media/datasheet-0049.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Italian",
-     "url": "/media/datasheet-0123.pdf"
+     "url": "/media/datasheet-0149.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Riffelscheibe Dutch",
-     "url": "/media/datasheet-0077.pdf"
+     "url": "/media/datasheet-0093.pdf"
     }
    ]
   },
@@ -2335,23 +2336,23 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Danish",
-     "url": "/media/datasheet-0063.pdf"
+     "url": "/media/datasheet-0076.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter German",
-     "url": "/media/datasheet-0071.pdf"
+     "url": "/media/datasheet-0086.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter English",
-     "url": "/media/datasheet-0119.pdf"
+     "url": "/media/datasheet-0145.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Spanish",
-     "url": "/media/datasheet-0153.pdf"
+     "url": "/media/datasheet-0187.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter French",
-     "url": "/media/datasheet-0138.pdf"
+     "url": "/media/datasheet-0166.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Italian",
@@ -2359,7 +2360,7 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Dutch",
-     "url": "/media/datasheet-0184.pdf"
+     "url": "/media/datasheet-0227.pdf"
     }
    ]
   },
@@ -2398,19 +2399,19 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Danish",
-     "url": "/media/datasheet-0113.pdf"
+     "url": "/media/datasheet-0135.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter German",
-     "url": "/media/datasheet-0140.pdf"
+     "url": "/media/datasheet-0168.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter English",
-     "url": "/media/datasheet-0057.pdf"
+     "url": "/media/datasheet-0069.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Spanish",
-     "url": "/media/datasheet-0076.pdf"
+     "url": "/media/datasheet-0092.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter French",
@@ -2418,11 +2419,11 @@
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Italian",
-     "url": "/media/datasheet-0245.pdf"
+     "url": "/media/datasheet-0299.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Dutch",
-     "url": "/media/datasheet-0107.pdf"
+     "url": "/media/datasheet-0128.pdf"
     }
    ]
   },
@@ -2444,31 +2445,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Danish",
-     "url": "/media/datasheet-0118.pdf"
+     "url": "/media/datasheet-0144.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter German",
-     "url": "/media/datasheet-0091.pdf"
+     "url": "/media/datasheet-0110.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter English",
-     "url": "/media/datasheet-0131.pdf"
+     "url": "/media/datasheet-0157.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Spanish",
-     "url": "/media/datasheet-0143.pdf"
+     "url": "/media/datasheet-0173.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter French",
-     "url": "/media/datasheet-0121.pdf"
+     "url": "/media/datasheet-0147.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Italian",
-     "url": "/media/datasheet-0033.pdf"
+     "url": "/media/datasheet-0038.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Dutch",
-     "url": "/media/datasheet-0120.pdf"
+     "url": "/media/datasheet-0146.pdf"
     }
    ]
   },
@@ -2490,31 +2491,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Danish",
-     "url": "/media/datasheet-0208.pdf"
+     "url": "/media/datasheet-0252.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter German",
-     "url": "/media/datasheet-0082.pdf"
+     "url": "/media/datasheet-0098.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter English",
-     "url": "/media/datasheet-0214.pdf"
+     "url": "/media/datasheet-0259.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Spanish",
-     "url": "/media/datasheet-0244.pdf"
+     "url": "/media/datasheet-0297.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter French",
-     "url": "/media/datasheet-0191.pdf"
+     "url": "/media/datasheet-0235.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Italian",
-     "url": "/media/datasheet-0266.pdf"
+     "url": "/media/datasheet-0328.pdf"
     },
     {
      "title": "Produktdatenblatt Fix-Nippel Hutmutter Dutch",
-     "url": "/media/datasheet-0108.pdf"
+     "url": "/media/datasheet-0129.pdf"
     }
    ]
   },
@@ -2536,31 +2537,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt westphal Unterlegscheibe Danish",
-     "url": "/media/datasheet-0125.pdf"
+     "url": "/media/datasheet-0151.pdf"
     },
     {
      "title": "Produktdatenblatt westphal Unterlegscheibe German",
-     "url": "/media/datasheet-0162.pdf"
+     "url": "/media/datasheet-0200.pdf"
     },
     {
      "title": "Produktdatenblatt westphal Unterlegscheibe English",
-     "url": "/media/datasheet-0234.pdf"
+     "url": "/media/datasheet-0287.pdf"
     },
     {
      "title": "Produktdatenblatt westphal Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0030.pdf"
+     "url": "/media/datasheet-0035.pdf"
     },
     {
      "title": "Produktdatenblatt westphal Unterlegscheibe French",
-     "url": "/media/datasheet-0251.pdf"
+     "url": "/media/datasheet-0306.pdf"
     },
     {
      "title": "Produktdatenblatt westphal Unterlegscheibe Italian",
-     "url": "/media/datasheet-0038.pdf"
+     "url": "/media/datasheet-0043.pdf"
     },
     {
      "title": "Produktdatenblatt westphal Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0205.pdf"
+     "url": "/media/datasheet-0249.pdf"
     }
    ]
   },
@@ -2582,31 +2583,31 @@
    "documents": [
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Danish",
-     "url": "/media/datasheet-0065.pdf"
+     "url": "/media/datasheet-0079.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe German",
-     "url": "/media/datasheet-0194.pdf"
+     "url": "/media/datasheet-0238.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe English",
-     "url": "/media/datasheet-0028.pdf"
+     "url": "/media/datasheet-0032.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0127.pdf"
+     "url": "/media/datasheet-0153.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe French",
-     "url": "/media/datasheet-0192.pdf"
+     "url": "/media/datasheet-0236.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Italian",
-     "url": "/media/datasheet-0255.pdf"
+     "url": "/media/datasheet-0312.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Dutch",
-     "url": "/media/datasheet-0075.pdf"
+     "url": "/media/datasheet-0090.pdf"
     }
    ]
   },
@@ -2628,31 +2629,445 @@
    "documents": [
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Danish",
-     "url": "/media/datasheet-0160.pdf"
+     "url": "/media/datasheet-0198.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe German",
-     "url": "/media/datasheet-0134.pdf"
+     "url": "/media/datasheet-0161.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe English",
-     "url": "/media/datasheet-0237.pdf"
+     "url": "/media/datasheet-0290.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Spanish",
-     "url": "/media/datasheet-0203.pdf"
+     "url": "/media/datasheet-0247.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe French",
-     "url": "/media/datasheet-0189.pdf"
+     "url": "/media/datasheet-0232.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Italian",
-     "url": "/media/datasheet-0231.pdf"
+     "url": "/media/datasheet-0283.pdf"
     },
     {
      "title": "Produktdatenblatt Bülte Unterlegscheibe Dutch",
+     "url": "/media/datasheet-0325.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-02811637",
+   "name": "Unterlegscheibe",
+   "description": null,
+   "price": 23.72,
+   "stock": 22,
+   "url": "/detail/pt-02811637",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Danish",
+     "url": "/media/datasheet-0264.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe German",
+     "url": "/media/datasheet-0051.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe English",
+     "url": "/media/datasheet-0160.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Spanish",
+     "url": "/media/datasheet-0274.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe French",
+     "url": "/media/datasheet-0286.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Italian",
      "url": "/media/datasheet-0263.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Dutch",
+     "url": "/media/datasheet-0101.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03428372",
+   "name": "Unterlegscheibe Unterlegscheibe",
+   "description": null,
+   "price": 69.28,
+   "stock": 18,
+   "url": "/detail/pt-03428372",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Danish",
+     "url": "/media/datasheet-0190.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe German",
+     "url": "/media/datasheet-0214.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe English",
+     "url": "/media/datasheet-0308.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Spanish",
+     "url": "/media/datasheet-0275.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe French",
+     "url": "/media/datasheet-0218.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Italian",
+     "url": "/media/datasheet-0140.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Monte Velo Unterlegscheibe Dutch",
+     "url": "/media/datasheet-0184.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03420429",
+   "name": "Innensechskantschraube",
+   "description": null,
+   "price": 82.24,
+   "stock": 34,
+   "url": "/detail/pt-03420429",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Danish",
+     "url": "/media/datasheet-0048.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube German",
+     "url": "/media/datasheet-0137.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube English",
+     "url": "/media/datasheet-0179.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Spanish",
+     "url": "/media/datasheet-0068.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube French",
+     "url": "/media/datasheet-0059.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Italian",
+     "url": "/media/datasheet-0178.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Dutch",
+     "url": "/media/datasheet-0324.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03420445",
+   "name": "Innensechskantschraube",
+   "description": null,
+   "price": 212.15,
+   "stock": 25,
+   "url": "/detail/pt-03420445",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Danish",
+     "url": "/media/datasheet-0234.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube German",
+     "url": "/media/datasheet-0212.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube English",
+     "url": "/media/datasheet-0273.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Spanish",
+     "url": "/media/datasheet-0226.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube French",
+     "url": "/media/datasheet-0329.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Italian",
+     "url": "/media/datasheet-0213.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Dutch",
+     "url": "/media/datasheet-0298.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03420460",
+   "name": "Innensechskantschraube",
+   "description": null,
+   "price": 29.78,
+   "stock": 28,
+   "url": "/detail/pt-03420460",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Danish",
+     "url": "/media/datasheet-0125.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube German",
+     "url": "/media/datasheet-0085.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube English",
+     "url": "/media/datasheet-0134.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Spanish",
+     "url": "/media/datasheet-0280.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube French",
+     "url": "/media/datasheet-0034.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Italian",
+     "url": "/media/datasheet-0136.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Dutch",
+     "url": "/media/datasheet-0099.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03426491",
+   "name": "Innensechskantschraube",
+   "description": null,
+   "price": 84.79,
+   "stock": 9,
+   "url": "/detail/pt-03426491",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Danish",
+     "url": "/media/datasheet-0022.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube German",
+     "url": "/media/datasheet-0175.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube English",
+     "url": "/media/datasheet-0074.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Spanish",
+     "url": "/media/datasheet-0170.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube French",
+     "url": "/media/datasheet-0272.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Italian",
+     "url": "/media/datasheet-0319.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Dutch",
+     "url": "/media/datasheet-0143.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03426657",
+   "name": "Innensechskantschraube",
+   "description": null,
+   "price": 225.63,
+   "stock": 13,
+   "url": "/detail/pt-03426657",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Danish",
+     "url": "/media/datasheet-0031.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube German",
+     "url": "/media/datasheet-0077.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube English",
+     "url": "/media/datasheet-0196.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Spanish",
+     "url": "/media/datasheet-0055.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube French",
+     "url": "/media/datasheet-0307.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Italian",
+     "url": "/media/datasheet-0105.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Innensechskantschraube Dutch",
+     "url": "/media/datasheet-0318.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03425774",
+   "name": "Fächerscheibe",
+   "description": null,
+   "price": 117.86,
+   "stock": 36,
+   "url": "/detail/pt-03425774",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Danish",
+     "url": "/media/datasheet-0255.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe German",
+     "url": "/media/datasheet-0320.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe English",
+     "url": "/media/datasheet-0091.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Spanish",
+     "url": "/media/datasheet-0030.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe French",
+     "url": "/media/datasheet-0119.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Italian",
+     "url": "/media/datasheet-0193.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Dutch",
+     "url": "/media/datasheet-0314.pdf"
+    }
+   ]
+  },
+  {
+   "id": "pt-03425766",
+   "name": "Fächerscheibe",
+   "description": null,
+   "price": 37.18,
+   "stock": 8,
+   "url": "/detail/pt-03425766",
+   "categoryPath": [
+    "Fahrradteile",
+    "Komponenten",
+    "Kleinteile",
+    "Schrauben & Muttern"
+   ],
+   "properties": {},
+   "variants": [],
+   "documents": [
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Danish",
+     "url": "/media/datasheet-0163.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe German",
+     "url": "/media/datasheet-0172.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe English",
+     "url": "/media/datasheet-0056.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Spanish",
+     "url": "/media/datasheet-0052.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe French",
+     "url": "/media/datasheet-0021.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Italian",
+     "url": "/media/datasheet-0189.pdf"
+    },
+    {
+     "title": "Produktdatenblatt Fix-Nippel Fächerscheibe Dutch",
+     "url": "/media/datasheet-0300.pdf"
     }
    ]
   },
@@ -2674,47 +3089,47 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
+     "url": "/media/datasheet-0206.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Danish",
-     "url": "/media/datasheet-0220.pdf"
+     "url": "/media/datasheet-0267.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS German",
-     "url": "/media/datasheet-0179.pdf"
+     "url": "/media/datasheet-0221.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS English",
-     "url": "/media/datasheet-0190.pdf"
+     "url": "/media/datasheet-0233.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Spanish",
-     "url": "/media/datasheet-0253.pdf"
+     "url": "/media/datasheet-0310.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS French",
-     "url": "/media/datasheet-0154.pdf"
+     "url": "/media/datasheet-0188.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Italian",
-     "url": "/media/datasheet-0226.pdf"
+     "url": "/media/datasheet-0277.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7L / BTX7L-BS Dutch",
-     "url": "/media/datasheet-0211.pdf"
+     "url": "/media/datasheet-0256.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0106.pdf"
+     "url": "/media/datasheet-0127.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0067.pdf"
+     "url": "/media/datasheet-0081.pdf"
     }
    ]
   },
@@ -2736,11 +3151,11 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0197.pdf"
+     "url": "/media/datasheet-0241.pdf"
     },
     {
      "title": "Konformitätserklärung",
@@ -2766,15 +3181,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
+     "url": "/media/datasheet-0206.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Danish",
-     "url": "/media/datasheet-0086.pdf"
+     "url": "/media/datasheet-0104.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS German",
@@ -2782,31 +3197,31 @@
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS English",
-     "url": "/media/datasheet-0193.pdf"
+     "url": "/media/datasheet-0237.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Spanish",
-     "url": "/media/datasheet-0156.pdf"
+     "url": "/media/datasheet-0192.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS French",
-     "url": "/media/datasheet-0049.pdf"
+     "url": "/media/datasheet-0060.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Italian",
-     "url": "/media/datasheet-0122.pdf"
+     "url": "/media/datasheet-0148.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX7A / BTX7A-BS Dutch",
-     "url": "/media/datasheet-0114.pdf"
+     "url": "/media/datasheet-0138.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0083.pdf"
+     "url": "/media/datasheet-0100.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0094.pdf"
+     "url": "/media/datasheet-0113.pdf"
     }
    ]
   },
@@ -2828,15 +3243,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0260.pdf"
+     "url": "/media/datasheet-0321.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0151.pdf"
+     "url": "/media/datasheet-0185.pdf"
     }
    ]
   },
@@ -2858,19 +3273,19 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
+     "url": "/media/datasheet-0206.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0235.pdf"
+     "url": "/media/datasheet-0288.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0072.pdf"
+     "url": "/media/datasheet-0087.pdf"
     }
    ]
   },
@@ -2892,15 +3307,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0034.pdf"
+     "url": "/media/datasheet-0039.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0196.pdf"
+     "url": "/media/datasheet-0240.pdf"
     }
    ]
   },
@@ -2922,47 +3337,47 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
+     "url": "/media/datasheet-0206.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Danish",
-     "url": "/media/datasheet-0172.pdf"
+     "url": "/media/datasheet-0210.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS German",
-     "url": "/media/datasheet-0129.pdf"
+     "url": "/media/datasheet-0155.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS English",
-     "url": "/media/datasheet-0223.pdf"
+     "url": "/media/datasheet-0270.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Spanish",
-     "url": "/media/datasheet-0265.pdf"
+     "url": "/media/datasheet-0327.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS French",
-     "url": "/media/datasheet-0238.pdf"
+     "url": "/media/datasheet-0291.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Italian",
-     "url": "/media/datasheet-0242.pdf"
+     "url": "/media/datasheet-0295.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX12 / BTX12-BS Dutch",
-     "url": "/media/datasheet-0141.pdf"
+     "url": "/media/datasheet-0169.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0170.pdf"
+     "url": "/media/datasheet-0208.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0036.pdf"
+     "url": "/media/datasheet-0041.pdf"
     }
    ]
   },
@@ -2984,15 +3399,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0022.pdf"
+     "url": "/media/datasheet-0024.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0213.pdf"
+     "url": "/media/datasheet-0258.pdf"
     }
    ]
   },
@@ -3014,15 +3429,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
+     "url": "/media/datasheet-0206.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0236.pdf"
+     "url": "/media/datasheet-0289.pdf"
     },
     {
      "title": "Konformitätserklärung",
@@ -3048,15 +3463,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0180.pdf"
+     "url": "/media/datasheet-0222.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0243.pdf"
+     "url": "/media/datasheet-0296.pdf"
     }
    ]
   },
@@ -3078,47 +3493,47 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
-    },
-    {
-     "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
-    },
-    {
-     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Danish",
-     "url": "/media/datasheet-0219.pdf"
-    },
-    {
-     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS German",
-     "url": "/media/datasheet-0074.pdf"
-    },
-    {
-     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS English",
-     "url": "/media/datasheet-0100.pdf"
-    },
-    {
-     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Spanish",
-     "url": "/media/datasheet-0029.pdf"
-    },
-    {
-     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS French",
      "url": "/media/datasheet-0206.pdf"
     },
     {
+     "title": "Sicherheitsdatenblatt EN",
+     "url": "/media/datasheet-0180.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Danish",
+     "url": "/media/datasheet-0266.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS German",
+     "url": "/media/datasheet-0089.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS English",
+     "url": "/media/datasheet-0120.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Spanish",
+     "url": "/media/datasheet-0033.pdf"
+    },
+    {
+     "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS French",
+     "url": "/media/datasheet-0250.pdf"
+    },
+    {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Italian",
-     "url": "/media/datasheet-0227.pdf"
+     "url": "/media/datasheet-0278.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Dutch",
-     "url": "/media/datasheet-0229.pdf"
+     "url": "/media/datasheet-0281.pdf"
     },
     {
      "title": "Technisches Datenblatt",
-     "url": "/media/datasheet-0079.pdf"
+     "url": "/media/datasheet-0095.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0088.pdf"
+     "url": "/media/datasheet-0107.pdf"
     }
    ]
   },
@@ -3140,15 +3555,15 @@
    "documents": [
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Danish",
-     "url": "/media/datasheet-0060.pdf"
+     "url": "/media/datasheet-0072.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS German",
-     "url": "/media/datasheet-0259.pdf"
+     "url": "/media/datasheet-0317.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS English",
-     "url": "/media/datasheet-0157.pdf"
+     "url": "/media/datasheet-0194.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Spanish",
@@ -3156,27 +3571,27 @@
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS French",
-     "url": "/media/datasheet-0165.pdf"
+     "url": "/media/datasheet-0203.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Italian",
-     "url": "/media/datasheet-0031.pdf"
+     "url": "/media/datasheet-0036.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX4L-BS Dutch",
-     "url": "/media/datasheet-0046.pdf"
+     "url": "/media/datasheet-0054.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
+     "url": "/media/datasheet-0206.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0088.pdf"
+     "url": "/media/datasheet-0107.pdf"
     }
    ]
   },
@@ -3198,15 +3613,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0055.pdf"
+     "url": "/media/datasheet-0066.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0132.pdf"
+     "url": "/media/datasheet-0158.pdf"
     }
    ]
   },
@@ -3228,47 +3643,47 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0168.pdf"
+     "url": "/media/datasheet-0206.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0078.pdf"
+     "url": "/media/datasheet-0094.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Danish",
-     "url": "/media/datasheet-0026.pdf"
+     "url": "/media/datasheet-0028.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS German",
-     "url": "/media/datasheet-0059.pdf"
+     "url": "/media/datasheet-0071.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS English",
-     "url": "/media/datasheet-0126.pdf"
+     "url": "/media/datasheet-0152.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Spanish",
-     "url": "/media/datasheet-0174.pdf"
+     "url": "/media/datasheet-0215.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS French",
-     "url": "/media/datasheet-0099.pdf"
+     "url": "/media/datasheet-0118.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Italian",
-     "url": "/media/datasheet-0209.pdf"
+     "url": "/media/datasheet-0253.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BTX14 / BTX14-BS Dutch",
-     "url": "/media/datasheet-0254.pdf"
+     "url": "/media/datasheet-0311.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0068.pdf"
+     "url": "/media/datasheet-0082.pdf"
     }
    ]
   },
@@ -3290,15 +3705,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0173.pdf"
+     "url": "/media/datasheet-0211.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0054.pdf"
+     "url": "/media/datasheet-0065.pdf"
     }
    ]
   },
@@ -3320,15 +3735,15 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0085.pdf"
+     "url": "/media/datasheet-0103.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0101.pdf"
+     "url": "/media/datasheet-0121.pdf"
     }
    ]
   },
@@ -3350,11 +3765,11 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0188.pdf"
+     "url": "/media/datasheet-0231.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Danish",
-     "url": "/media/datasheet-0061.pdf"
+     "url": "/media/datasheet-0073.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B German",
@@ -3362,31 +3777,31 @@
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B English",
-     "url": "/media/datasheet-0092.pdf"
+     "url": "/media/datasheet-0111.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Spanish",
-     "url": "/media/datasheet-0230.pdf"
+     "url": "/media/datasheet-0282.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B French",
-     "url": "/media/datasheet-0110.pdf"
+     "url": "/media/datasheet-0131.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Italian",
-     "url": "/media/datasheet-0178.pdf"
+     "url": "/media/datasheet-0220.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB9-B Dutch",
-     "url": "/media/datasheet-0183.pdf"
+     "url": "/media/datasheet-0225.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0185.pdf"
+     "url": "/media/datasheet-0228.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Konformitätserklärung",
@@ -3412,11 +3827,11 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Konformitätserklärung",
-     "url": "/media/datasheet-0133.pdf"
+     "url": "/media/datasheet-0159.pdf"
     }
    ]
   },
@@ -3438,11 +3853,11 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0041.pdf"
+     "url": "/media/datasheet-0046.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0195.pdf"
+     "url": "/media/datasheet-0239.pdf"
     },
     {
      "title": "Konformitätserklärung",
@@ -3468,11 +3883,11 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0188.pdf"
+     "url": "/media/datasheet-0231.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Konformitätserklärung",
@@ -3498,43 +3913,43 @@
    "documents": [
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0188.pdf"
+     "url": "/media/datasheet-0231.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Danish",
-     "url": "/media/datasheet-0139.pdf"
+     "url": "/media/datasheet-0167.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B German",
-     "url": "/media/datasheet-0102.pdf"
+     "url": "/media/datasheet-0122.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B English",
-     "url": "/media/datasheet-0155.pdf"
+     "url": "/media/datasheet-0191.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Spanish",
-     "url": "/media/datasheet-0228.pdf"
+     "url": "/media/datasheet-0279.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B French",
-     "url": "/media/datasheet-0169.pdf"
+     "url": "/media/datasheet-0207.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Italian",
-     "url": "/media/datasheet-0039.pdf"
+     "url": "/media/datasheet-0044.pdf"
     },
     {
      "title": "Produktdatenblatt BS-BATTERY Batterie BB4L-B Dutch",
-     "url": "/media/datasheet-0241.pdf"
+     "url": "/media/datasheet-0294.pdf"
     },
     {
      "title": "Technisches Datenblatt EN",
-     "url": "/media/datasheet-0150.pdf"
+     "url": "/media/datasheet-0183.pdf"
     },
     {
      "title": "Sicherheitsdatenblatt EN",
-     "url": "/media/datasheet-0147.pdf"
+     "url": "/media/datasheet-0180.pdf"
     },
     {
      "title": "Konformitätserklärung",

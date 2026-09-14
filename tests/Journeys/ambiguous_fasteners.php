@@ -9,11 +9,18 @@ declare(strict_types=1);
 // tyre to anyone who reads German, "Marathon Plus" is a bicycle tyre to anyone who rides. A model
 // can be right there for reasons that have nothing to do with noticing an ambiguity.
 //
-// Fasteners remove that. Measured on the `parts` catalogue: **not one of its 43 fastener names
-// contains a vehicle word** — "Zylinderschraube", "Unterlegscheibe", "Sechskantmutter" — so the
-// category path is the only thing that separates a motorcycle bolt from a bicycle bolt, and the
-// model never sees a category path. This is the shape the original report described: *"searching for
-// bolts can direct you to results for car, motorcycles or bikes that could lead to issues"*.
+// Fasteners remove that. No fastener name in the catalogue contains a vehicle word, and BOTH worlds
+// hold a product called exactly "Innensechskantschraube" — same name, different vehicle, nothing to
+// tell them apart. The category path is the only separator, and neither the model nor the shopper is
+// ever shown one. This is the shape the original report described: *"searching for bolts can direct
+// you to results for car, motorcycles or bikes that could lead to issues"*.
+//
+// **The first version of this journey measured a fiction, and it is worth saying so.** Its slice of
+// the bicycle category "Schrauben & Muttern" held 15 washers, 7 nuts and no screw at all, so
+// answering "Schrauben" with motorcycle parts only was CORRECT — there was nothing else to find.
+// The red it produced was a bug in the catalogue, not in the assistant. A journey about ambiguity
+// is worthless unless both readings actually exist in the data; check that before reading a
+// failure as a finding.
 //
 // **Two groups, not three, and that is the shop's own truth.** the source shop has no car fastener
 // category; naming one here would make the assertion measure a world the catalogue cannot render
