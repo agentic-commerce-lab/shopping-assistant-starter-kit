@@ -698,6 +698,14 @@ skips. The four that failed are the live-turn tests, and they fail on catalogue 
 the core version: they ask for a Trail Jersey by name, which only the bike catalogue has. Re-run with
 an equivalent phrase for the fashion catalogue, all four pass.
 
+Re-verified on 6.6.10.23 after the rebase onto main's bundle and prompt-control work: 1,785 PHP tests
+and 111 JS tests green against `shopware/core v6.6.10.23`, `composer run quality` exit 0, the config
+schema returning its twelve cards over HTTP 200, the admin bundle served, and in a browser — all
+three custom components rendering, the kill switch opening its dialog and snapping back on Cancel,
+the instructions card loading its 11,803 characters, and two live storefront turns answering with the
+shop's own categories and two product cards. Zero console errors. The two defects that pass found are
+the `httpClient` injection above and the placeholder syntax below.
+
 **One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
 one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
 Composer 2.10 blocks an advisory-affected package by default, so a shop on 6.6.10.19 needs
@@ -728,6 +736,41 @@ a 6.6 shop*, and this one was invisible to everything cheaper: the PHP side, the
 built bundle and the plugin's own test suite were all correct. A custom Administration component is
 the one thing in a plugin whose contract changes between Shopware minors without any of them saying
 so.
+
+**`httpClient` is not injectable on 6.6.** The settings form's third custom component — the one that
+shows the assistant's own instructions, so the box above it stops being a guess — asked for it with
+`inject: ['httpClient', 'syncService', 'repositoryFactory']`, which is a 6.7 injectable. Read out of
+the running Administration on a 6.6.10.23 shop, the app exposes 212 injectables and none of them is
+named `httpClient`; `syncService` and `repositoryFactory` are both there. The component therefore got
+`undefined` for the first and died at `this.httpClient.get(...)` with *"Cannot read properties of
+undefined (reading 'get')"*, and the card showed its own error banner instead of the prompt — the one
+thing it exists to display.
+
+It now goes through `this.syncService.httpClient`. `syncService` is an `ApiService`, and every
+`ApiService` keeps the Axios instance it was built with on `this.httpClient`, on both versions — so
+this needs no version switch, and it keeps the Axios error shape the component's `catch` reads
+(`error.response.data.errors[0].detail`), which a bare `fetch` would not throw at all. Same lesson as
+the `mt-switch` binding above, and found the same way: a custom Administration component is the one
+part of a plugin whose contract changes between Shopware minors without anything saying so, and only
+a 6.6 shop shows it.
+
+**One thing found here that is not a 6.6 difference.** The same card's two interpolated snippets were
+written `%channel%` and `%count%`. vue-i18n interpolates `{name}`, never `%name%`, on either version —
+so both rendered literally, and the card read *"%count% characters."* Verified against the running
+6.6 Administration: `$tc` on an existing snippet of this plugin returns *"All 7 conversations"* for
+`{count}`, and returns `%count%` untouched for the percent form, with the call signature making no
+difference. They are now `{channel}` and `{count}`, which is what the plugin's other twenty-two
+interpolated snippets already use. **This is a bug on the 6.7 line too**; it is fixed here because
+this branch has to work, and the fix should go to `main`, after which this delta disappears at the
+next rebase.
+
+**Meteor components themselves are not the problem.** Worth stating, because it is the obvious
+suspicion and it is wrong: 6.6.10.23 registers 25 of them globally in `vue.adapter.ts` — including
+`mt-banner` and `mt-icon`, both used by that same card — and core's own `sw-alert` is a deprecated
+wrapper that delegates to `mt-banner`. Their *props* are what differ between versions, not their
+existence. Read off the running 6.6 Administration: `mt-icon` takes `name, color, decorative, size`
+and `mt-banner` takes `variant, title, hideIcon, closable, bannerIndex, icon`, which is what this
+plugin already passes them.
 
 **Storefront snippets must carry the full locale.** `SnippetFileLoader` reads the locale out of the
 filename — `explode('.')`, second part — so `swag-assistant.en.json` registers under the iso `en`,
