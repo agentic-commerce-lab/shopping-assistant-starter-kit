@@ -32,6 +32,20 @@ import './swag-assistant-system-prompt.scss';
  * from `SystemPrompt` at its next edit. A preview that lies is worse than none, because it is
  * exactly what a merchant reaches for to check what they changed.
  *
+ * ## `syncService.httpClient`, not an injected `httpClient`
+ *
+ * 6.6 does not provide `httpClient` to `inject`. Read out of the running Administration on a
+ * 6.6.10.23 shop, the app exposes 212 injectables and none of them is named `httpClient` —
+ * `syncService` and `repositoryFactory` are both there, so a component asking for all three got
+ * `undefined` for the first and failed at `this.httpClient.get(...)` with "Cannot read properties
+ * of undefined (reading 'get')". The card then showed its own error banner rather than the prompt:
+ * the one thing it exists to display. The injectable was added on the 6.7 line.
+ *
+ * `syncService` is an `ApiService`, and every `ApiService` keeps the Axios instance it was built
+ * with on `this.httpClient` — on both versions. Going through it needs no version switch and keeps
+ * the Axios error shape this component's `catch` reads (`error.response.data.errors[0].detail`),
+ * which a bare `fetch` would not throw at all.
+ *
  * ## Two limits it states rather than hides
  *
  * It shows the **saved** configuration: `sw-system-config` does not pass its channel selection or
@@ -48,7 +62,7 @@ import './swag-assistant-system-prompt.scss';
 Shopware.Component.register('swag-assistant-system-prompt', {
     template,
 
-    inject: ['httpClient', 'syncService', 'repositoryFactory'],
+    inject: ['syncService', 'repositoryFactory'],
 
     data() {
         return {
@@ -88,7 +102,7 @@ Shopware.Component.register('swag-assistant-system-prompt', {
 
                 this.channelName = channel.name;
 
-                const response = await this.httpClient.get(
+                const response = await this.syncService.httpClient.get(
                     `/_action/swag-assistant/system-prompt/${channel.id}`,
                     { headers: this.syncService.getBasicHeaders() },
                 );

@@ -30,9 +30,9 @@
       "toggle": "Show the assistant's instructions",
       "loading": "Loading…",
       "failed": "The instructions could not be loaded:",
-      "scope": "These are the saved instructions for \"%channel%\". Changes in this form apply after you save.",
+      "scope": "These are the saved instructions for \"{channel}\". Changes in this form apply after you save.",
       "otherChannels": "Another sales channel with its own settings will differ.",
-      "characters": "%count% characters.",
+      "characters": "{count} characters.",
       "perTurnOmitted": "Your catalogue's own vocabulary and the product a shopper is looking at are added per conversation and are not shown here.",
       "noStorefront": "This shop has no active Storefront sales channel."
     }
