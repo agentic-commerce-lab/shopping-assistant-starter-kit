@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Bucket\TermsAggregation;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\StatsAggregation;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepository;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\Facet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetType;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 
 /**
@@ -71,8 +72,6 @@ final readonly class DalFacetQuery
             $context->getSalesChannelId(),
         );
 
-        $criteria->addAggregation(new StatsAggregation(DalFilterTranslator::PRICE_FIELD, 'price'));
-
         // Named for the logical field BrandFilterResolver asks for, so the facet it looks up
         // exists; DalFilterTranslator maps the resulting clause back to manufacturer.name.
         $criteria->addAggregation(new TermsAggregation(
@@ -88,10 +87,11 @@ final readonly class DalFacetQuery
         $facets = $this->facetReader->read($this->products->aggregate($criteria, $context));
 
         if (!$perValue) {
-            return $facets;
+            return new FacetSet([self::price(), ...$facets->facets]);
         }
 
         return new FacetSet([
+            self::price(),
             ...$facets->facets,
             ...$this->valuesInUse->facets(
                 $context->getSalesChannelId(),
@@ -99,6 +99,33 @@ final readonly class DalFacetQuery
                 self::VALUE_LIMIT,
             ),
         ]);
+    }
+
+    /**
+     * The price facet, stated rather than computed.
+     *
+     * **Its only consumer asks whether it EXISTS.**
+     * {@see \Swag\AssistantStarterKit\Core\Retrieval\Filter\PriceFilterResolver} reads
+     * `$facets->has('price')` and nothing else — the bounds it applies come from the shopper's own
+     * words, never from here. Outside the CLI's `--facets` table, `min` and `max` are read nowhere
+     * in this plugin.
+     *
+     * They cost a `StatsAggregation` over every product to produce: 145 ms on a 118,632-product
+     * shop, and the last term in this probe that grows with the catalogue — roughly 2.2 s at 1.8M.
+     * A number nobody reads is not worth a table scan.
+     *
+     * **Always present, because against a real Shopware the answer is always yes.** `price` is a
+     * product field the DAL can always range-filter on, so "can this catalogue be filtered by
+     * price" has no false case here. An empty or fully-scoped-out catalogue is the one edge, and
+     * there the filter is applied to nothing instead of dropped — the same empty result, differing
+     * only in which word the trace records.
+     *
+     * The bounds stay null, which {@see Facet} has always allowed and
+     * {@see DalFacetReader::float()} has always produced for a non-numeric aggregation.
+     */
+    private static function price(): Facet
+    {
+        return new Facet(field: 'price', type: FacetType::Range);
     }
 
     /**
