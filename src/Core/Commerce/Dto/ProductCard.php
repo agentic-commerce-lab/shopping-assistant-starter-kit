@@ -102,6 +102,20 @@ final readonly class ProductCard
          * one of them fails the allowlist.
          */
         public array $documents = [],
+        /**
+         * The base price a German shop is required to show, already calculated — never the inputs.
+         *
+         * **Calculated in the gateway rather than on the card, and that is the whole safety
+         * argument.** `purchaseUnit`, `referenceUnit` and the unit's name are three numbers whose
+         * arithmetic must land on the same figure the storefront prints, or the assistant
+         * contradicts the page it links to. Shopware prints `(€25.56 / 1 Liter)` for a 0.25 l
+         * bottle at €6.39 — verified against a real product page, 2026-09-15 — so that division
+         * belongs in one place next to the price it divides, not spread across a DTO's callers.
+         *
+         * Null for everything sold by the piece, which is most of a catalogue. A brake pad has no
+         * base price and inventing one would be worse than the silence.
+         */
+        public ?BasePrice $basePrice = null,
     ) {}
 
     public function isInStock(): bool

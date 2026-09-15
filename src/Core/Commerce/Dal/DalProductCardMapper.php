@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
 use Shopware\Core\Checkout\Cart\Price\Struct\PriceCollection;
 use Shopware\Core\Content\Product\SalesChannel\SalesChannelProductEntity;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\BasePrice;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 
@@ -123,6 +124,17 @@ final readonly class DalProductCardMapper
             // Empty for every product whose gallery holds only images, which is most of them —
             // the allowlist in DalProductDocuments is what makes that true rather than assumed.
             documents: $this->documents->of($product),
+            // Null for everything sold by the piece, which is most of a catalogue. The division
+            // happens here, beside the price it divides, so the card cannot print a figure the
+            // product page contradicts — see BasePrice for the verification against a real page.
+            basePrice: BasePrice::of(
+                $price,
+                $product->getPurchaseUnit(),
+                $product->getReferenceUnit(),
+                // Same translation-then-own fallback the product's own name uses, for the same
+                // reason: `getTranslation()` is `mixed` and an untranslated unit must still be named.
+                $this->inherited($product->getUnit()?->getTranslation('name'), $product->getUnit()?->getName()),
+            ),
         );
     }
 

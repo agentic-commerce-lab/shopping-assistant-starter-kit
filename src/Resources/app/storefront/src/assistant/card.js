@@ -6,7 +6,7 @@
  * easily. If a value you want is not on the card, the answer is to render it on the server, not to
  * parse it out of a sentence.
  */
-import { formatPriceBasis, formatSpecChips } from './render.js';
+import { formatBasePrice, formatPriceBasis, formatSpecChips } from './render.js';
 
 /** Below this, "in stock" is true but reassuring a shopper with a bare "In stock" overstates it. */
 const STOCK_LOW_THRESHOLD = 5;
@@ -157,6 +157,13 @@ function buildFacts(card, { locale, translations }) {
     const price = formatPriceBasis(card, locale, translations);
     if (price !== '') {
         facts.appendChild(text('p', 'swag-assistant-card__price', price));
+    }
+
+    // Directly under the price, because it exists to be compared WITH it — four oils at €10.00
+    // that cost €200.00, €100.00, €100.00 and €20.00 per litre are one decision, not two.
+    const base = formatBasePrice(card, locale, translations);
+    if (base !== '') {
+        facts.appendChild(text('p', 'swag-assistant-card__base-price', base));
     }
 
     // Said once, next to the figure it qualifies. The card never computes what the other tiers

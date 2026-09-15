@@ -78,6 +78,38 @@ export function formatPriceBasis(card, locale, translations = {}) {
         .replace('%count%', String(quantity));
 }
 
+/**
+ * The base price, as the storefront writes it: `(€25.56 / 1 Liter)`.
+ *
+ * **Formatted here, never calculated here.** The server divides — see `BasePrice` for why that
+ * division lives beside the price it divides — so this reads three sent values and puts a currency
+ * symbol on one of them. A card that did the arithmetic could disagree with the product page it
+ * links to by a cent, which is worse than showing nothing.
+ *
+ * Absent for everything sold by the piece, which is most of a catalogue.
+ */
+export function formatBasePrice(card, locale, translations = {}) {
+    const base = card?.basePrice;
+
+    if (!base || typeof base.price !== 'number' || !base.unit) {
+        return '';
+    }
+
+    const price = formatPrice(base.price, card?.currency, locale);
+
+    if (price === '') {
+        return '';
+    }
+
+    // `1` is the ordinary reference and reads as noise written out, the same reasoning
+    // `formatPriceBasis` applies to a quantity of one.
+    const reference = base.referenceUnit === 1 ? base.unit : `${base.referenceUnit} ${base.unit}`;
+
+    return (translations.basePrice ?? '(%price% / %unit%)')
+        .replace('%price%', price)
+        .replace('%unit%', reference);
+}
+
 /** Two is enough to differentiate at a glance without crowding a 176px card. */
 const MAX_SPEC_CHIPS = 2;
 

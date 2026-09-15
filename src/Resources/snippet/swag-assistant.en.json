@@ -32,7 +32,8 @@
       "delivery": "Delivery: %time%",
       "addedToCart": "Added",
       "priceAt": "%price% each at %count% units",
-      "volumePricing": "Lower unit prices at higher quantities"
+      "volumePricing": "Lower unit prices at higher quantities",
+      "basePrice": "(%price% / %unit%)"
     },
     "thinking": {
       "start": "Thinking…",

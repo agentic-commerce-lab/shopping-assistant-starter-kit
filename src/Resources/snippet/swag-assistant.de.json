@@ -32,7 +32,8 @@
       "delivery": "Lieferung: %time%",
       "addedToCart": "Hinzugefügt",
       "priceAt": "%price% pro Stück bei %count% Stück",
-      "volumePricing": "Günstiger bei größeren Mengen"
+      "volumePricing": "Günstiger bei größeren Mengen",
+      "basePrice": "(%price% / %unit%)"
     },
     "thinking": {
       "start": "Ich denke nach…",
