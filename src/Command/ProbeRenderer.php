@@ -78,6 +78,12 @@ final readonly class ProbeRenderer
     private function facetValues(array $values, ?float $min, ?float $max): string
     {
         if ($values === []) {
+            // A Range facet with no bounds is not a broken one: DalFacetQuery states the price
+            // facet rather than computing it, because its only consumer asks whether it exists.
+            if ($min === null && $max === null) {
+                return '(present, bounds not computed)';
+            }
+
             return \sprintf('%s – %s', $min ?? '?', $max ?? '?');
         }
 

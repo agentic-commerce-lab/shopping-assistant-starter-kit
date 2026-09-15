@@ -86,8 +86,13 @@ final readonly class DalFacetReader
     /**
      * `StatsResult` declares its bounds as `mixed` because the aggregated field need not be
      * numeric (a date range aggregates to strings). A non-numeric bound cannot express a price
-     * range, so it becomes null — the facet is then present but unbounded, `QueryBuilder` drops
-     * the constraint and records the drop, and the failure is observable rather than silent.
+     * range, so it becomes null — the facet is then present but unbounded.
+     *
+     * **That is harmless, and the sentence that used to stand here said otherwise.** It claimed
+     * `QueryBuilder` drops the constraint when the bounds are null. It does not: `PriceFilterResolver`
+     * drops a price filter only when the facet is ABSENT, and the range it applies comes from the
+     * shopper's own words. Nothing in the retrieval path reads `min` or `max` — which is why
+     * {@see DalFacetQuery} stopped computing them.
      */
     private function float(mixed $value): ?float
     {

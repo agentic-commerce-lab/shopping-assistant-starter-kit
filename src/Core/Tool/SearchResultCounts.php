@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Retrieval\MatchCount;
 
 /**
  * The counted fields a product search hands the model, and what each of them means.
@@ -46,26 +47,33 @@ final class SearchResultCounts
      * @param list<ProductCard> $returned  the cards the shopper will see
      * @param list<ProductCard> $survivors what retrieval found, after the redundant-parent filter
      * @param bool              $saturated whether the candidate window filled up
-     * @param int|null          $exact     an authoritative match count, when the gateway could give one
+     * @param MatchCount|null   $exact     an authoritative match count, when the gateway could give
+     *                                     one — see MatchCount for why "very many" is a third answer
      *
-     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>, total: int, matched: int, more: bool, withheld?: int, all_shown?: true, all_shown_note?: string, bundle_note?: string}
+     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>, total: int, matched: int, more: bool, withheld?: int, many?: true, all_shown?: true, all_shown_note?: string, bundle_note?: string}
      */
     public static function of(
         array $products,
         array $returned,
         array $survivors,
         bool $saturated,
-        ?int $exact = null,
+        ?MatchCount $exact = null,
     ): array {
-        $withheld = WithheldCount::replyFor($survivors, $returned);
+        // **A capped count reports no figure at all.** `withheld` says "this many more exist", and
+        // at the cap that number is not known — only that it is large. Reporting the cap would be a
+        // figure the shop cannot stand behind, which is the one thing every count here must not be.
+        // `many` replaces it, and the prompt tells the model to say so in words and narrow instead.
+        $capped = $exact?->capped ?? false;
+        $withheld = $capped ? ['many' => true] : WithheldCount::replyFor($survivors, $returned);
 
         return [
             // id + name + options, never a figure — see ToolProductSummary for why bare ids made
             // variant identification cost one tool call per candidate.
             'products' => $products,
             'total' => \count($returned),
-            'matched' => $exact ?? \count($survivors),
-            'more' => $exact === null && $saturated,
+            'matched' => $exact?->count ?? \count($survivors),
+            // A cap is a floor by construction, so it says the same thing `more` has always said.
+            'more' => $capped || $exact === null && $saturated,
             // **The cards, not the counts.** `withheld` is measured in products rather than rows,
             // and only the card lists carry which rows belong to the same product. See
             // {@see WithheldCount} for the session that makes the difference load-bearing.
@@ -73,7 +81,7 @@ final class SearchResultCounts
             // The one condition under which the assistant may say there is nothing more. Needs both
             // halves — nothing withheld AND an unsaturated window — so it is computed here, where
             // both are known, rather than left to the model to combine. See {@see EverythingShown}.
-            ...EverythingShown::replyFor($withheld !== [], $exact === null && $saturated),
+            ...EverythingShown::replyFor($withheld !== [], $capped || $exact === null && $saturated),
             // What a bundle's price covers, when the reply quotes one for a bundle a shopper can
             // trim. Keyed off `$returned` rather than `$survivors`: a bundle narrowing held back is
             // not one this reply prices. See {@see BundlePriceNote} for the measurement.
