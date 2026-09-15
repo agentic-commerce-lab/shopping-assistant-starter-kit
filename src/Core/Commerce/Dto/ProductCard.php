@@ -20,6 +20,7 @@ final readonly class ProductCard
      * @param list<string>            $categoryPath
      * @param array<string, list<string>> $properties
      * @param list<BundleItem>        $bundleItems  empty for every ordinary product
+     * @param list<ProductDocument>   $documents    empty for every product with no attached PDF
      */
     // @mago-expect lint:excessive-parameter-list
     // The parameter list mirrors the allowlisted shopper-facing fields exactly (see class
@@ -87,6 +88,20 @@ final readonly class ProductCard
          * not say, so the model said instead.
          */
         public array $bundleItems = [],
+        /**
+         * Documents the merchant attached to this product — datasheets, manuals, safety data sheets.
+         *
+         * **Links, not content.** Each entry says a document exists and where the SHOP can render
+         * it; none of them carries a word of what is inside. See {@see ProductDocument} for why that
+         * line is drawn here rather than further downstream, and
+         * {@see \Swag\AssistantStarterKit\Core\Commerce\Dal\DalProductDocuments} for why the gallery
+         * association is the source and an extension allowlist is the whole filter.
+         *
+         * **Empty is the ordinary case**, as with {@see self::$bundleItems}: most shops attach no
+         * PDFs to products at all, and a shop that attaches only images reports `[]` because every
+         * one of them fails the allowlist.
+         */
+        public array $documents = [],
     ) {}
 
     public function isInStock(): bool

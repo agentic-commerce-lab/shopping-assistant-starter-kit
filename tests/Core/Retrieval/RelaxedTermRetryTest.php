@@ -67,4 +67,50 @@ final class RelaxedTermRetryTest extends TestCase
     {
         self::assertSame('Größ', RelaxedTermRetry::relax('Größe'));
     }
+
+    /**
+     * The German case the one-character step cannot reach, measured against the parts catalogue
+     * on 2026-09-15: the shop finds nothing for either plural, and only the two-character form
+     * reaches the singular that does match.
+     *
+     * ```
+     * Anlassermotoren -> Anlassermotore   0 hits   -> Anlassermotor   10 hits
+     * Kettenführungen -> Kettenführunge   0 hits   -> Kettenführung     6 hits
+     * ```
+     */
+    public function testTwoCharactersReachTheGermanEnPlural(): void
+    {
+        self::assertSame('Anlassermotore', RelaxedTermRetry::relax('Anlassermotoren'));
+        self::assertSame('Anlassermotor', RelaxedTermRetry::relax('Anlassermotoren', 2));
+
+        self::assertSame('Kettenführung', RelaxedTermRetry::relax('Kettenführungen', 2));
+    }
+
+    /**
+     * Two characters must not create a stub one character would have refused to make. A five-letter
+     * word is shortened by one and left alone by two, so the floor rises with the cut.
+     */
+    public function testTheFloorRisesWithTheNumberOfCharacters(): void
+    {
+        self::assertSame('Hemd', RelaxedTermRetry::relax('Hemds'));
+        self::assertNull(RelaxedTermRetry::relax('Hemds', 2));
+
+        self::assertSame('Hemd', RelaxedTermRetry::relax('Hemden', 2));
+    }
+
+    /**
+     * Still a prefix rule and not a German one: two characters come off whatever the word ends in,
+     * and a word too short to survive the cut is carried through untouched.
+     */
+    public function testTwoCharactersStaysAPrefixRule(): void
+    {
+        self::assertSame('glov', RelaxedTermRetry::relax('gloves', 2));
+
+        // Every word too short to survive the cut means there is nothing to retry, exactly as one
+        // character already reports for a term of short words.
+        self::assertNull(RelaxedTermRetry::relax('brake pads', 2));
+
+        // Mixed: the long word relaxes, the short ones are carried through untouched.
+        self::assertSame('rot Hemden Hemd', RelaxedTermRetry::relax('rot Hemdenen Hemd', 2));
+    }
 }

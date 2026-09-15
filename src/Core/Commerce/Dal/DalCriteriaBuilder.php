@@ -81,6 +81,17 @@ final readonly class DalCriteriaBuilder
             $criteria->addAssociation(DalBundleItems::ASSOCIATION . '.product');
         }
 
+        // **Unguarded, unlike the line above, because `media` is core.** It is a plain
+        // `product_media` association every Shopware shop has, so naming it cannot fail the read the
+        // way an absent Commercial extension would. The nested `.media` is what carries the file's
+        // extension and URL; the join row alone holds a position and an id.
+        //
+        // The cost is bounded by the RETRIEVED rows, not by the catalogue: this criteria is limited
+        // long before it runs, so a shop with 1.8 million products loads gallery rows for the ~50
+        // candidates of one turn, which is the same order as `properties.group` beside it. See
+        // DalProductDocuments for why the gallery is the source at all.
+        $criteria->addAssociation(DalProductDocuments::ASSOCIATION . '.media');
+
         return $criteria;
     }
 

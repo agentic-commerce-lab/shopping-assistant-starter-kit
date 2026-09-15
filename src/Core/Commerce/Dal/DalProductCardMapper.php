@@ -54,6 +54,7 @@ final readonly class DalProductCardMapper
         private PropertyGroupOptionReader $options = new PropertyGroupOptionReader(),
         private DalApplicablePrice $prices = new DalApplicablePrice(),
         private DalBundleItems $bundleItems = new DalBundleItems(),
+        private DalProductDocuments $documents = new DalProductDocuments(),
     ) {}
 
     /**
@@ -62,9 +63,17 @@ final readonly class DalProductCardMapper
      *        service: a shop with two channels in different currencies would otherwise have every
      *        card in one of them labelled with the other's code. A wrong currency beside a right
      *        number is a fabricated fact, which is the one thing this pipeline exists to prevent.
+     *
+     * @param array<string, string> $departments id => name, from {@see DalDepartments::of()}. Passed
+     *        per call for the same reason, and resolved once per batch rather than per card —
+     *        reading it here would be one query for one string, fifty times over.
      */
-    public function map(SalesChannelProductEntity $product, StockSource $source, string $currency): ?ProductCard
-    {
+    public function map(
+        SalesChannelProductEntity $product,
+        StockSource $source,
+        string $currency,
+        array $departments = [],
+    ): ?ProductCard {
         // The smallest order this shopper may actually place. Pricing a case-of-24 product at one
         // unit quotes a figure nobody can buy at; see spec 7.1 for why this differs from the
         // storefront's cheapest-tier "from" price.
@@ -90,7 +99,9 @@ final readonly class DalProductCardMapper
             url: $this->urls->urlFor($product->getId()),
             imageUrl: $product->getCover()?->getMedia()?->getUrl(),
             options: $this->options->singleValued($product->getOptions()),
-            categoryPath: [],
+            // The shop's own department, and only that: every deeper level describes what the
+            // product IS, which its name says better. Empty when the caller resolved no map.
+            categoryPath: DalProductDepartment::of($product, $departments),
             properties: $this->options->multiValued($product->getProperties()),
             priceQuantity: $quantity,
             // NOT "more than one tier exists" — that let a case-of-24 product with tiers 1-23 /
@@ -109,6 +120,9 @@ final readonly class DalProductCardMapper
             // Empty for every product in a shop without Commercial installed, which is most of
             // them; see DalBundleItems for why the read cannot name a Commercial type.
             bundleItems: $this->bundleItems->of($product),
+            // Empty for every product whose gallery holds only images, which is most of them —
+            // the allowlist in DalProductDocuments is what makes that true rather than assumed.
+            documents: $this->documents->of($product),
         );
     }
 

@@ -42,6 +42,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
  *     minPurchase?: int,
  *     purchaseSteps?: int,
  *     bundleItems?: list<array{name: string, quantity?: int, required?: bool}>,
+ *     documents?: list<array{title: string, url: string}>,
  * }
  */
 final class FixtureIndex
@@ -102,6 +103,7 @@ final class FixtureIndex
             minPurchase: $product['minPurchase'] ?? 1,
             purchaseSteps: $product['purchaseSteps'] ?? 1,
             bundleItems: FixtureBundleItems::of($product['bundleItems'] ?? []),
+            documents: FixtureProductDocuments::ofProduct($product),
         );
     }
 
@@ -128,6 +130,11 @@ final class FixtureIndex
             properties: $product['properties'],
             minPurchase: $variant['minPurchase'] ?? 1,
             purchaseSteps: $variant['purchaseSteps'] ?? 1,
+            // The PRODUCT's documents, on every one of its variants. A datasheet is attached to the
+            // product in Shopware, and a shopper looking at the blue M is looking at the thing the
+            // datasheet describes — withholding it there would make the answer depend on which
+            // variant happened to be resolved.
+            documents: FixtureProductDocuments::ofProduct($product),
         );
     }
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
+use Swag\AssistantStarterKit\Core\Commerce\UnitSpacing;
+
 /**
  * The names a turn's retrieved products answer to, and which id each name stands for.
  *
@@ -30,7 +32,15 @@ final readonly class ProductNameIndex
      */
     public function __construct(array $namesById, array $excludedIds = [])
     {
-        $this->namesById = array_diff_key($namesById, array_flip($excludedIds));
+        // Normalised on the way in, so the two spellings of one measurement are ONE name here:
+        // "Alloy Water Bottle 750 ml" and "Alloy Water Bottle 750ml" index as the same string and
+        // therefore answer to the same mention in a reply. Doing it per lookup instead would give
+        // them separate entries, and the longer one would mask the mention away from the shorter —
+        // dropping the very card this exists to render. See {@see UnitSpacing} for why the shop
+        // already treats them as one.
+        $kept = array_diff_key($namesById, array_flip($excludedIds));
+
+        $this->namesById = array_map(UnitSpacing::join(...), $kept);
     }
 
     /**
@@ -72,6 +82,27 @@ final readonly class ProductNameIndex
      * one the caller listed first, since that is the order the tool returned them in. Ids the
      * constructor excluded are not here to be found, so a name whose every candidate the reply ruled
      * out resolves to nothing and renders no card — the honest outcome when all of them contradict.
+     *
+     * @param list<string> $preferredIds
+     */
+    /**
+     * The names it holds, keyed by id, with exclusions already applied.
+     *
+     * Exposed for {@see NamesakeCards}, which needs the same filtered map to decide how many cards a
+     * name is worth — and must not re-derive it, or an excluded variant would come back as a card.
+     *
+     * @return array<string, string>
+     */
+    public function namesById(): array
+    {
+        return $this->namesById;
+    }
+
+    /**
+     * The single id this name points at, or null when none answers to it.
+     *
+     * A preferred id wins over registration order — see the class docblock and
+     * {@see NamesakeCards}, which applies the same tie-break once per family.
      *
      * @param list<string> $preferredIds
      */

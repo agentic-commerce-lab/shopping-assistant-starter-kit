@@ -66,6 +66,13 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
 
     info.appendChild(text('h3', 'swag-assistant-card__name', card.name));
 
+    // The shop's own department, when the gateway records one. It sits directly under the name
+    // because that is where it answers the question it exists for: two cards called
+    // "Innensechskantschraube" are two different products, and only this line says so.
+    if (typeof card.department === 'string' && card.department !== '') {
+        info.appendChild(text('p', 'swag-assistant-card__department', card.department));
+    }
+
     const options = Object.values(card.options ?? {});
     if (options.length > 0) {
         info.appendChild(text('p', 'swag-assistant-card__options', options.join(' · ')));
@@ -97,6 +104,12 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
     }
 
     info.appendChild(buildFacts(card, { locale, translations }));
+
+    const documents = buildDocuments(card, translations);
+    if (documents !== null) {
+        info.appendChild(documents);
+    }
+
     info.appendChild(buildActions(card, { addToCartEnabled, translations }));
     el.appendChild(info);
 
@@ -184,6 +197,68 @@ function buildStock(card, translations) {
     stock.appendChild(document.createTextNode(label));
 
     return stock;
+}
+
+/**
+ * The documents the merchant attached to this product, as links the SHOP renders.
+ *
+ * This is the whole of the feature's first stage on the client: the assistant may say a datasheet
+ * exists, and the address comes from here rather than from anything it wrote. The server never hands
+ * the model a URL for exactly that reason — see `ToolProductSummary`.
+ *
+ * `rel="noopener"` because these open in a new tab, and the title is set as text rather than as
+ * markup: a media title is merchant-entered content, and nothing in this file builds HTML out of it.
+ */
+/**
+ * How many document links a card shows before it starts counting instead.
+ *
+ * Three, measured against the surface rather than chosen: a card in the row is 176px wide and its
+ * other rows — name, department, price, stock — come to about the same height again. Four links
+ * already made the card taller than the product photograph beside it.
+ */
+const MAX_DOCUMENTS = 3;
+
+function buildDocuments(card, translations) {
+    const documents = Array.isArray(card.documents) ? card.documents.filter((doc) => doc && doc.url) : [];
+
+    if (documents.length === 0) {
+        return null;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'swag-assistant-card__documents';
+
+    // Capped, because a real product carries more files than a 176px card can hold: the shop this
+    // was built for attaches up to eleven, most of them the same datasheet in eight languages. The
+    // model is told the collapsed set (see DocumentLanguageSuffix); the card shows the first few and
+    // says how many it left, and "View product" below already leads to all of them.
+    const shown = documents.slice(0, MAX_DOCUMENTS);
+
+    shown.forEach((doc) => {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+
+        link.className = 'swag-assistant-card__document';
+        link.href = doc.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        // The extension is the format badge, so a title that already carries it is not repeated.
+        link.textContent = doc.title || translations.document || '';
+
+        item.appendChild(link);
+        list.appendChild(item);
+    });
+
+    const hidden = documents.length - shown.length;
+
+    if (hidden > 0) {
+        const more = document.createElement('li');
+        more.className = 'swag-assistant-card__documents-more';
+        more.textContent = (translations.documentsMore ?? '+%count% more').replace('%count%', hidden);
+        list.appendChild(more);
+    }
+
+    return list;
 }
 
 function buildActions(card, { addToCartEnabled, translations }) {

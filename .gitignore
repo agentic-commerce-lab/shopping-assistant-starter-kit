@@ -35,3 +35,7 @@ var/
 # (any commit before the removal works). Kept out of the zip by .shopware-extension.yml
 # too, which stays as it is so a local copy can never reach an artefact.
 docs/superpowers/
+
+# Scraped research data: vehicle rows carrying a real shop's article numbers. No test reads
+# it, so it stays on disk and out of the repository.
+tests/Fixtures/parts-fitment.json

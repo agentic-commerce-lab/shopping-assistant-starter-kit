@@ -36,7 +36,7 @@ final readonly class JourneyCatalogue
     public const ANY = 'any';
 
     /** @var list<string> */
-    public const KNOWN = [self::ANY, 'small', 'large', 'fashion'];
+    public const KNOWN = [self::ANY, 'small', 'large', 'fashion', 'parts'];
 
     private function __construct(
         private string $name,

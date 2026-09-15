@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Commerce\Fixture;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
+use Swag\AssistantStarterKit\Core\Commerce\UnitSpacing;
 
 /**
  * Term matching for {@see FixtureQueryFilter}: all-token matches when there are any,
@@ -124,8 +125,9 @@ final class FixtureTermMatcher
 
     private static function contains(ProductCard $unit, string $word): bool
     {
-        return (
-            str_contains(strtolower($unit->name), $word) || str_contains(strtolower($unit->description ?? ''), $word)
-        );
+        $name = UnitSpacing::join(strtolower($unit->name));
+        $description = UnitSpacing::join(strtolower($unit->description ?? ''));
+
+        return str_contains($name, $word) || str_contains($description, $word);
     }
 }

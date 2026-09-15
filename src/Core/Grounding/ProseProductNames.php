@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
+use Swag\AssistantStarterKit\Core\Commerce\UnitSpacing;
+
 /**
  * Which of the retrieved products a reply actually names.
  *
@@ -74,13 +76,18 @@ final class ProseProductNames
      *
      * @param list<string> $excludedIds ids this reply has ruled out — see {@see ContradictedVariants}
      *
-     * @return list<string> the ids whose name appears in the prose, at most one per name
+     * @param array<string, string> $familyById product id => its family key, so a name shared by two
+     *        different PRODUCTS renders both while a name shared by two VARIANTS still renders one.
+     *        Empty keeps the old one-per-name behaviour — see {@see ProductNameIndex::idsFor()}.
+     *
+     * @return list<string> the ids whose name appears in the prose, one per family per name
      */
     public static function idsNamedIn(
         string $prose,
         array $namesById,
         array $preferredIds = [],
         array $excludedIds = [],
+        array $familyById = [],
     ): array {
         if (trim($prose) === '') {
             return [];
@@ -88,7 +95,11 @@ final class ProseProductNames
 
         $index = new ProductNameIndex($namesById, $excludedIds);
         $found = [];
-        $remaining = $prose;
+        // The working copy is normalised the same way the index is, so a reply writing "750ml"
+        // reaches a product the shop calls "750 ml". Safe despite the byte-offset note below: the
+        // offsets this collects are only ever a SORT KEY — nothing maps them back to the original
+        // prose — so a copy of a different length stays internally consistent.
+        $remaining = UnitSpacing::join($prose);
 
         foreach ($index->namesLongestFirst() as $name) {
             // The first occurrence that STANDS ON ITS OWN. A name continued by another capitalised
@@ -101,9 +112,9 @@ final class ProseProductNames
                 continue;
             }
 
-            $id = $index->idFor($name, $preferredIds);
+            $ids = NamesakeCards::of($name, $index->namesById(), $preferredIds, $familyById);
 
-            if ($id !== null) {
+            if ($ids !== []) {
                 // Keyed by WHERE the reply says it, not by the order names are searched in. Searching
                 // has to run longest-name-first or `Chain` matches inside `Wet Chain Lube 100ml`;
                 // rendering in that order puts the longest name's card first, which has nothing to do
@@ -116,7 +127,7 @@ final class ProseProductNames
                 // names are already blanked there, and blanking preserves offsets because it replaces
                 // each matched name with the same number of BYTES. `stripos()` counts bytes, so a
                 // name carrying an umlaut would shift every later offset if this counted characters.
-                $found[$at] = $id;
+                $found[$at] = $ids;
             }
 
             // Blanked rather than removed, so two names cannot become adjacent and form a third.
@@ -125,7 +136,9 @@ final class ProseProductNames
 
         ksort($found);
 
-        return array_values($found);
+        // Flattened after sorting, so several namesakes keep the position of the name that found
+        // them and stay adjacent rather than interleaving with a later name's cards.
+        return array_merge(...array_values($found)) ?: [];
     }
 
     /**

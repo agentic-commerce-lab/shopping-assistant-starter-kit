@@ -68,7 +68,7 @@ final class ToolProductSummary
      *                                              {@see MatchReasons::of()} — empty unless
      *                                              enableMatchReasons is on
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>}>
      */
     public static function of(array $cards, array $reasons = []): array
     {
@@ -86,6 +86,12 @@ final class ToolProductSummary
                     'properties' => BoundedProperties::of($card->properties),
                 ];
 
+                // **What the cap left out, so the model cannot mistake four values for the list.**
+                // Without it a brake pad's four visible model years read as its only years, and the
+                // reply asserted a fit for a motorcycle built outside them. See PropertiesWithheld
+                // for the measurement, and PropertyRules for what the model is told to do with it.
+                $summary += PropertiesWithheld::keyFor($card->properties);
+
                 // **What a bundle is made of, and the one widening here that closes a fabrication
                 // surface rather than opening one.** Names and composition quantities only — see
                 // self::contents() — so the standing "never widen this with a figure" rule holds.
@@ -95,6 +101,30 @@ final class ToolProductSummary
                 if ($card->bundleItems !== []) {
                     $summary['bundle'] = self::contents($card->bundleItems);
                 }
+
+                // **Titles only, and never the URL.** The prompt forbids the model to state a URL at
+                // all — the shop renders every link, as it renders every figure — so handing it one
+                // here would be handing it the exact string it is not allowed to use. What it needs
+                // is smaller: that a document exists, and what it is called, so it can offer it in
+                // words while the card carries the link.
+                //
+                // Nothing here licenses a claim about the CONTENTS. The document has not been read
+                // by anything in this process; see ProductDocument on why that split is deliberate
+                // rather than a staging convenience, and the prompt's own rule for the sentence that
+                // holds the model to it.
+                $summary += DocumentTitles::keyFor($card->documents);
+
+                // **The shop's own department, and the one fact that makes an ambiguous word
+                // visible.** Measured 2026-09-14: asked "ich brauche schrauben" against a catalogue
+                // holding an "Innensechskantschraube" in both the motorcycle and the bicycle
+                // department, the assistant returned a different department on each of three runs
+                // and never said a choice had been made — because nothing here ever told it there
+                // was one. The names carry no clue: a bolt is a bolt.
+                //
+                // A department is not an internal field name. It is the shop's own navigation, the
+                // words a shopper reads in the menu, which is why it may be said out loud where a
+                // property group name may not.
+                $summary += Departments::keyFor($card->categoryPath);
 
                 // **Only ever true, never false.** An absent key means what it always meant: the model
                 // has been told nothing about buyability and may claim none. A `false` would be a
@@ -186,7 +216,7 @@ final class ToolProductSummary
      * @param list<ProductCard>           $cards
      * @param array<string, list<string>> $reasons
      *
-     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
+     * @return list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>
      */
     public static function withDescriptions(array $cards, array $reasons = []): array
     {

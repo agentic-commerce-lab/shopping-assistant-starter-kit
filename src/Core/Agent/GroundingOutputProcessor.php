@@ -250,6 +250,10 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
                 // must not be what its name resolves to — see ContradictedVariants for the card that
                 // said "Size: XL" beside a sentence about M and L.
                 ContradictedVariants::in($text, $cards),
+                // Two products that merely share a name are two answers, not one — see
+                // ProductNameIndex::idsFor() for the live reply that named both and rendered the
+                // wrong one. Variants of one family still collapse to a single card.
+                ProductNames::familiesOf($cards),
             ),
         ]));
     }
