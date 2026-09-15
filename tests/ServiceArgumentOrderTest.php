@@ -80,8 +80,15 @@ final class ServiceArgumentOrderTest extends TestCase
                 continue;
             }
 
+            // Reflection rather than `is_a(..., allow_string: true)`: the class_exists guard above
+            // proves this string names a type, but a static analyser cannot see that through the
+            // negated pair, and reads the argument as a plain `string` where `class-string` is
+            // required. ReflectionClass takes the string on its own terms, and `isSubclassOf`
+            // answers for an implemented interface as well as a parent class.
+            $expectedName = $expected->getName();
+
             self::assertTrue(
-                is_a($argumentId, $expected->getName(), allow_string: true),
+                $argumentId === $expectedName || (new \ReflectionClass($argumentId))->isSubclassOf($expectedName),
                 \sprintf(
                     '%s argument #%d is %s but parameter $%s expects %s — a positional argument is '
                     . 'in the wrong place, which no unit test can see.',
@@ -89,7 +96,7 @@ final class ServiceArgumentOrderTest extends TestCase
                     $position + 1,
                     $argumentId,
                     $parameter->getName(),
-                    $expected->getName(),
+                    $expectedName,
                 ),
             );
         }
