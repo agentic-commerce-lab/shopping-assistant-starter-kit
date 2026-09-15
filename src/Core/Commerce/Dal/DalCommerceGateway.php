@@ -96,49 +96,15 @@ final readonly class DalCommerceGateway implements
         private DalVariantFinder $variantFinder,
         private DalCartAdapter $cartAdapter,
         private DalCategoryTreeReader $categoryTreeReader,
+        private DalFacetQuery $facetQuery,
     ) {}
 
+    /**
+     * @throws \Doctrine\DBAL\Exception see {@see DalFacetQuery::facets()}
+     */
     public function facets(CatalogScope $scope): FacetSet
     {
-        $context = $this->contextProvider->current();
-
-        $criteria = $this->criteriaBuilder->build(
-            new ProductQuery(limit: self::FACET_ROW_LIMIT),
-            $scope,
-            $context->getSalesChannelId(),
-        );
-
-        // `properties` and `options` are aggregated separately because Shopware stores them
-        // separately, and folded back into one namespace by DalFacetReader — see its docblock
-        // for why splitting them would silently drop every colour and size constraint.
-        $criteria->addAggregation(new StatsAggregation(DalFilterTranslator::PRICE_FIELD, 'price'));
-        $criteria->addAggregation(
-            new TermsAggregation(
-                'properties',
-                'properties.group.name',
-                self::FACET_VALUE_LIMIT,
-                null,
-                new TermsAggregation('values', 'properties.name', self::FACET_VALUE_LIMIT),
-            ),
-        );
-        $criteria->addAggregation(
-            new TermsAggregation(
-                'options',
-                'options.group.name',
-                self::FACET_VALUE_LIMIT,
-                null,
-                new TermsAggregation('values', 'options.name', self::FACET_VALUE_LIMIT),
-            ),
-        );
-        // Named for the logical field BrandFilterResolver asks for, so the facet it looks up
-        // exists; DalFilterTranslator maps the resulting clause back to manufacturer.name.
-        $criteria->addAggregation(new TermsAggregation(
-            DalFilterTranslator::MANUFACTURER_FIELD,
-            'manufacturer.name',
-            self::FACET_VALUE_LIMIT,
-        ));
-
-        return $this->facetReader->read($this->productRepository->aggregate($criteria, $context));
+        return $this->facetQuery->facets($scope, $this->contextProvider->current());
     }
 
     public function search(ProductQuery $query, CatalogScope $scope): array

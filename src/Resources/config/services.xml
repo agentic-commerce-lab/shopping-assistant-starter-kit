@@ -88,6 +88,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalVariantFinder"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetQuery"/>
         </service>
 
         <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper
@@ -202,6 +203,17 @@
             <argument>swag_assistant_facets</argument>
             <argument>300</argument>
             <argument>%kernel.cache_dir%</argument>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetQuery">
+            <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalPropertyValuesInUse"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalPropertyValuesInUse">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\PooledFacetCache">
