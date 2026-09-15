@@ -134,7 +134,9 @@ final class RetrievalPass
             // searched. The shopper's own spelling would let a fragment back in: "cats" appears
             // nowhere in "Chain Wear Indicator", so it reads as a match on a field the card does not
             // carry, while the "cat" the gateway really used is a fragment of "indiCATor".
-            yield RelaxedTermRetry::NOTE => ['cards' => $relaxed, 'term' => RelaxedTermRetry::relax($query->term)];
+            // The term comes back WITH the cards rather than being recomputed here: the retry may
+            // have needed a second, shorter step, and only it knows which one produced this list.
+            yield RelaxedTermRetry::NOTE => ['cards' => $relaxed['cards'], 'term' => $relaxed['term']];
         }
 
         // Third, and only because each of the two above failed for the OTHER's reason.

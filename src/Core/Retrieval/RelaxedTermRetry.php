@@ -91,8 +91,14 @@ final class RelaxedTermRetry
     private function __construct() {}
 
     /**
-     * @return ?list<ProductCard> null when there is nothing to relax, so a caller can tell
-     *                            "not attempted" from "attempted and still empty"
+     * **Returns the term it actually used, not just the cards.** The caller judges the result with
+     * {@see RetainedCards}, and judging it against a term the gateway never searched compares a card
+     * list to the wrong question — a trap the moment STEPS has more than one entry, since which step
+     * produced these cards is knowable only here.
+     *
+     * @return ?array{cards: list<ProductCard>, term: string} null when there is nothing to relax, so
+     *                                                        a caller can tell "not attempted" from
+     *                                                        "attempted and still empty"
      */
     public static function search(
         CommerceGatewayInterface $gateway,
@@ -100,7 +106,7 @@ final class RelaxedTermRetry
         CatalogScope $scope,
         TraceRecorder $trace,
     ): ?array {
-        $attempted = false;
+        $attempted = null;
 
         // One character first, then two. The second step only ever runs when the first found
         // nothing, so the common case still costs exactly one extra read — see self::STEPS.
@@ -111,15 +117,17 @@ final class RelaxedTermRetry
                 continue;
             }
 
-            $attempted = true;
+            $attempted = $relaxed;
             $cards = self::attempt($gateway, $query, $scope, $trace, $relaxed);
 
             if ($cards !== []) {
-                return $cards;
+                return ['cards' => $cards, 'term' => $relaxed];
             }
         }
 
-        return $attempted ? [] : null;
+        // Nothing found, but something was tried: the LAST term tried is the one the empty result
+        // belongs to, and the caller still needs a term to report it against.
+        return $attempted === null ? null : ['cards' => [], 'term' => $attempted];
     }
 
     /**
