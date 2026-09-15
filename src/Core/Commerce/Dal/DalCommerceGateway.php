@@ -13,6 +13,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepository;
 use Swag\AssistantStarterKit\Core\Commerce\BatchProductLookup;
+use Swag\AssistantStarterKit\Core\Commerce\CappedMatchCountReader;
 use Swag\AssistantStarterKit\Core\Commerce\CategoryTreeReader;
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
@@ -23,7 +24,6 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
-use Swag\AssistantStarterKit\Core\Commerce\MatchCountReader;
 
 /**
  * {@see CommerceGatewayInterface} over the Shopware DAL — the implementation that makes this
@@ -48,10 +48,11 @@ use Swag\AssistantStarterKit\Core\Commerce\MatchCountReader;
 // against: indirection whose only purpose is satisfying a linter.
 final readonly class DalCommerceGateway implements
     BatchProductLookup,
+    // Extends MatchCountReader, so naming both would be redundant — this one is the stronger claim.
+    CappedMatchCountReader,
     CategoryTreeReader,
     CommerceGatewayInterface,
-    FamilyVariantLookup,
-    MatchCountReader
+    FamilyVariantLookup
 {
     /**
      * Facet probing needs one product's worth of rows at most — the values come from the
@@ -151,6 +152,25 @@ final readonly class DalCommerceGateway implements
         $result = $this->productRepository->aggregate($criteria, $context)->get(self::MATCH_COUNT_AGGREGATION);
 
         return $result instanceof CountResult ? $result->getCount() : 0;
+    }
+
+    /**
+     * The same count, given up once `$cap` ids have been seen.
+     *
+     * **Ids rather than an aggregation.** `CountAggregation` has no early exit — it is a `COUNT` over
+     * the whole match set however large, which is the 1.640 ms this exists to avoid. `searchIds()`
+     * with a limit stops at the limit, and the length of what comes back is the answer: below the cap
+     * it is the exact count, at the cap it means "this many or more".
+     *
+     * @param positive-int $cap
+     */
+    public function countMatchesUpTo(ProductQuery $query, CatalogScope $scope, int $cap): int
+    {
+        $context = $this->contextProvider->current();
+        $criteria = $this->criteriaBuilder->build($query->withoutLimits(), $scope, $context->getSalesChannelId());
+        $criteria->setLimit($cap);
+
+        return \count($this->productRepository->searchIds($criteria, $context)->getIds());
     }
 
     /**

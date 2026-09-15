@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Tool;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Retrieval\MatchCount;
 use Swag\AssistantStarterKit\Core\Tool\SearchResultCounts;
 use Swag\AssistantStarterKit\Core\Tool\WithheldCount;
 use Swag\AssistantStarterKit\Tests\Support\BuildsProductCards;
@@ -85,7 +86,7 @@ final class SearchResultCountsTest extends TestCase
             returned: self::standalone(3),
             survivors: self::standalone(50),
             saturated: true,
-            exact: 61,
+            exact: MatchCount::exact(61),
         );
 
         self::assertSame(61, $counts['matched']);

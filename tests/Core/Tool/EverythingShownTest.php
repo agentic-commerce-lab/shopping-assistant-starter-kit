@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Tool;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Retrieval\MatchCount;
 use Swag\AssistantStarterKit\Core\Tool\EverythingShown;
 use Swag\AssistantStarterKit\Core\Tool\SearchResultCounts;
 use Swag\AssistantStarterKit\Tests\Support\BuildsProductCards;
@@ -83,7 +84,7 @@ final class EverythingShownTest extends TestCase
             returned: self::variantsOf(families: 4, each: 1),
             survivors: self::variantsOf(families: 4, each: 3),
             saturated: true,
-            exact: 12,
+            exact: MatchCount::exact(12),
         );
 
         self::assertFalse($counts['more']);

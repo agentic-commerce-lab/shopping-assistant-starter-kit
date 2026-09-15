@@ -79,7 +79,10 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'Always show products alongside such a question — never reply with a question and no products, '
     . 'and never ask a narrowing question twice in one conversation. '
     . 'When the reply carries "withheld", that is how many matching products you are NOT showing: '
-    . 'say that number plainly instead of presenting the few you have as the whole answer.',
+    . 'say that number plainly instead of presenting the few you have as the whole answer. '
+    . 'When it carries "many" instead, there are far more matches than you are showing and the shop '
+    . 'did not count them: say there are very many, name the ones you have as a few examples, and '
+    . 'ask ONE question that would narrow them. Never invent a figure for this case.',
 )]
 final class SearchProductsTool
 {

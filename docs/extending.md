@@ -565,9 +565,10 @@ assistant simply gets worse:
 | `BatchProductLookup` | `products(array $ids, CatalogScope): list<ProductCard>` | `CardResolver` falls back to one `product()` call per id — correct, and an N+1 on every rendered shortlist |
 | `MatchCountReader` | `countMatches(ProductQuery, CatalogScope): int` | The model only ever sees `matched`, which is a floor capped at the 50-product candidate window. It cannot tell *"here are all six occasion dresses"* from *"here are four of three hundred"* |
 | `FamilyVariantLookup` | `variantsOf(string $parentId, CatalogScope): list<ProductCard>` | `WholeFamilyResolver` returns nothing, so the assistant cannot describe a family whose variants did not all fit in the candidate window. `add_to_cart` is unaffected: both of its variant refusals read the card it already loaded — `StockSource::Parent` for a family, and `parentId` plus `resolveVariant()` for a variant the shopper never chose — precisely so the one tool with write authority never fails open on an optional interface |
+| `CappedMatchCountReader` | `countMatchesUpTo(ProductQuery, CatalogScope, int $cap): int` | Counting has no early exit, so a common word costs a full count of its match set on every search — measured at 1,640 ms for one term on a 118,232-product shop, uncached, once per search candidate. With it, the cost follows the cap instead of the catalogue |
 | `CategoryTreeReader` | `categories(?string $parentId, CatalogScope): list<CategoryNode>` | Two things are lost. A search that finds nothing offers no orientation — the shopper is told there are no results and given nowhere to go. And `browse_categories` is never constructed, so an assortment question ("do you sell bikes?", "what do you carry?") has no tool that answers it and gets answered from a product search instead, which matches words in names rather than kinds of thing |
 
-Implement all four unless you have a reason not to. `DalCommerceGateway` implements every one and is
+Implement all five unless you have a reason not to. `DalCommerceGateway` implements every one and is
 the reference to read.
 
 Two contract obligations that are easy to get wrong and impossible to detect from outside:
@@ -577,6 +578,11 @@ Two contract obligations that are easy to get wrong and impossible to detect fro
   products would tell the model the shop is bigger than the shopper may see. It must also be exact; a
   backend that cannot be exact should not implement the interface at all, because a second inexact
   number beside `matched` is worse than one nobody can tell which to trust.
+- **`countMatchesUpTo()` may stop early, and its caller relies on knowing that it did.** Return the
+  exact count while it is below `$cap`, and `$cap` itself once the true answer reaches it. The caller
+  cannot tell "exactly 100" from "at least 100" and does not try: it reports *"very many"* for both,
+  which is true either way, and never puts a figure it cannot stand behind in front of a shopper.
+  Everything `countMatches()` demands about the counted SET still applies.
 - **`categories()` with an unknown `$parentId` returns an empty list, never the top level.** A caller
   that mistyped an id must not silently get the whole tree back.
 

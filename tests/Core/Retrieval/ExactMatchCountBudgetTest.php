@@ -49,7 +49,11 @@ final class ExactMatchCountBudgetTest extends TestCase
 
     public function testAnUnnarrowedSearchStillGetsItsExactCount(): void
     {
-        self::assertSame(33, ExactMatchCount::of(self::gateway(33), [self::candidates(false)], new CatalogScope()));
+        $count = ExactMatchCount::of(self::gateway(33), [self::candidates(false)], new CatalogScope());
+
+        self::assertNotNull($count);
+        self::assertSame(33, $count->count);
+        self::assertFalse($count->capped, 'a gateway that cannot cap always answers exactly');
     }
 
     public function testTheCountIsWithheldWhenTheBudgetHadToBeEnforced(): void
