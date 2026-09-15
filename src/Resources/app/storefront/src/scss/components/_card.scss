@@ -281,6 +281,14 @@ whether it can be bought is two lookups for a decision that is a single thought.
     font-size: $swag-assistant-font-micro;
 }
 
+// Quieter than the price and directly beneath it: it exists to be compared WITH the figure above,
+// not to compete with it. Same treatment as the volume-pricing note for the same reason.
+.swag-assistant-card__base-price {
+    margin: 0;
+    color: $swag-assistant-meta;
+    font-size: $swag-assistant-font-micro;
+}
+
 .swag-assistant-card__stock {
     display: flex;
     gap: 5px;

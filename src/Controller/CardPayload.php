@@ -40,6 +40,16 @@ final readonly class CardPayload
                 // model's prose (ruling R47).
                 'priceQuantity' => $card->priceQuantity,
                 'hasVolumePricing' => $card->hasVolumePricing,
+                // The figure German law requires beside a price, for anything sold by volume or
+                // weight — absent for the rest, which is most of a catalogue. Already divided by
+                // the gateway so the card cannot disagree with the product page it links to.
+                'basePrice' => $card->basePrice === null
+                    ? null
+                    : [
+                        'price' => $card->basePrice->price,
+                        'referenceUnit' => $card->basePrice->referenceUnit,
+                        'unit' => $card->basePrice->unit,
+                    ],
                 'stock' => $card->stock,
                 'stockSource' => $card->stockSource->value,
                 'inStock' => $card->isInStock(),

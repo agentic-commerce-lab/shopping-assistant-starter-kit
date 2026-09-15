@@ -69,7 +69,9 @@ final readonly class DalCriteriaBuilder
 
         // The mapper reads these and drops anything it cannot resolve, so a missing
         // association costs every card its options silently rather than loudly.
-        $criteria->addAssociations(['options.group', 'properties.group', 'deliveryTime', 'cover.media']);
+        // `unit` carries the name a base price is quoted in — without it BasePrice has two numbers
+        // and no word for them, and every product looks like it is sold by the piece.
+        $criteria->addAssociations(['options.group', 'properties.group', 'deliveryTime', 'cover.media', 'unit']);
 
         // **Guarded, because naming an unknown field fails the whole read.** `bundleItems` exists
         // only where Shopware Commercial's `ProductExtension` registered it, and this builder is on
