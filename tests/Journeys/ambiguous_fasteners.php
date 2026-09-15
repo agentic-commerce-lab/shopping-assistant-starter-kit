@@ -22,7 +22,7 @@ declare(strict_types=1);
 // is worthless unless both readings actually exist in the data; check that before reading a
 // failure as a finding.
 //
-// **Two groups, not three, and that is the shop's own truth.** the source shop has no car fastener
+// **Two groups, not three, and that is the shop's own truth.** The source shop has no car fastener
 // category; naming one here would make the assertion measure a world the catalogue cannot render
 // from, and it would pass or fail for the wrong reason.
 //
