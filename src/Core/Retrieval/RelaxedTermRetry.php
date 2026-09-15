@@ -54,6 +54,28 @@ final class RelaxedTermRetry
     private const MIN_TOKEN_LENGTH = 5;
 
     /**
+     * How many characters to drop, in order, stopping at the first step that finds anything.
+     *
+     * **One character is not enough for German, and that is measured.** Against the parts catalogue
+     * on 2026-09-15, the shop's own search finds nothing for five common plurals. One character
+     * rescues three of them — `Bremsbeläge -> Bremsbeläg`, `Batterien -> Batterie`,
+     * `Bremsscheiben -> Bremsscheibe`. It cannot rescue the other two, because German forms those
+     * plurals with `-en` and the singular is two characters shorter:
+     *
+     * ```
+     * Anlassermotoren -> Anlassermotore   0 hits     -> Anlassermotor   10 hits
+     * Kettenführungen -> Kettenführunge   0 hits     -> Kettenführung     6 hits
+     * ```
+     *
+     * This stays the prefix relaxation the class was written as, rather than becoming a plural rule
+     * for one language — `-en` is simply the case that needs two characters, and Dutch, Danish and
+     * German all form plurals that way. Over-shortening is bounded on both sides: the second step
+     * runs only when the first returned nothing, and every candidate it finds still has to survive
+     * the fragment match that narrowing applies afterwards.
+     */
+    private const STEPS = [1, 2];
+
+    /**
      * What the model is told, and it is deliberately cautious.
      *
      * It says the search was widened rather than that a match was found, because the relaxation is
@@ -78,12 +100,40 @@ final class RelaxedTermRetry
         CatalogScope $scope,
         TraceRecorder $trace,
     ): ?array {
-        $relaxed = self::relax($query->term);
+        $attempted = false;
 
-        if ($relaxed === null) {
-            return null;
+        // One character first, then two. The second step only ever runs when the first found
+        // nothing, so the common case still costs exactly one extra read — see self::STEPS.
+        foreach (self::STEPS as $characters) {
+            $relaxed = self::relax($query->term, $characters);
+
+            if ($relaxed === null) {
+                continue;
+            }
+
+            $attempted = true;
+            $cards = self::attempt($gateway, $query, $scope, $trace, $relaxed);
+
+            if ($cards !== []) {
+                return $cards;
+            }
         }
 
+        return $attempted ? [] : null;
+    }
+
+    /**
+     * One relaxed read, traced. Split out so the loop above reads as the policy it is.
+     *
+     * @return list<ProductCard>
+     */
+    private static function attempt(
+        CommerceGatewayInterface $gateway,
+        ProductQuery $query,
+        CatalogScope $scope,
+        TraceRecorder $trace,
+        string $relaxed,
+    ): array {
         $cards = $gateway->search(
             new ProductQuery(
                 term: $relaxed,
@@ -116,7 +166,7 @@ final class RelaxedTermRetry
      * Null when relaxing would change nothing — no term, or every word already too short to shorten.
      * A retry that repeats the first search is a wasted read and a misleading trace event.
      */
-    public static function relax(?string $term): ?string
+    public static function relax(?string $term, int $characters = 1): ?string
     {
         if ($term === null || trim($term) === '') {
             return null;
@@ -128,8 +178,12 @@ final class RelaxedTermRetry
             return null;
         }
 
-        $relaxed = array_map(static function (string $word): string {
-            return mb_strlen($word) >= self::MIN_TOKEN_LENGTH ? mb_substr($word, 0, mb_strlen($word) - 1) : $word;
+        // A word must still be MIN_TOKEN_LENGTH - 1 long AFTER the cut, whichever cut this is, so
+        // two characters never leaves a stub that one character would have refused to create.
+        $floor = self::MIN_TOKEN_LENGTH + $characters - 1;
+
+        $relaxed = array_map(static function (string $word) use ($characters, $floor): string {
+            return mb_strlen($word) >= $floor ? mb_substr($word, 0, mb_strlen($word) - $characters) : $word;
         }, $words);
 
         $candidate = implode(' ', $relaxed);
