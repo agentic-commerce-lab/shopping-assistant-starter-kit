@@ -131,4 +131,40 @@ final class DalPropertyValuesInUseTest extends TestCase
 
         self::assertSame([], (new DalPropertyValuesInUse($connection))->facets('not-hex', ['also-not-hex'], 50));
     }
+
+    /**
+     * The live failure, as a test.
+     *
+     * A value like `114` (chain links) or `32` (spoke holes) is a numeric STRING in the database.
+     * Used as a PHP array key while collapsing the translation chain, it silently becomes an INT —
+     * and an int reaching `mb_strtolower()` in the grounding pass is a TypeError that degrades the
+     * whole turn to "Sorry — I could not finish that just now."
+     *
+     * Measured 2026-09-15 against a 118,232-product catalogue: every product question failed this
+     * way, and the trace named it `mb_strtolower(): Argument #1 must be of type string, int given`.
+     * The aggregation this class replaces returned strings, so nothing downstream ever had to
+     * defend against it.
+     */
+    public function testNumericValuesStayStrings(): void
+    {
+        $language = 'dddddddddddddddddddddddddddddddd';
+
+        $connection = $this->createMock(Connection::class);
+        $connection
+            ->method('fetchAllAssociative')
+            ->willReturn([
+                ['group_name' => 'Kettenglieder', 'value_name' => '114', 'language_id' => hex2bin($language)],
+                ['group_name' => 'Kettenglieder', 'value_name' => '116', 'language_id' => hex2bin($language)],
+            ]);
+
+        $facets = (new DalPropertyValuesInUse($connection))->facets('sc', [$language], 50);
+        $links = $facets[0] ?? null;
+
+        self::assertNotNull($links);
+        self::assertSame(['114', '116'], $links->values);
+
+        foreach ($links->values as $value) {
+            self::assertIsString($value);
+        }
+    }
 }

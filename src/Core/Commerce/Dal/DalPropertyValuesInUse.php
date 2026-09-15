@@ -175,7 +175,13 @@ final readonly class DalPropertyValuesInUse
         $facets = [];
 
         foreach ($best as $group => $values) {
-            $names = array_keys($values);
+            // **Back to strings, and this is not defensive noise.** A value like `114` (chain links)
+            // or `32` (spoke holes) is a numeric STRING in the database and becomes an INT the
+            // moment it is used as a PHP array key above. Handed on as an int it reaches
+            // `mb_strtolower()` in the grounding pass, which is a TypeError — the whole turn
+            // degrades to "could not finish that". Found by the first realistic catalogue this ran
+            // against, within minutes, on `Kettenglieder 114`.
+            $names = array_map(strval(...), array_keys($values));
             sort($names);
 
             $facets[] = new Facet(
