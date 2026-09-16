@@ -34,6 +34,10 @@ jobs:
 
       - name: Setup Mago
         uses: nhedger/setup-mago@v1
+        with:
+          # Must match the version pinned in mago.toml; the action installs
+          # whatever is current when this is left empty.
+          version: "1.47.1"
 
       - name: Setup jscpd
         run: npm install -g jscpd@5
