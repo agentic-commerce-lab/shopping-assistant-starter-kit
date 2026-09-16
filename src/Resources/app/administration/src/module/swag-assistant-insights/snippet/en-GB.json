@@ -1,0 +1,62 @@
+{
+    "swag-assistant-insights": {
+        "general": {
+            "mainMenuItemGeneral": "Assistant insights",
+            "description": "What last night's run found, and how the numbers have moved"
+        },
+        "empty": {
+            "disabled": "Nightly insights are switched off. Nothing is being measured and nothing is being spent. Switch on Generate insights every night in the plugin settings to start; the first report appears after the next nightly run.",
+            "noRuns": "Nightly insights are on, but no run has finished yet. The task runs once a night, so the first report appears tomorrow morning.",
+            "nothingFound": "Last night's run found nothing worth reporting. The counts and the trends below still come from that run."
+        },
+        "lastNight": {
+            "title": "Last night",
+            "window": "Covering {start} to {end}",
+            "judgeFailed": "The judge did not answer"
+        },
+        "trends": {
+            "title": "Trends",
+            "subtitle": "The last 30 runs, oldest on the left.",
+            "noRuns": "There are no runs to plot yet.",
+            "funnel": "Conversations and carts",
+            "searches": "Searches that found nothing, or too much",
+            "descriptions": "Turns your product descriptions reached",
+            "problems": "Turns that went wrong"
+        },
+        "technical": {
+            "title": "Technical",
+            "description": "For whoever installed the plugin rather than whoever sells the products: where turns broke off, and whether a shopper who asked for a person had anywhere to go.",
+            "noRun": "No run has finished yet, so there is nothing to count.",
+            "escalationHint": "Shoppers asked for a person and the assistant had nowhere to send them. Set an escalation destination in the plugin settings."
+        },
+        "finding": {
+            "openConversation": "Open the conversation",
+            "conversationGone": "Conversation no longer stored",
+            "suggestion": "Suggestion"
+        },
+        "severity": {
+            "info": "Info",
+            "warning": "Warning",
+            "critical": "Critical"
+        },
+        "type": {
+            "injection_attempt": "Prompt injection attempt",
+            "wrong_or_missed_answer": "Wrong or missed answer",
+            "bad_tool_use": "Poor tool use",
+            "frustration": "Frustrated shopper"
+        },
+        "metric": {
+            "conversations": "Conversations",
+            "cartAdded": "Reached a cart",
+            "checkoutOffered": "Offered checkout",
+            "searchesEmpty": "Searches with no result",
+            "searchesOverCap": "Searches over the match cap",
+            "turnsWithDescription": "Turns with a description",
+            "turnsWithoutDescription": "Turns without a description",
+            "unsupportedClaims": "Unsupported claims",
+            "abortedTurns": "Aborted turns",
+            "escalations": "Escalations",
+            "escalationsWithoutDestination": "Escalations with nowhere to go"
+        }
+    }
+}

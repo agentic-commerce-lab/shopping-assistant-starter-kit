@@ -1,0 +1,236 @@
+{% block swag_assistant_insights_dashboard %}
+<sw-page class="swag-assistant-insights-dashboard">
+
+    {% block swag_assistant_insights_dashboard_smart_bar_header %}
+    <template #smart-bar-header>
+        <h2>{{ $tc('swag-assistant-insights.general.mainMenuItemGeneral') }}</h2>
+    </template>
+    {% endblock %}
+
+    {% block swag_assistant_insights_dashboard_content %}
+    <template #content>
+        <sw-card-view>
+            <sw-loader v-if="isLoading" />
+
+            <template v-else>
+
+                {# ------------------------------------------------------------------------------
+                   1. LAST NIGHT — the half a merchant acts on, and therefore the top of the page.
+                   Findings before charts, deliberately: a trend tells you the shop is getting
+                   worse, a finding tells you what to change. Putting the charts first would make
+                   the page a report rather than a worklist.
+                   ------------------------------------------------------------------------------ #}
+                {% block swag_assistant_insights_dashboard_last_night %}
+                <sw-card
+                    :title="$tc('swag-assistant-insights.lastNight.title')"
+                    :subtitle="latestRun ? windowLabel(latestRun) : ''"
+                >
+                    {# Four empty states, four `sw-alert` variants, and the variants are the point:
+                       these sentences are read at a glance and from across a desk, so grey/blue/
+                       green/red carries the difference before a word of it is read.
+
+                       `critical` and `positive`, never `error` or `success`: `sw-alert` forwards to
+                       `mt-banner`, which accepts only neutral, info, attention, critical, positive
+                       and inherited. An unknown variant is not rejected — it renders as a neutral
+                       info box, which is how the severity was once silently stripped off the one
+                       message in the trace view that needed it. #}
+                    <sw-alert v-if="state === 'disabled'" variant="neutral">
+                        {{ $tc('swag-assistant-insights.empty.disabled') }}
+                    </sw-alert>
+
+                    <sw-alert v-else-if="state === 'noRuns'" variant="info">
+                        {{ $tc('swag-assistant-insights.empty.noRuns') }}
+                    </sw-alert>
+
+                    {# Not an empty state. The counts above and the charts below are intact; it is
+                       the judge that did not answer, and `judgeError` on the run is stored so this
+                       box can say so instead of the page reporting a clean night. #}
+                    <sw-alert
+                        v-else-if="state === 'judgeFailed'"
+                        variant="critical"
+                        :title="$tc('swag-assistant-insights.lastNight.judgeFailed')"
+                    >
+                        {{ latestRun.judgeError }}
+                    </sw-alert>
+
+                    <sw-alert v-else-if="state === 'nothingFound'" variant="positive">
+                        {{ $tc('swag-assistant-insights.empty.nothingFound') }}
+                    </sw-alert>
+
+                    {# A stacked list, NOT an `sw-data-grid`, which is the one place this page
+                       departs from the plan. A finding is a label plus three pieces of prose — the
+                       summary, the quote and the suggestion — and five columns at a normal window
+                       width give each of them about 200px. The trace list already needed fixed
+                       260px columns and a CSS ellipsis to make TWO prose columns survive, and there
+                       the full text was one click away on the detail page. Here it is not: a
+                       finding whose conversation has been pruned has no detail page, so a clipped
+                       quote is the only copy of the evidence, clipped. #}
+                    {% block swag_assistant_insights_dashboard_worklist %}
+                    <ul v-else class="swag-assistant-insights-dashboard__worklist">
+                        <li
+                            v-for="finding in worklist"
+                            :key="finding.id"
+                            class="swag-assistant-insights-dashboard__finding"
+                        >
+                            <div class="swag-assistant-insights-dashboard__finding-head">
+                                <sw-label :variant="severityVariant(finding.severity)" size="small">
+                                    {{ typeLabel(finding.type) }}
+                                </sw-label>
+
+                                {# The severity in words as well as in the label's colour. Colour is
+                                   the only thing distinguishing a critical finding from an
+                                   informational one otherwise, and colour alone is unreadable to a
+                                   colour-blind merchant and invisible in a printed screenshot. #}
+                                <span class="swag-assistant-insights-dashboard__severity">
+                                    {{ severityLabel(finding.severity) }}
+                                </span>
+
+                                {# The link, or honestly nothing. A finding outlives its
+                                   conversation — `conversationId` is nullable because the pruner
+                                   deletes conversations and `ON DELETE SET NULL` leaves the finding
+                                   behind — and `router-link` would render a cheerful anchor to
+                                   `.../detail/undefined`. A dead link reads as "the evidence is one
+                                   click away" and lands on a 404, which is worse than a sentence
+                                   saying the conversation is gone. #}
+                                <router-link
+                                    v-if="finding.conversationId"
+                                    class="swag-assistant-insights-dashboard__link"
+                                    :to="{
+                                        name: 'swag.assistant.trace.detail',
+                                        params: { id: finding.conversationId },
+                                    }"
+                                >
+                                    {{ $tc('swag-assistant-insights.finding.openConversation') }}
+                                </router-link>
+                                <span v-else class="swag-assistant-insights-dashboard__gone">
+                                    {{ $tc('swag-assistant-insights.finding.conversationGone') }}
+                                </span>
+                            </div>
+
+                            <p class="swag-assistant-insights-dashboard__summary">{{ finding.summary }}</p>
+
+                            {# The shopper's own words, kept verbatim and in a monospace block so it
+                               is unmistakably a quote rather than the plugin's opinion. #}
+                            <blockquote
+                                v-if="finding.quote"
+                                class="swag-assistant-insights-dashboard__quote"
+                            >
+                                {{ finding.quote }}
+                            </blockquote>
+
+                            <p
+                                v-if="finding.suggestion"
+                                class="swag-assistant-insights-dashboard__suggestion"
+                            >
+                                <span class="swag-assistant-insights-dashboard__suggestion-label">
+                                    {{ $tc('swag-assistant-insights.finding.suggestion') }}
+                                </span>
+                                {{ finding.suggestion }}
+                            </p>
+                        </li>
+                    </ul>
+                    {% endblock %}
+                </sw-card>
+                {% endblock %}
+
+                {# ------------------------------------------------------------------------------
+                   2. TRENDS — the same numbers as a shape. Shown even when the feature is switched
+                   off, because a shop that ran it for a month and then stopped still has a real
+                   month of history and hiding it would look like data loss.
+                   ------------------------------------------------------------------------------ #}
+                {% block swag_assistant_insights_dashboard_trends %}
+                <sw-card
+                    :title="$tc('swag-assistant-insights.trends.title')"
+                    :subtitle="$tc('swag-assistant-insights.trends.subtitle')"
+                >
+                    <sw-alert v-if="!runs.length" variant="info">
+                        {{ $tc('swag-assistant-insights.trends.noRuns') }}
+                    </sw-alert>
+
+                    {# A two-column grid that collapses to one below 960px. Four charts side by side
+                       at a narrow width squeeze a month of nights into ~200px and the line becomes
+                       a smudge. #}
+                    <div v-else class="swag-assistant-insights-dashboard__charts">
+                        <div
+                            v-for="chart in charts"
+                            :key="chart.key"
+                            class="swag-assistant-insights-dashboard__chart"
+                        >
+                            {# `sw-chart` ships with the Administration on ApexCharts 4.4.0. No
+                               charting dependency is added or wanted: a plugin that bundles its own
+                               would ship a second copy of a library the shop already loads.
+
+                               No `:sort` or `:fillEmptyValues` — `seriesFor()` already sorts, and
+                               filling empty days would invent nights that never ran. #}
+                            <sw-chart
+                                type="line"
+                                :options="chart.options"
+                                :series="chart.series"
+                                :height="260"
+                            />
+                        </div>
+                    </div>
+                </sw-card>
+                {% endblock %}
+
+                {# ------------------------------------------------------------------------------
+                   3. TECHNICAL — spec 5.5: under its own heading, visibly separated, because this
+                   half belongs to whoever installed the plugin and everything above belongs to
+                   whoever sells the products. The rule above it and the heading outside the card
+                   are doing that job; a fourth `sw-card` in the same stack would have read as more
+                   of the same.
+                   ------------------------------------------------------------------------------ #}
+                {% block swag_assistant_insights_dashboard_technical %}
+                <div class="swag-assistant-insights-dashboard__technical">
+                    <h3 class="swag-assistant-insights-dashboard__technical-title">
+                        {{ $tc('swag-assistant-insights.technical.title') }}
+                    </h3>
+                    <p class="swag-assistant-insights-dashboard__technical-note">
+                        {{ $tc('swag-assistant-insights.technical.description') }}
+                    </p>
+
+                    <sw-card>
+                        <sw-alert v-if="!latestRun" variant="info">
+                            {{ $tc('swag-assistant-insights.technical.noRun') }}
+                        </sw-alert>
+
+                        <template v-else>
+                            <dl class="swag-assistant-insights-dashboard__numbers">
+                                <div
+                                    v-for="row in technical"
+                                    :key="row.key"
+                                    class="swag-assistant-insights-dashboard__number"
+                                >
+                                    <dt class="swag-assistant-insights-dashboard__number-label">
+                                        {{ metricLabel(row.key) }}
+                                    </dt>
+                                    <dd
+                                        class="swag-assistant-insights-dashboard__number-value"
+                                        :class="{ 'is--alarming': row.alarming }"
+                                    >
+                                        {{ metricValue(row.key) }}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            {# Only when there is something to fix. A permanent instruction about
+                               escalation destinations on a shop with none escalating is noise, and
+                               noise is what a technical section is read past. #}
+                            <p
+                                v-if="metrics.escalationsWithoutDestination"
+                                class="swag-assistant-insights-dashboard__hint"
+                            >
+                                {{ $tc('swag-assistant-insights.technical.escalationHint') }}
+                            </p>
+                        </template>
+                    </sw-card>
+                </div>
+                {% endblock %}
+
+            </template>
+        </sw-card-view>
+    </template>
+    {% endblock %}
+
+</sw-page>
+{% endblock %}

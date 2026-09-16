@@ -1,0 +1,62 @@
+{
+    "swag-assistant-insights": {
+        "general": {
+            "mainMenuItemGeneral": "Assistent-Auswertung",
+            "description": "Was die nächtliche Auswertung gefunden hat und wie sich die Zahlen entwickeln"
+        },
+        "empty": {
+            "disabled": "Die nächtliche Auswertung ist ausgeschaltet. Es wird nichts gemessen und nichts abgerechnet. Schalten Sie in den Plugin-Einstellungen Jede Nacht eine Auswertung erzeugen ein; der erste Bericht erscheint nach dem nächsten nächtlichen Lauf.",
+            "noRuns": "Die nächtliche Auswertung ist eingeschaltet, aber noch kein Lauf ist abgeschlossen. Die Aufgabe läuft einmal pro Nacht, der erste Bericht erscheint also morgen früh.",
+            "nothingFound": "Der letzte Lauf hat nichts Berichtenswertes gefunden. Die Zahlen und die Verläufe unten stammen trotzdem aus diesem Lauf."
+        },
+        "lastNight": {
+            "title": "Letzte Nacht",
+            "window": "Zeitraum {start} bis {end}",
+            "judgeFailed": "Das prüfende Modell hat nicht geantwortet"
+        },
+        "trends": {
+            "title": "Verlauf",
+            "subtitle": "Die letzten 30 Läufe, der älteste links.",
+            "noRuns": "Es gibt noch keine Läufe, die sich darstellen ließen.",
+            "funnel": "Gespräche und Warenkörbe",
+            "searches": "Suchen ohne Ergebnis oder mit zu vielen Treffern",
+            "descriptions": "Züge, die Ihre Produktbeschreibungen erreicht haben",
+            "problems": "Züge, die schiefgegangen sind"
+        },
+        "technical": {
+            "title": "Technisch",
+            "description": "Für diejenigen, die das Plugin installiert haben, nicht für diejenigen, die die Produkte verkaufen: wo Züge abgebrochen sind und ob ein Kunde, der nach einem Menschen gefragt hat, irgendwohin weitergeleitet werden konnte.",
+            "noRun": "Noch kein Lauf abgeschlossen, also gibt es nichts zu zählen.",
+            "escalationHint": "Kunden haben nach einem Menschen gefragt und der Assistent hatte kein Ziel dafür. Hinterlegen Sie in den Plugin-Einstellungen eine Eskalationsadresse."
+        },
+        "finding": {
+            "openConversation": "Konversation öffnen",
+            "conversationGone": "Konversation nicht mehr gespeichert",
+            "suggestion": "Vorschlag"
+        },
+        "severity": {
+            "info": "Hinweis",
+            "warning": "Warnung",
+            "critical": "Kritisch"
+        },
+        "type": {
+            "injection_attempt": "Versuchte Prompt-Injection",
+            "wrong_or_missed_answer": "Falsche oder verpasste Antwort",
+            "bad_tool_use": "Schlechte Werkzeugnutzung",
+            "frustration": "Frustrierter Kunde"
+        },
+        "metric": {
+            "conversations": "Gespräche",
+            "cartAdded": "Mit Warenkorb",
+            "checkoutOffered": "Kasse angeboten",
+            "searchesEmpty": "Suchen ohne Ergebnis",
+            "searchesOverCap": "Suchen über der Trefferschwelle",
+            "turnsWithDescription": "Züge mit Beschreibung",
+            "turnsWithoutDescription": "Züge ohne Beschreibung",
+            "unsupportedClaims": "Unbelegte Aussagen",
+            "abortedTurns": "Abgebrochene Züge",
+            "escalations": "Eskalationen",
+            "escalationsWithoutDestination": "Eskalationen ohne Ziel"
+        }
+    }
+}

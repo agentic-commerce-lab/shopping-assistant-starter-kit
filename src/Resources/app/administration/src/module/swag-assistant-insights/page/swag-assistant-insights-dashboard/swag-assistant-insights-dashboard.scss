@@ -1,0 +1,197 @@
+/*
+ * Colours and sizes come from the Administration's own Meteor custom properties, with fallbacks.
+ * Sass variables (`$color-gray-500` and friends) are NOT available to plugin styles under 6.7's
+ * Vite build — the build fails with "Undefined variable" — and hard-coding a parallel palette next
+ * to an existing token system is how an extension starts looking like a different product. Same
+ * rule as `swag-assistant-trace-detail.scss`.
+ *
+ * Two structural decisions:
+ *
+ * 1. A finding is a stacked block, not a table row. Summary, quote and suggestion are prose, and
+ *    the quote is the only surviving copy of the evidence when the conversation has been pruned —
+ *    so nothing here clips text. `overflow-wrap: anywhere` on the quote is the opposite choice from
+ *    the trace list's `text-overflow: ellipsis`, and for that reason.
+ * 2. The technical section is separated by a rule and a heading OUTSIDE its card. Everything above
+ *    is for whoever sells the products; this is for whoever installed the plugin, and the gap has
+ *    to be visible without reading the heading (spec 5.5).
+ */
+.swag-assistant-insights-dashboard {
+
+    /* -- 1. Last night --------------------------------------------------------------------- */
+
+    &__worklist {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Same separator treatment as the trace detail's turns: a rule between siblings, none above
+       the first, so the card's own padding is not doubled. */
+    &__finding {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        padding: 16px 0;
+
+        &:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        &:last-child {
+            padding-bottom: 0;
+        }
+    }
+
+    &__finding-head {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    &__severity {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    /* Pushed to the end of the row so every finding's link sits in the same place down the list —
+       the column a merchant works through once the summary has been read. */
+    &__link {
+        margin-left: auto;
+    }
+
+    &__gone {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        font-style: italic;
+        margin-left: auto;
+    }
+
+    /* `max-width` in `ch`, not in pixels: the measure is about how many characters a line can hold
+       before the eye loses the start of the next one, and that is a property of the text. Same
+       ceiling as the trace detail's prose. */
+    &__summary {
+        color: var(--color-text-primary-default, #37444f);
+        font-weight: 600;
+        margin: 8px 0 0;
+        max-width: 80ch;
+    }
+
+    /*
+     * The shopper's own words. Monospace and a left rule so it cannot be mistaken for the
+     * plugin's own prose, and quieter than the summary because the summary is what gets scanned.
+     *
+     * **Nothing is clipped here.** A quote can be one word or two hundred, and when the
+     * conversation has been pruned this block is the only surviving record of it — an ellipsis
+     * would be throwing away evidence with no way to get it back.
+     */
+    &__quote {
+        border-left: 2px solid var(--color-border-primary-default, #d1d9e0);
+        color: var(--color-text-secondary-default, #758ca3);
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+        margin: 12px 0 0;
+        overflow-wrap: anywhere;
+        padding: 4px 0 4px 12px;
+        white-space: pre-wrap;
+    }
+
+    &__suggestion {
+        color: var(--color-text-primary-default, #37444f);
+        margin: 12px 0 0;
+        max-width: 80ch;
+    }
+
+    &__suggestion-label {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        letter-spacing: 0.04em;
+        margin-right: 6px;
+        text-transform: uppercase;
+    }
+
+    /* -- 2. Trends ------------------------------------------------------------------------- */
+
+    /*
+     * Two up, one up when narrow. `auto-fit` with a `minmax` floor rather than a media query: the
+     * card's width depends on the Administration's sidebar state as well as the window, so a
+     * breakpoint on the viewport would collapse the grid at the wrong moment. 420px is the width
+     * below which thirty nights on a datetime axis stop being thirty distinguishable points.
+     */
+    &__charts {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    }
+
+    /* `min-width: 0` because a grid item defaults to its content's minimum and ApexCharts measures
+       its container: without this the chart reports a width it then cannot shrink back from, and
+       the card grows a horizontal scrollbar on the first resize. */
+    &__chart {
+        min-width: 0;
+    }
+
+    /* -- 3. Technical ---------------------------------------------------------------------- */
+
+    /*
+     * The seam. A rule, a wide gap and a heading outside the card, so the change of audience is
+     * legible before the heading is read. The card below it deliberately has no title: the heading
+     * above IS its title, and repeating it would undo the separation by making this look like a
+     * fourth section of the merchant half.
+     */
+    &__technical {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        margin-top: 40px;
+        padding-top: 32px;
+    }
+
+    &__technical-title {
+        color: var(--color-text-primary-default, #37444f);
+        font-size: var(--font-size-m, 16px);
+        margin: 0;
+    }
+
+    &__technical-note {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-s, 14px);
+        margin: 4px 0 16px;
+        max-width: 80ch;
+    }
+
+    &__numbers {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin: 0;
+    }
+
+    &__number-label {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+    }
+
+    /* Tabular figures so three counts in a row line up on their digits rather than on their
+       glyph widths — the same reason the trace detail right-aligns its durations. */
+    &__number-value {
+        color: var(--color-text-primary-default, #37444f);
+        font-size: 24px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        margin: 4px 0 0;
+
+        /* Only `escalationsWithoutDestination` ever gets this: it is the one number here that is a
+           misconfiguration rather than a measurement. A shopper asked for a human and there was
+           nowhere to send them, which is fixable in the settings this afternoon. */
+        &.is--alarming {
+            color: var(--color-text-critical-default, #c72d2d);
+        }
+    }
+
+    &__hint {
+        color: var(--color-text-critical-default, #c72d2d);
+        font-size: var(--font-size-s, 14px);
+        margin: 16px 0 0;
+        max-width: 80ch;
+    }
+}
