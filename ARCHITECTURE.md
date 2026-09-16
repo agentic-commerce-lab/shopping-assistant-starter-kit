@@ -989,6 +989,15 @@ first consumer of the deferred trace-sink extension point.
 A `ScheduledTask` prunes events past a retention window. **Not optional** — traces live in
 the merchant's database.
 
+**One exception, and it is deliberate: counts outlive quotes.** The nightly insights
+(`swag_assistant_insight_run`) store a map of integer counts per run and are never pruned, because
+a merchant cannot be shown a trend over months by a table that empties every thirty days. That row
+names nobody. Everything on it that does — the search terms shoppers typed, and every
+`swag_assistant_insight_finding` quoting a conversation — is pruned on the same cutoff as the
+conversations themselves, on the *shortest* window in force in any sales channel rather than the
+shop-wide one, because a run row aggregates every channel. So the exception is to the table, not to
+the rule: no shopper text outlives retention.
+
 The `prompt` event carries the system message in full — `{text, sha256, length}` — for every turn that
 reached the model. It is not behind a setting: a debugging aid you must enable before the failure is
 no aid at all, because the turn that went wrong has already happened. It contains no shopper text,

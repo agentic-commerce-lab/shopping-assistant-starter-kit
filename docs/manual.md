@@ -15,6 +15,7 @@ Writing code against the assistant? Go to the [extension guide](extending.md).
 | Connect chat and embedding models | [Configuring a model](#configuring-a-model) |
 | Configure behaviour, catalogue scope, and cart access | [Assistant behaviour and limits](#assistant-behaviour-and-limits) |
 | Control spend, logging, retention, and escalation | [Request limits](#request-limits), [Logging](#logging), [Data retention](#data-retention), [Escalation](#escalation) |
+| Learn what your shoppers searched for and did not find | [Nightly insights](#nightly-insights) |
 | Configure or customise the storefront widget | [The storefront widget](#the-storefront-widget) |
 | Verify a real catalogue or run eval journeys | [Checking the real catalogue](#checking-it-against-the-real-catalogue), [Running the eval suite](#running-the-eval-suite) |
 
@@ -374,6 +375,61 @@ channels, a 1-day channel deleted three-day-old data while a 90-day channel reta
 data.
 
 </details>
+
+## Nightly insights
+
+The assistant records what happens in every conversation. On its own that is 27 stages per turn and
+nobody reads it. Switch this on and, once a night, the plugin turns it into a page you can act on.
+
+**It is off by default because it costs money.** Every night it sends a sample of your conversations
+to a model and you are billed for it. The counts and their charts are computed from *all* of your
+conversations and cost nothing; only the written findings use a model.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `insightsEnabled` | off | Runs the nightly job at all |
+| `insightsSamplePercent` | 100 | How many conversations the written findings are based on |
+| `insightsDataScope` | Counts and the assistant's own replies | What the model is allowed to read |
+| `insightsLlmModel` / `insightsLlmBaseUrl` / `insightsLlmApiKey` | empty | A separate model for the nightly job; empty means the same one the assistant uses |
+
+**Turn the sample down after the first week.** 100 % is right while you are deciding whether the
+findings are worth anything. After that 1 to 5 % is normal: the cost is per conversation, and the
+four numbers below never sample.
+
+### What the four numbers mean
+
+| On the page | What it is telling you |
+|---|---|
+| **Searches that found nothing** | Shoppers asked for these words and your catalogue returned nothing. The words are listed. Either you do not sell it, or you sell it under a name nobody searches for — and only you can tell which |
+| **Searches the shop could only call "many"** | The shopper was handed a category instead of an answer. Your filters are too coarse to narrow it |
+| **Product turns without a description** | The assistant was answering about a product whose description it never received. It cannot describe what it was not given, so it either says less than it could or reaches for something it should not |
+| **The cart funnel** | Conversations, conversations that reached a cart, conversations that reached checkout |
+
+Below those sit **written findings**: sentences from a model that read a sample of the conversations
+and says what went wrong — a wrong or missing answer, a shopper who got frustrated, an attempt to
+talk the assistant out of its instructions. Each one quotes the conversation it came from and links
+to it, so you can check it. **Check them.** They are a model's opinion about a model, and the page
+says so.
+
+### What the judge is allowed to read
+
+Two settings, and the choice is yours rather than ours:
+
+- **Counts and the assistant's own replies** (the default) sends no shopper message anywhere.
+- **Full conversations** finds more — frustration and misunderstanding only show in the shopper's
+  own words — and sends personal data to your model provider for a purpose separate from answering.
+  Your shoppers' messages already reach the chat model while they type; this is a second use of
+  them, so it needs a data processing agreement covering that provider and a mention in your privacy
+  notice.
+
+Leaving the three model fields empty keeps the nightly job on the same provider as the assistant, so
+no new recipient is involved and only the purpose is new.
+
+### It needs a worker
+
+Like data retention, the nightly job runs through your shop's task queue. A shop with no worker and
+no Administration open writes no runs at all — the page says so rather than showing you a quiet
+night. After updating the plugin, `bin/console scheduled-task:register` picks the job up.
 
 ## Escalation
 
