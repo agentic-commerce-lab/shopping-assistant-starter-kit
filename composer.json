@@ -39,7 +39,7 @@
     "ext-simplexml": "*",
     "captainhook/captainhook": "^5.25",
     "captainhook/hook-installer": "^1.0",
-    "carthage-software/mago": "^1.30",
+    "carthage-software/mago": "1.47.1",
     "dompdf/dompdf": "^3.1",
     "phauthentic/cognitive-code-analysis": "^1.11",
     "phpunit/phpunit": "^11.0",
@@ -77,7 +77,7 @@
     }
   },
   "config": {
-    "process-timeout": 1800,
+    "process-timeout": 3600,
     "allow-plugins": {
       "captainhook/hook-installer": true,
       "php-http/discovery": true,
