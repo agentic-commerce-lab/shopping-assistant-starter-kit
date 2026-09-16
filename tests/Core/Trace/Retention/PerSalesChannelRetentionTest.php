@@ -122,7 +122,12 @@ final class PerSalesChannelRetentionTest extends RetentionTestCase
                 return new IdSearchResult(0, [], $criteria, Context::createDefaultContext());
             });
 
-        (new TraceRetentionPruner($repository, $settings, 50))->prune(new \DateTimeImmutable(self::NOW));
+        (new TraceRetentionPruner(
+            $repository,
+            $settings,
+            $this->idleInsightRetention(),
+            50,
+        ))->prune(new \DateTimeImmutable(self::NOW));
 
         return $this->passes;
     }

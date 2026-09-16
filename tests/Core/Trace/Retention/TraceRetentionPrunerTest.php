@@ -23,7 +23,12 @@ final class TraceRetentionPrunerTest extends RetentionTestCase
     {
         $ids = [Uuid::randomHex(), Uuid::randomHex()];
 
-        $pruner = new TraceRetentionPruner($this->repositoryReturning($ids), $this->settings(30), 50);
+        $pruner = new TraceRetentionPruner(
+            $this->repositoryReturning($ids),
+            $this->settings(30),
+            $this->idleInsightRetention(),
+            50,
+        );
 
         self::assertSame(2, $pruner->prune(new \DateTimeImmutable(self::NOW)));
     }
@@ -40,7 +45,7 @@ final class TraceRetentionPrunerTest extends RetentionTestCase
                 return new IdSearchResult(0, [], $criteria, Context::createDefaultContext());
             });
 
-        $pruner = new TraceRetentionPruner($repository, $this->settings(30), 50);
+        $pruner = new TraceRetentionPruner($repository, $this->settings(30), $this->idleInsightRetention(), 50);
         $pruner->prune(new \DateTimeImmutable(self::NOW));
 
         self::assertNotNull($captured);
@@ -58,7 +63,12 @@ final class TraceRetentionPrunerTest extends RetentionTestCase
 
     public function testDeletesNothingWhenNothingIsOldEnough(): void
     {
-        $pruner = new TraceRetentionPruner($this->repositoryReturning([]), $this->settings(30), 50);
+        $pruner = new TraceRetentionPruner(
+            $this->repositoryReturning([]),
+            $this->settings(30),
+            $this->idleInsightRetention(),
+            50,
+        );
 
         self::assertSame(0, $pruner->prune(new \DateTimeImmutable(self::NOW)));
     }

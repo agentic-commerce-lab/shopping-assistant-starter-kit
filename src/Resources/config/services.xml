@@ -554,6 +554,15 @@
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner">
             <argument type="service" id="swag_assistant_conversation.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\InsightRetentionPruner"/>
+        </service>
+
+        <!-- The insights half of the same window (spec D23). The argument order is run, then
+             findings — the same order as InsightRunWriter, because ServiceArgumentOrderTest cannot
+             tell two EntityRepository arguments apart. -->
+        <service id="Swag\AssistantStarterKit\Core\Trace\Retention\InsightRetentionPruner">
+            <argument type="service" id="swag_assistant_insight_run.repository"/>
+            <argument type="service" id="swag_assistant_insight_finding.repository"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\PruneConversationsTask">

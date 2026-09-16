@@ -31,17 +31,24 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\RangeFilter;
  * prune after this ships could be large on a shop that has been running the assistant for a while.
  *
  * Keys on `createdAt` because the migration's index on it exists for no other purpose.
+ *
+ * **The insights tables are pruned last, by {@see InsightRetentionPruner}.** Findings are located by
+ * the null `conversation_id` that the delete above leaves behind, so they cannot be pruned before it;
+ * owning the order here rather than in the task handler is what keeps it from being reordered by a
+ * later refactor that has no reason to know it matters.
  */
 final readonly class TraceRetentionPruner
 {
     public function __construct(
         private EntityRepository $conversationRepository,
         private TraceRetentionSettings $settings,
+        private InsightRetentionPruner $insights,
         private int $batchSize = 100,
     ) {}
 
     /**
-     * @return int the number of conversations deleted
+     * @return int the number of conversations deleted — not of insight rows, which are counted by
+     *             nothing on purpose: added together the number would describe neither
      */
     public function prune(\DateTimeImmutable $now): int
     {
@@ -52,12 +59,37 @@ final readonly class TraceRetentionPruner
             $deleted += $this->pruneOlderThan($now, $days, new EqualsFilter('salesChannelId', $salesChannelId));
         }
 
-        return $deleted
-        + $this->pruneOlderThan(
+        $deleted += $this->pruneOlderThan(
             $now,
             $this->settings->retentionDays(),
             self::outsideKnownChannels(array_keys($windows)),
         );
+
+        $this->insights->prune(self::cutoff($now, $this->strictestWindow($windows)));
+
+        return $deleted;
+    }
+
+    /**
+     * The shortest window in force anywhere in the shop.
+     *
+     * A run row aggregates every sales channel, so its search terms cannot be attributed to one and
+     * pruned on that channel's window. The shop-wide value is the wrong answer here in the one
+     * direction that matters: with a channel set to 7 days and a global 30, terms that shoppers typed
+     * in that channel would sit in `search_terms` for 23 days after the conversations were deleted.
+     * Taking the minimum can only lose a word list early, and a word list is a convenience where a
+     * retention promise is not.
+     *
+     * @param array<string, int> $windows
+     */
+    private function strictestWindow(array $windows): int
+    {
+        return min([$this->settings->retentionDays(), ...array_values($windows)]);
+    }
+
+    private static function cutoff(\DateTimeImmutable $now, int $days): \DateTimeImmutable
+    {
+        return $now->sub(new \DateInterval('P' . $days . 'D'));
     }
 
     /**
@@ -86,7 +118,7 @@ final readonly class TraceRetentionPruner
      */
     private function pruneOlderThan(\DateTimeImmutable $now, int $days, ?Filter $scope): int
     {
-        $cutoff = $now->sub(new \DateInterval('P' . $days . 'D'));
+        $cutoff = self::cutoff($now, $days);
         $context = Context::createDefaultContext();
         $deleted = 0;
 
