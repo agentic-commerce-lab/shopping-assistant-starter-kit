@@ -6,5 +6,5 @@ namespace Swag\AssistantStarterKit;
 
 final class Version
 {
-    public const CURRENT = '0.2.1';
+    public const CURRENT = '0.3.0';
 }
