@@ -15,6 +15,7 @@ use Swag\AssistantStarterKit\Core\Insights\InsightsGenerator;
 use Swag\AssistantStarterKit\Core\Insights\InsightsSettings;
 use Swag\AssistantStarterKit\Core\Insights\InsightsSettingsReader;
 use Swag\AssistantStarterKit\Core\Insights\InsightWindow;
+use Swag\AssistantStarterKit\Core\Insights\Judge\ValidatedFindings;
 use Swag\AssistantStarterKit\Core\Llm\LlmException;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 
@@ -223,7 +224,7 @@ final readonly class FixedTraceSource implements ConversationTraceSource
 /** Fails the test if the judge is reached; that is how "spends nothing" is asserted. */
 final class UnreachableJudge implements InsightJudge
 {
-    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): array
+    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): ValidatedFindings
     {
         TestCase::fail('The judge must not be reached in this configuration.');
     }
@@ -235,7 +236,7 @@ final readonly class ThrowingJudge implements InsightJudge
         private \Throwable $failure,
     ) {}
 
-    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): array
+    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): ValidatedFindings
     {
         throw $this->failure;
     }
@@ -243,8 +244,8 @@ final readonly class ThrowingJudge implements InsightJudge
 
 final class SilentJudge implements InsightJudge
 {
-    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): array
+    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): ValidatedFindings
     {
-        return [];
+        return new ValidatedFindings([], 0);
     }
 }

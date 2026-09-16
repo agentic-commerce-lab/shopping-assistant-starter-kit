@@ -47,9 +47,8 @@ final readonly class JudgeRunner implements InsightJudge
      * @throws \JsonException when the answer is not a list of findings
      * @throws LlmException   when the provider cannot be reached or answers with an error
      *
-     * @return list<JudgeFinding>
      */
-    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): array
+    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): ValidatedFindings
     {
         $request = JudgeRequest::build($metrics, $traces, $settings->dataScope);
 
@@ -61,6 +60,6 @@ final readonly class JudgeRunner implements InsightJudge
             throw new LlmException($failure->getMessage(), (int) $failure->getCode(), $failure);
         }
 
-        return JudgeFindings::from($result instanceof TextResult ? $result->getContent() : '', $traces);
+        return JudgeFindings::validate($result instanceof TextResult ? $result->getContent() : '', $traces);
     }
 }

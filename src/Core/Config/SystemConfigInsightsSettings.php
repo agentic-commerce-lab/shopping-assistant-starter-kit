@@ -38,7 +38,10 @@ final readonly class SystemConfigInsightsSettings implements InsightsSettingsRea
 
     public function forSalesChannel(?string $salesChannelId = null): InsightsSettings
     {
-        $channel = $salesChannelId ?? '';
+        // Passed through as null rather than coerced to ''. Null is the shop-wide value;
+        // `SystemConfigService::load('')` throws `InvalidUuidException`, and it did — after the
+        // metrics had already printed, from a line that reads like a harmless default.
+        $channel = $salesChannelId;
 
         return new InsightsSettings(
             enabled: $this->stored->bool('insightsEnabled', false, $channel),
@@ -67,7 +70,7 @@ final readonly class SystemConfigInsightsSettings implements InsightsSettingsRea
      * fails, with its reason recorded on the run. That is exactly the behaviour the spec's third
      * acceptance criterion asks for.
      */
-    private function chatSettings(string $channel): LlmSettings
+    private function chatSettings(?string $channel): LlmSettings
     {
         try {
             return $this->chatLlm->forSalesChannel($channel);

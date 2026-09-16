@@ -11,6 +11,7 @@ use Swag\AssistantStarterKit\Core\Insights\InsightJudge;
 use Swag\AssistantStarterKit\Core\Insights\InsightMetrics;
 use Swag\AssistantStarterKit\Core\Insights\InsightsSettings;
 use Swag\AssistantStarterKit\Core\Insights\InsightsSettingsReader;
+use Swag\AssistantStarterKit\Core\Insights\Judge\ValidatedFindings;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
@@ -133,7 +134,7 @@ final readonly class UnreadSettings implements InsightsSettingsReader
 
 final class UnreachableReplayJudge implements InsightJudge
 {
-    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): array
+    public function run(InsightMetrics $metrics, array $traces, InsightsSettings $settings): ValidatedFindings
     {
         TestCase::fail('The judge must not be reached in this configuration.');
     }

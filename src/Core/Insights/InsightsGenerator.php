@@ -82,7 +82,7 @@ final readonly class InsightsGenerator
         }
 
         try {
-            $findings = $this->judge->run($metrics, $fitted->traces, $settings);
+            $findings = $this->judge->run($metrics, $fitted->traces, $settings)->findings;
         } catch (\JsonException|LlmException $failure) {
             return new CompletedRun(
                 $window,

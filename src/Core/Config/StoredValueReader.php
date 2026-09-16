@@ -21,6 +21,11 @@ use Shopware\Core\System\SystemConfig\SystemConfigService;
  *   caller wants depends entirely on which way the setting's documented default points, so the
  *   default is a required argument rather than a convention.
  * - **`bin/console system:config:set` stores every value as a string.** See {@see self::bool()}.
+ * - **`$salesChannelId` is nullable, and null means the shop-wide value.** That is what
+ *   `SystemConfigService` documents, and it is the only correct value for a caller with no
+ *   storefront request behind it — a scheduled task, a console command. The signatures used to
+ *   require a string, and the nightly insights passed `''` to satisfy that: `load('')` throws
+ *   `InvalidUuidException`, from inside a nightly task, on a line that reads like a default.
  */
 final readonly class StoredValueReader
 {
@@ -29,7 +34,7 @@ final readonly class StoredValueReader
         private string $prefix,
     ) {}
 
-    public function string(string $key, string $salesChannelId): string
+    public function string(string $key, ?string $salesChannelId): string
     {
         return $this->systemConfig->getString($this->prefix . $key, $salesChannelId);
     }
@@ -52,7 +57,7 @@ final readonly class StoredValueReader
      *
      * @return list<string>
      */
-    public function idList(string $key, string $salesChannelId): array
+    public function idList(string $key, ?string $salesChannelId): array
     {
         $value = $this->systemConfig->get($this->prefix . $key, $salesChannelId);
 
@@ -84,12 +89,12 @@ final readonly class StoredValueReader
      * a merchant could have meant as a restriction, and the alternative — letting it through — makes
      * every `> $limit` comparison downstream block unconditionally.
      */
-    public function limit(string $key, string $salesChannelId): int
+    public function limit(string $key, ?string $salesChannelId): int
     {
         return max(0, $this->int($key, 0, $salesChannelId));
     }
 
-    public function floatLimit(string $key, string $salesChannelId): float
+    public function floatLimit(string $key, ?string $salesChannelId): float
     {
         return max(0.0, $this->float($key, 0.0, $salesChannelId));
     }
@@ -101,21 +106,21 @@ final readonly class StoredValueReader
      * high or low. The floor never rewrites a number the merchant chose — a limit quietly raised is
      * the config bridge overruling the form.
      */
-    public function positiveInt(string $key, int $default, string $salesChannelId): int
+    public function positiveInt(string $key, int $default, ?string $salesChannelId): int
     {
         $value = $this->int($key, $default, $salesChannelId);
 
         return $value > 0 ? $value : $default;
     }
 
-    public function int(string $key, int $default, string $salesChannelId): int
+    public function int(string $key, int $default, ?string $salesChannelId): int
     {
         $value = $this->systemConfig->get($this->prefix . $key, $salesChannelId);
 
         return \is_numeric($value) ? (int) $value : $default;
     }
 
-    public function float(string $key, float $default, string $salesChannelId): float
+    public function float(string $key, float $default, ?string $salesChannelId): float
     {
         $value = $this->systemConfig->get($this->prefix . $key, $salesChannelId);
 
@@ -140,7 +145,7 @@ final readonly class StoredValueReader
      * `FILTER_VALIDATE_BOOLEAN` reads "false"/"0"/"" as false and "true"/"1"/"on"/"yes" as true, and
      * passes real booleans through unchanged.
      */
-    public function bool(string $key, bool $default, string $salesChannelId): bool
+    public function bool(string $key, bool $default, ?string $salesChannelId): bool
     {
         $value = $this->systemConfig->get($this->prefix . $key, $salesChannelId);
 

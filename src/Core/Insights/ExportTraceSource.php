@@ -17,9 +17,16 @@ use Swag\AssistantStarterKit\Core\Trace\JsonShape;
  * Reads {@see \Swag\AssistantStarterKit\Core\Trace\Export\TraceJsonSerialiser}'s shape: a list of
  * `{summary, transcript, events}`.
  *
- * **A conversation's id is its position in the file.** The export carries no id at the top level,
- * and using the index consistently is what makes a finding checkable against the file by counting —
- * which is exactly what reading a precision figure by hand requires.
+ * **A conversation's id is its position in the file, prefixed.** The export carries no id at the top
+ * level, and the position is what makes a finding checkable against the file by counting — exactly
+ * what reading a precision figure by hand requires.
+ *
+ * **The prefix is not cosmetic.** A bare `"17"` is a JSON identifier a model will return as the
+ * NUMBER 17, and `JudgeFindingRow` reads a non-string field as absent, so the finding is refused as
+ * "conversation id not in the sample". Measured on 2026-09-16: a replay over 33 conversations
+ * returned three findings and lost all three that way, while reporting "the judge reported nothing".
+ * Real conversations carry 32-character hex ids and never hit this; the replay invented the problem
+ * by numbering its own, and `c17` removes it at the source rather than by loosening the validator.
  *
  * **`inWindow()` ignores its window.** A file IS the window: it holds what somebody chose to
  * export, and filtering it again by a date range would silently narrow the fixed thing two runs are
@@ -59,7 +66,7 @@ final readonly class ExportTraceSource implements ConversationTraceSource
             $fields = $shape->map($conversation);
 
             $traces[] = new ConversationTrace(
-                id: (string) $index,
+                id: 'c' . $index,
                 createdAt: new \DateTimeImmutable(),
                 events: $events->of($fields['events'] ?? null),
                 transcript: $transcripts->of($fields['transcript'] ?? null),

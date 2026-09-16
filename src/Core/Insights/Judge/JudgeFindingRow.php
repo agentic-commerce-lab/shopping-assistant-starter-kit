@@ -32,7 +32,7 @@ final class JudgeFindingRow
     private function __construct() {}
 
     /**
-     * The finding this row stands for, or `null` when it fails any of the three checks.
+     * The finding this row stands for, or a refusal naming which check it failed.
      *
      * **The quote check is exact substring, case-insensitive, over the whole transcript
      * concatenated** — and the two directions of error are not symmetric, which is why it is not
@@ -50,7 +50,7 @@ final class JudgeFindingRow
      * @param array<string, string>   $haystacks conversation id to its case-folded transcript, as
      *                                          {@see JudgeFindings::from()} builds it
      */
-    public static function validate(array $row, array $haystacks): ?JudgeFinding
+    public static function validate(array $row, array $haystacks): RowVerdict
     {
         $type = JudgeFindingType::tryFrom(self::text($row, 'type'));
         $conversationId = self::text($row, 'conversationId');
@@ -61,22 +61,26 @@ final class JudgeFindingRow
         // conversation from the sample becomes a plain `null` the next line can read.
         $transcript = $haystacks[$conversationId] ?? null;
 
-        if ($type === null || $transcript === null || $quote === '') {
-            return null;
+        $refusal = match (true) {
+            $type === null => 'type outside the closed set',
+            $transcript === null => 'conversation id not in the sample',
+            $quote === '' => 'no quote given',
+            !str_contains($transcript, mb_strtolower($quote)) => 'quote does not occur in that conversation',
+            default => null,
+        };
+
+        if ($refusal !== null || $type === null) {
+            return RowVerdict::refused($refusal ?? 'type outside the closed set');
         }
 
-        if (!str_contains($transcript, mb_strtolower($quote))) {
-            return null;
-        }
-
-        return new JudgeFinding(
+        return RowVerdict::accepted(new JudgeFinding(
             type: $type,
             severity: $type->severityFor(self::text($row, 'severity')),
             summary: self::text($row, 'summary'),
             quote: $quote,
             suggestion: self::text($row, 'suggestion'),
             conversationId: $conversationId,
-        );
+        ));
     }
 
     /**

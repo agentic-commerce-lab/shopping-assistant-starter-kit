@@ -39,6 +39,23 @@ final class JudgeFindings
      */
     public static function from(string $json, array $traces): array
     {
+        return self::validate($json, $traces)->findings;
+    }
+
+    /**
+     * {@see self::from()}, plus how many rows were thrown away.
+     *
+     * **The count is the difference between a quiet night and a broken control.** A replay over 33
+     * real conversations on 2026-09-16 reported no findings, and nothing distinguished a model that
+     * answered `[]` from one whose every finding failed the quote check. A guard that silently
+     * removes things has to say how many.
+     *
+     * @param list<ConversationTrace> $traces
+     *
+     * @throws \JsonException when the model's answer is not a JSON array
+     */
+    public static function validate(string $json, array $traces): ValidatedFindings
+    {
         /** @var mixed $decoded */
         $decoded = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
 
@@ -56,17 +73,24 @@ final class JudgeFindings
         }
 
         $findings = [];
+        $discarded = 0;
+        $reasons = [];
 
         foreach ($decoded as $row) {
             // A row that is not even an object is passed on as an empty one rather than skipped
             // here, so that every reason a row is dropped lives in one place.
-            $finding = JudgeFindingRow::validate(\is_array($row) ? $row : [], $haystacks);
+            $verdict = JudgeFindingRow::validate(\is_array($row) ? $row : [], $haystacks);
 
-            if ($finding !== null) {
-                $findings[] = $finding;
+            if ($verdict->finding === null) {
+                ++$discarded;
+                $reasons[$verdict->reason] = ($reasons[$verdict->reason] ?? 0) + 1;
+
+                continue;
             }
+
+            $findings[] = $verdict->finding;
         }
 
-        return $findings;
+        return new ValidatedFindings($findings, $discarded, $reasons);
     }
 }

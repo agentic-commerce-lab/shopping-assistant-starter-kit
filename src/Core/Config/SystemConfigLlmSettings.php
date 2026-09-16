@@ -31,7 +31,7 @@ final readonly class SystemConfigLlmSettings
         private SystemConfigService $systemConfig,
     ) {}
 
-    public function forSalesChannel(string $salesChannelId): LlmSettings
+    public function forSalesChannel(?string $salesChannelId): LlmSettings
     {
         $baseUrl = $this->setting('llmBaseUrl', 'ASSISTANT_LLM_BASE_URL', $salesChannelId);
         $model = $this->setting('llmModel', 'ASSISTANT_LLM_MODEL', $salesChannelId);
