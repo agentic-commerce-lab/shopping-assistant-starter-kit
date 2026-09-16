@@ -166,6 +166,14 @@
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
         </service>
 
+        <!-- The nightly insights read their own card. Separate from SystemConfigAssistantConfig
+             because that one is built on every shopper turn and would pay for six lookups it never
+             uses. -->
+        <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigInsightsSettings">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\StoredValueReader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
+        </service>
+
         <!-- The two limits in front of the public chat endpoint. Storage is a cache rather than the
              database: counting rows would mean a query per request on a public route, and the
              retention task deletes those rows daily, so the count would be wrong by design. Clearing

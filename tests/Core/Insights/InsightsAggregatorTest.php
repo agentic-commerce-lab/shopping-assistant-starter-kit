@@ -70,7 +70,7 @@ final class InsightsAggregatorTest extends TestCase
             [],
         );
 
-        self::assertSame(2, InsightsAggregator::aggregate([$trace])->descriptions->unsupportedClaims);
+        self::assertSame(2, InsightsAggregator::aggregate([$trace])->claims->unsupportedClaims);
     }
 
     public function testItCountsAbortedTurnsAndEscalationsWithoutADestination(): void

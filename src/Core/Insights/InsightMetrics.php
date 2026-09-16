@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Insights;
 
 use Swag\AssistantStarterKit\Core\Insights\Metric\CartFunnel;
+use Swag\AssistantStarterKit\Core\Insights\Metric\ClaimAudit;
 use Swag\AssistantStarterKit\Core\Insights\Metric\DescriptionCoverage;
 use Swag\AssistantStarterKit\Core\Insights\Metric\SearchOutcomes;
 use Swag\AssistantStarterKit\Core\Insights\Metric\TurnHealth;
@@ -25,6 +26,7 @@ final readonly class InsightMetrics
     public function __construct(
         public SearchOutcomes $searches,
         public DescriptionCoverage $descriptions,
+        public ClaimAudit $claims,
         public TurnHealth $turns,
         public CartFunnel $cart,
     ) {}
@@ -40,7 +42,7 @@ final readonly class InsightMetrics
             'searchesOverCap' => $this->searches->searchesOverCap,
             'turnsWithDescription' => $this->descriptions->turnsWithDescription,
             'turnsWithoutDescription' => $this->descriptions->turnsWithoutDescription,
-            'unsupportedClaims' => $this->descriptions->unsupportedClaims,
+            'unsupportedClaims' => $this->claims->unsupportedClaims,
             'abortedTurns' => $this->turns->abortedTurns,
             'escalations' => $this->turns->escalations,
             'escalationsWithoutDestination' => $this->turns->escalationsWithoutDestination,

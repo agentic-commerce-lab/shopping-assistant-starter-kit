@@ -14,6 +14,10 @@ use Swag\AssistantStarterKit\Core\Insights\ConversationTrace;
  * problem; their delivery was. "Was a detail actually asked for" would be the more interesting
  * question and is a judgement, not a count. This one is computable, and it was the one that mattered.
  *
+ * The claims half moved to {@see ClaimAudit} when the complexity gate rejected the combination,
+ * and the boundary is better for it: this is about whether a description was handed over, that is
+ * about whether the reply stayed inside it.
+ *
  * **A turn that returned no product at all counts for neither half.** A shop-information turn has
  * nothing to describe, and counting it as a miss would make the coverage figure look worse the more
  * questions the assistant answers well.
@@ -23,7 +27,6 @@ final readonly class DescriptionCoverage
     private function __construct(
         public int $turnsWithDescription,
         public int $turnsWithoutDescription,
-        public int $unsupportedClaims,
     ) {}
 
     /** @param list<ConversationTrace> $traces */
@@ -31,40 +34,27 @@ final readonly class DescriptionCoverage
     {
         $with = 0;
         $without = 0;
-        $claims = 0;
 
         foreach ($traces as $trace) {
             $sawProducts = false;
             $sawDescriptions = false;
 
             foreach ($trace->events as $event) {
-                if ($event['stage'] === 'tool.result') {
-                    $sawProducts = true;
-                }
+                $stage = $event['stage'];
+                $sawProducts = $sawProducts || $stage === 'tool.result';
+                $sawDescriptions = $sawDescriptions || $stage === 'descriptions.given';
 
-                if ($event['stage'] === 'descriptions.given') {
-                    $sawDescriptions = true;
-                }
-
-                if ($event['stage'] === 'claims.audit') {
-                    $claims += \count($event['payload']['unsupportedFactClaims'] ?? []);
-                }
-
-                if ($event['stage'] !== 'turn.end') {
+                if ($stage !== 'turn.end') {
                     continue;
                 }
 
-                if ($sawProducts && $sawDescriptions) {
-                    ++$with;
-                } elseif ($sawProducts) {
-                    ++$without;
-                }
-
+                $with += $sawProducts && $sawDescriptions ? 1 : 0;
+                $without += $sawProducts && !$sawDescriptions ? 1 : 0;
                 $sawProducts = false;
                 $sawDescriptions = false;
             }
         }
 
-        return new self($with, $without, $claims);
+        return new self($with, $without);
     }
 }

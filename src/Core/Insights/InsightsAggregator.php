@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Insights;
 
 use Swag\AssistantStarterKit\Core\Insights\Metric\CartFunnel;
+use Swag\AssistantStarterKit\Core\Insights\Metric\ClaimAudit;
 use Swag\AssistantStarterKit\Core\Insights\Metric\DescriptionCoverage;
 use Swag\AssistantStarterKit\Core\Insights\Metric\SearchOutcomes;
 use Swag\AssistantStarterKit\Core\Insights\Metric\TurnHealth;
@@ -31,6 +32,7 @@ final class InsightsAggregator
         return new InsightMetrics(
             SearchOutcomes::of($traces),
             DescriptionCoverage::of($traces),
+            ClaimAudit::of($traces),
             TurnHealth::of($traces),
             CartFunnel::of($traces),
         );
