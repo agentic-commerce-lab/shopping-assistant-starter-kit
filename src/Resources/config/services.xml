@@ -560,6 +560,40 @@
             <tag name="shopware.scheduled.task"/>
         </service>
 
+        <!-- The nightly insights. Registered beside the pruner because they are the same shape of
+             thing and share its requirement: a worker, or the Administration open. -->
+        <service id="Swag\AssistantStarterKit\Core\Insights\GenerateInsightsTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\GenerateInsightsTaskHandler">
+            <argument type="service" id="scheduled_task.repository"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\InsightsGenerator"/>
+            <tag name="messenger.message_handler"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\InsightsGenerator">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigInsightsSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\ConversationTraceLoader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\Judge\JudgeRunner"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\InsightRunWriter"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\ConversationTraceLoader">
+            <argument type="service" id="swag_assistant_conversation.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\TranscriptCodec"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\InsightRunWriter">
+            <argument type="service" id="swag_assistant_insight_run.repository"/>
+            <argument type="service" id="swag_assistant_insight_finding.repository"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\Judge\JudgeRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\PruneConversationsTaskHandler">
             <argument type="service" id="scheduled_task.repository"/>
             <argument type="service" id="logger"/>

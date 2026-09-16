@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Config;
 
 use Swag\AssistantStarterKit\Core\Insights\InsightsDataScope;
 use Swag\AssistantStarterKit\Core\Insights\InsightsSettings;
+use Swag\AssistantStarterKit\Core\Insights\InsightsSettingsReader;
 use Swag\AssistantStarterKit\Core\Llm\LlmException;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 
@@ -16,7 +17,7 @@ use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
  * every shopper turn and the nightly run is the only reader of these values; a turn should not pay
  * for six lookups it will never use.
  */
-final readonly class SystemConfigInsightsSettings
+final readonly class SystemConfigInsightsSettings implements InsightsSettingsReader
 {
     public function __construct(
         private StoredValueReader $stored,
