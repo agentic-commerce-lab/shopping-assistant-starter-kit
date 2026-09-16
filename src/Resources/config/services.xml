@@ -115,6 +115,17 @@
             <tag name="shopware.entity.definition"/>
         </service>
 
+        <!-- The nightly insights (spec D23). Two definitions because a run row holds counts that
+             outlive the trace retention window, while a finding row quotes a conversation and is
+             pruned with it. -->
+        <service id="Swag\AssistantStarterKit\Entity\InsightRun\InsightRunDefinition">
+            <tag name="shopware.entity.definition"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Entity\InsightFinding\InsightFindingDefinition">
+            <tag name="shopware.entity.definition"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Trace\JsonShape"/>
         <service id="Swag\AssistantStarterKit\Core\Trace\TranscriptCodec"/>
 
