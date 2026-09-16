@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Config;
 
+use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Swag\AssistantStarterKit\Core\Insights\InsightsDataScope;
 use Swag\AssistantStarterKit\Core\Insights\InsightsSettings;
 use Swag\AssistantStarterKit\Core\Insights\InsightsSettingsReader;
@@ -16,13 +17,24 @@ use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
  * **Separate from that class rather than six more fields on it.** `AssistantConfig` is built on
  * every shopper turn and the nightly run is the only reader of these values; a turn should not pay
  * for six lookups it will never use.
+ *
+ * **The reader is constructed here rather than injected**, which is not a style choice: it takes a
+ * scalar prefix, so it is not autowirable, and it is not registered as a service anywhere —
+ * {@see SystemConfigAssistantConfig} builds its own the same way. Injecting it is what broke this
+ * branch's container until 2026-09-16: `services.xml` named a service that does not exist, every
+ * PHP test passed because nothing boots the container, and `cache:clear` died with
+ * `ServiceNotFoundException` so the plugin's DAL entities never registered at all.
  */
 final readonly class SystemConfigInsightsSettings implements InsightsSettingsReader
 {
+    private StoredValueReader $stored;
+
     public function __construct(
-        private StoredValueReader $stored,
+        SystemConfigService $systemConfig,
         private SystemConfigLlmSettings $chatLlm,
-    ) {}
+    ) {
+        $this->stored = new StoredValueReader($systemConfig, SystemConfigAssistantConfig::PREFIX);
+    }
 
     public function forSalesChannel(?string $salesChannelId = null): InsightsSettings
     {
