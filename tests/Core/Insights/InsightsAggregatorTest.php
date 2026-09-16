@@ -145,11 +145,16 @@ final class InsightsAggregatorTest extends TestCase
     {
         // D23 at the value-object level: whatever merges these two would make the prune impossible
         // downstream, and the trend chart would have to die with the conversations.
+        //
+        // The event shapes are copied from a real export. An earlier version of this test invented
+        // them — `retrieve` carrying `query` and `total` — which agreed with a metric that invented
+        // the same keys, and with nothing in the shop.
         $trace = new ConversationTrace(
             'c1',
             new \DateTimeImmutable(),
             [
-                ['seq' => 1, 'stage' => 'retrieve', 'payload' => ['query' => 'harley', 'total' => 0]],
+                ['seq' => 1, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'harley', 'sort' => null]],
+                ['seq' => 2, 'stage' => 'tool.result', 'payload' => ['name' => 'search_products', 'total' => 0]],
             ],
             [],
         );

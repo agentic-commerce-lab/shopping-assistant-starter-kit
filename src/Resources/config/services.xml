@@ -504,6 +504,14 @@
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
 
+        <!-- The judge replay. Reads an export rather than the database, so the precision figure
+             D28 asks for can be produced without a shop and repeated when the model changes. -->
+        <service id="Swag\AssistantStarterKit\Command\JudgeReplayCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigInsightsSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\Judge\JudgeRunner"/>
+            <tag name="console.command"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Command\SeedBundlesCommand">
             <argument type="service" id="product.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bundle\DalBundleMemberReader"/>
