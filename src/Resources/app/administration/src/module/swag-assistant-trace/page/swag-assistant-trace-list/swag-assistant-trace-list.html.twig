@@ -18,13 +18,24 @@
                the first checkbox made one vanish and the other appear and the whole page jumped. #}
             <sw-card :title="$tc('swag-assistant-trace.list.filterOutcome')">
                 <div class="swag-assistant-trace-list__toolbar">
+                    {# `@update:value`, NOT `@change`. `sw-single-select` declares six events and
+                       `change` is not among them, so the handler was never called: the dropdown
+                       opened, the option took its tick, and the grid went on showing every
+                       conversation. A filter that silently matches everything is the same defect
+                       class as the `escalate`/`refused` options below, which silently matched
+                       nothing — and this one outlived them because `outcomeOptions` was the half
+                       anybody thought to check.
+
+                       Predicted in `swag-assistant-insights-dashboard.html.twig`, which hit the
+                       identical binding on the same component and named this file as carrying it
+                       too. Nothing in a test can see it; verified by clicking the control. #}
                     <sw-single-select
                         class="swag-assistant-trace-list__filter"
                         :options="outcomeOptions"
                         :value="outcomeFilter"
                         :placeholder="$tc('swag-assistant-trace.list.filterOutcomeAll')"
                         show-clearable-button
-                        @change="onOutcomeFilterChange"
+                        @update:value="onOutcomeFilterChange"
                     />
 
                     {# The count lives in the text, never in the button labels. A label that grows
