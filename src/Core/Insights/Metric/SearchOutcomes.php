@@ -14,11 +14,20 @@ use Swag\AssistantStarterKit\Core\Insights\ConversationTrace;
  * or the words for it, and the words are listed. Too much found means the shopper was handed a
  * category rather than an answer, and the filters are too coarse to narrow it.
  *
- * ## Counted per TURN, on that turn's first search
+ * ## Counted per TURN, on what the turn achieved
  *
- * See {@see FirstSearchOfTurn} for why, and for what it undercounts. The short version: the
- * assistant retries a failed search in another language, so counting searches turned three shoppers
- * into five and listed the assistant's own English guesses as if a shopper had typed them.
+ * A turn counts as a gap only when **none** of its searches returned anything — because that is the
+ * question a merchant is asking: did this shopper get products or not? The previous rule judged a
+ * turn by its first search alone, and published `Reifen 28` as a catalogue gap in a shop holding
+ * over a hundred 28-inch tyres: that turn's first search missed, its retry returned five, and the
+ * shopper saw three cards. Measured 2026-09-17.
+ *
+ * **The word shown is the word that caused the outcome being reported.** For a gap that is the
+ * turn's first term, which is the one built from the shopper's sentence. For a turn over the cap it
+ * is the search that actually hit the cap — in the example above `Reifen`, not `Reifen 28`, which
+ * returned nothing and would have explained nothing.
+ *
+ * {@see SearchesByTurn} carries the two real event shapes this rests on.
  *
  * ## The cap is read off `matched`, not off the `many` flag — and that reverses an earlier decision
  *
@@ -66,20 +75,64 @@ final readonly class SearchOutcomes
         $overCapTerms = [];
 
         foreach ($traces as $trace) {
-            foreach (FirstSearchOfTurn::in($trace) as $search) {
-                if ($search['total'] === 0) {
+            foreach (SearchesByTurn::in($trace) as $searches) {
+                $gapTerm = self::gapTermOf($searches);
+
+                if ($gapTerm !== null) {
                     ++$empty;
-                    $emptyTerms[$search['term']] = true;
+                    $emptyTerms[$gapTerm] = true;
                 }
 
-                if ($search['matched'] >= self::MATCH_CAP) {
+                $capTerm = self::capTermOf($searches);
+
+                if ($capTerm !== null) {
                     ++$overCap;
-                    $overCapTerms[$search['term']] = true;
+                    $overCapTerms[$capTerm] = true;
                 }
             }
         }
 
         return new self($empty, $overCap, self::terms($emptyTerms), self::terms($overCapTerms));
+    }
+
+    /**
+     * The word to publish when a turn gave the shopper nothing, or null when it gave them something.
+     *
+     * The FIRST term, because that is the query built from the shopper's own sentence; everything
+     * after it is the assistant reacting to its own miss, in its own words, sometimes in another
+     * language.
+     *
+     * @param list<array{term: string, total: int, matched: int}> $searches
+     */
+    private static function gapTermOf(array $searches): ?string
+    {
+        foreach ($searches as $search) {
+            if ($search['total'] > 0) {
+                return null;
+            }
+        }
+
+        return $searches[0]['term'] ?? null;
+    }
+
+    /**
+     * The word to publish when a turn hit the match cap, or null when it did not.
+     *
+     * **The search that hit it**, not the turn's first. A turn whose opening query returned nothing
+     * and whose retry matched four hundred products is over the cap because of the retry, and
+     * naming the opening query would put a word in that list which explains none of it.
+     *
+     * @param list<array{term: string, total: int, matched: int}> $searches
+     */
+    private static function capTermOf(array $searches): ?string
+    {
+        foreach ($searches as $search) {
+            if ($search['matched'] >= self::MATCH_CAP) {
+                return $search['term'];
+            }
+        }
+
+        return null;
     }
 
     /**

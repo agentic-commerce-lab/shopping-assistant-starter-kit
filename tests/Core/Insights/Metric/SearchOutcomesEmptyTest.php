@@ -81,6 +81,40 @@ final class SearchOutcomesEmptyTest extends TestCase
         self::assertSame([], $outcomes->emptyTerms);
     }
 
+    public function testATurnWhoseFirstSearchMissedButWhoseRetrySucceededIsNotAGap(): void
+    {
+        // The bug this rule exists for, from a real conversation. The shopper asked about 28-inch
+        // tyres, the opening query returned nothing, the retry returned five, and three cards were
+        // shown. Judging the turn by its first search published `Reifen 28` to a merchant as a
+        // catalogue gap in a shop holding over a hundred 28-inch tyres.
+        $outcomes = SearchOutcomes::of([self::trace([
+            ['seq' => 37, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Reifen 28']],
+            ['seq' => 43, 'stage' => 'tool.result', 'payload' => ['total' => 0, 'matched' => 0]],
+            ['seq' => 47, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Reifen']],
+            ['seq' => 51, 'stage' => 'tool.result', 'payload' => ['total' => 5, 'matched' => 100]],
+            ['seq' => 65, 'stage' => 'turn.end', 'payload' => ['outcome' => 'product_shown']],
+        ])]);
+
+        self::assertSame(0, $outcomes->turnsFoundNothing);
+        self::assertSame([], $outcomes->emptyTerms);
+    }
+
+    public function testThatSameTurnIsReportedOverTheCapUnderTheWordThatHitIt(): void
+    {
+        // `Reifen` matched a hundred; `Reifen 28` matched nothing. Naming the turn's first term
+        // here would put a word in the over-cap list that explains none of it.
+        $outcomes = SearchOutcomes::of([self::trace([
+            ['seq' => 37, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Reifen 28']],
+            ['seq' => 43, 'stage' => 'tool.result', 'payload' => ['total' => 0, 'matched' => 0]],
+            ['seq' => 47, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Reifen']],
+            ['seq' => 51, 'stage' => 'tool.result', 'payload' => ['total' => 5, 'matched' => 100]],
+            ['seq' => 65, 'stage' => 'turn.end', 'payload' => ['outcome' => 'product_shown']],
+        ])]);
+
+        self::assertSame(1, $outcomes->turnsOverCap);
+        self::assertSame(['Reifen'], $outcomes->overCapTerms);
+    }
+
     public function testEachTurnGetsItsOwnCount(): void
     {
         $outcomes = SearchOutcomes::of([self::trace([
