@@ -63,6 +63,7 @@
             "conversations": "Gespräche",
             "cartAdded": "Mit Warenkorb",
             "checkoutOffered": "Kasse angeboten",
+            "searchTurns": "Züge mit Suche",
             "turnsFoundNothing": "Züge ohne Ergebnis",
             "turnsOverCap": "Züge über der Trefferschwelle",
             "turnsWithDescription": "Züge mit Auszug",
@@ -70,7 +71,9 @@
             "unsupportedClaims": "Unbelegte Aussagen",
             "abortedTurns": "Abgebrochene Züge",
             "escalations": "Eskalationen",
-            "escalationsWithoutDestination": "Eskalationen ohne Ziel"
+            "escalationsWithoutDestination": "Eskalationen ohne Ziel",
+            "judgeConversationsDropped": "Gespräche nicht an den Judge gegeben",
+            "judgeFindingsDiscarded": "Verworfene Judge-Befunde"
         }
     }
 }

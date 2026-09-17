@@ -63,6 +63,7 @@
             "conversations": "Conversations",
             "cartAdded": "Reached a cart",
             "checkoutOffered": "Offered checkout",
+            "searchTurns": "Turns that searched",
             "turnsFoundNothing": "Turns that found nothing",
             "turnsOverCap": "Turns over the match cap",
             "turnsWithDescription": "Turns with an excerpt",
@@ -70,7 +71,9 @@
             "unsupportedClaims": "Unsupported claims",
             "abortedTurns": "Aborted turns",
             "escalations": "Escalations",
-            "escalationsWithoutDestination": "Escalations with nowhere to go"
+            "escalationsWithoutDestination": "Escalations with nowhere to go",
+            "judgeConversationsDropped": "Conversations left out of the judge",
+            "judgeFindingsDiscarded": "Judge findings discarded"
         }
     }
 }

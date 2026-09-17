@@ -29,6 +29,13 @@ use Swag\AssistantStarterKit\Core\Insights\ConversationTrace;
  *
  * {@see SearchesByTurn} carries the two real event shapes this rests on.
  *
+ * ## `searchTurns` is the denominator, and without it the other two cannot be read
+ *
+ * "9 turns over the cap" is not a fact a merchant can act on until they know whether there were 14
+ * turns or 200. The conversation count is the wrong denominator — a conversation holds several
+ * turns and some of them search nothing at all — so the number of turns that actually searched
+ * travels with the two counts drawn from it.
+ *
  * ## The cap is read off `matched`, not off the `many` flag — and that reverses an earlier decision
  *
  * `SearchResultCounts` sets `many: true` when its exact match count reports itself capped, and
@@ -60,6 +67,7 @@ final readonly class SearchOutcomes
      * @param list<string> $overCapTerms
      */
     private function __construct(
+        public int $searchTurns,
         public int $turnsFoundNothing,
         public int $turnsOverCap,
         public array $emptyTerms,
@@ -69,6 +77,7 @@ final readonly class SearchOutcomes
     /** @param list<ConversationTrace> $traces */
     public static function of(array $traces): self
     {
+        $turns = 0;
         $empty = 0;
         $overCap = 0;
         $emptyTerms = [];
@@ -76,6 +85,7 @@ final readonly class SearchOutcomes
 
         foreach ($traces as $trace) {
             foreach (SearchesByTurn::in($trace) as $searches) {
+                ++$turns;
                 $gapTerm = self::gapTermOf($searches);
 
                 if ($gapTerm !== null) {
@@ -92,7 +102,7 @@ final readonly class SearchOutcomes
             }
         }
 
-        return new self($empty, $overCap, self::terms($emptyTerms), self::terms($overCapTerms));
+        return new self($turns, $empty, $overCap, self::terms($emptyTerms), self::terms($overCapTerms));
     }
 
     /**

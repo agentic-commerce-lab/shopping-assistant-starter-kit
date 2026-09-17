@@ -19,6 +19,12 @@ use Swag\AssistantStarterKit\Core\Insights\Judge\JudgeFinding;
  * `judgeError` being null is not the same as `findings` being empty. A quiet night and a judge that
  * never answered look identical in a dashboard and mean the opposite, so the reason is stored.
  *
+ * `discardedFindings` closes the last version of that same hole. A judge can answer, be parsed, and
+ * have every row refused — a quote that does not occur, a type outside the closed set, a
+ * conversation outside the sample. The replay command has reported that count since it caught
+ * exactly that case; until now the stored row could not, so a broken control still reached the page
+ * as good news.
+ *
  * @mago-expect lint:excessive-parameter-list
  */
 final readonly class CompletedRun
@@ -31,6 +37,7 @@ final readonly class CompletedRun
         public string $sampleSeed,
         public int $sampled,
         public int $dropped,
+        public int $discardedFindings,
         public ?string $judgeError,
     ) {}
 }

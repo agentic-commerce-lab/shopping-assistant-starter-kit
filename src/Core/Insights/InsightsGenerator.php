@@ -78,23 +78,46 @@ final readonly class InsightsGenerator
         $fitted = JudgeBudget::fit(JudgeSample::draw($traces, $settings->samplePercent, $seed));
 
         if ($fitted->traces === []) {
-            return new CompletedRun($window, $metrics, [], $seed, 0, $fitted->dropped, null);
-        }
-
-        try {
-            $findings = $this->judge->run($metrics, $fitted->traces, $settings)->findings;
-        } catch (\JsonException|LlmException $failure) {
             return new CompletedRun(
-                $window,
-                $metrics,
-                [],
-                $seed,
-                \count($fitted->traces),
-                $fitted->dropped,
-                $failure->getMessage(),
+                window: $window,
+                metrics: $metrics,
+                findings: [],
+                sampleSeed: $seed,
+                sampled: 0,
+                dropped: $fitted->dropped,
+                discardedFindings: 0,
+                judgeError: null,
             );
         }
 
-        return new CompletedRun($window, $metrics, $findings, $seed, \count($fitted->traces), $fitted->dropped, null);
+        try {
+            $validated = $this->judge->run($metrics, $fitted->traces, $settings);
+        } catch (\JsonException|LlmException $failure) {
+            return new CompletedRun(
+                window: $window,
+                metrics: $metrics,
+                findings: [],
+                sampleSeed: $seed,
+                sampled: \count($fitted->traces),
+                dropped: $fitted->dropped,
+                discardedFindings: 0,
+                judgeError: $failure->getMessage(),
+            );
+        }
+
+        // Named arguments throughout, after a positional call silently handed the judge's error
+        // message to the discard count when an argument was inserted ahead of it. Eight parameters
+        // is where positional calls stop being readable, and this one is constructed in three
+        // places that must agree.
+        return new CompletedRun(
+            window: $window,
+            metrics: $metrics,
+            findings: $validated->findings,
+            sampleSeed: $seed,
+            sampled: \count($fitted->traces),
+            dropped: $fitted->dropped,
+            discardedFindings: $validated->discarded,
+            judgeError: null,
+        );
     }
 }

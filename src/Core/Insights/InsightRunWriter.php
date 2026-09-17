@@ -54,15 +54,26 @@ final readonly class InsightRunWriter implements InsightRunSink
         $context = Context::createDefaultContext();
         $runId = Uuid::randomHex();
 
-        $this->runs->create([[
-            'id' => $runId,
-            'windowStart' => $run->window->start,
-            'windowEnd' => $run->window->end,
-            'metrics' => $run->metrics->counts(),
-            'searchTerms' => $run->metrics->searchTerms(),
-            'sampleSeed' => $run->sampleSeed,
-            'judgeError' => $run->judgeError,
-        ]], $context);
+        $this->runs->create(
+            [[
+                'id' => $runId,
+                'windowStart' => $run->window->start,
+                'windowEnd' => $run->window->end,
+                // The judge's own two counts ride in the metrics JSON rather than in columns of
+                // their own: they are integers that name nobody, so they may outlive retention
+                // with the rest, and a migration for two numbers the technical section reads
+                // would buy nothing.
+                'metrics' => [
+                    ...$run->metrics->counts(),
+                    'judgeConversationsDropped' => $run->dropped,
+                    'judgeFindingsDiscarded' => $run->discardedFindings,
+                ],
+                'searchTerms' => $run->metrics->searchTerms(),
+                'sampleSeed' => $run->sampleSeed,
+                'judgeError' => $run->judgeError,
+            ]],
+            $context,
+        );
 
         $rows = [];
 

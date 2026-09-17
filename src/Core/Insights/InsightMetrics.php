@@ -44,6 +44,7 @@ final readonly class InsightMetrics
             'conversations' => $this->cart->conversations,
             'cartAdded' => $this->cart->cartAdded,
             'checkoutOffered' => $this->cart->checkoutOffered,
+            'searchTurns' => $this->searches->searchTurns,
             'turnsFoundNothing' => $this->searches->turnsFoundNothing,
             'turnsOverCap' => $this->searches->turnsOverCap,
             'turnsWithDescription' => $this->descriptions->turnsWithDescription,
