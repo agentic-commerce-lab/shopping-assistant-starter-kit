@@ -21,6 +21,7 @@ working example you can adapt either inside this repository or in a separate plu
 | Embed with a different model | `Embedder` | decorate or replace the service |
 | Store vectors somewhere else | `PassageStore` | replace or decorate the service |
 | Assert something about my own tool in an eval journey | `Assertion` | name the class in the journey's `assertions` map |
+| Add a number to the nightly insights | a class in `Core\Insights\Metric` | add its keys to `InsightMetrics::counts()` — [read this first](#example-9-add-a-metric-to-the-nightly-insights) |
 | Change the widget's markup | Twig blocks | template override, see [the manual](manual.md#the-storefront-widget) |
 | Drive the widget from your own JS | `swag-assistant:*` DOM events | listen on / dispatch at the widget root |
 | Swap the catalogue backend entirely | `CommerceGatewayInterface` **plus four optional capability interfaces** | decorate the service — [read this first](#swapping-the-catalogue-backend) |
@@ -716,6 +717,83 @@ folded into "unknown assertion":
 
 A typo still fails loudly, which is the property that made the closed `match` worth keeping: a
 mistyped short name is not a loadable class either, so it lands in the same throw it always did.
+
+## Example 9: add a metric to the nightly insights
+
+The nightly insights have two layers and you extend them in different places. The **counts** are a
+pure function over trace events and cost nothing; the **findings** come from a model and cost money
+per conversation. Adding to the first is a class; adding to the second widens a contract.
+
+### A new count
+
+Write a class in `src/Core/Insights/Metric/` with a `static of(list<ConversationTrace> $traces)`
+returning readonly public counts, then add its keys to `InsightMetrics::counts()`:
+
+```php
+final readonly class GermanTurns
+{
+    private function __construct(public int $turns) {}
+
+    /** @param list<ConversationTrace> $traces */
+    public static function of(array $traces): self
+    {
+        $turns = 0;
+
+        foreach ($traces as $trace) {
+            foreach ($trace->eventsOfStage('turn.end') as $event) {
+                $turns += ($event['payload']['language'] ?? null) === 'de' ? 1 : 0;
+            }
+        }
+
+        return new self($turns);
+    }
+}
+```
+
+Three things to know before you write one, and the third cost a whole metric:
+
+1. **Keep it pure.** No repository, no clock, no model. That is what lets it be asserted from
+   fixtures, and what lets a merchant's numbers be recomputed from an export months later.
+2. **Every value in `counts()` must be an integer.** The column is charted, and a null or a float
+   is a gap or a wobble in a line somebody is reading as a trend.
+3. **Read the payload keys off a real export, never from memory.** `SearchOutcomes` was written
+   against `retrieve` carrying `query` and `total`; it carries `hits`, `categoryId`, `retainedIds`
+   and `candidateLimit`. The count the model was handed is `total` on the following `tool.result`,
+   and the words are `searchTerm` on the preceding `query.build`. The metric reported zero for every
+   real night, its test agreed with it because the test invented the same keys, and only a dry run
+   over an archived corpus exposed it. Export a handful of conversations from the Administration and
+   look.
+
+A count that names nobody may live on the run row forever. **A count is fine; a string is not** —
+anything shopper-authored has to be pruned with its conversation, which is what
+`InsightRetentionPruner` does for `searchTerms` and what you would have to extend for yours.
+
+### A new kind of finding
+
+The judge's finding types are a closed set: `injection_attempt`, `wrong_or_missed_answer`,
+`bad_tool_use`, `frustration`. Adding one means changing **two** things together:
+
+- `JudgeFindingType`, which is the guard — `JudgeFindings::from()` drops a type outside the enum
+  rather than coercing it, because a wrong label on a real chart is worse than a missing row;
+- the instruction inside `JudgeRequest`, because a type the prompt never mentions is a type the
+  model never returns.
+
+Change one without the other and you get silence, not an error.
+
+Two guarantees you must not weaken while you are in there. `JudgeFindings::from()` discards a
+finding whose `quote` does not occur in the conversation it claims — that check is the only defence
+against a judge inventing its evidence, and it costs one `str_contains`. And `JudgeBudget` drops
+*whole* conversations rather than truncating one, because a truncated transcript would have the
+judge reporting on words it never read while the quote check went on confirming them against the
+full text.
+
+### Measure it before you ship it
+
+`swag:assistant:judge-replay <export.json> --sample=10 --dry-run` reads a trace export, aggregates
+it and draws the sample without calling a model. Drop `--dry-run` to run the judge and print every
+finding with its quote. Read each one against its conversation by hand. A precision figure from the
+corpus a detector was written against is not a precision figure (R85), and the command prints that
+reminder for a reason.
 
 ## Driving the widget from your own JavaScript
 

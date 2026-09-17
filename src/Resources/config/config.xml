@@ -441,4 +441,75 @@
         </input-field>
     </card>
 
+    <card>
+        <title>Nightly insights</title>
+        <title lang="de-DE">Nächtliche Auswertung</title>
+
+        <input-field type="bool">
+            <name>insightsEnabled</name>
+            <label>Generate insights every night</label>
+            <defaultValue>false</defaultValue>
+            <helpText>Off by default because it costs money: every night this sends a sample of
+                your conversations to the model configured below, and you are billed for it. What
+                you get is a page in this administration showing what shoppers searched for and did
+                not find, which products were discussed without your descriptions ever reaching the
+                assistant, where turns broke off, and how many conversations reached a cart. The
+                counts and their charts are computed from every conversation and cost nothing; only
+                the written findings use the model.</helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>insightsSamplePercent</name>
+            <label>Percentage of conversations the judge reads</label>
+            <defaultValue>100</defaultValue>
+            <helpText>Turn this down. 100 is right for the first week, while you are deciding
+                whether the findings are worth anything; after that 1 to 5 is normal, because the
+                cost is per conversation. The four metrics and their charts never sample.</helpText>
+        </input-field>
+
+        <input-field type="single-select">
+            <name>insightsDataScope</name>
+            <label>What the judge is allowed to read</label>
+            <defaultValue>aggregates</defaultValue>
+            <options>
+                <option>
+                    <id>aggregates</id>
+                    <name>Counts and the assistant's own replies</name>
+                </option>
+                <option>
+                    <id>fullConversations</id>
+                    <name>Full conversations, including what shoppers wrote</name>
+                </option>
+            </options>
+            <helpText>The narrow setting sends no shopper message anywhere. The full setting finds
+                more — frustration and misunderstanding only show in the shopper's own words — and
+                it sends personal data to the model provider for a purpose separate from answering,
+                so it needs a data processing agreement covering that provider and a mention in
+                your privacy notice. Your shoppers' messages already reach the chat model while
+                they type; this is a second use of them.</helpText>
+        </input-field>
+
+        <input-field>
+            <name>insightsLlmModel</name>
+            <label>Model for the nightly judge</label>
+            <helpText>Leave empty to use the same model as the assistant. A larger context window
+                is the reason to set one: the judge reads whole conversations at once, which the
+                chat model never has to do.</helpText>
+        </input-field>
+
+        <input-field>
+            <name>insightsLlmBaseUrl</name>
+            <label>Provider URL for the nightly judge</label>
+            <helpText>Leave empty to use the assistant's provider. Setting a different one makes
+                that provider a new recipient of your data, which is a separate decision from the
+                one above.</helpText>
+        </input-field>
+
+        <input-field type="password">
+            <name>insightsLlmApiKey</name>
+            <label>API key for the nightly judge</label>
+            <helpText>Leave empty to use the assistant's key.</helpText>
+        </input-field>
+    </card>
+
 </config>

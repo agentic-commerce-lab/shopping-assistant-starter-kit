@@ -1,0 +1,89 @@
+{
+    "swag-assistant-insights": {
+        "general": {
+            "mainMenuItemGeneral": "Assistent-Auswertung",
+            "description": "Was die nächtliche Auswertung gefunden hat und wie sich die Zahlen entwickeln"
+        },
+        "empty": {
+            "disabled": "Die nächtliche Auswertung ist ausgeschaltet. Es wird nichts gemessen und nichts abgerechnet. Schalten Sie in den Plugin-Einstellungen Jede Nacht eine Auswertung erzeugen ein; der erste Bericht erscheint nach dem nächsten nächtlichen Lauf.",
+            "noRuns": "Noch kein Lauf ist abgeschlossen. Die Aufgabe läuft einmal pro Nacht, der erste Bericht erscheint also am Morgen nach dem Einschalten.",
+            "nothingFound": "Dieser Lauf hat nichts Berichtenswertes gefunden. Seine Zahlen stehen weiter in den Werten und Kurven unten.",
+            "pruned": "Dieser Lauf ist älter als Ihre Aufbewahrungsfrist von {days} Tagen. Seine Befunde haben Kunden zitiert und wurden deshalb mit diesen Konversationen gelöscht; die Zahlen und die Verläufe unten bleiben erhalten."
+        },
+        "lastNight": {
+            "title": "Letzte Nacht",
+            "window": "Zeitraum {start} bis {end}",
+            "judgeFailed": "Das prüfende Modell hat nicht geantwortet",
+            "earlierTitle": "Ein früherer Lauf",
+            "pickerLabel": "Lauf"
+        },
+        "trends": {
+            "title": "Verlauf",
+            "subtitle": "Die letzten 30 Läufe, der älteste links.",
+            "noRuns": "Es gibt noch keine Läufe, die sich darstellen ließen.",
+            "funnel": "Gespräche und Warenkörbe",
+            "searches": "Züge, in denen der Kunde nichts oder zu viel gefunden hat",
+            "problems": "Züge, die schiefgegangen sind"
+        },
+        "technical": {
+            "title": "Technisch",
+            "description": "Zahlen für die technische Betreuung: wo Züge geendet sind, wie oft ein Beschreibungsauszug das Modell erreicht hat und wie der Judge selbst gelaufen ist.",
+            "noRun": "Noch kein Lauf abgeschlossen, also gibt es nichts zu zählen.",
+            "escalationHint": "Kunden haben nach einem Menschen gefragt und der Assistent hatte kein Ziel dafür. Hinterlegen Sie in den Plugin-Einstellungen eine Eskalationsadresse.",
+            "group": {
+                "turns": "Züge",
+                "descriptions": "Beschreibungsauszüge",
+                "judge": "Der Judge"
+            }
+        },
+        "finding": {
+            "openConversation": "Konversation öffnen",
+            "conversationGone": "Konversation nicht mehr gespeichert",
+            "suggestion": "Vorschlag"
+        },
+        "terms": {
+            "title": "Wonach gesucht wurde",
+            "caption": "Der erste Suchbegriff des Assistenten in diesen Zügen, gebildet aus dem, was der Kunde geschrieben hat. Nicht die Worte des Kunden selbst.",
+            "pruned": "Die Wörter wurden mit den Konversationen gelöscht, aus denen sie stammen. Die Zahl bleibt erhalten.",
+            "capped": "Nur die ersten {count}; es waren mehr.",
+            "empty": {
+                "advice": "Nichts im Katalog hat gepasst. Entweder fehlen die Produkte, oder sie sind mit anderen Wörtern beschrieben."
+            },
+            "overCap": {
+                "advice": "Zu viele Produkte haben gepasst, als dass der Assistent antworten könnte. Hier helfen engere Filter, kein größeres Sortiment."
+            },
+            "proportion": "{count} von {total}"
+        },
+        "judge": {
+            "discarded": "{count} Befunde ließen sich nicht überprüfen und wurden weggelassen: ein Zitat, das in der genannten Konversation nicht vorkommt, ein Typ außerhalb der Liste oder eine Konversation außerhalb der Stichprobe.",
+            "nothingVerified": "Der Judge hat geantwortet, aber nichts davon ließ sich überprüfen"
+        },
+        "severity": {
+            "info": "Hinweis",
+            "warning": "Warnung",
+            "critical": "Kritisch"
+        },
+        "type": {
+            "injection_attempt": "Versuchte Prompt-Injection",
+            "wrong_or_missed_answer": "Falsche oder verpasste Antwort",
+            "bad_tool_use": "Schlechte Werkzeugnutzung",
+            "frustration": "Frustrierter Kunde"
+        },
+        "metric": {
+            "conversations": "Gespräche",
+            "cartAdded": "Mit Warenkorb",
+            "checkoutOffered": "Kasse angeboten",
+            "searchTurns": "Züge mit Suche",
+            "turnsFoundNothing": "Züge ohne Ergebnis",
+            "turnsOverCap": "Züge über der Trefferschwelle",
+            "turnsWithDescription": "Züge mit Auszug",
+            "turnsWithoutDescription": "Züge ohne Auszug",
+            "unsupportedClaims": "Unbelegte Aussagen",
+            "abortedTurns": "Abgebrochene Züge",
+            "escalations": "Eskalationen",
+            "escalationsWithoutDestination": "Eskalationen ohne Ziel",
+            "judgeConversationsDropped": "Gespräche nicht an den Judge gegeben",
+            "judgeFindingsDiscarded": "Verworfene Judge-Befunde"
+        }
+    }
+}

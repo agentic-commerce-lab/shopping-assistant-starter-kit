@@ -115,6 +115,17 @@
             <tag name="shopware.entity.definition"/>
         </service>
 
+        <!-- The nightly insights (spec D23). Two definitions because a run row holds counts that
+             outlive the trace retention window, while a finding row quotes a conversation and is
+             pruned with it. -->
+        <service id="Swag\AssistantStarterKit\Entity\InsightRun\InsightRunDefinition">
+            <tag name="shopware.entity.definition"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Entity\InsightFinding\InsightFindingDefinition">
+            <tag name="shopware.entity.definition"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Trace\JsonShape"/>
         <service id="Swag\AssistantStarterKit\Core\Trace\TranscriptCodec"/>
 
@@ -153,6 +164,14 @@
 
         <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings">
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <!-- The nightly insights read their own card. Separate from SystemConfigAssistantConfig
+             because that one is built on every shopper turn and would pay for six lookups it never
+             uses. -->
+        <service id="Swag\AssistantStarterKit\Core\Config\SystemConfigInsightsSettings">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
         </service>
 
         <!-- The two limits in front of the public chat endpoint. Storage is a cache rather than the
@@ -485,6 +504,14 @@
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
 
+        <!-- The judge replay. Reads an export rather than the database, so the precision figure
+             D28 asks for can be produced without a shop and repeated when the model changes. -->
+        <service id="Swag\AssistantStarterKit\Command\JudgeReplayCommand">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigInsightsSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\Judge\JudgeRunner"/>
+            <tag name="console.command"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Command\SeedBundlesCommand">
             <argument type="service" id="product.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Command\Seed\Bundle\DalBundleMemberReader"/>
@@ -535,10 +562,53 @@
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner">
             <argument type="service" id="swag_assistant_conversation.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Retention\InsightRetentionPruner"/>
+        </service>
+
+        <!-- The insights half of the same window (spec D23). The argument order is run, then
+             findings — the same order as InsightRunWriter, because ServiceArgumentOrderTest cannot
+             tell two EntityRepository arguments apart. -->
+        <service id="Swag\AssistantStarterKit\Core\Trace\Retention\InsightRetentionPruner">
+            <argument type="service" id="swag_assistant_insight_run.repository"/>
+            <argument type="service" id="swag_assistant_insight_finding.repository"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\PruneConversationsTask">
             <tag name="shopware.scheduled.task"/>
+        </service>
+
+        <!-- The nightly insights. Registered beside the pruner because they are the same shape of
+             thing and share its requirement: a worker, or the Administration open. -->
+        <service id="Swag\AssistantStarterKit\Core\Insights\GenerateInsightsTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\GenerateInsightsTaskHandler">
+            <argument type="service" id="scheduled_task.repository"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\InsightsGenerator"/>
+            <tag name="messenger.message_handler"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\InsightsGenerator">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigInsightsSettings"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\ConversationTraceLoader"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\Judge\JudgeRunner"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Insights\InsightRunWriter"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\ConversationTraceLoader">
+            <argument type="service" id="swag_assistant_conversation.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\TranscriptCodec"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\InsightRunWriter">
+            <argument type="service" id="swag_assistant_insight_run.repository"/>
+            <argument type="service" id="swag_assistant_insight_finding.repository"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Insights\Judge\JudgeRunner">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Trace\Retention\PruneConversationsTaskHandler">

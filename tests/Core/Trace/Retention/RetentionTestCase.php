@@ -10,9 +10,11 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\IdSearchResult;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
+use Swag\AssistantStarterKit\Core\Trace\Retention\InsightRetentionPruner;
 
 /**
- * The two doubles both retention test classes need: a shop's sales channels, and a stored window.
+ * The doubles the retention test classes share: a shop's sales channels, a stored window, and an
+ * insights half that finds nothing.
  *
  * A base class rather than a trait, and that is not style. `mago analyze` cannot resolve
  * `createMock()` from inside a trait — the trait has no `TestCase` to look it up on — so a trait
@@ -35,6 +37,40 @@ abstract class RetentionTestCase extends TestCase
      */
     protected function salesChannels(array $ids): EntityRepository
     {
+        return $this->repositoryFinding($ids);
+    }
+
+    /**
+     * The insights half of a prune, over empty tables.
+     *
+     * {@see \Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionPruner} owns the order of
+     * the two halves, so every test about the conversation half has to hand it one of these. Finding
+     * nothing keeps those tests about what they are about; the insights half has its own assertions
+     * in {@see InsightRetentionTest}.
+     */
+    protected function idleInsightRetention(): InsightRetentionPruner
+    {
+        return new InsightRetentionPruner($this->repositoryFinding([]), $this->repositoryFinding([]), 50);
+    }
+
+    /**
+     * One window for every channel and for the shop as a whole.
+     */
+    protected function systemConfigReturning(int $days): SystemConfigService
+    {
+        $systemConfig = $this->createMock(SystemConfigService::class);
+        $systemConfig->method('getInt')->willReturn($days);
+
+        return $systemConfig;
+    }
+
+    /**
+     * A repository that answers every search with exactly these ids, however often it is asked.
+     *
+     * @param list<string> $ids
+     */
+    protected function repositoryFinding(array $ids): EntityRepository
+    {
         $repository = $this->createMock(EntityRepository::class);
         $repository
             ->method('searchIds')
@@ -48,17 +84,6 @@ abstract class RetentionTestCase extends TestCase
             );
 
         return $repository;
-    }
-
-    /**
-     * One window for every channel and for the shop as a whole.
-     */
-    protected function systemConfigReturning(int $days): SystemConfigService
-    {
-        $systemConfig = $this->createMock(SystemConfigService::class);
-        $systemConfig->method('getInt')->willReturn($days);
-
-        return $systemConfig;
     }
 
     /**

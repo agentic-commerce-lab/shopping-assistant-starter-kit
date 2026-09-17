@@ -1,0 +1,463 @@
+/*
+ * Colours and sizes come from the Administration's own Meteor custom properties, with fallbacks.
+ * Sass variables (`$color-gray-500` and friends) are NOT available to plugin styles under 6.7's
+ * Vite build — the build fails with "Undefined variable" — and hard-coding a parallel palette next
+ * to an existing token system is how an extension starts looking like a different product. Same
+ * rule as `swag-assistant-trace-detail.scss`.
+ *
+ * Two structural decisions:
+ *
+ * 1. A finding is a stacked block, not a table row. Summary, quote and suggestion are prose, and
+ *    the quote is the only surviving copy of the evidence when the conversation has been pruned —
+ *    so nothing here clips text. `overflow-wrap: anywhere` on the quote is the opposite choice from
+ *    the trace list's `text-overflow: ellipsis`, and for that reason.
+ * 2. The technical section is separated by a rule and a heading OUTSIDE its card. Everything above
+ *    is for whoever sells the products; this is for whoever installed the plugin, and the gap has
+ *    to be visible without reading the heading (spec 5.5).
+ */
+.swag-assistant-insights-dashboard {
+
+    /* -- 1. Last night --------------------------------------------------------------------- */
+
+    /*
+     * The run picker, bounded rather than full width.
+     *
+     * A select is as wide as its widest option unless told otherwise, and left alone it spans the
+     * card and reads as a page-wide control rather than as the filter for the list under it.
+     * `max-width` in `ch` because the ceiling is about how long the label is, not about the
+     * viewport, and the label's length does not change with the window.
+     *
+     * 34ch fits "16 September 2026 at 09:00" in every locale the plugin ships, with room to spare.
+     * It does NOT fit the full window range — `sw-single-select` does not clip its selected label,
+     * so the range wrapped out of the control and under the chevron, which is why `runLabel()`
+     * exists and prints one date instead.
+     *
+     * The bottom margin is the seam between the control and the list it governs; without it the
+     * first finding's top rule sits against the select and looks like part of it.
+     */
+    &__picker {
+        margin-bottom: 20px;
+    }
+
+    &__picker-select {
+        max-width: 34ch;
+    }
+
+    &__worklist {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Same separator treatment as the trace detail's turns: a rule between siblings, none above
+       the first, so the card's own padding is not doubled. */
+    &__finding {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        padding: 16px 0;
+
+        &:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        &:last-child {
+            padding-bottom: 0;
+        }
+    }
+
+    &__finding-head {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    &__severity {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    /* Pushed to the end of the row so every finding's link sits in the same place down the list —
+       the column a merchant works through once the summary has been read. */
+    &__link {
+        margin-left: auto;
+    }
+
+    &__gone {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        font-style: italic;
+        margin-left: auto;
+    }
+
+    /* `max-width` in `ch`, not in pixels: the measure is about how many characters a line can hold
+       before the eye loses the start of the next one, and that is a property of the text. Same
+       ceiling as the trace detail's prose. */
+    &__summary {
+        color: var(--color-text-primary-default, #37444f);
+        font-weight: 600;
+        margin: 8px 0 0;
+        max-width: 80ch;
+    }
+
+    /*
+     * The shopper's own words. Monospace and a left rule so it cannot be mistaken for the
+     * plugin's own prose, and quieter than the summary because the summary is what gets scanned.
+     *
+     * **Nothing is clipped here.** A quote can be one word or two hundred, and when the
+     * conversation has been pruned this block is the only surviving record of it — an ellipsis
+     * would be throwing away evidence with no way to get it back.
+     */
+    &__quote {
+        border-left: 2px solid var(--color-border-primary-default, #d1d9e0);
+        color: var(--color-text-secondary-default, #758ca3);
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+        margin: 12px 0 0;
+        overflow-wrap: anywhere;
+        padding: 4px 0 4px 12px;
+        white-space: pre-wrap;
+    }
+
+    &__suggestion {
+        color: var(--color-text-primary-default, #37444f);
+        margin: 12px 0 0;
+        max-width: 80ch;
+    }
+
+    &__suggestion-label {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        letter-spacing: 0.04em;
+        margin-right: 6px;
+        text-transform: uppercase;
+    }
+
+    /*
+     * The stored search terms, under the findings and above the seam.
+     *
+     * Separated from the worklist by a rule for the same reason the technical section is: it
+     * answers a different question. The findings say what went wrong in a conversation; these say
+     * what shoppers were looking for.
+     */
+    &__terms {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        margin-top: 24px;
+        padding-top: 20px;
+    }
+
+    &__terms-title {
+        color: var(--color-text-primary-default, #37444f);
+        font-size: var(--font-size-s, 14px);
+        margin: 0;
+    }
+
+    &__terms-caption {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        margin: 4px 0 16px;
+        max-width: 80ch;
+    }
+
+    /* Side by side where there is room, so the contrast between the two is immediate rather than
+       something a merchant reconstructs by scrolling. Same `auto-fit` idiom as the charts. */
+    &__term-lists {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    /*
+     * **The two lists must not read as one list shown twice.**
+     *
+     * "Found nothing" is a gap in the catalogue and the fix is stock or wording; "over the cap" is
+     * a question too broad to answer and the fix is filters. Three things carry that apart, and
+     * only one of them is colour: each block states its own advice in a sentence, each keeps the
+     * metric's own heading, and the accent rail differs. Colour alone would be unreadable to a
+     * colour-blind merchant and gone in a printed screenshot — the same rule as the severity word
+     * beside the finding labels.
+     *
+     * Amber for the gap, because it is the one that costs a sale. Blue for the cap, because it is
+     * information rather than a fault — a shop that matches 400 products for "Kette" is working
+     * correctly and is being asked the wrong question.
+     */
+    &__term-list {
+        border-left: 3px solid var(--color-border-primary-default, #d1d9e0);
+        padding-left: 12px;
+
+        &.is--empty {
+            border-left-color: var(--color-border-attention-default, #e8a33d);
+        }
+
+        &.is--overCap {
+            border-left-color: var(--color-border-brand-default, #0870ff);
+        }
+    }
+
+    &__term-head {
+        align-items: baseline;
+        display: flex;
+        gap: 8px;
+    }
+
+    &__term-heading {
+        color: var(--color-text-primary-default, #37444f);
+        font-weight: 600;
+    }
+
+    &__term-count {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__term-advice {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        margin: 4px 0 10px;
+    }
+
+    /*
+     * **A term is a string that was searched, not a product and not a button.**
+     *
+     * So: no chip, no border, no background, no link colour, nothing that survives a hover. Chips
+     * read as filters a merchant can click, and a boxed word beside a product catalogue reads as an
+     * item the shop stocks — which is the opposite of what "found nothing" means. Monospace and a
+     * middot separator say "these are the literal strings that were sent to the search", which is
+     * all they are.
+     */
+    &__term-words {
+        display: flex;
+        flex-wrap: wrap;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    &__term {
+        color: var(--color-text-primary-default, #37444f);
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+        overflow-wrap: anywhere;
+
+        &:not(:last-child)::after {
+            color: var(--color-text-secondary-default, #758ca3);
+            content: "·";
+            padding: 0 6px;
+        }
+    }
+
+    /* Italic for an absence, as the timeline's "waiting" row already does on the trace detail. */
+    &__term-gone,
+    &__term-capped {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        font-style: italic;
+        margin: 0;
+    }
+
+    &__term-capped {
+        margin-top: 8px;
+    }
+
+    /* -- 2. Trends ------------------------------------------------------------------------- */
+
+    /*
+     * Two up, one up when narrow. `auto-fit` with a `minmax` floor rather than a media query: the
+     * card's width depends on the Administration's sidebar state as well as the window, so a
+     * breakpoint on the viewport would collapse the grid at the wrong moment. 420px is the width
+     * below which thirty nights on a datetime axis stop being thirty distinguishable points.
+     */
+    &__charts {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    }
+
+    /* `min-width: 0` because a grid item defaults to its content's minimum and ApexCharts measures
+       its container: without this the chart reports a width it then cannot shrink back from, and
+       the card grows a horizontal scrollbar on the first resize. */
+    &__chart {
+        min-width: 0;
+    }
+
+    /*
+     * Give the hover tooltip's dots their series colours back.
+     *
+     * **This is a CSS defect, not a chart-options one, and no option can reach it.** The tooltip's
+     * dot is a `::before` pseudo-element rendering the glyph `●`, and ApexCharts colours it the
+     * correct way: it sets an inline `color` on each marker — read live, the three markers of the
+     * funnel chart carried `#0870ff`, `#16c39a` and `#ffab22` — and its own stylesheet paints the
+     * glyph with `color: currentcolor`. Then the Administration overrides it:
+     *
+     *     .apexcharts-canvas .apexcharts-tooltip-marker::before {
+     *         color: var(--color-icon-brand-default) !important;
+     *     }
+     *
+     * `!important` on a pseudo-element beats every inline `color` ApexCharts writes, so all three
+     * dots rendered brand blue while the lines beside them were three different colours — which is
+     * worst on exactly the charts that need the tooltip, the multi-series ones. `tooltip.marker
+     * .fillColors` would not have helped: it sets the same inline `color` that is already correct
+     * and already being overridden.
+     *
+     * So this restores ApexCharts' own value, with one more class of specificity and scoped to this
+     * page. Not a global override: a plugin has no business restyling every chart in the
+     * Administration, and on a single-series chart the brand colour is a defensible choice.
+     *
+     * Swept the rest of that stylesheet for the same shape (every `!important` rule touching
+     * `apexcharts`): the others set the tooltip's shadow, background, border, title font and the
+     * x-axis pill's colours, all of which are series-independent. This is the only per-series
+     * colour any of them flattens.
+     */
+    .apexcharts-canvas .apexcharts-tooltip-marker::before {
+        color: currentcolor !important;
+    }
+
+    /* -- 3. Technical ---------------------------------------------------------------------- */
+
+    /*
+     * The seam. A rule, a wide gap and a heading outside the card, so the change of audience is
+     * legible before the heading is read. The card below it deliberately has no title: the heading
+     * above IS its title, and repeating it would undo the separation by making this look like a
+     * fourth section of the merchant half.
+     *
+     * **`max-width` and `margin-inline` so the heading lines up with the numbers it introduces.**
+     * Because the heading sits outside the card it also sits outside the card's geometry, and
+     * `mt-card` is `max-width: 60rem; margin: 0 auto` — so on a wide monitor the card centres
+     * itself inside this wrapper while the heading stays at the wrapper's left edge. Measured at a
+     * 1900px viewport: the heading started at x=340 and the first number under it at x=638, nearly
+     * 300px apart, and the text read as belonging to nothing. Padding alone cannot fix that, since
+     * the gap is half the leftover width and therefore changes with the window.
+     *
+     * The two numbers come from different places on purpose. `--scale-size-24` is the token
+     * `mt-card__content` sets its own inset from, so the inset follows Meteor if Meteor changes it.
+     * `60rem` is a literal because `mt-card` declares it as a literal with no token behind it —
+     * copying the number is the only way to match the box, and it is commented rather than hidden.
+     * If a card-width token ever appears, this is the line to change.
+     *
+     * **The inset goes on the three text elements, never on this wrapper.** Padding here would eat
+     * into the box the card inside also lives in, shrinking it to 912px while the two cards above
+     * stay at 960px — fixing the heading by misaligning the card it introduces.
+     *
+     * The rule now spans the card's width instead of the viewport's, which is the better reading of
+     * the seam anyway: it separates the two halves of THIS page, not the whole screen.
+     */
+    &__technical {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        margin-top: 40px;
+        margin-inline: auto;
+        max-width: 60rem;
+        padding-top: 32px;
+    }
+
+    /*
+     * The card's own content inset, so these three line up with the labels under them. Measured
+     * after the change at a 1900px viewport: heading, note and window text all start at x=637 and
+     * the first number's label at x=638.
+     *
+     * That last pixel is the card's own 1px border, which this wrapper does not have, and it is
+     * left alone deliberately: a `calc(… + 1px)` here would encode a third piece of `mt-card`'s
+     * internals to correct a difference nobody can see.
+     */
+    &__technical-title,
+    &__technical-note,
+    &__technical-window {
+        padding-inline: var(--scale-size-24, 1.5rem);
+    }
+
+    &__technical-title {
+        color: var(--color-text-primary-default, #37444f);
+        font-size: var(--font-size-m, 16px);
+        margin: 0;
+    }
+
+    &__technical-note {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-s, 14px);
+        margin: 4px 0 16px;
+        max-width: 80ch;
+    }
+
+    /* Which run these counts belong to. Quieter than the note above it and monospace-free: it is a
+       date, not a value to compare, and it only has to stop the numbers below reading as "now". */
+    &__technical-window {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        margin: 0 0 16px;
+    }
+
+    /*
+     * One group per kind of number, so seven figures do not read as one wall. The heading is quiet
+     * and small: it separates, it does not compete with the section heading above it.
+     */
+    &__number-group + &__number-group {
+        margin-top: 24px;
+    }
+
+    &__number-group-title {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        letter-spacing: 0.04em;
+        margin: 0 0 12px;
+        text-transform: uppercase;
+    }
+
+    /*
+     * The floor is 260px rather than 180px so they lay out three and two instead
+     * of four and one. Two reasons, one of them lucky: an orphan on a second row reads as an
+     * unfinished grid, and the order in `technical()` puts the three "the turn went wrong" counts
+     * first, so a break after the third happens to land on the boundary between those and the two
+     * excerpt hand-over counts. The grouping is not enforced by this — a different card width would
+     * break elsewhere — but nothing depends on it either, and the grid stays tidy at every width.
+     */
+    &__numbers {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        margin: 0;
+    }
+
+    /*
+     * A column per cell so the NUMBERS line up across a row even when one label wraps to two lines.
+     * Without this the label pushed its own value down and the row of figures went ragged — seen
+     * the moment "Turns given a description excerpt" was added beside three short labels. The
+     * labels were shortened as well, but the layout should not depend on that holding: any
+     * translation can be longer than its English.
+     */
+    &__number {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Takes the slack in the column above, which is what pins the value to the cell's bottom. */
+    &__number-label {
+        flex: 1 1 auto;
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+    }
+
+    /* Tabular figures so three counts in a row line up on their digits rather than on their
+       glyph widths — the same reason the trace detail right-aligns its durations. */
+    &__number-value {
+        color: var(--color-text-primary-default, #37444f);
+        font-size: 24px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        margin: 4px 0 0;
+
+        /* Only `escalationsWithoutDestination` ever gets this: it is the one number here that is a
+           misconfiguration rather than a measurement. A shopper asked for a human and there was
+           nowhere to send them, which is fixable in the settings this afternoon. */
+        &.is--alarming {
+            color: var(--color-text-critical-default, #c72d2d);
+        }
+    }
+
+    &__hint {
+        color: var(--color-text-critical-default, #c72d2d);
+        font-size: var(--font-size-s, 14px);
+        margin: 16px 0 0;
+        max-width: 80ch;
+    }
+}
