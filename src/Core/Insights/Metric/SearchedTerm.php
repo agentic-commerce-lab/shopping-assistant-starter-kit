@@ -36,6 +36,17 @@ final class SearchedTerm
             return $current;
         }
 
+        // **The first term of a turn wins, not the last.** The model issues several searches in
+        // one batch and the trace carries one `tool.result` for the batch, so the naive
+        // "carry the latest term forward to the next result" pairs a result with the LAST query
+        // built before it. Measured 2026-09-17: "Ich brauche einen Fahrradhelm für Schotterwege"
+        // produced `query.build: Helm` at seq 10 and `query.build: Gravel` at seq 13, with one
+        // `tool.result` at seq 19 — and the term list said `Gravel`, which is the assistant's
+        // second guess rather than the shopper's word.
+        if ($current !== '') {
+            return $current;
+        }
+
         $term = $event['payload'][$key] ?? null;
 
         return \is_string($term) && $term !== '' ? $term : $current;

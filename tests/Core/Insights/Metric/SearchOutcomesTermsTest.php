@@ -102,6 +102,28 @@ final class SearchOutcomesTermsTest extends TestCase
         self::assertSame(['Helm'], $outcomes->emptyTerms);
     }
 
+    public function testAParallelSearchBatchIsAttributedToItsFirstTerm(): void
+    {
+        // The exact event sequence of a real conversation, seq numbers included. The model issues
+        // two searches in one batch and the trace carries ONE `tool.result` for both, so carrying
+        // the latest term forward paired the result with `Gravel` — the assistant's second guess.
+        // The shopper wrote "Ich brauche einen Fahrradhelm für Schotterwege".
+        $outcomes = SearchOutcomes::of([self::trace([
+            ['seq' => 9, 'stage' => 'understand', 'payload' => ['term' => 'Helm']],
+            ['seq' => 10, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Helm']],
+            ['seq' => 12, 'stage' => 'understand', 'payload' => ['term' => 'Gravel']],
+            ['seq' => 13, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Gravel']],
+            ['seq' => 19, 'stage' => 'tool.result', 'payload' => ['name' => 'search_products', 'total' => 0]],
+            ['seq' => 22, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Helm']],
+            ['seq' => 26, 'stage' => 'query.build', 'payload' => ['searchTerm' => 'Helmet']],
+            ['seq' => 32, 'stage' => 'tool.result', 'payload' => ['name' => 'search_products', 'total' => 0]],
+            ['seq' => 36, 'stage' => 'turn.end', 'payload' => ['outcome' => 'no_result']],
+        ])]);
+
+        self::assertSame(1, $outcomes->turnsFoundNothing);
+        self::assertSame(['Helm'], $outcomes->emptyTerms);
+    }
+
     public function testATermIsListedOnceHoweverManyTurnsAskedForIt(): void
     {
         $outcomes = SearchOutcomes::of([self::trace([
