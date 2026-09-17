@@ -22,35 +22,88 @@
                    ------------------------------------------------------------------------------ #}
                 {% block swag_assistant_insights_dashboard_last_night %}
                 <sw-card
-                    :title="$tc('swag-assistant-insights.lastNight.title')"
-                    :subtitle="latestRun ? windowLabel(latestRun) : ''"
+                    :title="showingNewestRun
+                        ? $tc('swag-assistant-insights.lastNight.title')
+                        : $tc('swag-assistant-insights.lastNight.earlierTitle')"
+                    :subtitle="selectedRun ? windowLabel(selectedRun) : ''"
                 >
-                    {# Four empty states, four `sw-alert` variants, and the variants are the point:
-                       these sentences are read at a glance and from across a desk, so grey/blue/
-                       green/red carries the difference before a word of it is read.
+                    {# A fact about the setting, not a state of the run below, and shown alongside
+                       the findings rather than instead of them. Switching the nightly run off must
+                       not hide the thirty days of findings already stored — the charts were always
+                       kept visible when off, and hiding the prose while keeping the counts was the
+                       inconsistency this banner resolves. #}
+                    <sw-alert v-if="isSwitchedOff" variant="neutral">
+                        {{ $tc('swag-assistant-insights.empty.disabled') }}
+                    </sw-alert>
+
+                    {# The picker, and the reason this page stopped throwing its own work away every
+                       night. A run's findings live until the conversations they quote are pruned,
+                       but the list only ever asked for the newest run's — so every night made the
+                       previous night's prose unreachable while its counts stayed on the charts.
+
+                       Above the list, not in the smart bar: it selects what the list below shows,
+                       and a control that reads as page-wide would imply it moved the charts too.
+                       Hidden entirely at one run, because a select with a single option is a label
+                       pretending to be a choice. #}
+                    {% block swag_assistant_insights_dashboard_run_picker %}
+                    <div v-if="runs.length > 1" class="swag-assistant-insights-dashboard__picker">
+                        {# `@update:value`, NOT `@change`. `sw-single-select` declares exactly six
+                           events — update:value, item-selected, on-open-change,
+                           before-selection-clear, search, paginate — and emits no `change` at all,
+                           so a `@change` handler is never called and the picker silently did
+                           nothing: the dropdown opened, an option took the tick, and the list below
+                           kept showing the newest run. Nothing in a test could see that; it was
+                           found by clicking the control. Read out of the installed 6.7 component.
+
+                           Worth knowing that `swag-assistant-trace-list` binds `@change` to this
+                           same component for its outcome filter, which means that filter has the
+                           same defect. Not fixed here — a different module, and it deserves its own
+                           commit rather than riding along in this one. #}
+                        <sw-single-select
+                            class="swag-assistant-insights-dashboard__picker-select"
+                            :options="runOptions"
+                            :value="selectedRun ? selectedRun.id : null"
+                            :label="$tc('swag-assistant-insights.lastNight.pickerLabel')"
+                            @update:value="onRunChange"
+                        />
+                    </div>
+                    {% endblock %}
+
+                    {# Five states, five `sw-alert` variants, and the variants are the point: these
+                       sentences are read at a glance and from across a desk, so grey/blue/green/red
+                       carries the difference before a word of it is read.
 
                        `critical` and `positive`, never `error` or `success`: `sw-alert` forwards to
                        `mt-banner`, which accepts only neutral, info, attention, critical, positive
                        and inherited. An unknown variant is not rejected — it renders as a neutral
                        info box, which is how the severity was once silently stripped off the one
                        message in the trace view that needed it. #}
-                    <sw-alert v-if="state === 'disabled'" variant="neutral">
-                        {{ $tc('swag-assistant-insights.empty.disabled') }}
-                    </sw-alert>
+                    <sw-loader v-if="state === 'loading'" />
 
-                    <sw-alert v-else-if="state === 'noRuns'" variant="info">
+                    {# Worded so it is true both under the banner above and without it. It used to
+                       open "Nightly insights are on, but…", which contradicted the grey banner on a
+                       shop that had the feature switched off and had never run it. #}
+                    <sw-alert v-else-if="!selectedRun" variant="info">
                         {{ $tc('swag-assistant-insights.empty.noRuns') }}
                     </sw-alert>
 
-                    {# Not an empty state. The counts above and the charts below are intact; it is
-                       the judge that did not answer, and `judgeError` on the run is stored so this
-                       box can say so instead of the page reporting a clean night. #}
+                    {# Not an empty state. The counts below and the charts are intact; it is the
+                       judge that did not answer, and `judgeError` on the run is stored so this box
+                       can say so instead of the page reporting a clean night. #}
                     <sw-alert
                         v-else-if="state === 'judgeFailed'"
                         variant="critical"
                         :title="$tc('swag-assistant-insights.lastNight.judgeFailed')"
                     >
-                        {{ latestRun.judgeError }}
+                        {{ selectedRun.judgeError }}
+                    </sw-alert>
+
+                    {# The normal end state of every old run, and the opposite of the green box
+                       below it. A finding quotes a shopper, so it is deleted with the conversation
+                       it quotes while the run's counts stay (D23) — reusing "nothing worth
+                       reporting" here would report a quiet night on evidence that was deleted. #}
+                    <sw-alert v-else-if="state === 'pruned'" variant="neutral">
+                        {{ prunedNotice() }}
                     </sw-alert>
 
                     <sw-alert v-else-if="state === 'nothingFound'" variant="positive">
@@ -189,8 +242,19 @@
                         {{ $tc('swag-assistant-insights.technical.description') }}
                     </p>
 
+                    {# These counts follow the run picker above, because they are that run's counts.
+                       Leaving them on the newest run would have put an older run's findings above
+                       last night's aborted turns with nothing on the page saying so — so the window
+                       is printed here too, and it is the one thing that makes the pairing legible. #}
+                    <p
+                        v-if="selectedRun"
+                        class="swag-assistant-insights-dashboard__technical-window"
+                    >
+                        {{ windowLabel(selectedRun) }}
+                    </p>
+
                     <sw-card>
-                        <sw-alert v-if="!latestRun" variant="info">
+                        <sw-alert v-if="!selectedRun" variant="info">
                             {{ $tc('swag-assistant-insights.technical.noRun') }}
                         </sw-alert>
 

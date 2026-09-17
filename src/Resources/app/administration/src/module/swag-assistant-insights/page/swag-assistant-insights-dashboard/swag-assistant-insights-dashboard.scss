@@ -19,6 +19,30 @@
 
     /* -- 1. Last night --------------------------------------------------------------------- */
 
+    /*
+     * The run picker, bounded rather than full width.
+     *
+     * A select is as wide as its widest option unless told otherwise, and left alone it spans the
+     * card and reads as a page-wide control rather than as the filter for the list under it.
+     * `max-width` in `ch` because the ceiling is about how long the label is, not about the
+     * viewport, and the label's length does not change with the window.
+     *
+     * 34ch fits "16 September 2026 at 09:00" in every locale the plugin ships, with room to spare.
+     * It does NOT fit the full window range — `sw-single-select` does not clip its selected label,
+     * so the range wrapped out of the control and under the chevron, which is why `runLabel()`
+     * exists and prints one date instead.
+     *
+     * The bottom margin is the seam between the control and the list it governs; without it the
+     * first finding's top rule sits against the select and looks like part of it.
+     */
+    &__picker {
+        margin-bottom: 20px;
+    }
+
+    &__picker-select {
+        max-width: 34ch;
+    }
+
     &__worklist {
         list-style: none;
         margin: 0;
@@ -157,6 +181,14 @@
         font-size: var(--font-size-s, 14px);
         margin: 4px 0 16px;
         max-width: 80ch;
+    }
+
+    /* Which run these counts belong to. Quieter than the note above it and monospace-free: it is a
+       date, not a value to compare, and it only has to stop the numbers below reading as "now". */
+    &__technical-window {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        margin: 0 0 16px;
     }
 
     &__numbers {

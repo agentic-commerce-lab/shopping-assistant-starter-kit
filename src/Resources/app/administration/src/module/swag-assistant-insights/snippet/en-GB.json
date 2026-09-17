@@ -6,13 +6,16 @@
         },
         "empty": {
             "disabled": "Nightly insights are switched off. Nothing is being measured and nothing is being spent. Switch on Generate insights every night in the plugin settings to start; the first report appears after the next nightly run.",
-            "noRuns": "Nightly insights are on, but no run has finished yet. The task runs once a night, so the first report appears tomorrow morning.",
-            "nothingFound": "Last night's run found nothing worth reporting. The counts and the trends below still come from that run."
+            "noRuns": "No run has finished yet. The task runs once a night, so the first report appears the morning after the feature is switched on.",
+            "nothingFound": "This run found nothing worth reporting. Its counts and the trends below still come from it.",
+            "pruned": "This run is older than your retention window of {days} days. Its findings quoted shoppers, so they were deleted along with those conversations; its counts and the trends below are kept."
         },
         "lastNight": {
             "title": "Last night",
             "window": "Covering {start} to {end}",
-            "judgeFailed": "The judge did not answer"
+            "judgeFailed": "The judge did not answer",
+            "earlierTitle": "An earlier run",
+            "pickerLabel": "Run"
         },
         "trends": {
             "title": "Trends",
