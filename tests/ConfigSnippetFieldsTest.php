@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Swag\AssistantStarterKit\Core\Config\SystemConfigWidgetSettings;
 
 /**
  * The strings a shopper reads, offered to the merchant in the plugin's own configuration form.
@@ -51,6 +52,38 @@ final class ConfigSnippetFieldsTest extends TestCase
                 \sprintf('config.xml offers no snippet field for "%s".', $suggestion),
             );
         }
+    }
+
+    /**
+     * The switch that drops the chip row, and the default that keeps it.
+     *
+     * Blanking all three snippets has always dropped the chips, and that is exactly why this needs a
+     * test rather than a reading: a snippet is one string per snippet set, so the escape hatch is
+     * three fields *per language*, and a merchant who cleared the German three still served the
+     * shipped English three. The switch is the only control that answers the question per sales
+     * channel.
+     *
+     * The field's absence would be silent in both directions, which is this file's recurring theme:
+     * {@see SystemConfigWidgetSettings::areSuggestionsEnabled()} treats an unset key as **on**, so a
+     * `config.xml` without this field leaves the reader answering "on" forever and the merchant with
+     * nothing to disagree with — a switch that does not exist, reported as a switch that is on.
+     */
+    public function testTheSuggestionChipsCanBeSwitchedOffAndShipSwitchedOn(): void
+    {
+        $xml = simplexml_load_file(__DIR__ . '/../src/Resources/config/config.xml');
+        self::assertNotFalse($xml);
+
+        $fields = $xml->xpath('//card[name="chatSuggestions"]/input-field[name="showSuggestions"]');
+        self::assertIsArray($fields);
+        self::assertCount(1, $fields, 'config.xml offers no switch for the suggestion chips.');
+
+        $field = $fields[0] ?? null;
+        self::assertInstanceOf(\SimpleXMLElement::class, $field);
+
+        self::assertSame('bool', (string) $field['type']);
+        // Shipped on, because every shop that already runs this plugin shows the chips today and an
+        // update must not quietly take them away.
+        self::assertSame('true', (string) $field->defaultValue);
     }
 
     /**

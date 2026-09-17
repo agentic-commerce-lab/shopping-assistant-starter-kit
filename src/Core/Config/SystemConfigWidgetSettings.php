@@ -47,6 +47,28 @@ final readonly class SystemConfigWidgetSettings
     }
 
     /**
+     * Whether the greeting is followed by the row of suggestion chips.
+     *
+     * The chips themselves are snippets, and blanking all three has always dropped them — but a
+     * snippet is one string per snippet set, so "all three" is three fields *per language*, and a
+     * shop that cleared the German three kept serving the shipped English three. This is the one
+     * control that answers the question per sales channel.
+     *
+     * Raw `get()` and `filter_var` for the same two reasons as {@see self::isWidgetEnabled()}: the
+     * documented default is **on**, and `getBool()` cannot tell an absent key from a stored `false`.
+     */
+    public function areSuggestionsEnabled(string $salesChannelId): bool
+    {
+        $value = $this->systemConfig->get(SystemConfigAssistantConfig::PREFIX . 'showSuggestions', $salesChannelId);
+
+        if ($value === null) {
+            return true;
+        }
+
+        return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
      * The merchant's appearance choices, validated.
      *
      * Returns a value object rather than three strings because the foreground is *derived* from the

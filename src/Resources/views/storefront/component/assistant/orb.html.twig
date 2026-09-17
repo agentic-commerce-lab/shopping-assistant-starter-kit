@@ -20,6 +20,11 @@
             the shop's own greeting was stored as " Hey, ich bin Gustav 👋 …". #}
          data-greeting="{{ 'swagAssistant.panel.defaultGreeting'|trans|trim }}"
          data-add-to-cart-enabled="{{ swag_assistant_add_to_cart_enabled(context.salesChannelId) ? 'true' : 'false' }}"
+         {# Emitted as the negative case only in the sense that the reader treats anything but the
+            literal `false` as on — see `panel.plugin.js`. A theme carrying an older copy of this
+            template omits the attribute entirely, and the chips must survive that rather than
+            disappear from a shop nobody changed. #}
+         data-suggestions-enabled="{{ swag_assistant_suggestions_enabled(context.salesChannelId) ? 'true' : 'false' }}"
          data-entry-point="{{ theme.entryPointStyle }}"
          {# What the current page is about, so the assistant knows what "this" means.
 

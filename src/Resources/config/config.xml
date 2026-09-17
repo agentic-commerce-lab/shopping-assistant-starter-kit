@@ -380,10 +380,18 @@
     <card>
         <name>chatSuggestions</name>
         <title>Things a shopper could ask</title>
-        <subtitle>The three chips under the greeting. They are the first thing a shopper reads, and
-            the shipped ones are written for a shop that sells anything — yours can say what you
-            actually sell. Clear a field to drop that chip; clear all three and the greeting stands
-            on its own.</subtitle>
+        <subtitle>The chips under the greeting. They are the first thing a shopper reads, and the
+            shipped ones are written for a shop that sells anything — yours can say what you actually
+            sell.</subtitle>
+
+        <input-field type="bool">
+            <name>showSuggestions</name>
+            <label>Show the chips under the greeting</label>
+            <defaultValue>true</defaultValue>
+            <helpText>Off leaves the greeting standing on its own and the shopper typing their own
+                first question. The three fields below stay editable either way — they are snippets,
+                and clearing one still drops that single chip, per language.</helpText>
+        </input-field>
 
         <component name="sw-snippet-field">
             <name>suggestionOne</name>
