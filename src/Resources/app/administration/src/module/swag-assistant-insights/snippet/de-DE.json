@@ -23,12 +23,12 @@
             "noRuns": "Es gibt noch keine Läufe, die sich darstellen ließen.",
             "funnel": "Gespräche und Warenkörbe",
             "searches": "Suchen ohne Ergebnis oder mit zu vielen Treffern",
-            "descriptions": "Turns, in denen Ihre Produktbeschreibungen genutzt wurden",
+            "descriptions": "Züge, in denen Ihre Produktbeschreibungen genutzt wurden",
             "problems": "Züge, die schiefgegangen sind"
         },
         "technical": {
             "title": "Technisch",
-            "description": "Zwei Zahlen für die technische Betreuung: abgebrochene Turns und Eskalationen ohne hinterlegtes Ziel.",
+            "description": "Zwei Zahlen für die technische Betreuung: abgebrochene Züge und Eskalationen ohne hinterlegtes Ziel.",
             "noRun": "Noch kein Lauf abgeschlossen, also gibt es nichts zu zählen.",
             "escalationHint": "Kunden haben nach einem Menschen gefragt und der Assistent hatte kein Ziel dafür. Hinterlegen Sie in den Plugin-Einstellungen eine Eskalationsadresse."
         },
