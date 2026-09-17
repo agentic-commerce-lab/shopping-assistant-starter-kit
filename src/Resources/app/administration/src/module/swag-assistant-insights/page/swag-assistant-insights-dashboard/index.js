@@ -1,5 +1,7 @@
 import './swag-assistant-insights-dashboard.scss';
-import { RETENTION_FALLBACK_DAYS, runState } from './runs';
+import { CHART_GROUPS, technicalRows } from './sections';
+import { MAX_TERMS, RETENTION_FALLBACK_DAYS, runState, searchTermLists as termListsFor } from './runs';
+import { severityVariant as variantFor, worklistOrder } from './findings';
 import { lineOptions, seriesFor } from './trends';
 import template from './swag-assistant-insights-dashboard.html.twig';
 
@@ -22,16 +24,6 @@ const TREND_RUNS = 30;
  * the bottom half never gets read.
  */
 const FINDING_LIMIT = 100;
-
-/**
- * Worst first.
- *
- * Sorted here rather than in the DAL because `severity` is a string column: `ORDER BY severity`
- * gives critical, info, warning — alphabetical, which puts the two that matter either side of the
- * one that does not. `injection_attempt` is always `info` by construction, so without this the
- * loudest-sounding findings sit at the top while a critical one sits below them.
- */
-const SEVERITY_RANK = { critical: 0, warning: 1, info: 2 };
 
 /**
  * A stored boolean, read the way the server reads it.
@@ -145,72 +137,30 @@ Shopware.Component.register('swag-assistant-insights-dashboard', {
 
         /** Worst first, and stable within a severity so two reloads read the same. */
         worklist() {
-            return [...this.findings].sort((left, right) => this.rank(left) - this.rank(right));
+            return worklistOrder(this.findings);
         },
 
         /**
-         * Three charts, and each one is a shape a merchant can act on.
+         * The two search-term lists for the selected run, dropped when there is nothing to explain.
          *
-         * The grouping rule is unchanged: every chart holds series whose magnitudes are comparable,
-         * because a line chart with 300 turns and 3 unsupported claims on one y-axis draws the
-         * second series flat along the axis and hides it. So the funnel's three counts sit
-         * together, the two search outcomes sit together, and the three "the turn went wrong"
-         * counts share the third.
-         *
-         * **The description-coverage chart is gone rather than moved, and that is a judgement
-         * call.** Measured over this shop's traces, an excerpt reaches the model almost only when a
-         * search narrows to three or fewer survivors — 16 of 25 at one survivor, 0 of 10 at twelve
-         * — so the pair mostly measures how broadly shoppers phrased their questions. That is worth
-         * knowing once, as two numbers in the technical section; it is not worth a month-long trend
-         * beside the cart funnel, where it invited a merchant to rewrite product text that would
-         * still not be sent. Moving the chart down instead would have put a lone line chart under a
-         * row of numbers — a third layout idiom in that section, for a metric whose shape nobody
-         * reads.
-         *
-         * `turnsFoundNothing` and `turnsOverCap` are the renamed `searchesEmpty`/`searchesOverCap`
-         * (see `SearchOutcomes`). Keeping the old keys here after the rename is exactly what made
-         * this chart plot an empty series, so the names are the same ones `InsightMetrics::counts()`
-         * writes and a test now reads that list rather than a copy of it.
+         * A list survives into the template when its COUNT is non-zero — not when it has words. A
+         * run with three turns that found nothing and no recorded terms still has something true to
+         * say; a run where nothing went wrong has no heading to earn.
          */
+        searchTermLists() {
+            return termListsFor(this.selectedRun).filter((list) => list.count > 0);
+        },
+
         charts() {
-            return [
-                { key: 'funnel', keys: ['conversations', 'cartAdded', 'checkoutOffered'] },
-                { key: 'searches', keys: ['turnsFoundNothing', 'turnsOverCap'] },
-                { key: 'problems', keys: ['unsupportedClaims', 'abortedTurns', 'escalations'] },
-            ].map((chart) => ({
+            return CHART_GROUPS.map((chart) => ({
                 key: chart.key,
                 options: lineOptions(this.$tc(`swag-assistant-insights.trends.${chart.key}`)),
                 series: this.named(seriesFor(this.runs, chart.keys)),
             }));
         },
 
-        /**
-         * The technical half: the counts that belong to whoever maintains the plugin.
-         *
-         * `escalationsWithoutDestination` is the one that is a misconfiguration rather than a
-         * measurement — a shopper asked for a human and there was nowhere to send them — so it
-         * carries an `alarming` flag and the template colours it. The others are facts about the
-         * model and the shop.
-         *
-         * **The two description counts moved here out of the merchant half**, where they were
-         * presented as a measure of product data and are not one: they measure how often the
-         * shortlist was narrow enough for `ShortlistDescriptions` to hand an excerpt over, which is
-         * a fact about query breadth and about this plugin's own threshold. Shown to a merchant,
-         * "110 of 135 turns without your descriptions" reads as an instruction to rewrite text that
-         * will still not be sent. Shown to whoever installed the plugin, it says whether the
-         * hand-over path is working at all — which is what this section is for.
-         */
         technical() {
-            return [
-                { key: 'abortedTurns', alarming: false },
-                { key: 'escalations', alarming: false },
-                {
-                    key: 'escalationsWithoutDestination',
-                    alarming: (this.metrics.escalationsWithoutDestination ?? 0) > 0,
-                },
-                { key: 'turnsWithDescription', alarming: false },
-                { key: 'turnsWithoutDescription', alarming: false },
-            ];
+            return technicalRows(this.metrics);
         },
     },
 
@@ -316,10 +266,6 @@ Shopware.Component.register('swag-assistant-insights-dashboard', {
             }
         },
 
-        rank(finding) {
-            return SEVERITY_RANK[finding.severity] ?? SEVERITY_RANK.info;
-        },
-
         /**
          * Metric keys are internal names; a legend is read by a merchant.
          *
@@ -350,19 +296,8 @@ Shopware.Component.register('swag-assistant-insights-dashboard', {
             return this.$tc(`swag-assistant-insights.severity.${severity ?? 'info'}`);
         },
 
-        /**
-         * Severity to an `sw-label` variant.
-         *
-         * `danger`, not `error`: `sw-label` validates against info, danger, success, warning,
-         * neutral, neutral-reversed and primary. An unknown variant is not rejected — the class
-         * simply never matches, so the label renders grey and the severity is silently gone, the
-         * same failure the trace view hit with `sw-alert variant="error"`.
-         *
-         * A severity the closed set does not cover falls to `neutral` rather than to `danger`:
-         * guessing loud on an unknown value is how a dashboard cries wolf.
-         */
         severityVariant(severity) {
-            return { critical: 'danger', warning: 'warning', info: 'info' }[severity] ?? 'neutral';
+            return variantFor(severity);
         },
 
         /**
@@ -402,6 +337,16 @@ Shopware.Component.register('swag-assistant-insights-dashboard', {
                 hour: 'numeric',
                 minute: 'numeric',
             });
+        },
+
+        /**
+         * That a term list is only the first {@see MAX_TERMS} of them.
+         *
+         * `$t`, not `$tc`, for the same reason as every other interpolated string on this page:
+         * `$tc`'s second argument is the pluralization choice and silently drops named values.
+         */
+        cappedNotice() {
+            return this.$t('swag-assistant-insights.terms.capped', { count: MAX_TERMS });
         },
 
         /**

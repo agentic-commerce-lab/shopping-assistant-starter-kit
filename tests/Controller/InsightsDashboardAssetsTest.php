@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Controller;
 
+use Swag\AssistantStarterKit\Core\Insights\Metric\SearchOutcomes;
 use Swag\AssistantStarterKit\Core\Trace\Retention\TraceRetentionSettings;
 
 /**
@@ -86,6 +87,32 @@ final class InsightsDashboardAssetsTest extends InsightsModuleTestCase
             $runs,
         );
         self::assertStringContainsString("state === 'pruned'", self::twig());
+    }
+
+    public function testTheStoredSearchTermsReachThePageInAllThreeStates(): void
+    {
+        // `search_terms` held the only words a merchant could act on and nothing read it: the page
+        // said "3 turns found nothing" and never "Zündkerzen, Helm".
+        //
+        // The three states are the point. A pruned list and a list that never had words both render
+        // as no words, and here — unlike the findings — they are exactly distinguishable, because
+        // `InsightRetentionPruner` sets the column to NULL and the writer never writes null.
+        $twig = self::twig();
+
+        self::assertStringContainsString('searchTermLists', $twig);
+        self::assertStringContainsString('v-if="list.pruned"', $twig);
+        self::assertStringContainsString('v-else-if="list.terms.length"', $twig);
+        self::assertStringContainsString('v-if="list.capped"', $twig);
+    }
+
+    public function testTheTermCapMatchesTheNumberTheAggregatorActuallyStores(): void
+    {
+        // A list at the cap is a sample, and a merchant told otherwise stocks 25 things and still
+        // has the gap. `runs.js` mirrors the constant to say so; a drift would make the page
+        // announce a sample that is not one, or stay silent about one that is.
+        $runs = self::read(self::PAGE . '/runs.js');
+
+        self::assertStringContainsString('MAX_TERMS = ' . SearchOutcomes::MAX_TERMS . ';', $runs);
     }
 
     public function testThePageRendersTheFindingsAndTheCharts(): void

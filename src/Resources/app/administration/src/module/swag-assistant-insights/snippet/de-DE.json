@@ -36,6 +36,18 @@
             "conversationGone": "Konversation nicht mehr gespeichert",
             "suggestion": "Vorschlag"
         },
+        "terms": {
+            "title": "Wonach gesucht wurde",
+            "caption": "Der erste Suchbegriff des Assistenten in diesen Zügen, gebildet aus dem, was der Kunde geschrieben hat. Nicht die Worte des Kunden selbst.",
+            "pruned": "Die Wörter wurden mit den Konversationen gelöscht, aus denen sie stammen. Die Zahl bleibt erhalten.",
+            "capped": "Nur die ersten {count}; es waren mehr.",
+            "empty": {
+                "advice": "Nichts im Katalog hat gepasst. Entweder fehlen die Produkte, oder sie sind mit anderen Wörtern beschrieben."
+            },
+            "overCap": {
+                "advice": "Zu viele Produkte haben gepasst, als dass der Assistent antworten könnte. Hier helfen engere Filter, kein größeres Sortiment."
+            }
+        },
         "severity": {
             "info": "Hinweis",
             "warning": "Warnung",

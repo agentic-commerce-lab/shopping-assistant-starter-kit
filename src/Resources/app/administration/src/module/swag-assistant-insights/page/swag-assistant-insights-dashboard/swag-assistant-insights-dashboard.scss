@@ -135,6 +135,132 @@
         text-transform: uppercase;
     }
 
+    /*
+     * The stored search terms, under the findings and above the seam.
+     *
+     * Separated from the worklist by a rule for the same reason the technical section is: it
+     * answers a different question. The findings say what went wrong in a conversation; these say
+     * what shoppers were looking for.
+     */
+    &__terms {
+        border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
+        margin-top: 24px;
+        padding-top: 20px;
+    }
+
+    &__terms-title {
+        color: var(--color-text-primary-default, #37444f);
+        font-size: var(--font-size-s, 14px);
+        margin: 0;
+    }
+
+    &__terms-caption {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        margin: 4px 0 16px;
+        max-width: 80ch;
+    }
+
+    /* Side by side where there is room, so the contrast between the two is immediate rather than
+       something a merchant reconstructs by scrolling. Same `auto-fit` idiom as the charts. */
+    &__term-lists {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    /*
+     * **The two lists must not read as one list shown twice.**
+     *
+     * "Found nothing" is a gap in the catalogue and the fix is stock or wording; "over the cap" is
+     * a question too broad to answer and the fix is filters. Three things carry that apart, and
+     * only one of them is colour: each block states its own advice in a sentence, each keeps the
+     * metric's own heading, and the accent rail differs. Colour alone would be unreadable to a
+     * colour-blind merchant and gone in a printed screenshot — the same rule as the severity word
+     * beside the finding labels.
+     *
+     * Amber for the gap, because it is the one that costs a sale. Blue for the cap, because it is
+     * information rather than a fault — a shop that matches 400 products for "Kette" is working
+     * correctly and is being asked the wrong question.
+     */
+    &__term-list {
+        border-left: 3px solid var(--color-border-primary-default, #d1d9e0);
+        padding-left: 12px;
+
+        &.is--empty {
+            border-left-color: var(--color-border-attention-default, #e8a33d);
+        }
+
+        &.is--overCap {
+            border-left-color: var(--color-border-brand-default, #0870ff);
+        }
+    }
+
+    &__term-head {
+        align-items: baseline;
+        display: flex;
+        gap: 8px;
+    }
+
+    &__term-heading {
+        color: var(--color-text-primary-default, #37444f);
+        font-weight: 600;
+    }
+
+    &__term-count {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__term-advice {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        margin: 4px 0 10px;
+    }
+
+    /*
+     * **A term is a string that was searched, not a product and not a button.**
+     *
+     * So: no chip, no border, no background, no link colour, nothing that survives a hover. Chips
+     * read as filters a merchant can click, and a boxed word beside a product catalogue reads as an
+     * item the shop stocks — which is the opposite of what "found nothing" means. Monospace and a
+     * middot separator say "these are the literal strings that were sent to the search", which is
+     * all they are.
+     */
+    &__term-words {
+        display: flex;
+        flex-wrap: wrap;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    &__term {
+        color: var(--color-text-primary-default, #37444f);
+        font-family: var(--font-family-code, monospace);
+        font-size: var(--font-size-xs, 12px);
+        overflow-wrap: anywhere;
+
+        &:not(:last-child)::after {
+            color: var(--color-text-secondary-default, #758ca3);
+            content: "·";
+            padding: 0 6px;
+        }
+    }
+
+    /* Italic for an absence, as the timeline's "waiting" row already does on the trace detail. */
+    &__term-gone,
+    &__term-capped {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        font-style: italic;
+        margin: 0;
+    }
+
+    &__term-capped {
+        margin-top: 8px;
+    }
+
     /* -- 2. Trends ------------------------------------------------------------------------- */
 
     /*

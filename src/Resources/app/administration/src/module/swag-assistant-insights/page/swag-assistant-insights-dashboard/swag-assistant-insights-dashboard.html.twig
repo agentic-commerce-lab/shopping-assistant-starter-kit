@@ -183,6 +183,95 @@
                         </li>
                     </ul>
                     {% endblock %}
+
+                    {# The words behind two of the numbers, and the only place the run's stored
+                       `search_terms` is read at all. A merchant reading "3 turns found nothing"
+                       cannot act on it; reading "Zündkerzen, Helm" they can.
+
+                       Outside the empty-state chain above on purpose: a run whose judge found
+                       nothing, or failed, still searched, so these lists do not belong to the
+                       findings' state. They render whenever a count is non-zero. #}
+                    {% block swag_assistant_insights_dashboard_search_terms %}
+                    <div
+                        v-if="searchTermLists.length"
+                        class="swag-assistant-insights-dashboard__terms"
+                    >
+                        <h4 class="swag-assistant-insights-dashboard__terms-title">
+                            {{ $tc('swag-assistant-insights.terms.title') }}
+                        </h4>
+
+                        {# Said once, and said exactly. These are the assistant's first search term
+                           per turn, derived from the shopper's sentence — NOT the sentence. A
+                           caption claiming "what your shoppers searched for" would be a small lie
+                           that a merchant would act on, because it changes whether the words are
+                           evidence about their customers or about this plugin. #}
+                        <p class="swag-assistant-insights-dashboard__terms-caption">
+                            {{ $tc('swag-assistant-insights.terms.caption') }}
+                        </p>
+
+                        <div class="swag-assistant-insights-dashboard__term-lists">
+                            <div
+                                v-for="list in searchTermLists"
+                                :key="list.key"
+                                :class="[
+                                    'swag-assistant-insights-dashboard__term-list',
+                                    `is--${list.key}`,
+                                ]"
+                            >
+                                <div class="swag-assistant-insights-dashboard__term-head">
+                                    {# The metric's own label, not a second copy of it, so this
+                                       heading and the chart legend above cannot drift apart. #}
+                                    <span class="swag-assistant-insights-dashboard__term-heading">
+                                        {{ metricLabel(list.metricKey) }}
+                                    </span>
+                                    <span class="swag-assistant-insights-dashboard__term-count">
+                                        {{ list.count }}
+                                    </span>
+                                </div>
+
+                                {# What to do about it, which is the whole difference between the
+                                   two lists: one is a gap in the catalogue, the other is a query
+                                   too broad to answer. Written out rather than left to the colour. #}
+                                <p class="swag-assistant-insights-dashboard__term-advice">
+                                    {{ $tc(`swag-assistant-insights.terms.${list.key}.advice`) }}
+                                </p>
+
+                                {# Three states, and the third is the one that reads like the
+                                   second. `search_terms` is set to NULL by the pruner and is never
+                                   written as null, so "retention took the words" and "there were no
+                                   words" are exactly distinguishable — no date heuristic needed
+                                   here, unlike the findings. A run with a count and no words says
+                                   nothing rather than showing an empty list. #}
+                                <p
+                                    v-if="list.pruned"
+                                    class="swag-assistant-insights-dashboard__term-gone"
+                                >
+                                    {{ $tc('swag-assistant-insights.terms.pruned') }}
+                                </p>
+
+                                <ul
+                                    v-else-if="list.terms.length"
+                                    class="swag-assistant-insights-dashboard__term-words"
+                                >
+                                    <li
+                                        v-for="term in list.terms"
+                                        :key="term"
+                                        class="swag-assistant-insights-dashboard__term"
+                                    >{{ term }}</li>
+                                </ul>
+
+                                {# At the cap the merchant is reading a sample. Without this they
+                                   stock twenty-five things and still have the gap. #}
+                                <p
+                                    v-if="list.capped"
+                                    class="swag-assistant-insights-dashboard__term-capped"
+                                >
+                                    {{ cappedNotice() }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endblock %}
                 </sw-card>
                 {% endblock %}
 

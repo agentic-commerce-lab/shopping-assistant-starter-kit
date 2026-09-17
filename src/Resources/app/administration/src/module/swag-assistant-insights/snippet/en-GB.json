@@ -36,6 +36,18 @@
             "conversationGone": "Conversation no longer stored",
             "suggestion": "Suggestion"
         },
+        "terms": {
+            "title": "What was searched",
+            "caption": "The assistant's first search term for each of these turns, built from what the shopper wrote. Not the shopper's own words.",
+            "pruned": "The words were deleted with the conversations they came from. The count is kept.",
+            "capped": "The first {count} only; there were more.",
+            "empty": {
+                "advice": "Nothing in the catalogue matched. Either the products are missing, or they are described in other words."
+            },
+            "overCap": {
+                "advice": "Too many products matched for the assistant to answer. These need narrower filters, not more stock."
+            }
+        },
         "severity": {
             "info": "Info",
             "warning": "Warning",
