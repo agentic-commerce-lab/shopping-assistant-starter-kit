@@ -38,7 +38,17 @@
     "thinking": {
       "start": "Ich denke nach…",
       "waiting": "Ich suche noch. Einen Moment.",
-      "patient": "Das dauert diesmal etwas länger."
+      "patient": "Das dauert diesmal etwas länger.",
+      "stepReading": "Ich lese deine Frage",
+      "stepSearching": "Ich durchsuche das Sortiment",
+      "stepVariants": "Ich gleiche die Varianten ab",
+      "stepAvailability": "Ich prüfe die Verfügbarkeit",
+      "stepComposing": "Ich stelle die Antwort zusammen",
+      "stepNarrowing": "Ich grenze die Treffer ein",
+      "stepChecking": "Ich prüfe das noch einmal nach",
+      "stepTidying": "Ich sortiere das Ergebnis",
+      "stepRummaging": "Ich krame noch in den Regalen",
+      "stepPondering": "Ich denke kurz darüber nach"
     },
     "handoff": {
       "message": "Das Shop-Team kann dir hier weiterhelfen.",
