@@ -1,6 +1,14 @@
 import './swag-assistant-insights-dashboard.scss';
-import { CHART_GROUPS, technicalRows } from './sections';
-import { MAX_TERMS, RETENTION_FALLBACK_DAYS, runState, searchTermLists as termListsFor } from './runs';
+import { CHART_GROUPS, technicalGroups } from './sections';
+import { RETENTION_FALLBACK_DAYS, runState, searchTermLists as termListsFor } from './runs';
+import {
+    cappedNotice,
+    countLabel,
+    discardedNotice,
+    prunedNotice,
+    runLabel,
+    windowLabel,
+} from './wording';
 import { severityVariant as variantFor, worklistOrder } from './findings';
 import { lineOptions, seriesFor } from './trends';
 import template from './swag-assistant-insights-dashboard.html.twig';
@@ -160,7 +168,17 @@ Shopware.Component.register('swag-assistant-insights-dashboard', {
         },
 
         technical() {
-            return technicalRows(this.metrics);
+            return technicalGroups(this.metrics);
+        },
+
+        /**
+         * How many of this run's findings the validator refused.
+         *
+         * Read straight off `metrics`, where `InsightRunWriter` merges it alongside the aggregated
+         * counts rather than giving it a column: it is an integer that names nobody.
+         */
+        discardedCount() {
+            return this.metrics.judgeFindingsDiscarded ?? 0;
         },
     },
 
@@ -300,64 +318,28 @@ Shopware.Component.register('swag-assistant-insights-dashboard', {
             return variantFor(severity);
         },
 
-        /**
-         * The window the run covered, as one sentence.
-         *
-         * `$t`, not `$tc`: `$tc`'s second argument is the pluralization choice, and passing named
-         * values through it drops them silently — the trace list shipped a label reading
-         * "Export all 175 as" with nothing after the "as" for exactly this reason.
-         */
         windowLabel(run) {
-            return this.$t('swag-assistant-insights.lastNight.window', {
-                start: Shopware.Utils.format.date(run.windowStart),
-                end: Shopware.Utils.format.date(run.windowEnd),
-            });
+            return windowLabel(this.$t, run);
         },
 
-        /**
-         * One run, as one date, for the picker.
-         *
-         * **Not `windowLabel()`, and that is a defect found by looking at it.** The full window
-         * reads "Covering 15 September 2026 at 09:00 to 16 September 2026 at 09:00" — 62 characters
-         * — and `sw-single-select` does not clip its selected label: it wrapped out of the control,
-         * under the chevron, in the first browser it was opened in. Widening the select was the
-         * wrong fix; the range is redundant in a list where every row is one night, and the card's
-         * subtitle already prints the window in full once a run is selected.
-         *
-         * The END of the window, not the start: a night's report is the one a merchant reads that
-         * morning, and "16 September" is how they refer to it. The time stays because a replay can
-         * write a second run ending on the same day, and two identical options in a dropdown is a
-         * choice nobody can make.
-         */
         runLabel(run) {
-            return Shopware.Utils.format.date(run.windowEnd, {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-            });
+            return runLabel(run);
         },
 
-        /**
-         * That a term list is only the first {@see MAX_TERMS} of them.
-         *
-         * `$t`, not `$tc`, for the same reason as every other interpolated string on this page:
-         * `$tc`'s second argument is the pluralization choice and silently drops named values.
-         */
+        countLabel(list) {
+            return countLabel(this.$t, list);
+        },
+
+        discardedNotice() {
+            return discardedNotice(this.$t, this.discardedCount);
+        },
+
         cappedNotice() {
-            return this.$t('swag-assistant-insights.terms.capped', { count: MAX_TERMS });
+            return cappedNotice(this.$t);
         },
 
-        /**
-         * Why an old run's findings list is empty, with the number that decided it.
-         *
-         * The retention window is named rather than described, because "older than your retention
-         * window" invites the question this sentence exists to answer and the merchant would have
-         * to go and look it up in another card.
-         */
         prunedNotice() {
-            return this.$t('swag-assistant-insights.empty.pruned', { days: this.retentionDays });
+            return prunedNotice(this.$t, this.retentionDays);
         },
     },
 });

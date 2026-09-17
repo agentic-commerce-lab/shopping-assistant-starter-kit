@@ -45,6 +45,10 @@ export const CHART_GROUPS = [
  * carries an `alarming` flag and the template colours it. The others are facts about the
  * model and the shop.
  *
+ * Grouped rather than one flat row: seven heterogeneous figures side by side is a wall, and
+ * the previous five only grouped correctly because the column count happened to break in the
+ * right place. The groups state the boundary instead of depending on it.
+ *
  * **The two description counts moved here out of the merchant half**, where they were
  * presented as a measure of product data and are not one: they measure how often the
  * shortlist was narrow enough for `ShortlistDescriptions` to hand an excerpt over, which is
@@ -53,12 +57,36 @@ export const CHART_GROUPS = [
  * will still not be sent. Shown to whoever installed the plugin, it says whether the
  * hand-over path is working at all — which is what this section is for.
  */
-export function technicalRows(metrics) {
+export function technicalGroups(metrics) {
     return [
-        { key: 'abortedTurns', alarming: false },
-        { key: 'escalations', alarming: false },
-        { key: 'escalationsWithoutDestination', alarming: (metrics.escalationsWithoutDestination ?? 0) > 0 },
-        { key: 'turnsWithDescription', alarming: false },
-        { key: 'turnsWithoutDescription', alarming: false },
+        {
+            key: 'turns',
+            rows: [
+                { key: 'abortedTurns', alarming: false },
+                { key: 'escalations', alarming: false },
+                {
+                    key: 'escalationsWithoutDestination',
+                    alarming: (metrics.escalationsWithoutDestination ?? 0) > 0,
+                },
+            ],
+        },
+        {
+            key: 'descriptions',
+            rows: [
+                { key: 'turnsWithDescription', alarming: false },
+                { key: 'turnsWithoutDescription', alarming: false },
+            ],
+        },
+        {
+            // The judge's own health, not the shop's. `judgeFindingsDiscarded` is NOT alarming
+            // here: a few refused rows in a large batch are normal, and colouring it red every
+            // night would train a reader to ignore the one night it matters. The findings block
+            // carries the loud version, where an empty worklist would otherwise lie.
+            key: 'judge',
+            rows: [
+                { key: 'judgeConversationsDropped', alarming: false },
+                { key: 'judgeFindingsDiscarded', alarming: false },
+            ],
+        },
     ];
 }

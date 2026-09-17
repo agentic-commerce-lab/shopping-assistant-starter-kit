@@ -388,7 +388,23 @@
     }
 
     /*
-     * Five counts, and the floor is 260px rather than 180px so they lay out three and two instead
+     * One group per kind of number, so seven figures do not read as one wall. The heading is quiet
+     * and small: it separates, it does not compete with the section heading above it.
+     */
+    &__number-group + &__number-group {
+        margin-top: 24px;
+    }
+
+    &__number-group-title {
+        color: var(--color-text-secondary-default, #758ca3);
+        font-size: var(--font-size-xs, 12px);
+        letter-spacing: 0.04em;
+        margin: 0 0 12px;
+        text-transform: uppercase;
+    }
+
+    /*
+     * The floor is 260px rather than 180px so they lay out three and two instead
      * of four and one. Two reasons, one of them lucky: an orphan on a second row reads as an
      * unfinished grid, and the order in `technical()` puts the three "the turn went wrong" counts
      * first, so a break after the third happens to land on the boundary between those and the two

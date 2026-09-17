@@ -27,9 +27,14 @@
         },
         "technical": {
             "title": "Technisch",
-            "description": "Zahlen für die technische Betreuung: abgebrochene Züge, Eskalationen ohne hinterlegtes Ziel und wie oft eine Vorauswahl schmal genug war, damit ein Beschreibungsauszug das Modell erreicht.",
+            "description": "Zahlen für die technische Betreuung: wo Züge geendet sind, wie oft ein Beschreibungsauszug das Modell erreicht hat und wie der Judge selbst gelaufen ist.",
             "noRun": "Noch kein Lauf abgeschlossen, also gibt es nichts zu zählen.",
-            "escalationHint": "Kunden haben nach einem Menschen gefragt und der Assistent hatte kein Ziel dafür. Hinterlegen Sie in den Plugin-Einstellungen eine Eskalationsadresse."
+            "escalationHint": "Kunden haben nach einem Menschen gefragt und der Assistent hatte kein Ziel dafür. Hinterlegen Sie in den Plugin-Einstellungen eine Eskalationsadresse.",
+            "group": {
+                "turns": "Züge",
+                "descriptions": "Beschreibungsauszüge",
+                "judge": "Der Judge"
+            }
         },
         "finding": {
             "openConversation": "Konversation öffnen",
@@ -46,7 +51,12 @@
             },
             "overCap": {
                 "advice": "Zu viele Produkte haben gepasst, als dass der Assistent antworten könnte. Hier helfen engere Filter, kein größeres Sortiment."
-            }
+            },
+            "proportion": "{count} von {total}"
+        },
+        "judge": {
+            "discarded": "{count} Befunde ließen sich nicht überprüfen und wurden weggelassen: ein Zitat, das in der genannten Konversation nicht vorkommt, ein Typ außerhalb der Liste oder eine Konversation außerhalb der Stichprobe.",
+            "nothingVerified": "Der Judge hat geantwortet, aber nichts davon ließ sich überprüfen"
         },
         "severity": {
             "info": "Hinweis",

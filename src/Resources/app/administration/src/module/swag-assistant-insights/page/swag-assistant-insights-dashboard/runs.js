@@ -93,6 +93,10 @@ export function searchTermLists(run) {
             key,
             metricKey,
             count: metrics[metricKey] ?? 0,
+            // The denominator travels with the numerator so the template never divides and never
+            // pairs a count with the wrong total. Zero when a run predates `searchTurns`, which the
+            // page reads as "no denominator to show" rather than as a division by zero.
+            total: metrics.searchTurns ?? 0,
             terms,
             pruned: stored === null,
             capped: terms.length >= MAX_TERMS,

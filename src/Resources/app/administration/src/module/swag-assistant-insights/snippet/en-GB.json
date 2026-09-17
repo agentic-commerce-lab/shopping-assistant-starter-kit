@@ -27,9 +27,14 @@
         },
         "technical": {
             "title": "Technical",
-            "description": "Numbers for whoever maintains the shop: turns that broke off before the assistant could answer, escalations with no destination set, and how often a shortlist was narrow enough for a description excerpt to reach the model.",
+            "description": "Numbers for whoever maintains the shop: where turns ended, how often a description excerpt reached the model, and how the nightly judge itself fared.",
             "noRun": "No run has finished yet, so there is nothing to count.",
-            "escalationHint": "Shoppers asked for a person and the assistant had nowhere to send them. Set an escalation destination in the plugin settings."
+            "escalationHint": "Shoppers asked for a person and the assistant had nowhere to send them. Set an escalation destination in the plugin settings.",
+            "group": {
+                "turns": "Turns",
+                "descriptions": "Description excerpts",
+                "judge": "The judge"
+            }
         },
         "finding": {
             "openConversation": "Open the conversation",
@@ -46,7 +51,12 @@
             },
             "overCap": {
                 "advice": "Too many products matched for the assistant to answer. These need narrower filters, not more stock."
-            }
+            },
+            "proportion": "{count} of {total}"
+        },
+        "judge": {
+            "discarded": "{count} findings could not be verified and were left out: a quote that did not occur in the conversation it named, a type outside the set, or a conversation outside the sample.",
+            "nothingVerified": "The judge answered, but none of it could be verified"
         },
         "severity": {
             "info": "Info",

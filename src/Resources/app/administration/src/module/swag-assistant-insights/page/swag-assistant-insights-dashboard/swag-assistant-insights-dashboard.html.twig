@@ -106,6 +106,19 @@
                         {{ prunedNotice() }}
                     </sw-alert>
 
+                    {# **This branch exists to stop the green box lying.** A judge can answer, be
+                       parsed, and have every row refused, and the run then stores zero findings —
+                       at which point "nothing worth reporting" is a broken control reading as good
+                       news. So when nothing survived verification the positive box is not shown at
+                       all; this replaces it, and only the title is loud. #}
+                    <sw-alert
+                        v-else-if="state === 'nothingFound' && discardedCount"
+                        variant="info"
+                        :title="$tc('swag-assistant-insights.judge.nothingVerified')"
+                    >
+                        {{ discardedNotice() }}
+                    </sw-alert>
+
                     <sw-alert v-else-if="state === 'nothingFound'" variant="positive">
                         {{ $tc('swag-assistant-insights.empty.nothingFound') }}
                     </sw-alert>
@@ -184,6 +197,29 @@
                     </ul>
                     {% endblock %}
 
+                    {# **An empty worklist is not the same as a quiet night**, and until this line
+                       existed the page could not tell them apart. A judge can answer, be parsed,
+                       and have every row refused — a quote that does not occur in the conversation
+                       it names, a type outside the closed set, a conversation outside the sample.
+                       The run then stores zero findings and the page said "nothing worth
+                       reporting", which is a broken control reading as good news.
+
+                       This is the annotation for every state EXCEPT `nothingFound`: findings
+                       survived, or the run is pruned, or the judge errored, and some rows were
+                       refused on top. "Two were kept and three refused" is worth knowing too. The
+                       case where NOTHING survived is handled in the chain above, because there the
+                       notice has to replace the green box rather than sit under it. `info`, never
+                       `attention` or `critical` — a few discards in a large batch are normal, and a
+                       red box every night teaches a reader to skip the one night it matters. #}
+                    {% block swag_assistant_insights_dashboard_discarded %}
+                    <sw-alert
+                        v-if="discardedCount && state !== 'nothingFound'"
+                        variant="info"
+                    >
+                        {{ discardedNotice() }}
+                    </sw-alert>
+                    {% endblock %}
+
                     {# The words behind two of the numbers, and the only place the run's stored
                        `search_terms` is read at all. A merchant reading "3 turns found nothing"
                        cannot act on it; reading "Zündkerzen, Helm" they can.
@@ -224,8 +260,11 @@
                                     <span class="swag-assistant-insights-dashboard__term-heading">
                                         {{ metricLabel(list.metricKey) }}
                                     </span>
+                                    {# The count as a proportion of the turns that searched, so
+                                       nobody has to divide. Falls back to the bare number on a run
+                                       written before `searchTurns` existed. #}
                                     <span class="swag-assistant-insights-dashboard__term-count">
-                                        {{ list.count }}
+                                        {{ countLabel(list) }}
                                     </span>
                                 </div>
 
@@ -348,23 +387,38 @@
                         </sw-alert>
 
                         <template v-else>
-                            <dl class="swag-assistant-insights-dashboard__numbers">
-                                <div
-                                    v-for="row in technical"
-                                    :key="row.key"
-                                    class="swag-assistant-insights-dashboard__number"
-                                >
-                                    <dt class="swag-assistant-insights-dashboard__number-label">
-                                        {{ metricLabel(row.key) }}
-                                    </dt>
-                                    <dd
-                                        class="swag-assistant-insights-dashboard__number-value"
-                                        :class="{ 'is--alarming': row.alarming }"
+                            {# Grouped rather than one flat row of seven. Five already only grouped
+                               correctly because the column count happened to break in the right
+                               place; seven breaks three-three-one and lands two unrelated figures
+                               on one line. The sub-headings state the boundary instead of leaving
+                               it to arithmetic. #}
+                            <div
+                                v-for="group in technical"
+                                :key="group.key"
+                                class="swag-assistant-insights-dashboard__number-group"
+                            >
+                                <h4 class="swag-assistant-insights-dashboard__number-group-title">
+                                    {{ $tc(`swag-assistant-insights.technical.group.${group.key}`) }}
+                                </h4>
+
+                                <dl class="swag-assistant-insights-dashboard__numbers">
+                                    <div
+                                        v-for="row in group.rows"
+                                        :key="row.key"
+                                        class="swag-assistant-insights-dashboard__number"
                                     >
-                                        {{ metricValue(row.key) }}
-                                    </dd>
-                                </div>
-                            </dl>
+                                        <dt class="swag-assistant-insights-dashboard__number-label">
+                                            {{ metricLabel(row.key) }}
+                                        </dt>
+                                        <dd
+                                            class="swag-assistant-insights-dashboard__number-value"
+                                            :class="{ 'is--alarming': row.alarming }"
+                                        >
+                                            {{ metricValue(row.key) }}
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
 
                             {# Only when there is something to fix. A permanent instruction about
                                escalation destinations on a shop with none escalating is noise, and

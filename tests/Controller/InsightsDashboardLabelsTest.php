@@ -55,6 +55,45 @@ final class InsightsDashboardLabelsTest extends InsightsModuleTestCase
         }
     }
 
+    /**
+     * The counts `InsightRunWriter` merges into the metrics JSON, which the test above cannot see.
+     *
+     * `aggregate([])->counts()` is the aggregator's key set, and the judge's own two counts are not
+     * in it — they are added when the row is written, so a missing label for either would reach a
+     * merchant as a raw `judgeFindingsDiscarded`. Read out of the writer's own array literal rather
+     * than copied here, for the reason the test above records: a hand-copied list went stale and
+     * stayed green through a rename.
+     *
+     * Honest limit: this reads the keys written INSIDE the `'metrics' => [...]` literal, so a count
+     * merged some other way would still be missed.
+     */
+    public function testEveryCountTheWriterMergesInHasALabel(): void
+    {
+        $writer = self::read(__DIR__ . '/../../src/Core/Insights/InsightRunWriter.php');
+
+        self::assertSame(1, preg_match("/'metrics' => \\[(.*?)\\],/s", $writer, $block));
+
+        preg_match_all("/'([A-Za-z]+)' =>/", (string) ($block[1] ?? ''), $merged);
+
+        $keys = $merged[1] ?? [];
+
+        self::assertNotSame([], $keys, 'the writer merges no named counts; this regex is stale');
+
+        $en = self::snippets('en-GB');
+        $de = self::snippets('de-DE');
+        $path = 'swag-assistant-insights.metric.';
+
+        $missing = array_values(array_filter(
+            $keys,
+            static fn(string $key): bool => (
+                self::leaf($en, $path . $key) === ''
+                || self::leaf($de, $path . $key) === ''
+            ),
+        ));
+
+        self::assertSame([], $missing, 'no label in both languages for: ' . implode(', ', $missing));
+    }
+
     public function testEveryFindingTypeAndSeverityHasALabel(): void
     {
         // The closed sets from `JudgeFindingType` and the severity column. A judge response is
@@ -117,24 +156,5 @@ final class InsightsDashboardLabelsTest extends InsightsModuleTestCase
         sort($unique);
 
         return $unique;
-    }
-
-    /**
-     * @param array<mixed> $tree
-     *
-     * @return list<string>
-     */
-    private static function keys(array $tree, string $prefix = ''): array
-    {
-        $keys = [];
-
-        foreach ($tree as $key => $value) {
-            $path = ltrim($prefix . '.' . $key, '.');
-            $keys = [...$keys, ...(\is_array($value) ? self::keys($value, $path) : [$path])];
-        }
-
-        sort($keys);
-
-        return $keys;
     }
 }

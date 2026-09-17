@@ -68,6 +68,30 @@ abstract class InsightsModuleTestCase extends TestCase
         return \is_string($node) ? $node : '';
     }
 
+    /**
+     * Every leaf path in a snippet tree, sorted — the shape the two languages are compared as.
+     *
+     * Here beside {@see self::leaf()} because both walk the same tree, and because leaving it in
+     * the labels class pushed that class past mago's class-level cyclomatic-complexity limit.
+     *
+     * @param array<mixed> $tree
+     *
+     * @return list<string>
+     */
+    protected static function keys(array $tree, string $prefix = ''): array
+    {
+        $keys = [];
+
+        foreach ($tree as $key => $value) {
+            $path = ltrim($prefix . '.' . $key, '.');
+            $keys = [...$keys, ...(\is_array($value) ? self::keys($value, $path) : [$path])];
+        }
+
+        sort($keys);
+
+        return $keys;
+    }
+
     protected static function read(string $path): string
     {
         $contents = file_get_contents($path);
