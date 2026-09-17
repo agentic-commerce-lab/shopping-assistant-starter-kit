@@ -161,7 +161,7 @@ final class InsightsAggregatorTest extends TestCase
 
         $metrics = InsightsAggregator::aggregate([$trace]);
 
-        self::assertSame(1, $metrics->counts()['searchesEmpty']);
+        self::assertSame(1, $metrics->counts()['turnsFoundNothing']);
         self::assertSame(['harley'], $metrics->searchTerms()['empty']);
         self::assertArrayNotHasKey('empty', $metrics->counts());
     }

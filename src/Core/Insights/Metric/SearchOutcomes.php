@@ -7,52 +7,52 @@ namespace Swag\AssistantStarterKit\Core\Insights\Metric;
 use Swag\AssistantStarterKit\Core\Insights\ConversationTrace;
 
 /**
- * Searches that found nothing, and searches the shop could only call "many".
+ * Turns where the shopper's search found nothing, and turns where it found more than the shop will
+ * put a number on.
  *
- * The two halves are one merchant action each, in opposite directions. Nothing found means the
- * catalogue lacks the product or the words for it. "Many" means the shopper was handed a category
- * rather than an answer, and the facets are too coarse to narrow it.
+ * Two merchant actions, in opposite directions. Nothing found means the catalogue lacks the product
+ * or the words for it, and the words are listed. Too much found means the shopper was handed a
+ * category rather than an answer, and the filters are too coarse to narrow it.
  *
- * ## Read off `tool.result`, not off `retrieve` — and that was a real bug
+ * ## Counted per TURN, on that turn's first search
  *
- * The first version of this class read `query`, `total` and `many` from the `retrieve` payload.
- * **None of those keys exists there.** A dry run against an archived corpus of 131 real
- * conversations on 2026-09-16 reported zero empty searches, which is what exposed it: `retrieve`
- * carries `hits`, `categoryId`, `retainedIds` and `candidateLimit`, while the count the model was
- * actually handed is `total` on the `tool.result` that follows. The metric was silently dead — the
- * worst state for a control, because it reads as good news. Reading the real keys finds 8 empty
- * searches in that corpus, for words including *"Sattel"*, *"headphones"* and *"rower"*.
+ * See {@see FirstSearchOfTurn} for why, and for what it undercounts. The short version: the
+ * assistant retries a failed search in another language, so counting searches turned three shoppers
+ * into five and listed the assistant's own English guesses as if a shopper had typed them.
  *
- * `total` rather than `retrieve`'s `hits` deliberately: `hits` is the gateway's raw candidate count,
- * and a search that found candidates and then filtered them all away still handed the model nothing.
- * What the model saw is what the shopper saw.
+ * ## The cap is read off `matched`, not off the `many` flag — and that reverses an earlier decision
  *
- * ## `many`, and no threshold of our own
+ * `SearchResultCounts` sets `many: true` when its exact match count reports itself capped, and
+ * reading that flag was the obvious choice: it is the shop's own statement rather than a threshold
+ * of ours. **Measured on 2026-09-17 over 257 real `tool.result` events in a 118 232-product shop:
+ * the flag appears 0 times, while 109 of those events carry `matched >= 100`.** The flag only
+ * appears on the path that computes an exact count, and that path did not run once. So the metric
+ * read a signal that never fires and reported zero for 42 % of searches.
  *
- * The over-cap half reads only `many === true`, which is
- * {@see \Swag\AssistantStarterKit\Core\Tool\SearchResultCounts}' own statement that it will not put
- * a figure behind the count. Inferring the cap from `matched >= 100` would be this class inventing
- * a threshold the shop never published, and the cap is not a public constant. The cost is that
- * traces written before that flag existed report nothing here; the alternative was a number we
- * would have had to keep in sync by hand.
- *
- * ## The terms are capped
- *
- * "12 searches found nothing" is not actionable; the twelve words are. But an uncapped list turns
- * the run row into a text table and reopens D23's split, so 25 distinct terms per half is the
- * limit — enough to act on, not enough to become an archive.
+ * {@see self::MATCH_CAP} is therefore read directly. It duplicates a number that lives in
+ * `SearchResultCounts`, which is the cost; the alternative was a metric that is structurally always
+ * zero, which is worse than duplication because it reads as good news.
  */
 final readonly class SearchOutcomes
 {
     public const MAX_TERMS = 25;
 
     /**
+     * The point past which the shop stops putting a figure behind a match count.
+     *
+     * Mirrors the cap in {@see \Swag\AssistantStarterKit\Core\Tool\SearchResultCounts}, which does
+     * not expose it as a constant. If that cap moves, this has to move with it — and a test over a
+     * real export is what would notice, since nothing connects the two in code.
+     */
+    public const MATCH_CAP = 100;
+
+    /**
      * @param list<string> $emptyTerms
      * @param list<string> $overCapTerms
      */
     private function __construct(
-        public int $searchesEmpty,
-        public int $searchesOverCap,
+        public int $turnsFoundNothing,
+        public int $turnsOverCap,
         public array $emptyTerms,
         public array $overCapTerms,
     ) {}
@@ -66,20 +66,15 @@ final readonly class SearchOutcomes
         $overCapTerms = [];
 
         foreach ($traces as $trace) {
-            $term = '';
-
-            foreach ($trace->events as $event) {
-                $term = SearchedTerm::carriedThrough($event, $term);
-                $payload = $event['stage'] === 'tool.result' ? $event['payload'] : [];
-
-                if (($payload['total'] ?? null) === 0) {
+            foreach (FirstSearchOfTurn::in($trace) as $search) {
+                if ($search['total'] === 0) {
                     ++$empty;
-                    $emptyTerms[$term] = true;
+                    $emptyTerms[$search['term']] = true;
                 }
 
-                if (($payload['many'] ?? null) === true) {
+                if ($search['matched'] >= self::MATCH_CAP) {
                     ++$overCap;
-                    $overCapTerms[$term] = true;
+                    $overCapTerms[$search['term']] = true;
                 }
             }
         }
