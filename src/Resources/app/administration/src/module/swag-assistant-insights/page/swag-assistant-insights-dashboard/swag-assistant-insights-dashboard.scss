@@ -163,11 +163,49 @@
      * legible before the heading is read. The card below it deliberately has no title: the heading
      * above IS its title, and repeating it would undo the separation by making this look like a
      * fourth section of the merchant half.
+     *
+     * **`max-width` and `margin-inline` so the heading lines up with the numbers it introduces.**
+     * Because the heading sits outside the card it also sits outside the card's geometry, and
+     * `mt-card` is `max-width: 60rem; margin: 0 auto` — so on a wide monitor the card centres
+     * itself inside this wrapper while the heading stays at the wrapper's left edge. Measured at a
+     * 1900px viewport: the heading started at x=340 and the first number under it at x=638, nearly
+     * 300px apart, and the text read as belonging to nothing. Padding alone cannot fix that, since
+     * the gap is half the leftover width and therefore changes with the window.
+     *
+     * The two numbers come from different places on purpose. `--scale-size-24` is the token
+     * `mt-card__content` sets its own inset from, so the inset follows Meteor if Meteor changes it.
+     * `60rem` is a literal because `mt-card` declares it as a literal with no token behind it —
+     * copying the number is the only way to match the box, and it is commented rather than hidden.
+     * If a card-width token ever appears, this is the line to change.
+     *
+     * **The inset goes on the three text elements, never on this wrapper.** Padding here would eat
+     * into the box the card inside also lives in, shrinking it to 912px while the two cards above
+     * stay at 960px — fixing the heading by misaligning the card it introduces.
+     *
+     * The rule now spans the card's width instead of the viewport's, which is the better reading of
+     * the seam anyway: it separates the two halves of THIS page, not the whole screen.
      */
     &__technical {
         border-top: 1px solid var(--color-border-primary-default, #d1d9e0);
         margin-top: 40px;
+        margin-inline: auto;
+        max-width: 60rem;
         padding-top: 32px;
+    }
+
+    /*
+     * The card's own content inset, so these three line up with the labels under them. Measured
+     * after the change at a 1900px viewport: heading, note and window text all start at x=637 and
+     * the first number's label at x=638.
+     *
+     * That last pixel is the card's own 1px border, which this wrapper does not have, and it is
+     * left alone deliberately: a `calc(… + 1px)` here would encode a third piece of `mt-card`'s
+     * internals to correct a difference nobody can see.
+     */
+    &__technical-title,
+    &__technical-note,
+    &__technical-window {
+        padding-inline: var(--scale-size-24, 1.5rem);
     }
 
     &__technical-title {

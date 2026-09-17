@@ -7,7 +7,7 @@
         "empty": {
             "disabled": "Nightly insights are switched off. Nothing is being measured and nothing is being spent. Switch on Generate insights every night in the plugin settings to start; the first report appears after the next nightly run.",
             "noRuns": "No run has finished yet. The task runs once a night, so the first report appears the morning after the feature is switched on.",
-            "nothingFound": "This run found nothing worth reporting. Its counts and the trends below still come from it.",
+            "nothingFound": "This run found nothing worth reporting. Its counts still feed the numbers and trends below.",
             "pruned": "This run is older than your retention window of {days} days. Its findings quoted shoppers, so they were deleted along with those conversations; its counts and the trends below are kept."
         },
         "lastNight": {
@@ -23,12 +23,12 @@
             "noRuns": "There are no runs to plot yet.",
             "funnel": "Conversations and carts",
             "searches": "Searches that found nothing, or too much",
-            "descriptions": "Turns your product descriptions reached",
+            "descriptions": "Turns where your product descriptions were used",
             "problems": "Turns that went wrong"
         },
         "technical": {
             "title": "Technical",
-            "description": "For whoever installed the plugin rather than whoever sells the products: where turns broke off, and whether a shopper who asked for a person had anywhere to go.",
+            "description": "Two numbers for whoever maintains the shop: turns that broke off before the assistant could answer, and escalations with no destination set.",
             "noRun": "No run has finished yet, so there is nothing to count.",
             "escalationHint": "Shoppers asked for a person and the assistant had nowhere to send them. Set an escalation destination in the plugin settings."
         },

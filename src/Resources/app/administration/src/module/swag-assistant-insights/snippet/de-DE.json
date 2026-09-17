@@ -7,7 +7,7 @@
         "empty": {
             "disabled": "Die nächtliche Auswertung ist ausgeschaltet. Es wird nichts gemessen und nichts abgerechnet. Schalten Sie in den Plugin-Einstellungen Jede Nacht eine Auswertung erzeugen ein; der erste Bericht erscheint nach dem nächsten nächtlichen Lauf.",
             "noRuns": "Noch kein Lauf ist abgeschlossen. Die Aufgabe läuft einmal pro Nacht, der erste Bericht erscheint also am Morgen nach dem Einschalten.",
-            "nothingFound": "Dieser Lauf hat nichts Berichtenswertes gefunden. Die Zahlen und die Verläufe unten stammen trotzdem aus diesem Lauf.",
+            "nothingFound": "Dieser Lauf hat nichts Berichtenswertes gefunden. Seine Zahlen stehen weiter in den Werten und Kurven unten.",
             "pruned": "Dieser Lauf ist älter als Ihre Aufbewahrungsfrist von {days} Tagen. Seine Befunde haben Kunden zitiert und wurden deshalb mit diesen Konversationen gelöscht; die Zahlen und die Verläufe unten bleiben erhalten."
         },
         "lastNight": {
@@ -23,12 +23,12 @@
             "noRuns": "Es gibt noch keine Läufe, die sich darstellen ließen.",
             "funnel": "Gespräche und Warenkörbe",
             "searches": "Suchen ohne Ergebnis oder mit zu vielen Treffern",
-            "descriptions": "Züge, die Ihre Produktbeschreibungen erreicht haben",
+            "descriptions": "Turns, in denen Ihre Produktbeschreibungen genutzt wurden",
             "problems": "Züge, die schiefgegangen sind"
         },
         "technical": {
             "title": "Technisch",
-            "description": "Für diejenigen, die das Plugin installiert haben, nicht für diejenigen, die die Produkte verkaufen: wo Züge abgebrochen sind und ob ein Kunde, der nach einem Menschen gefragt hat, irgendwohin weitergeleitet werden konnte.",
+            "description": "Zwei Zahlen für die technische Betreuung: abgebrochene Turns und Eskalationen ohne hinterlegtes Ziel.",
             "noRun": "Noch kein Lauf abgeschlossen, also gibt es nichts zu zählen.",
             "escalationHint": "Kunden haben nach einem Menschen gefragt und der Assistent hatte kein Ziel dafür. Hinterlegen Sie in den Plugin-Einstellungen eine Eskalationsadresse."
         },
