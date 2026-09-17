@@ -156,6 +156,38 @@
         min-width: 0;
     }
 
+    /*
+     * Give the hover tooltip's dots their series colours back.
+     *
+     * **This is a CSS defect, not a chart-options one, and no option can reach it.** The tooltip's
+     * dot is a `::before` pseudo-element rendering the glyph `●`, and ApexCharts colours it the
+     * correct way: it sets an inline `color` on each marker — read live, the three markers of the
+     * funnel chart carried `#0870ff`, `#16c39a` and `#ffab22` — and its own stylesheet paints the
+     * glyph with `color: currentcolor`. Then the Administration overrides it:
+     *
+     *     .apexcharts-canvas .apexcharts-tooltip-marker::before {
+     *         color: var(--color-icon-brand-default) !important;
+     *     }
+     *
+     * `!important` on a pseudo-element beats every inline `color` ApexCharts writes, so all three
+     * dots rendered brand blue while the lines beside them were three different colours — which is
+     * worst on exactly the charts that need the tooltip, the multi-series ones. `tooltip.marker
+     * .fillColors` would not have helped: it sets the same inline `color` that is already correct
+     * and already being overridden.
+     *
+     * So this restores ApexCharts' own value, with one more class of specificity and scoped to this
+     * page. Not a global override: a plugin has no business restyling every chart in the
+     * Administration, and on a single-series chart the brand colour is a defensible choice.
+     *
+     * Swept the rest of that stylesheet for the same shape (every `!important` rule touching
+     * `apexcharts`): the others set the tooltip's shadow, background, border, title font and the
+     * x-axis pill's colours, all of which are series-independent. This is the only per-series
+     * colour any of them flattens.
+     */
+    .apexcharts-canvas .apexcharts-tooltip-marker::before {
+        color: currentcolor !important;
+    }
+
     /* -- 3. Technical ---------------------------------------------------------------------- */
 
     /*

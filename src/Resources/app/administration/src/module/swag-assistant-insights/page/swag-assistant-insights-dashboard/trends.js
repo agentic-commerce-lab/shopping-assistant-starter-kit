@@ -39,6 +39,21 @@ export function seriesFor(runs, metricKeys) {
  *
  * `dashArray` carries the same distinction without colour, for a merchant who cannot separate the
  * green from the amber and for the screenshot that ends up in a black-and-white print-out.
+ *
+ * **Deliberately NOT also passed to `tooltip.marker.fillColors`.** The hover tooltip's dots were
+ * all brand blue, and it looks like the same class of bug — but it is not an options problem at
+ * all: ApexCharts already writes the correct per-series `color` on each tooltip marker, and the
+ * Administration's own stylesheet overrides the dot with `color: … !important`. No value passed
+ * here can beat that, and passing this list again would add a second copy of the palette that can
+ * drift from the first while fixing nothing. The fix is the CSS override in this page's SCSS, which
+ * restores `currentcolor` and so keeps ONE source of truth: this array.
+ *
+ * `defaultOptions` was read end to end for other single-colour values a multi-series chart needs a
+ * list for. `stroke.colors` is the only one. `title.style.color`, `xaxis`/`yaxis`
+ * `labels.style.colors`, `axisBorder.color`, `axisTicks.color`, `crosshairs.stroke.color` and
+ * `grid.borderColor` are all correctly one colour — they paint chart furniture, not series — and
+ * `markers` carries only a size, so the point markers take their colour from `colors` above and
+ * were already right. There are no `dataLabels` on a line chart by default, and none render here.
  */
 const SERIES_COLOURS = ['#0870ff', '#16c39a', '#ffab22'];
 
