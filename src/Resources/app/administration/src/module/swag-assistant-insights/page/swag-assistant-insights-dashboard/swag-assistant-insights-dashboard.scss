@@ -261,14 +261,36 @@
         margin: 0 0 16px;
     }
 
+    /*
+     * Five counts, and the floor is 260px rather than 180px so they lay out three and two instead
+     * of four and one. Two reasons, one of them lucky: an orphan on a second row reads as an
+     * unfinished grid, and the order in `technical()` puts the three "the turn went wrong" counts
+     * first, so a break after the third happens to land on the boundary between those and the two
+     * excerpt hand-over counts. The grouping is not enforced by this — a different card width would
+     * break elsewhere — but nothing depends on it either, and the grid stays tidy at every width.
+     */
     &__numbers {
         display: grid;
         gap: 24px;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
         margin: 0;
     }
 
+    /*
+     * A column per cell so the NUMBERS line up across a row even when one label wraps to two lines.
+     * Without this the label pushed its own value down and the row of figures went ragged — seen
+     * the moment "Turns given a description excerpt" was added beside three short labels. The
+     * labels were shortened as well, but the layout should not depend on that holding: any
+     * translation can be longer than its English.
+     */
+    &__number {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Takes the slack in the column above, which is what pins the value to the cell's bottom. */
     &__number-label {
+        flex: 1 1 auto;
         color: var(--color-text-secondary-default, #758ca3);
         font-size: var(--font-size-xs, 12px);
     }

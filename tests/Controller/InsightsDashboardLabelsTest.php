@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Controller;
 
+use Swag\AssistantStarterKit\Core\Insights\InsightsAggregator;
+
 /**
  * Every label the dashboard needs, in both languages.
  *
@@ -20,37 +22,31 @@ namespace Swag\AssistantStarterKit\Tests\Controller;
  */
 final class InsightsDashboardLabelsTest extends InsightsModuleTestCase
 {
-    /**
-     * Every key `metrics` can hold, copied from `InsightMetrics::toArray()`.
-     *
-     * Copied rather than imported on purpose: the point is that the *Administration* knows about
-     * all of them. Reading the list from the PHP class would let a key be added to both sides of a
-     * shared constant and still reach a merchant untranslated.
-     */
-    private const METRIC_KEYS = [
-        'conversations',
-        'cartAdded',
-        'checkoutOffered',
-        'searchesEmpty',
-        'searchesOverCap',
-        'turnsWithDescription',
-        'turnsWithoutDescription',
-        'unsupportedClaims',
-        'abortedTurns',
-        'escalations',
-        'escalationsWithoutDestination',
-    ];
-
     public function testEveryLabelExistsInBothLanguages(): void
     {
         self::assertSame(self::keys(self::snippets('en-GB')), self::keys(self::snippets('de-DE')));
     }
 
+    /**
+     * Every key a run can actually store, read from the class that produces them.
+     *
+     * **This used to be a hand-copied list, and that was wrong in a way this project then paid
+     * for.** The old docblock argued that copying kept the Administration honest, because a shared
+     * constant could be renamed on both sides and still reach a merchant untranslated. The real
+     * outcome was the opposite: `searchesEmpty` and `searchesOverCap` were renamed to
+     * `turnsFoundNothing` and `turnsOverCap` in the metrics, the page went on asking for the old
+     * keys and plotted an empty chart, and this test stayed green because it was checking labels
+     * for keys nothing produced any more.
+     *
+     * `aggregate([])` over no traces is the cheapest honest source: it is the real producer, it
+     * needs no fixture, and every count comes back zero — the values are irrelevant here, only the
+     * key set is. A rename now fails this test until the snippets follow.
+     */
     public function testEveryMetricTheRunStoresHasALabel(): void
     {
         $en = self::snippets('en-GB');
 
-        foreach (self::METRIC_KEYS as $key) {
+        foreach (array_keys(InsightsAggregator::aggregate([])->counts()) as $key) {
             self::assertNotSame(
                 '',
                 self::leaf($en, 'swag-assistant-insights.metric.' . $key),
