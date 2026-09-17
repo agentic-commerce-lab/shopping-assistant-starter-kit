@@ -57,10 +57,29 @@ final class JudgeFindings
     public static function validate(string $json, array $traces): ValidatedFindings
     {
         /** @var mixed $decoded */
-        $decoded = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
+        try {
+            $decoded = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException $malformed) {
+            // **The reason travels with the failure, and that is not decoration.** A run recorded
+            // `judgeError: "Syntax error"` on 2026-09-17 — `json_decode`'s own message, which says
+            // nothing about what the model actually sent. The failure is stored and shown to a
+            // merchant, so it has to be diagnosable by whoever reads it rather than only by
+            // whoever can re-run the request. A fenced code block, an apology, a refusal and a
+            // truncated array all produce the same three words otherwise.
+            throw new \JsonException(
+                \sprintf('%s. The judge answered: %s', $malformed->getMessage(), self::excerpt($json)),
+                // `Throwable::getCode()` is `int|string` by its own signature; `JsonException`
+                // only ever carries an int, and the cast is what makes that provable.
+                (int) $malformed->getCode(),
+                $malformed,
+            );
+        }
 
         if (!\is_array($decoded)) {
-            throw new \JsonException('The judge answered with something that is not a list of findings.');
+            throw new \JsonException(\sprintf(
+                'The judge answered with something that is not a list of findings: %s',
+                self::excerpt($json),
+            ));
         }
 
         // One case-folded haystack per conversation, built once before the rows are walked: a judge
@@ -92,5 +111,24 @@ final class JudgeFindings
         }
 
         return new ValidatedFindings($findings, $discarded, $reasons);
+    }
+
+    /**
+     * The first of the model's answer, for an error message a person has to act on.
+     *
+     * Bounded because this string is written to `insight_run.judge_error`, a `VARCHAR(255)` column,
+     * and because the useful part of a malformed answer is always its opening — a fence, an
+     * apology, a refusal. Whitespace is collapsed so a pretty-printed refusal does not spend the
+     * budget on newlines.
+     */
+    private static function excerpt(string $json): string
+    {
+        $flat = trim((string) preg_replace('/\s+/', ' ', $json));
+
+        if ($flat === '') {
+            return '(nothing at all)';
+        }
+
+        return mb_strlen($flat) > 120 ? mb_substr($flat, 0, 120) . '…' : $flat;
     }
 }
