@@ -1,15 +1,15 @@
 /*
 Assistant widget — the wait
 ==============================================
-A real turn takes ~19 seconds, measured, which makes this the single most important element in the
-widget. A two-second loop played ten times is where "cute" goes to die, so the indicator is *phased*:
-the copy changes as the wait goes on, and what a shopper perceives is state changing rather than one
-animation repeating.
+Measured over 223 real turns: the median wait is **3.7 s**, p90 is 13.7 s and the longest was 74.5 s.
+That spread is what this element has to survive, and the old four-phase copy did not — its first swap
+fired at 3000 ms, so on about half of all turns the line a shopper saw never changed at all.
 
-**Nothing here claims to know what the server is doing.** Trace events are persisted once, after the
-run completes, so there is no progress signal to read — a line like "searching the catalogue…" would
-be invented, in a product whose whole thesis is that the interface never states what the server did
-not produce. The copy only ever says how long it has been, which is something we actually know.
+So the copy now *steps*: `thinking.js` types one line in, holds it, takes it out, and starts the next.
+The steps name the pipeline every turn actually walks (91 % of turns run a tool call, 99 % reach
+grounding and render) but they are played on a timer, not read from the server — there is still no
+progress signal, because trace events are persisted once, after the run completes. **What is invented
+is the timing, never the work**, and nothing here ever names a product, a count or a price.
 
 ## Two indicators, one per entry point
 
@@ -38,12 +38,51 @@ that exists to avoid looking wrong while asserting something untrue is two probl
     animation: swag-assistant-thinking-in 300ms $swag-assistant-ease-out both;
 }
 
+/*
+The typed line.
+
+`thinking.js` types each step in a character at a time, holds it, and takes it back out. The element
+is created once and only its text changes, so the fade below plays on arrival and never again — the
+typing is what marks each swap now.
+
+`min-height` rather than letting the row collapse: the text is empty for a frame between one step
+being deleted and the next being typed, and a line that loses its height there drags the whole log up
+and down for the length of the wait.
+
+The caret is `::after` on the same element so it sits flush against the last character without a
+wrapper, and it blinks on its own clock rather than with the dots — two rhythms at one tempo read as
+a single stuttering thing.
+*/
 .swag-assistant-thinking__copy {
     color: $swag-assistant-meta;
+    display: inline-flex;
+    align-items: center;
+    min-height: 16px;
     font-size: 12px;
     font-weight: 500;
-    // The copy swaps four times across ~19s. Fading each one in stops the change reading as a glitch.
     animation: swag-assistant-thinking-copy 300ms $swag-assistant-ease-out;
+
+    &::after {
+        display: inline-block;
+        width: 1px;
+        height: 11px;
+        margin-left: 2px;
+        background: $swag-assistant-meta;
+        opacity: 0.7;
+        animation: swag-assistant-think-caret 1000ms steps(1, end) infinite;
+        content: '';
+    }
+}
+
+/* Announced, never shown. `say()` replaces this node so `role="log"` picks the change up; the typed
+   line above is `aria-hidden` precisely so it does not. Same pattern as `.swag-assistant-composer__label`. */
+.swag-assistant-thinking__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
 /*
@@ -162,6 +201,18 @@ pulsing in a row from looking like a countdown.
     }
 }
 
+@keyframes swag-assistant-think-caret {
+    0%,
+    50% {
+        opacity: 0.7;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
+}
+
 @keyframes swag-assistant-thinking-copy {
     from {
         opacity: 0;
@@ -245,10 +296,17 @@ full opacity rather than animated, which reads as "waiting" without moving.
     .swag-assistant-thinking,
     .swag-assistant-thinking__orb,
     .swag-assistant-thinking__copy,
+    .swag-assistant-thinking__copy::after,
     .swag-assistant-thinking__dot,
     [data-phase] .swag-assistant-thinking__orb {
         animation: none;
         transition: none;
+    }
+
+    // Nothing types in this branch — `thinking.js` sets each step whole — so a caret would be a
+    // cursor sitting after finished text, which reads as a stall rather than as work.
+    .swag-assistant-thinking__copy::after {
+        display: none;
     }
 
     .swag-assistant-thinking__dot {

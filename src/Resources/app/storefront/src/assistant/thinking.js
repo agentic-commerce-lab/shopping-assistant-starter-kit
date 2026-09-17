@@ -6,11 +6,26 @@
  * the indicator is *phased*: the copy changes as the wait goes on, and what a shopper perceives is
  * state changing — which reads as progress.
  *
- * **The copy deliberately claims nothing about what the server is doing.** Trace events are persisted
- * once, after the run completes, so there is no progress signal to read — a line like "searching the
- * catalogue…" would be invented. That would put an unbacked claim about server work into a product
- * whose entire thesis is that the interface never states what the server did not produce. So the copy
- * only ever says how long it has been, which is something we actually know.
+ * ## The copy is paced, not read — and that is a deliberate, bounded lie
+ *
+ * There is still no progress signal: trace events are persisted once, after the run completes. So the
+ * steps below are **not** read from the server. They are the pipeline every turn actually walks,
+ * played back on a timer.
+ *
+ * That is a claim about server work, which this file previously refused to make, so the bound matters:
+ * measured over 223 real turns (`assistant-traces-2026-09-16.json`), **91 % ran a tool call, 99 %
+ * reached grounding and render**. The ordered steps are therefore true of almost every turn — what is
+ * invented is the *timing*, never the work. Live stage data would not fix that: the same measurement
+ * shows the tool calls bunch into 0.1 s of each other and then the model thinks alone, so a truthful
+ * indicator would flicker four times in 1.4 s and then freeze for 65 % of the wait (98 % at p90).
+ *
+ * **The creature may be playful; the icon may not.** A shopper who was given the neutral entry point
+ * was not given a personality, which is the same argument that keeps the face off the dots. So the
+ * long-wait pool splits: the icon keeps naming the pipeline, the creature is allowed to be charming
+ * about it.
+ *
+ * What is still forbidden here, unchanged: naming a product, a count, a price, or anything the
+ * shopper could mistake for a result. The steps describe *activity*, never *findings*.
  *
  * ## Two indicators, because there are two entry points
  *
@@ -21,8 +36,8 @@
  * giving it a shaded sphere with eyes for nineteen seconds is the widget disagreeing with itself
  * about what it is — a merchant who picked "neutral" did not pick a face that only appears while
  * they wait. The dots also keep **one steady rhythm** rather than the creature's four acts: an
- * indicator that performs an act structure is not a neutral indicator. The phase copy still changes
- * on both, because that is the part carrying information rather than personality.
+ * indicator that performs an act structure is not a neutral indicator. The step copy still runs on
+ * both, because that is the part carrying information rather than personality.
  *
  * `_icons.scss` already reserved this: it says three dots are a *state* and belong to the thinking
  * indicator rather than to the entry point. This is where that promise gets kept.
@@ -48,9 +63,58 @@ const PHASES = [
 
 const DOT_COUNT = 3;
 
+/**
+ * The steps every turn really walks, in the order it walks them.
+ *
+ * Five, because the median turn is 3.7 s and each step costs roughly 1.5 s — a sixth would only ever
+ * be seen by the tail. They stop at "putting it together" rather than naming a result, because the
+ * indicator is removed the moment a result exists.
+ */
+const STEPS = ['stepReading', 'stepSearching', 'stepVariants', 'stepAvailability', 'stepComposing'];
+
+/**
+ * What plays once the five are spent — p90 is 13.7 s and the maximum measured turn was 74.5 s, so
+ * something has to follow them or the wait ends on a frozen line, which is the failure this whole
+ * change exists to remove.
+ *
+ * Shuffled rather than looped: a shopper who sees the same three in the same order twice has learned
+ * the indicator is a loop, and a loop tells them nothing is happening.
+ */
+const STEPS_LONG = ['stepNarrowing', 'stepChecking', 'stepTidying'];
+
+/** Creature only. See the entry-point argument in this file's header. */
+const STEPS_LONG_CREATURE = ['stepRummaging', 'stepPondering'];
+
+/**
+ * Typing speeds, in milliseconds per character, and the pause between.
+ *
+ * Out is faster than in: deleting a line the shopper has already read is dead time, while typing one
+ * they have not is the part that reads as work. ~22 characters therefore costs about 1.5 s all in.
+ */
+const TYPE_IN_MS = 22;
+const TYPE_OUT_MS = 12;
+const HOLD_MS = 800;
+
+/** With motion reduced nothing types, so the whole budget goes to the one thing left: reading time. */
+const HOLD_STILL_MS = 2200;
+
+/** Fisher-Yates. `sort(() => Math.random() - 0.5)` is not a shuffle and biases the first position. */
+function shuffle(keys) {
+    const out = keys.slice();
+
+    for (let i = out.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+
+        [out[i], out[j]] = [out[j], out[i]];
+    }
+
+    return out;
+}
+
 export function createThinking(log, translations) {
     let el = null;
     let timers = [];
+    let ticker = null;
 
     /**
      * Read from the DOM rather than passed in, because the entry point is already on the widget root
@@ -75,10 +139,19 @@ export function createThinking(log, translations) {
 
         el.appendChild(style === 'creature' ? creatureStage(el) : dotsStage());
 
+        // The typed line is decoration for the eye only. A screen reader following it character by
+        // character would announce forty times what `say()` announces three times, so the visual
+        // element is hidden from the tree and the announcement keeps its own node below.
+        const copy = document.createElement('span');
+        copy.className = 'swag-assistant-thinking__copy';
+        copy.setAttribute('aria-hidden', 'true');
+        el.appendChild(copy);
+
         log.appendChild(el);
         log.scrollTop = log.scrollHeight;
 
         say(PHASES[0].copy);
+        runSteps(style, copy);
 
         timers = PHASES.map(({ at, phase, mood, copy }) => window.setTimeout(() => {
             if (!el) {
@@ -138,17 +211,95 @@ export function createThinking(log, translations) {
      * announced is not optional, and it is also what re-plays the fade.
      */
     function say(key) {
-        el.querySelector('.swag-assistant-thinking__copy')?.remove();
+        el.querySelector('.swag-assistant-thinking__sr')?.remove();
 
-        const copy = document.createElement('span');
-        copy.className = 'swag-assistant-thinking__copy';
-        copy.textContent = translations[key] ?? '';
-        el.appendChild(copy);
+        const spoken = document.createElement('span');
+        spoken.className = 'swag-assistant-thinking__sr';
+        spoken.textContent = translations[key] ?? '';
+        el.appendChild(spoken);
+    }
+
+    /**
+     * Types each step in, holds it, types it out, then takes the next one.
+     *
+     * A chained timeout rather than an interval: the cadence depends on the length of the line being
+     * typed, and an interval that does not know that drifts out of step with the text it is driving.
+     */
+    function runSteps(style, copy) {
+        const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+        const pool = STEPS_LONG.concat(style === 'creature' ? STEPS_LONG_CREATURE : []);
+        const queue = STEPS.slice();
+        let spare = [];
+
+        function nextText() {
+            if (queue.length === 0) {
+                if (spare.length === 0) {
+                    spare = shuffle(pool);
+                }
+
+                queue.push(spare.shift());
+            }
+
+            return translations[queue.shift()] ?? '';
+        }
+
+        function at(delay, step) {
+            ticker = window.setTimeout(() => {
+                if (el) {
+                    step();
+                }
+            }, delay);
+        }
+
+        function type(text, index, done) {
+            copy.textContent = text.slice(0, index);
+
+            if (index > text.length) {
+                at(HOLD_MS, done);
+
+                return;
+            }
+
+            at(TYPE_IN_MS, () => type(text, index + 1, done));
+        }
+
+        function untype(text, index, done) {
+            copy.textContent = text.slice(0, index);
+
+            if (index === 0) {
+                done();
+
+                return;
+            }
+
+            at(TYPE_OUT_MS, () => untype(text, index - 1, done));
+        }
+
+        function step() {
+            const text = nextText();
+
+            if (text === '') {
+                return;
+            }
+
+            if (still) {
+                copy.textContent = text;
+                at(HOLD_STILL_MS, step);
+
+                return;
+            }
+
+            type(text, 0, () => untype(text, text.length, step));
+        }
+
+        step();
     }
 
     function stop() {
         timers.forEach((timer) => window.clearTimeout(timer));
         timers = [];
+        window.clearTimeout(ticker);
+        ticker = null;
         el?.remove();
         el = null;
     }

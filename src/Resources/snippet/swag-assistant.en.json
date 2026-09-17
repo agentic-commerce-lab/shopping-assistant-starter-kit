@@ -38,7 +38,17 @@
     "thinking": {
       "start": "Thinking…",
       "waiting": "Still looking. Give me a sec.",
-      "patient": "This one's taking a moment."
+      "patient": "This one's taking a moment.",
+      "stepReading": "Reading your question",
+      "stepSearching": "Searching the range",
+      "stepVariants": "Matching up variants",
+      "stepAvailability": "Checking availability",
+      "stepComposing": "Putting the answer together",
+      "stepNarrowing": "Narrowing the matches",
+      "stepChecking": "Double-checking that",
+      "stepTidying": "Tidying up the results",
+      "stepRummaging": "Still rummaging the shelves",
+      "stepPondering": "Having a think about it"
     },
     "handoff": {
       "message": "The shop team can help with this.",
