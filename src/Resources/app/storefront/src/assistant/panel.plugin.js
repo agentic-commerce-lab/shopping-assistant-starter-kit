@@ -54,6 +54,11 @@ export default class SwagAssistantPanel extends PluginBaseClass {
 
         this.locale = this.el.dataset.locale || 'en-GB';
         this.addToCartEnabled = this.el.dataset.addToCartEnabled === 'true';
+        // `!== 'false'`, where the line above is `=== 'true'`, and the asymmetry is deliberate: that
+        // one gates a capability, so an absent attribute should withhold it, while this one is a
+        // presentation default the plugin documents as on. A theme with an older copy of
+        // `orb.html.twig` emits neither attribute — it should lose the add button, not the chips.
+        this.suggestionsEnabled = this.el.dataset.suggestionsEnabled !== 'false';
         // Each is empty on every page that is not of its type.
         this.viewingProductId = this.el.dataset.productId || null;
         this.browsingCategoryId = this.el.dataset.categoryId || null;
@@ -398,10 +403,19 @@ export default class SwagAssistantPanel extends PluginBaseClass {
 
     /**
      * The prompts a merchant can translate or blank out per sales channel, since they are snippets
-     * rather than plugin config. Anything left empty is dropped, so a shop that wants no chips gets
-     * none by clearing them.
+     * rather than plugin config. Anything left empty is dropped, so clearing one drops that chip.
+     *
+     * Clearing all three was for a long time the *only* way to be rid of the row, and it is a poor
+     * one: a snippet is one string per snippet set, so "all three" is three fields per language, and
+     * a shop that cleared the German three kept serving the shipped English three on its English
+     * storefront. `showSuggestions` answers the same question once, per sales channel. Both still
+     * work — the switch is the coarse control and the snippets stay the fine one.
      */
     _suggestions() {
+        if (!this.suggestionsEnabled) {
+            return [];
+        }
+
         return [
             this.translations.suggestionOne,
             this.translations.suggestionTwo,

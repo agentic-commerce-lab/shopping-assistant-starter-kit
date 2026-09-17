@@ -55,10 +55,11 @@
                            kept showing the newest run. Nothing in a test could see that; it was
                            found by clicking the control. Read out of the installed 6.7 component.
 
-                           Worth knowing that `swag-assistant-trace-list` binds `@change` to this
-                           same component for its outcome filter, which means that filter has the
-                           same defect. Not fixed here — a different module, and it deserves its own
-                           commit rather than riding along in this one. #}
+                           The same binding was carrying the same defect in
+                           `swag-assistant-trace-list` (the outcome filter) and in
+                           `swag-assistant-shop-info-list` (the sales-channel scope). Both are fixed;
+                           the note stays because the next `sw-single-select` added to this plugin
+                           will reach for `@change` again. #}
                         <sw-single-select
                             class="swag-assistant-insights-dashboard__picker-select"
                             :options="runOptions"

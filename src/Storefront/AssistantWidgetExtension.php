@@ -52,6 +52,7 @@ final class AssistantWidgetExtension extends AbstractExtension
         return [
             new TwigFunction('swag_assistant_widget_enabled', $this->isEnabled(...)),
             new TwigFunction('swag_assistant_widget_name', $this->assistantName(...)),
+            new TwigFunction('swag_assistant_suggestions_enabled', $this->suggestionsEnabled(...)),
             new TwigFunction('swag_assistant_add_to_cart_enabled', $this->addToCartEnabled(...)),
             new TwigFunction('swag_assistant_theme', $this->theme(...)),
             new TwigFunction('swag_assistant_context_key', $this->contextKey(...)),
@@ -70,6 +71,18 @@ final class AssistantWidgetExtension extends AbstractExtension
         }
 
         return $this->assistantConfig->forSalesChannel($salesChannelId)->assistantEnabled;
+    }
+
+    /**
+     * Whether the panel opens with the row of suggestion chips under its greeting.
+     *
+     * Presentation rather than policy, so it comes from {@see SystemConfigWidgetSettings} and not
+     * from the assistant's own guardrails: a merchant who hides the chips has not taken a capability
+     * away from the assistant — the three prompts were only ever a shortcut to typing them.
+     */
+    public function suggestionsEnabled(string $salesChannelId): bool
+    {
+        return $this->widgetSettings->areSuggestionsEnabled($salesChannelId);
     }
 
     public function theme(string $salesChannelId): WidgetTheme

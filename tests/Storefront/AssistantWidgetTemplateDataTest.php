@@ -38,6 +38,43 @@ final class AssistantWidgetTemplateDataTest extends AssistantWidgetTestCase
         self::assertTrue($on->addToCartEnabled(self::CHANNEL));
     }
 
+    /**
+     * Off is a merchant's decision. Absent is not.
+     *
+     * The three chips ship as snippets, so until this switch existed the only way to drop them was
+     * to blank `suggestionOne`, `suggestionTwo` and `suggestionThree` — and a snippet is one string
+     * *per snippet set*, so that is three fields per language. A shop that cleared the German three
+     * still served the shipped English three on its English storefront. The switch is the only
+     * control that turns the row off for a sales channel outright, which is why it exists beside an
+     * escape hatch that already worked.
+     *
+     * Read through the raw `get()` for the reason `widgetEnabled` and `enableAddToCart` already
+     * document: `getBool()` returns `false` for an absent key and for a stored `false` alike, so a
+     * shop that never opened the configuration form would silently lose the chips it shipped with.
+     */
+    public function testSuggestionsStayOnUntilAMerchantSwitchesThemOff(): void
+    {
+        $untouched = $this->extension($this->configured());
+        $off = $this->extension($this->configured([self::PREFIX . 'showSuggestions' => false]));
+
+        self::assertTrue($untouched->suggestionsEnabled(self::CHANNEL));
+        self::assertFalse($off->suggestionsEnabled(self::CHANNEL));
+    }
+
+    /**
+     * `system:config:set` stores booleans as strings, and `(bool) "false"` is `true`.
+     *
+     * The same cast that would have kept the widget visible after `widgetEnabled false` from the
+     * console would keep the chips visible here — one `filter_var` apart, and invisible in every
+     * test that only ever sets a real `false`.
+     */
+    public function testSuggestionsSwitchedOffFromTheConsoleStayOff(): void
+    {
+        $off = $this->extension($this->configured([self::PREFIX . 'showSuggestions' => 'false']));
+
+        self::assertFalse($off->suggestionsEnabled(self::CHANNEL));
+    }
+
     public function testItExposesTheTemplateFunctions(): void
     {
         $names = array_map(
@@ -49,6 +86,7 @@ final class AssistantWidgetTemplateDataTest extends AssistantWidgetTestCase
             [
                 'swag_assistant_widget_enabled',
                 'swag_assistant_widget_name',
+                'swag_assistant_suggestions_enabled',
                 'swag_assistant_add_to_cart_enabled',
                 'swag_assistant_theme',
                 'swag_assistant_context_key',

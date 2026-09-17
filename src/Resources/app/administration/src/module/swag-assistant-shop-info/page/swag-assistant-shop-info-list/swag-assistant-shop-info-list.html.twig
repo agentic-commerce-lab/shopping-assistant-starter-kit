@@ -18,13 +18,18 @@
                document went to a channel with no storefront on it. #}
             {% block swag_assistant_shop_info_list_scope %}
             <div class="swag-assistant-shop-info-list__scope">
+                {# `@update:value`, NOT `@change` — `sw-single-select` emits no `change` at all, so
+                   this handler never ran. The comment above says a document once went to a channel
+                   with no storefront on it, and burying the control among the upload fields was only
+                   half of why: picking a different channel here did nothing, so the scope stayed
+                   whatever it had loaded with while the label claimed otherwise. #}
                 <sw-single-select
                     class="swag-assistant-shop-info-list__channel"
                     :label="$tc('swag-assistant-shop-info.list.salesChannel')"
                     :options="salesChannelOptions"
                     :value="salesChannelId"
                     :disabled="isUploading"
-                    @change="onSalesChannelChange"
+                    @update:value="onSalesChannelChange"
                 />
 
                 <p class="swag-assistant-shop-info-list__scope-hint">
