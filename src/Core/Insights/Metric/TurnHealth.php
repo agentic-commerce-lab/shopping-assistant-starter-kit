@@ -50,7 +50,17 @@ final readonly class TurnHealth
 
                 ++$escalations;
 
-                if (($event['payload']['destination'] ?? '') === '') {
+                // `hasDestination`, the bool EscalateTool writes — NOT a `destination` string,
+                // which nothing has ever recorded. Read the wrong key and the `?? ''` fallback
+                // matches on every escalation, so the count equals `escalations` for every shop and
+                // the administration shows a configuration error that is not there. That is what it
+                // did until 2026-09-18, measured on a shop whose escalation URL was set and whose
+                // four events all carried `hasDestination: true`.
+                //
+                // `!== true` rather than `=== false`: an event from before the field existed has
+                // neither, and "we did not record a destination" is not evidence that one was
+                // configured.
+                if (($event['payload']['hasDestination'] ?? false) !== true) {
                     ++$withoutDestination;
                 }
             }

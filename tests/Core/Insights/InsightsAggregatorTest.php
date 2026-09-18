@@ -83,7 +83,7 @@ final class InsightsAggregatorTest extends TestCase
             new \DateTimeImmutable(),
             [
                 ['seq' => 1, 'stage' => 'turn.end', 'payload' => ['outcome' => 'tool_limit_exceeded']],
-                ['seq' => 2, 'stage' => 'escalate', 'payload' => ['destination' => '']],
+                ['seq' => 2, 'stage' => 'escalate', 'payload' => ['reason' => 'why', 'hasDestination' => false]],
                 ['seq' => 3, 'stage' => 'turn.end', 'payload' => ['outcome' => 'escalated']],
             ],
             [],
@@ -102,12 +102,46 @@ final class InsightsAggregatorTest extends TestCase
             'c1',
             new \DateTimeImmutable(),
             [
-                ['seq' => 1, 'stage' => 'escalate', 'payload' => ['destination' => 'https://shop.test/contact']],
+                ['seq' => 1, 'stage' => 'escalate', 'payload' => ['reason' => 'why', 'hasDestination' => true]],
             ],
             [],
         );
 
         self::assertSame(0, InsightsAggregator::aggregate([$trace])->turns->escalationsWithoutDestination);
+    }
+
+    /**
+     * The payload `EscalateTool` actually writes, rather than the one this file used to invent.
+     *
+     * Measured on the demo shop 2026-09-18: four `escalate` events, every one of them
+     * `{"reason": "...", "hasDestination": true}`, and the night's run reported
+     * `escalations: 2, escalationsWithoutDestination: 2`. The two counts were identical because
+     * `TurnHealth` read a key named `destination` that {@see EscalateTool} has never written — so
+     * the `?? ''` fallback matched on every escalation and the metric was a constant wearing the
+     * costume of a measurement.
+     *
+     * The two tests above passed throughout, because they built the payload the reader expected
+     * instead of the one the producer emits. That is the whole failure: a shop with a perfectly
+     * good escalation URL was told, in red, to go and set one.
+     */
+    public function testAnEscalationIsJudgedByThePayloadTheToolActuallyWrites(): void
+    {
+        $configured = new ConversationTrace(
+            'c1',
+            new \DateTimeImmutable(),
+            [['seq' => 1, 'stage' => 'escalate', 'payload' => ['reason' => 'order status', 'hasDestination' => true]]],
+            [],
+        );
+
+        $unconfigured = new ConversationTrace(
+            'c2',
+            new \DateTimeImmutable(),
+            [['seq' => 1, 'stage' => 'escalate', 'payload' => ['reason' => 'order status', 'hasDestination' => false]]],
+            [],
+        );
+
+        self::assertSame(0, InsightsAggregator::aggregate([$configured])->turns->escalationsWithoutDestination);
+        self::assertSame(1, InsightsAggregator::aggregate([$unconfigured])->turns->escalationsWithoutDestination);
     }
 
     public function testItCountsTheCartFunnelPerConversationNotPerTurn(): void
