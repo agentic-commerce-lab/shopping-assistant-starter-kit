@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Grounding;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 
 /**
@@ -36,6 +37,8 @@ final class OrderRenderer
     /** @var list<OrderSummary> */
     private array $orders = [];
 
+    private ?OrderDetail $detail = null;
+
     /** @param list<OrderSummary> $orders */
     public function registerRetrieved(array $orders): void
     {
@@ -46,5 +49,22 @@ final class OrderRenderer
     public function retrievedOrders(): array
     {
         return $this->orders;
+    }
+
+    /**
+     * The one order {@see \Swag\AssistantStarterKit\Core\Tool\GetOrderTool} fetched this turn.
+     *
+     * Singular, not a list: a turn answers one "what was in that order" question, and holding a
+     * collection would invite a card layer to render several and a shopper to read a set that no
+     * single question asked for. Replaced on every call, like the summaries above.
+     */
+    public function registerDetail(OrderDetail $detail): void
+    {
+        $this->detail = $detail;
+    }
+
+    public function retrievedDetail(): ?OrderDetail
+    {
+        return $this->detail;
     }
 }
