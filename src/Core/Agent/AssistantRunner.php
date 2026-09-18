@@ -49,9 +49,9 @@ final class AssistantRunner
      * the eval suite mean something: a journey that passes at temperature 0.9 passed one sample.
      *
      * **Sent as an option rather than baked into {@see \Swag\AssistantStarterKit\Core\Llm\LlmSettings}**,
-     * because `Agent::call()` forwards options to the platform and `Toolbox\AgentProcessor` carries
-     * them into every nested tool round — so one value here covers the whole turn, including the
-     * rounds this class never sees. `temperature` is in the OpenAI chat-completions contract every
+     * because `Agent::call()` forwards options to the platform and the Agent carries them into
+     * every tool round it drives — so one value here covers the whole turn, including the rounds
+     * this class never sees. `temperature` is in the OpenAI chat-completions contract every
      * provider this bridge targets implements, which is what separates it from a token cap: see
      * {@see \Swag\AssistantStarterKit\Core\Prompt\SystemPrompt}'s brevity docblock for why the
      * limit fields cannot be set the same way.
@@ -69,11 +69,18 @@ final class AssistantRunner
     ) {}
 
     /**
-     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface propagated from the
+     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface    propagated from the
      *         platform call; the guard above is the only thing this method can do
      *         before that point, and {@see MaxIterationsExceededException} is the
      *         only foreseeable member of this hierarchy this method catches instead
      *         of propagating — see {@see self::incompleteTurn()}
+     * @throws \Symfony\AI\Platform\Exception\ExceptionInterface a provider refusing,
+     *         timing out or answering with something the bridge cannot convert. It
+     *         reaches this signature because 0.13 resolves the turn at `getResult()`
+     *         rather than at `call()`, and it is deliberately not caught here: an
+     *         unreachable provider is not a turn this class can degrade into a useful
+     *         answer, and {@see FailedTurn::orDegrade()} — which {@see ShopwareChatTurnRunner}
+     *         wraps this call in — already turns it into a recorded, shopper-safe turn
      */
     public function run(string $message, MessageBag $history): AssistantTurn
     {
@@ -116,15 +123,22 @@ final class AssistantRunner
             $this->bundle->trace->record('turn.repeat', $repeated);
         }
 
+        // `getResult()` inside the try, not outside it, and that is the whole of what Symfony AI
+        // 0.13 changed here. `call()` now returns a lazy `Execution`: on its own it starts
+        // nothing, so a `try` around the call alone would catch nothing, every line below would
+        // run before the model had been asked anything, and `renderedCards()` would report the
+        // empty renderer. Resolving it here restores the previous shape exactly — the model runs,
+        // the tools run, and the cap below still fires where it used to.
         try {
             $result = $this->bundle->agent->call($this->buildMessageBag($message, $history), [
                 'temperature' => self::TEMPERATURE,
-            ]);
+            ])->getResult();
         } catch (MaxIterationsExceededException) {
             // A confused model that keeps requesting tool calls is a foreseeable
             // condition, not a server fault — BoundedToolbox's cap firing is this
             // class working as designed. Degrade to a normal AssistantTurn instead
-            // of letting this escape as an uncaught 500.
+            // of letting this escape as an uncaught 500. Since 0.13 the Agent's own
+            // round cap raises the same exception and lands here too.
             return $this->incompleteTurn();
         }
 

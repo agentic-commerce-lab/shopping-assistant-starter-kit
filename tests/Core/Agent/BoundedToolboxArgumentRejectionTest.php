@@ -176,7 +176,7 @@ final class BoundedToolboxArgumentRejectionTest extends TestCase
      * `vendor/symfony/ai-agent/src/Toolbox/Toolbox.php` and reproducing it against the
      * installed package with a throwaway backed-enum-typed tool argument — the
      * brief's own stack trace (`NotNormalizableValueException` ... `BoundedToolbox.php`
-     * ... `AgentProcessor.php`) is the merged view of exactly this exception chain, not
+     * ... `AgentProcessor.php`, at 0.12) is the merged view of exactly this exception chain, not
      * a raw `NotNormalizableValueException` reaching this class directly. Without the
      * `$previous instanceof SerializerExceptionInterface` branch inside the existing
      * `catch (ToolExecutionException)` block, the previous test alone would not close

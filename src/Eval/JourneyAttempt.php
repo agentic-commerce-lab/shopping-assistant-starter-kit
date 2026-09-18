@@ -73,9 +73,14 @@ final class JourneyAttempt
     /**
      * @return array{0: AssistantTurn, 1: TraceRecorder}
      *
-     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface propagated from
+     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface    propagated from
      *         {@see \Swag\AssistantStarterKit\Core\Agent\AssistantRunner::run()}'s own
      *         platform call
+     * @throws \Symfony\AI\Platform\Exception\ExceptionInterface the same call, for a
+     *         provider that refuses or answers unconvertibly. A journey that cannot
+     *         reach the model has no result to score, and the suite reports the run as
+     *         failed rather than recording a zero it would otherwise read as a quality
+     *         regression
      */
     public function run(Journey $journey, ?string $archetypePhrase): array
     {

@@ -21,6 +21,9 @@ Use **`symfony/ai-agent` `0.12.*`** as the agent runtime and
 **`symfony/ai-generic-platform` `0.12.*`** as the OpenAI-compatible platform bridge. Keep our
 own grounding, commerce gateway, policy and eval layers.
 
+> **The pin is `0.13.*` since 2026-09-18.** The decision above is unchanged and is left as it
+> was written; what the upgrade cost is recorded in the second addendum at the end of this file.
+
 ## Why
 
 **The seams exist.** Verified against the **installed `vendor/` tree at 0.12.0**:
@@ -133,3 +136,34 @@ defects without forking. But it sharpens the revisit trigger: the framework's de
 yet load-bearing at 0.x, so **every safety-relevant framework default this project relies on
 must be verified by an integration test that would fail if the default silently stopped
 working** — not by reading that the option exists.
+
+## Addendum, 2026-09-18 — the 0.12 → 0.13 upgrade
+
+Pinned to `0.13.*` (all five packages, `symfony/ai-maria-db-store` included). Dependency
+resolution was clean: nothing else in the tree had to move, and the Symfony 7.4 pins and the
+`>= 8.0` conflict block were unaffected. The code was not clean, and the interesting part is
+**how the breakage would have announced itself**.
+
+| 0.13 change | How it surfaces |
+|---|---|
+| `Toolbox\AgentProcessor` removed; the tool loop moved into `Agent` (`toolbox:`, `maxToolCalls:`) | Loudly — fatal, class not found |
+| `AgentInterface::call()` returns a lazy `Execution` instead of a `ResultInterface` | **Silently.** `$result instanceof TextResult` is simply false, so every reply degrades to `''`; the `try` around `call()` catches nothing, because nothing has run yet; and anything read after the call (`renderedCards()`) reads state the model has not produced yet |
+| Output processors run once, against the final assembled result; input processors once per call | Silently, and in our favour — it is the behaviour `GroundingOutputProcessor`'s own guard was written to fake |
+
+The lazy `call()` is the one worth remembering. Three call sites (`AssistantRunner`,
+`JudgeRunner`, one test) needed the same one-word fix — resolve with `->getResult()` **inside**
+the existing `try` — and with it the surrounding code is correct again, unchanged. Without it
+the plugin still boots, still answers, and answers with an empty string.
+
+The framework's `maxToolCalls` is no longer inert (the 0.12 finding in the addendum above), but
+it counts **rounds** where the merchant's setting names **calls**, so `Agent\BoundedToolbox`
+stays — for a better reason than before. `OutputProcessorOrderTest` was retired: it existed to
+record that processor order could not decide whether grounding saw populated tool results, and
+0.13 removes the thing it was ordered against. Its round trip survives as
+`ToolLoopGroundsTheFinalAnswerOnceTest`, which is the one test that drives a real tool through
+the real loop — the place the next such change will show up first.
+
+**The revisit trigger from the first addendum held.** Every safety-relevant default this
+project relies on is covered by a test that runs the real framework, and that is what turned a
+silent contract change into a single failing test rather than a production incident. 0.14 is
+already on trunk with further breaks (`VectorDocumentInterface`, `TokenUsageInterface::getModel()`).

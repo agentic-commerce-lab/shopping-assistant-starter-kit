@@ -54,8 +54,13 @@ final readonly class JudgeRunner implements InsightJudge
 
         $agent = new Agent($this->platform->of($settings->llm), $settings->llm->model);
 
+        // `getResult()` is what actually runs the model: since Symfony AI 0.13 `call()` only hands
+        // back a lazy execution, so resolving it outside this try would move every provider failure
+        // out of the wrapping below and straight into the nightly task.
         try {
-            $result = $agent->call(new MessageBag(Message::ofUser($request)), ['temperature' => self::TEMPERATURE]);
+            $result = $agent->call(new MessageBag(Message::ofUser($request)), [
+                'temperature' => self::TEMPERATURE,
+            ])->getResult();
         } catch (\Throwable $failure) {
             throw new LlmException($failure->getMessage(), (int) $failure->getCode(), $failure);
         }
