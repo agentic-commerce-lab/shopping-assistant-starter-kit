@@ -27,9 +27,10 @@ final class ListOrdersToolTest extends TestCase
 
         $result = $tool();
 
-        self::assertSame(['orderNumbers', 'total'], array_keys($result));
+        self::assertSame(['orderNumbers', 'total', 'filtered'], array_keys($result));
         self::assertSame(['10000', '10001'], $result['orderNumbers']);
         self::assertSame(2, $result['total']);
+        self::assertFalse($result['filtered'], 'nothing was narrowed');
     }
 
     public function testRegistersWhatItRetrieved(): void

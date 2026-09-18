@@ -112,9 +112,9 @@ final readonly class DalCommerceGateway implements
      *
      * @return list<\Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary>
      */
-    public function orders(int $limit): array
+    public function orders(\Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery $query): array
     {
-        return $this->orderHistory->orders($limit);
+        return $this->orderHistory->orders($query);
     }
 
     public function order(string $orderNumber): ?\Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail

@@ -12,6 +12,7 @@ use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\EntitySearchResult;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\RangeFilter;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -32,6 +33,9 @@ final class RecordingOrderRoute extends AbstractOrderRoute
     /** @var array<string, mixed> field => value, for every EqualsFilter on the last criteria */
     public array $lastEqualsFilters = [];
 
+    /** @var list<string> the field of every RangeFilter on the last criteria */
+    public array $lastRangeFields = [];
+
     public function getDecorated(): AbstractOrderRoute
     {
         throw new \LogicException('not decorated');
@@ -47,9 +51,15 @@ final class RecordingOrderRoute extends AbstractOrderRoute
         // employee filter to this same criteria; a narrowing done later would miss it.
         $this->lastEqualsFilters = [];
 
+        $this->lastRangeFields = [];
+
         foreach ($criteria->getFilters() as $filter) {
             if ($filter instanceof EqualsFilter) {
                 $this->lastEqualsFilters[$filter->getField()] = $filter->getValue();
+            }
+
+            if ($filter instanceof RangeFilter) {
+                $this->lastRangeFields[] = $filter->getField();
             }
         }
 

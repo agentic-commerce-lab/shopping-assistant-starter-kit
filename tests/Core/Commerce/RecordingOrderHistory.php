@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Core\Commerce;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
 
@@ -19,17 +20,20 @@ final class RecordingOrderHistory implements OrderHistoryReader
 {
     public int $askedFor = 0;
 
+    public ?OrderQuery $lastQuery = null;
+
     public function __construct(
         private readonly int $count = 0,
     ) {}
 
     /** @return list<OrderSummary> */
-    public function orders(int $limit): array
+    public function orders(OrderQuery $query): array
     {
-        $this->askedFor = $limit;
+        $this->askedFor = $query->limit;
+        $this->lastQuery = $query;
         $orders = [];
 
-        for ($index = 0; $index < min($this->count, $limit); ++$index) {
+        for ($index = 0; $index < min($this->count, $query->limit); ++$index) {
             $orders[] = new OrderSummary(
                 orderNumber: (string) (10000 + $index),
                 orderedAt: new \DateTimeImmutable('2026-09-12'),

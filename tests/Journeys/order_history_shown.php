@@ -26,6 +26,10 @@ return [
         // Phase 2's question. It names an order number the fixture really has, so a reply naming a
         // different one is `no_foreign_order` doing its job rather than the journey being unlucky.
         'detail' => 'what was in order 10023?',
+        // Phase 3. The fixture's two orders are months apart and in different states, so a narrowed
+        // question has something to exclude — a filter that silently did nothing would look exactly
+        // like a filter that worked if both orders came back either way.
+        'narrowed' => 'do i have any open orders?',
     ],
     'config' => ['enableOrderHistory' => true],
     'turns' => ['archetype'],

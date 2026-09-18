@@ -12,6 +12,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderMapper;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Tests\Core\Commerce\Dal\RecordingOrderRoute;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\RouterInterface;
@@ -148,9 +149,10 @@ final class DalOrderHistoryTest extends TestCase
             new DalOrderMapper(new DalOrderDocuments($this->createMock(RouterInterface::class))),
         );
 
-        $orders = $contexts->use($this->createMock(SalesChannelContext::class), static fn(): array => $history->orders(
-            5,
-        ));
+        $orders = $contexts->use(
+            $this->createMock(SalesChannelContext::class),
+            static fn(): array => $history->orders(OrderQuery::of(5, null, null)),
+        );
 
         self::assertSame([], $orders, 'a route returning no orders must yield none');
         self::assertSame(1, $route->loadCalls, 'orders() must go through the route exactly once');
@@ -189,6 +191,43 @@ final class DalOrderHistoryTest extends TestCase
             '10023',
             $route->lastEqualsFilters['orderNumber'] ?? null,
             'the order number must reach the route as a filter, not narrow its result afterwards',
+        );
+    }
+
+    /**
+     * Both filters reach the ROUTE, which is the only place they are safe.
+     *
+     * A window or a state applied to the result afterwards would narrow the right rows and still
+     * have asked the database for every order the employee filter let through — harmless today, and
+     * the exact shape of mistake that becomes a leak the moment somebody reuses the unfiltered call.
+     * It is also the difference between a query the database can index and a loop in PHP.
+     */
+    public function testTheWindowAndTheStateReachTheRouteAsFilters(): void
+    {
+        $route = new RecordingOrderRoute();
+        $contexts = new SalesChannelContextProvider(new RequestStack());
+
+        $history = new DalOrderHistory(
+            $route,
+            $contexts,
+            new RequestStack(),
+            new DalOrderMapper(new DalOrderDocuments($this->createMock(RouterInterface::class))),
+        );
+
+        $contexts->use(
+            $this->createMock(SalesChannelContext::class),
+            static fn(): array => $history->orders(OrderQuery::of(5, 30, 'completed')),
+        );
+
+        self::assertSame(
+            'completed',
+            $route->lastEqualsFilters['stateMachineState.technicalName'] ?? null,
+            'the state must narrow the query, not its result',
+        );
+        self::assertContains(
+            'orderDateTime',
+            $route->lastRangeFields,
+            'the window must narrow the query, not its result',
         );
     }
 

@@ -11,6 +11,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
@@ -61,9 +62,9 @@ final class FixtureCommerceGateway implements
     }
 
     /** @return list<OrderSummary> */
-    public function orders(int $limit): array
+    public function orders(OrderQuery $query): array
     {
-        return $this->orderHistory->orders($limit);
+        return $this->orderHistory->orders($query);
     }
 
     public function order(string $orderNumber): ?OrderDetail

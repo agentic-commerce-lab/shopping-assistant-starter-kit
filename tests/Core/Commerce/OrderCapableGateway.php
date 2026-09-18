@@ -9,6 +9,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
@@ -48,9 +49,9 @@ final class OrderCapableGateway implements CommerceGatewayInterface, OrderHistor
     }
 
     /** @return list<OrderSummary> */
-    public function orders(int $limit): array
+    public function orders(OrderQuery $query): array
     {
-        return \array_slice($this->orders, 0, $limit);
+        return \array_slice($this->orders, 0, $query->limit);
     }
 
     public function order(string $orderNumber): ?OrderDetail

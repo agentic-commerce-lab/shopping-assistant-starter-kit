@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Tool;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
 use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
@@ -66,26 +67,42 @@ final readonly class ListOrdersTool
     ) {}
 
     /**
-     * @param int|null $limit How many orders to return, newest first. Between 1 and 10, default 5.
+     * @param int|null    $limit      How many orders to return, newest first. Between 1 and 10, default 5.
+     * @param int|null    $withinDays Only orders from the last this many days. Omit for no limit.
+     * @param string|null $state      Only orders in this state: "open", "in_progress", "completed" or
+     *                                "cancelled". Omit for any state.
      *
-     * @return array{orderNumbers: list<string>, total: int}
+     * @return array{orderNumbers: list<string>, total: int, filtered: bool}
      */
-    public function __invoke(?int $limit = null): array
+    public function __invoke(?int $limit = null, ?int $withinDays = null, ?string $state = null): array
     {
-        // Guard clause rather than schema: `#[AsTool]` derives the JSON Schema from this signature by
-        // reflection and cannot express `minimum`/`maximum`. Clamped rather than refused, because a
-        // model asking for 50 orders wants the list, not an error it will spend another call on.
-        $bounded = max(1, min($limit ?? self::DEFAULT_LIMIT, self::MAX_LIMIT));
+        // Bounds and vocabulary live in `OrderQuery`, which is the only way to build one: `#[AsTool]`
+        // derives the JSON Schema from this signature by reflection and can express neither a range
+        // nor an enum. It clamps the numbers and DROPS an unknown state rather than refusing — see
+        // that class for why answering the unfiltered question beats failing over a word the shopper
+        // never said.
+        $query = OrderQuery::of($limit ?? self::DEFAULT_LIMIT, $withinDays, $state);
 
-        $orders = $this->orders->orders($bounded);
+        $orders = $this->orders->orders($query);
         $this->renderer->registerRetrieved($orders);
 
         $numbers = array_map(static fn($order): string => $order->orderNumber, $orders);
 
         // Recorded because the assertion reads the trace rather than the renderer: a merchant reading
         // the trace and the eval suite then ask the same question of the same record.
-        $this->trace->record('orders.listed', ['orderNumbers' => $numbers, 'limit' => $bounded]);
+        $this->trace->record('orders.listed', [
+            'orderNumbers' => $numbers,
+            'limit' => $query->limit,
+            'withinDays' => $query->withinDays,
+            'state' => $query->state,
+        ]);
 
-        return ['orderNumbers' => $numbers, 'total' => \count($numbers)];
+        // `filtered` so the model can tell "you have no orders" from "none in that window", which
+        // are different sentences and the second one is the honest answer to a narrowed question.
+        return [
+            'orderNumbers' => $numbers,
+            'total' => \count($numbers),
+            'filtered' => $query->withinDays !== null || $query->state !== null,
+        ];
     }
 }

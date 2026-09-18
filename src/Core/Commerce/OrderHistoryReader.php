@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Commerce;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 
 /**
@@ -48,11 +49,14 @@ interface OrderHistoryReader
     /**
      * The signed-in shopper's most recent orders, newest first.
      *
-     * @param int $limit at most this many; the caller has already bounded it
+     * `$query` arrives already bounded and already validated — see {@see OrderQuery}, which is the
+     * only way to build one. An implementation applies its filters and does not re-check them; it
+     * must also never interpolate them, which the DAL implementation avoids by building
+     * `EqualsFilter` and `RangeFilter` rather than a string.
      *
      * @return list<OrderSummary>
      */
-    public function orders(int $limit): array;
+    public function orders(OrderQuery $query): array;
 
     /**
      * One of the shopper's own orders, with its lines — or `null`.

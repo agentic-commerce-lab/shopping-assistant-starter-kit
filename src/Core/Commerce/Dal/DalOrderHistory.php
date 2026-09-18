@@ -8,8 +8,10 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\SalesChannel\AbstractOrderRoute;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\RangeFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
 use Symfony\Component\HttpFoundation\Request;
@@ -70,12 +72,27 @@ final readonly class DalOrderHistory implements OrderHistoryReader
     ) {}
 
     /** @return list<OrderSummary> */
-    public function orders(int $limit): array
+    public function orders(OrderQuery $query): array
     {
         $criteria = new Criteria();
         $criteria->addSorting(new FieldSorting('orderDateTime', FieldSorting::DESCENDING));
-        $criteria->setLimit($limit);
+        $criteria->setLimit($query->limit);
         $this->associate($criteria);
+
+        // Filters, never interpolation. `OrderQuery` has already bounded the window and matched the
+        // state against Shopware's own technical names, so what arrives here is safe — and building
+        // DAL filters rather than a string means it would be safe even if that failed.
+        if ($query->withinDays !== null) {
+            $criteria->addFilter(new RangeFilter('orderDateTime', [
+                RangeFilter::GTE => (new \DateTimeImmutable('now'))
+                    ->modify(\sprintf('-%d days', $query->withinDays))
+                    ->format(\DATE_ATOM),
+            ]));
+        }
+
+        if ($query->state !== null) {
+            $criteria->addFilter(new EqualsFilter('stateMachineState.technicalName', $query->state));
+        }
 
         // No customer filter of our own. The route applies the one that is correct for this shop —
         // see the class docblock. Adding one here would at best duplicate it and at worst disagree.

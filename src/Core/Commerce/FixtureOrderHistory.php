@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Commerce;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 
 /**
@@ -61,11 +62,28 @@ final class FixtureOrderHistory
      *
      * @return list<OrderSummary>
      */
-    public function orders(int $limit): array
+    public function orders(OrderQuery $query): array
     {
-        $sorted = $this->orders;
-        usort($sorted, static fn(OrderSummary $a, OrderSummary $b): int => $b->orderedAt <=> $a->orderedAt);
+        $matching = array_values(array_filter($this->orders, static function (OrderSummary $order) use ($query): bool {
+            // The state fixture carries Shopware's label, not its technical name — so the match
+            // is case-insensitive on a normalised label. Production filters on
+            // `stateMachineState.technicalName`; this is the closest a fixture with no state
+            // machine can get, and the difference is recorded rather than hidden.
+            if ($query->state !== null && strtolower(str_replace(' ', '_', $order->stateLabel)) !== $query->state) {
+                return false;
+            }
 
-        return \array_slice($sorted, offset: 0, length: $limit);
+            if ($query->withinDays === null) {
+                return true;
+            }
+
+            $cutoff = (new \DateTimeImmutable('now'))->modify(\sprintf('-%d days', $query->withinDays));
+
+            return $order->orderedAt >= $cutoff;
+        }));
+
+        usort($matching, static fn(OrderSummary $a, OrderSummary $b): int => $b->orderedAt <=> $a->orderedAt);
+
+        return \array_slice($matching, offset: 0, length: $query->limit);
     }
 }
