@@ -443,13 +443,17 @@ Not a colour-only signal, same rule as everywhere else here: the label reads "In
 glyph is a check. Colour confirms; it never informs.
 */
 .swag-assistant-card__add.is-in-cart:not(:disabled) {
-    border-color: $swag-assistant-in-stock;
+    // The shaded teal, not the bright one: this border is the control's only visible edge, and
+    // plain Teal is 1.78:1 on white. See `$swag-assistant-in-stock-dark` for the arithmetic.
+    border-color: $swag-assistant-in-stock-dark;
     background: rgba($swag-assistant-in-stock, 0.16);
+    // 16.22:1 on the wash. The label is doing the informing here, so it has to be the most
+    // readable thing in the control rather than the prettiest.
     color: $swag-assistant-text;
 
     &:hover {
         background: rgba($swag-assistant-in-stock, 0.28);
-        border-color: $swag-assistant-in-stock;
+        border-color: $swag-assistant-in-stock-dark;
     }
 }
 

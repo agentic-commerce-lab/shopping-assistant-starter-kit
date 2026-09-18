@@ -20,6 +20,7 @@ use Swag\AssistantStarterKit\Core\Llm\SymfonyAiPlatform;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary;
+use Swag\AssistantStarterKit\Core\Prompt\PromptContext;
 use Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface;
 use Swag\AssistantStarterKit\Core\Prompt\RecentCardsContext;
 use Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider;
@@ -336,7 +337,7 @@ final readonly class AssistantAgentFactory
             $toolbox,
             $this->prompt,
             $vocabularyStats['text'],
-            self::promptContext($viewing, $familyOptions, $recentCards),
+            PromptContext::of($viewing, $familyOptions, $recentCards),
             $orderRenderer,
         );
     }
@@ -377,32 +378,5 @@ final readonly class AssistantAgentFactory
         }
 
         return FamilyOptionValues::of($gateway->variantsOf($parentId, $scope))['options'];
-    }
-
-    /**
-     * The two "you already know about these" clauses, as one block for {@see SystemPrompt::build()}.
-     *
-     * Concatenated rather than given their own prompt parameter: `build()` appends this string after
-     * the rules and the vocabulary, and both clauses belong in exactly that position. A second
-     * parameter would have to be threaded through `Bundle` and every caller to say the same thing.
-     *
-     * Either half may be empty — most turns have no page product, and the first turn of a
-     * conversation has no previous reply — so the blank line between them is only written when both
-     * are actually present.
-     *
-     * @param array<string, list<string>> $familyOptions
-     * @param list<ProductCard>           $recentCards
-     */
-    private static function promptContext(?ProductCard $viewing, array $familyOptions, array $recentCards): string
-    {
-        $clauses = array_filter(
-            [
-                ViewingContext::line($viewing, $familyOptions),
-                RecentCardsContext::line($recentCards),
-            ],
-            static fn(string $clause): bool => $clause !== '',
-        );
-
-        return implode("\n\n", $clauses);
     }
 }
