@@ -135,10 +135,17 @@ function buildHeader(order, { locale, translations }) {
         .join(' · ');
     header.appendChild(meta);
 
-    const items = document.createElement('span');
-    items.className = 'swag-assistant-order__items';
-    items.textContent = (translations.orderItems ?? '%count% items').replace('%count%', order.itemCount ?? 0);
-    header.appendChild(items);
+    // Only when the card is NOT going to itemise. A detail card carries `lines` and no `itemCount`,
+    // so this read `?? 0` and printed "0 items" directly above two of them — a card contradicting
+    // itself, which is the one thing every figure in this widget is rendered server-side to avoid.
+    // Where the lines are shown they ARE the count, and a number above them is redundant as well as
+    // wrong.
+    if (typeof order.itemCount === 'number') {
+        const items = document.createElement('span');
+        items.className = 'swag-assistant-order__items';
+        items.textContent = (translations.orderItems ?? '%count% items').replace('%count%', order.itemCount);
+        header.appendChild(items);
+    }
 
     return header;
 }
