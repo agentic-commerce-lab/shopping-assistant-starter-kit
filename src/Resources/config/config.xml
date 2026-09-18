@@ -324,6 +324,17 @@
         </input-field>
 
         <input-field type="bool">
+            <name>enableOrderHistory</name>
+            <label>Let the assistant show a signed-in shopper their own orders</label>
+            <defaultValue>false</defaultValue>
+            <helpText>When on, a signed-in shopper can ask for their recent orders and receive them
+                as cards, with any invoice you have already released to their account as a download.
+                The assistant never sees another shopper's orders, and under B2B Components an
+                employee sees only what their role permits. Guests are told it cannot be looked
+                up.</helpText>
+        </input-field>
+
+        <input-field type="bool">
             <name>onlyGivenInformation</name>
             <label>Only say what the shop's own data says</label>
             <defaultValue>false</defaultValue>
