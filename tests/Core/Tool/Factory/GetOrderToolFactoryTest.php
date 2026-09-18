@@ -37,7 +37,6 @@ final class GetOrderToolFactoryTest extends TestCase
         );
     }
 
-    /** @param array{bool, bool, bool} $gates */
     #[DataProvider('closedGates')]
     public function testRefusesUnlessEveryGateIsOpen(bool $on, bool $capable, bool $loggedIn): void
     {
