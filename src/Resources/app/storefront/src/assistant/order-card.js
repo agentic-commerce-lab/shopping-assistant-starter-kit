@@ -18,6 +18,71 @@
 import { buildDocumentList } from './documents.js';
 
 /**
+ * One order with its lines — what `get_order` answered.
+ *
+ * Rendered as the same card as a summary, plus a line list. The two are one component on purpose: a
+ * shopper who asked "what was in 10023" and then "show my orders" should not watch the same order
+ * change shape between two replies.
+ *
+ * @param {HTMLElement} container
+ * @param {Object|null} detail
+ * @param {{locale: string, translations: Object}} options
+ */
+export function renderOrderDetail(container, detail, { locale, translations }) {
+    if (!detail) {
+        return;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'swag-assistant-orders';
+
+    const card = buildOrderCard(detail, { locale, translations });
+    const lines = buildLines(detail.lines, detail.currency, { locale, translations });
+
+    if (lines !== null) {
+        // Before the documents, which `buildOrderCard` already appended: what was in the order reads
+        // ahead of what can be downloaded about it.
+        card.insertBefore(lines, card.querySelector('.swag-assistant-card__documents'));
+    }
+
+    list.appendChild(card);
+    container.appendChild(list);
+}
+
+function buildLines(lines, currency, { locale, translations }) {
+    if (!Array.isArray(lines) || lines.length === 0) {
+        return null;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'swag-assistant-order__lines';
+
+    lines.forEach((line) => {
+        const item = document.createElement('li');
+        item.className = 'swag-assistant-order__line';
+
+        const name = document.createElement('span');
+        name.className = 'swag-assistant-order__line-name';
+        // Text node, never innerHTML — the widget's standing rule, and a line label is merchant
+        // content stored at order time.
+        name.textContent = (translations.orderLine ?? '%count% × %name%')
+            .replace('%count%', line.quantity ?? 1)
+            .replace('%name%', line.name ?? '');
+        item.appendChild(name);
+
+        const price = document.createElement('span');
+        price.className = 'swag-assistant-order__line-price';
+        // The figure the model was never given. It rejoins the name here, from the server.
+        price.textContent = formatMoney(line.lineTotal, currency, locale);
+        item.appendChild(price);
+
+        list.appendChild(item);
+    });
+
+    return list;
+}
+
+/**
  * @param {HTMLElement} container
  * @param {Array<Object>} orders
  * @param {{locale: string, translations: Object}} options
@@ -100,9 +165,20 @@ function formatDate(value, locale) {
 
 /** Formatting only. The number and its currency both came from the server. */
 function formatTotal(order, locale) {
-    if (typeof order.total !== 'number' || typeof order.currency !== 'string' || order.currency === '') {
+    return formatMoney(order.total, order.currency, locale);
+}
+
+/**
+ * A line carries no currency of its own — the ORDER's is passed down.
+ *
+ * Formatting is the one thing the client may do to a figure, because it changes nothing about what
+ * the figure says. An amount or a currency the server did not send renders as nothing rather than as
+ * `NaN` or a bare number whose unit nobody can see.
+ */
+function formatMoney(amount, currency, locale) {
+    if (typeof amount !== 'number' || typeof currency !== 'string' || currency === '') {
         return '';
     }
 
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: order.currency }).format(order.total);
+    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount);
 }

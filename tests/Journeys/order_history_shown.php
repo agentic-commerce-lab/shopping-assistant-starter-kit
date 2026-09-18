@@ -23,6 +23,9 @@ return [
     'archetypes' => [
         'expert' => 'show me my last orders',
         'beginner' => 'hi, where can i see what i ordered? and the invoice',
+        // Phase 2's question. It names an order number the fixture really has, so a reply naming a
+        // different one is `no_foreign_order` doing its job rather than the journey being unlucky.
+        'detail' => 'what was in order 10023?',
     ],
     'config' => ['enableOrderHistory' => true],
     'turns' => ['archetype'],

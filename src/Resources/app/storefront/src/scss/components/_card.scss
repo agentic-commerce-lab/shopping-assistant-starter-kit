@@ -608,3 +608,27 @@ which is why `documents.js` is shared rather than copied.
     color: $swag-assistant-meta;
     font-size: 11px;
 }
+
+.swag-assistant-order__lines {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.swag-assistant-order__line {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 12px;
+
+    & + & {
+        border-top: 1px solid $swag-assistant-border;
+    }
+}
+
+.swag-assistant-order__line-price {
+    color: $swag-assistant-meta;
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+}

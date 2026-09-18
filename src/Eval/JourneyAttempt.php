@@ -94,6 +94,7 @@ final class JourneyAttempt
             // document" from "document not rendered" — and `no_foreign_order` has real numbers to be
             // wrong about rather than an empty set it passes vacuously against.
             $gateway->seedOrders(EvalOrders::two());
+            $gateway->seedOrderDetails(EvalOrders::detailsOfTwo());
         }
 
         // cartAvailable is always true: a real storefront always has a shopper cart, and

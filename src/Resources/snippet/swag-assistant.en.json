@@ -22,6 +22,7 @@
       "view": "View product",
       "document": "Document",
       "orderNumber": "Order %number%",
+      "orderLine": "%count% × %name%",
       "orderItems": "%count% items",
       "documentsMore": "+%count% more",
       "add": "Add to cart",

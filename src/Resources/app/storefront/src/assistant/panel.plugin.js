@@ -514,6 +514,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
                 // are figures that were true when written, which is why card ids are re-fetched
                 // rather than replayed, and an order total ages faster than a price.
                 orders: reply.orders,
+                orderDetail: reply.orderDetail,
                 handoff: reply.handoff,
                 checkout: reply.checkout,
                 createdAt: new Date().toISOString(),

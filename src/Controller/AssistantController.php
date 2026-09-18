@@ -206,6 +206,9 @@ class AssistantController extends StorefrontController
             // transcript therefore shows what was said and not the cards beside it, until there is a
             // route to ask again.
             'orders' => $this->orderPayload->of($turn->orders),
+            // The one order `get_order` fetched, null otherwise. Live turns only, for the same
+            // reason `orders` is: stored figures are figures that were true when written.
+            'orderDetail' => $this->orderPayload->detail($turn->orderDetail),
             'outcome' => $turn->outcome,
             // Rendered from the outcome and the merchant's settings, never from the prose beside it
             // — the model has never seen this URL, so it cannot have got it wrong.

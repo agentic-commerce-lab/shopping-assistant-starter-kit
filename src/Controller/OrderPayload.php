@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Controller;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderLine;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 
 /**
@@ -43,5 +45,40 @@ final readonly class OrderPayload
                 'extension' => $document->extension,
             ], $order->documents),
         ], $orders);
+    }
+
+    /**
+     * The one order `get_order` fetched, or null.
+     *
+     * Same discipline as {@see self::of()}: every value comes from the {@see OrderDetail} the
+     * renderer holds. The line figures are here precisely because the model never saw them — it was
+     * given names, and this is where the numbers rejoin them.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function detail(?OrderDetail $detail): ?array
+    {
+        if ($detail === null) {
+            return null;
+        }
+
+        return [
+            'orderNumber' => $detail->orderNumber,
+            'orderedAt' => $detail->orderedAt->format('Y-m-d'),
+            'state' => $detail->stateLabel,
+            'total' => $detail->total,
+            'currency' => $detail->currency,
+            'lines' => array_map(static fn(OrderLine $line): array => [
+                'name' => $line->name,
+                'quantity' => $line->quantity,
+                'unitPrice' => $line->unitPrice,
+                'lineTotal' => $line->lineTotal,
+            ], $detail->lines),
+            'documents' => array_map(static fn($document): array => [
+                'title' => $document->title,
+                'url' => $document->url,
+                'extension' => $document->extension,
+            ], $detail->documents),
+        ];
     }
 }

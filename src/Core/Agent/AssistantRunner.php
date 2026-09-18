@@ -160,7 +160,14 @@ final class AssistantRunner
 
         // Read from the renderer for the same reason `$cards` are: the turn's own retrieval is the
         // authority, never the model's sentence about it.
-        return new AssistantTurn($prose, $cards, $outcome, $warnings, $this->bundle->orderRenderer->retrievedOrders());
+        return new AssistantTurn(
+            $prose,
+            $cards,
+            $outcome,
+            $warnings,
+            $this->bundle->orderRenderer->retrievedOrders(),
+            $this->bundle->orderRenderer->retrievedDetail(),
+        );
     }
 
     /**
