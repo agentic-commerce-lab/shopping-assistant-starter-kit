@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Commerce;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 
 /**
@@ -52,4 +53,20 @@ interface OrderHistoryReader
      * @return list<OrderSummary>
      */
     public function orders(int $limit): array;
+
+    /**
+     * One of the shopper's own orders, with its lines — or `null`.
+     *
+     * **`null` does not say why, and that is the design.** An order number belonging to a colleague
+     * and an order number that never existed are the same answer here. Distinguishing them would
+     * tell a shopper that somebody else's order exists, which is a smaller leak than showing it and
+     * a leak all the same.
+     *
+     * An implementation gets that for free by making the number a **criteria filter on the route**
+     * rather than a lookup of its own: the decorator adds the employee filter to the same criteria,
+     * so a foreign number simply matches nothing. Narrowing an unfiltered result in PHP afterwards
+     * would produce the right answer here and the wrong one the first time somebody reuses the
+     * unfiltered call.
+     */
+    public function order(string $orderNumber): ?OrderDetail;
 }

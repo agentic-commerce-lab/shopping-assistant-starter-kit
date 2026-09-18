@@ -8,6 +8,7 @@ use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
@@ -26,15 +27,35 @@ use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
  */
 final class OrderCapableGateway implements CommerceGatewayInterface, OrderHistoryReader
 {
-    /** @param list<OrderSummary> $orders */
+    /** @var array<string, OrderDetail> keyed by order number */
+    private readonly array $details;
+
+    /**
+     * @param list<OrderSummary> $orders
+     * @param list<OrderDetail>  $details
+     */
     public function __construct(
         private readonly array $orders = [],
-    ) {}
+        array $details = [],
+    ) {
+        $keyed = [];
+
+        foreach ($details as $detail) {
+            $keyed[$detail->orderNumber] = $detail;
+        }
+
+        $this->details = $keyed;
+    }
 
     /** @return list<OrderSummary> */
     public function orders(int $limit): array
     {
         return \array_slice($this->orders, 0, $limit);
+    }
+
+    public function order(string $orderNumber): ?OrderDetail
+    {
+        return $this->details[$orderNumber] ?? null;
     }
 
     public function facets(CatalogScope $scope): FacetSet

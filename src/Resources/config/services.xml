@@ -92,6 +92,10 @@
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderMapper">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderDocuments"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderDocuments">
             <argument type="service" id="router"/>
         </service>
 

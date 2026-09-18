@@ -10,6 +10,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
@@ -63,6 +64,17 @@ final class FixtureCommerceGateway implements
     public function orders(int $limit): array
     {
         return $this->orderHistory->orders($limit);
+    }
+
+    public function order(string $orderNumber): ?OrderDetail
+    {
+        return $this->orderHistory->order($orderNumber);
+    }
+
+    /** @param list<OrderDetail> $details */
+    public function seedOrderDetails(array $details): void
+    {
+        $this->orderHistory->seedDetails($details);
     }
 
     public static function fromFile(string $path): self

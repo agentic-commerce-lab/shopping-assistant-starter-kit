@@ -117,6 +117,11 @@ final readonly class DalCommerceGateway implements
         return $this->orderHistory->orders($limit);
     }
 
+    public function order(string $orderNumber): ?\Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail
+    {
+        return $this->orderHistory->order($orderNumber);
+    }
+
     /**
      * @throws \Doctrine\DBAL\Exception see {@see DalFacetQuery::facets()}
      */

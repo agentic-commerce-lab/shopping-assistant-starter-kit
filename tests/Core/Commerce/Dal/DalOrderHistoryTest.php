@@ -7,9 +7,11 @@ namespace Swag\AssistantStarterKit\Tests\Core\Commerce\Dal;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\SalesChannel\AbstractOrderRoute;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderDocuments;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderMapper;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Tests\Core\Commerce\Dal\RecordingOrderRoute;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\RouterInterface;
@@ -143,7 +145,7 @@ final class DalOrderHistoryTest extends TestCase
             $route,
             $contexts,
             new RequestStack(),
-            new DalOrderMapper($this->createMock(RouterInterface::class)),
+            new DalOrderMapper(new DalOrderDocuments($this->createMock(RouterInterface::class))),
         );
 
         $orders = $contexts->use($this->createMock(SalesChannelContext::class), static fn(): array => $history->orders(
@@ -153,6 +155,41 @@ final class DalOrderHistoryTest extends TestCase
         self::assertSame([], $orders, 'a route returning no orders must yield none');
         self::assertSame(1, $route->loadCalls, 'orders() must go through the route exactly once');
         self::assertSame(5, $route->lastLimit, 'the bound must reach the route, not be applied after');
+    }
+
+    /**
+     * A single order is looked up BY FILTERING THE ROUTE, never by fetching it and checking after.
+     *
+     * This is the security assertion of phase 2. Commercial's decorator adds the employee filter to
+     * the criteria this call passes, so an order number belonging to a colleague matches nothing and
+     * comes back as `null`. An implementation that loaded orders unfiltered and picked the matching
+     * one in PHP would return the same answer for the shopper's own order — and the colleague's
+     * order for anyone who reused that unfiltered call.
+     */
+    public function testLooksOneOrderUpAsAFilterOnTheRoute(): void
+    {
+        $route = new RecordingOrderRoute();
+        $contexts = new SalesChannelContextProvider(new RequestStack());
+
+        $history = new DalOrderHistory(
+            $route,
+            $contexts,
+            new RequestStack(),
+            new DalOrderMapper(new DalOrderDocuments($this->createMock(RouterInterface::class))),
+        );
+
+        $found = $contexts->use(
+            $this->createMock(SalesChannelContext::class),
+            static fn(): ?OrderDetail => $history->order('10023'),
+        );
+
+        self::assertNull($found, 'a route matching nothing must yield null, not an empty detail');
+        self::assertSame(1, $route->loadCalls);
+        self::assertSame(
+            '10023',
+            $route->lastEqualsFilters['orderNumber'] ?? null,
+            'the order number must reach the route as a filter, not narrow its result afterwards',
+        );
     }
 
     /** The one `<service>` block for the given class, so neighbouring definitions cannot satisfy it. */

@@ -11,6 +11,7 @@ use Shopware\Core\Checkout\Order\SalesChannel\OrderRouteResponse;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\EntitySearchResult;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -28,6 +29,9 @@ final class RecordingOrderRoute extends AbstractOrderRoute
 
     public ?int $lastLimit = null;
 
+    /** @var array<string, mixed> field => value, for every EqualsFilter on the last criteria */
+    public array $lastEqualsFilters = [];
+
     public function getDecorated(): AbstractOrderRoute
     {
         throw new \LogicException('not decorated');
@@ -37,6 +41,17 @@ final class RecordingOrderRoute extends AbstractOrderRoute
     {
         ++$this->loadCalls;
         $this->lastLimit = $criteria->getLimit();
+
+        // Captured so a test can assert that a lookup by order number reached the ROUTE as a filter,
+        // rather than being applied to an unfiltered result afterwards. The decorator adds the
+        // employee filter to this same criteria; a narrowing done later would miss it.
+        $this->lastEqualsFilters = [];
+
+        foreach ($criteria->getFilters() as $filter) {
+            if ($filter instanceof EqualsFilter) {
+                $this->lastEqualsFilters[$filter->getField()] = $filter->getValue();
+            }
+        }
 
         return new OrderRouteResponse(
             new EntitySearchResult(

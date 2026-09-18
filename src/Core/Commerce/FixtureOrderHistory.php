@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Commerce;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 
 /**
@@ -23,10 +24,32 @@ final class FixtureOrderHistory
     /** @var list<OrderSummary> */
     private array $orders = [];
 
+    /** @var array<string, OrderDetail> keyed by order number */
+    private array $details = [];
+
     /** @param list<OrderSummary> $orders */
     public function seed(array $orders): void
     {
         $this->orders = array_values($orders);
+    }
+
+    /** @param list<OrderDetail> $details */
+    public function seedDetails(array $details): void
+    {
+        $this->details = [];
+
+        foreach ($details as $detail) {
+            $this->details[$detail->orderNumber] = $detail;
+        }
+    }
+
+    /**
+     * Null for anything not seeded — which stands in for both "no such order" and "not yours", the
+     * same single answer the real implementation gives and for the same reason.
+     */
+    public function order(string $orderNumber): ?OrderDetail
+    {
+        return $this->details[$orderNumber] ?? null;
     }
 
     /**

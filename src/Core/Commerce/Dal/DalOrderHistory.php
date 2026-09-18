@@ -7,7 +7,9 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\SalesChannel\AbstractOrderRoute;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
 use Symfony\Component\HttpFoundation\Request;
@@ -73,15 +75,7 @@ final readonly class DalOrderHistory implements OrderHistoryReader
         $criteria = new Criteria();
         $criteria->addSorting(new FieldSorting('orderDateTime', FieldSorting::DESCENDING));
         $criteria->setLimit($limit);
-        $criteria->addAssociation('lineItems');
-        $criteria->addAssociation('stateMachineState');
-        $criteria->addAssociation('currency');
-        // Without this every document is titled "Document". `OrderRoute` creates the `documents`
-        // association to filter it, but adds nothing nested, and an unloaded to-one returns null —
-        // so the fallback in self::documents() fired on every row and an invoice, a credit note and
-        // a delivery note rendered identically. Core merges into the same nested criteria, and
-        // adding an association cannot affect the B2B filter.
-        $criteria->addAssociation('documents.documentType');
+        $this->associate($criteria);
 
         // No customer filter of our own. The route applies the one that is correct for this shop —
         // see the class docblock. Adding one here would at best duplicate it and at worst disagree.
@@ -106,5 +100,47 @@ final readonly class DalOrderHistory implements OrderHistoryReader
         }
 
         return $summaries;
+    }
+
+    public function order(string $orderNumber): ?OrderDetail
+    {
+        $criteria = new Criteria();
+        $criteria->setLimit(1);
+        // **A filter on the route, not a lookup of our own.** The decorator adds the B2B employee
+        // filter to this same criteria, so an order number belonging to a colleague matches nothing
+        // and this returns null — the same answer as a number that never existed, deliberately.
+        // Loading unfiltered and picking the match in PHP would answer correctly here and wrongly
+        // the first time somebody reused the unfiltered call.
+        $criteria->addFilter(new EqualsFilter('orderNumber', $orderNumber));
+        $this->associate($criteria);
+
+        $result = $this->orderRoute->load(
+            $this->requests->getMainRequest() ?? new Request(),
+            $this->contexts->current(),
+            $criteria,
+        );
+
+        foreach ($result->getOrders() as $order) {
+            if ($order instanceof OrderEntity) {
+                return $this->mapper->detail($order);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Everything both reads need loaded.
+     *
+     * `documents.documentType` above all: `OrderRoute` creates the `documents` association to filter
+     * it but adds nothing nested, and an unloaded to-one returns null — which made every document
+     * render as "Document" until it was found on a real order.
+     */
+    private function associate(Criteria $criteria): void
+    {
+        $criteria->addAssociation('lineItems');
+        $criteria->addAssociation('stateMachineState');
+        $criteria->addAssociation('currency');
+        $criteria->addAssociation('documents.documentType');
     }
 }

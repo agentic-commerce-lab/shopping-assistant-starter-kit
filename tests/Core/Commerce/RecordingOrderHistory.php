@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Core\Commerce;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
 
@@ -41,5 +42,10 @@ final class RecordingOrderHistory implements OrderHistoryReader
         }
 
         return $orders;
+    }
+
+    public function order(string $orderNumber): ?OrderDetail
+    {
+        return null;
     }
 }
