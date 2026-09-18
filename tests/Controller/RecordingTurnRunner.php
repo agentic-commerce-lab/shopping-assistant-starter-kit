@@ -26,6 +26,15 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
     /** Overridden by tests that need a turn the controller treats as an escalation. */
     public string $outcome = 'product_shown';
 
+    /**
+     * The card this runner renders, when a test needs a specific product rather than the default.
+     *
+     * Exists so a test can point the turn at a product the {@see \Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway}
+     * catalogue actually holds, and then assert against that gateway's real cart instead of a
+     * stubbed one. Null keeps the fixed Trail Jersey every other endpoint test asserts on.
+     */
+    public ?ProductCard $card = null;
+
     /** @var list<ConversationTurn> */
     public array $lastHistory = [];
 
@@ -70,7 +79,7 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
         $trace->record('guard.check', ['verdict' => 'allow']);
         $trace->record('render', ['stockSource' => 'variant']);
 
-        $card = new ProductCard(
+        $card = $this->card ?? new ProductCard(
             id: 'a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2',
             parentId: 'fafafafafafafafafafafafafafafafa',
             name: 'Trail Jersey',

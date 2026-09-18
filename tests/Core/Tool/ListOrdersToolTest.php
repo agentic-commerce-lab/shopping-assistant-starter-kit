@@ -90,7 +90,6 @@ final class ListOrdersToolTest extends TestCase
 
                 for ($index = 0; $index < min($this->count, $limit); ++$index) {
                     $orders[] = new OrderSummary(
-                        id: 'id' . $index,
                         orderNumber: (string) (10000 + $index),
                         orderedAt: new \DateTimeImmutable('2026-09-12'),
                         stateLabel: 'Shipped',

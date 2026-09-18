@@ -309,8 +309,49 @@ function buildActions(card, { addToCartEnabled, translations }) {
 }
 
 /**
+ * What the add button says, decided from the card's data alone.
+ *
+ * **This is the fix for a button that lied.** The succeeded state used to exist only as a DOM
+ * mutation inside the click handler ({@link markAdded}), so anything that rebuilt a card from the
+ * server rebuilt it without that knowledge: the assistant's own confirmation card — the one it
+ * renders right after `add_to_cart` to show *which variant* went in — read "Add to cart", and the
+ * button under that label was live. A shopper who trusted it bought a second one.
+ *
+ * `inCart` comes off the `cards[]` payload like every other figure here, and it is the **cart's**
+ * quantity rather than anyone's requested one: Shopware corrects a request against `minPurchase`,
+ * `purchaseSteps` and available stock, so the two disagree routinely.
+ *
+ * A separate function rather than inline in {@link buildAdd} because the question is about the
+ * card's data, not about the document — which is also what makes it testable without a DOM.
+ *
+ * @returns {{inCart: number, label: string, action: string}} `label` is what the button shows,
+ *   `action` what it does. They differ exactly when the label goes stateful.
+ */
+export function addButtonState(card, translations) {
+    // Integer and positive, or it is not a quantity. A payload from before this field existed, or
+    // one that lost it, must read as "not in the cart" rather than "in the cart, quantity unknown":
+    // a missing badge is a smaller lie than a badge for something nobody bought.
+    const held = Number.isInteger(card?.inCart) && card.inCart > 0 ? card.inCart : 0;
+
+    if (held === 0) {
+        return { inCart: 0, label: translations.add ?? '', action: translations.add ?? '' };
+    }
+
+    return {
+        inCart: held,
+        label: (translations.inCart ?? '').replace('%count%', String(held)),
+        action: translations.addAnother ?? '',
+    };
+}
+
+/**
  * The glyph is a shopping bag and it becomes a check on success — but the *label* is what carries the
  * outcome, changing from "Add to cart" to "Added". Colour and iconography confirm; they never inform.
+ *
+ * A card the cart already holds starts in that confirmed state rather than arriving at it by being
+ * clicked — see {@link addButtonState}. The button stays pressable, because adding a second one is a
+ * real thing a shopper wants; what changes is that doing so is now a stated intent ("Add another")
+ * rather than an accident.
  */
 function buildAdd(card, translations) {
     const add = document.createElement('button');
@@ -318,12 +359,21 @@ function buildAdd(card, translations) {
     add.type = 'button';
     add.dataset.swagAssistantAdd = card.id;
 
-    add.appendChild(icon('cart'));
+    const state = addButtonState(card, translations);
+
+    add.appendChild(icon(state.inCart > 0 ? 'check' : 'cart'));
 
     const label = document.createElement('span');
     label.className = 'swag-assistant-card__add-label';
-    label.textContent = translations.add ?? '';
+    label.textContent = state.label;
     add.appendChild(label);
+
+    if (state.inCart > 0) {
+        add.classList.add('is-in-cart');
+        // The visible label is the STATE; the accessible name is the ACTION. A screen reader user
+        // given only "In cart (2)" has been told what is true and not what the button does.
+        add.setAttribute('aria-label', state.action);
+    }
 
     if (!card.inStock) {
         add.disabled = true;

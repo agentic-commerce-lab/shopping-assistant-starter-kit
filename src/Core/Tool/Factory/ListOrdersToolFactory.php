@@ -22,6 +22,15 @@ use Swag\AssistantStarterKit\Core\Tool\ListOrdersTool;
  * and `ToolContext` deliberately carries none. It touches no catalogue, so the gateway, blocklist
  * and variant resolver it also receives go unused — the smaller wrong than a third authority tier
  * with one consumer, and recorded here rather than left to be noticed.
+ *
+ * **What these three gates do NOT do, stated so nobody has to discover it.** They gate this TOOL,
+ * not the capability. `orders()` is a public method on the gateway, and R32 hands that one instance
+ * to every grounded factory — so a contributed tool could call `$context->gateway->orders(10)` with
+ * `enableOrderHistory` switched off. That is consistent with this project's trust boundary rather
+ * than a hole in it: tools are trusted code the merchant installed, and `Guard` protects against the
+ * model, not against the tool. The model cannot reach it, because the model only ever sees tools the
+ * toolbox constructed. A merchant who wants the switch enforced below the toolbox has to push the
+ * check into the gateway, and that is a different design than this one.
  */
 final readonly class ListOrdersToolFactory implements GroundedToolFactoryInterface
 {

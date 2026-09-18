@@ -23,7 +23,7 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
  * and nothing else.
  */
 // @mago-expect lint:excessive-parameter-list
-// Eight fields, and every one of them is a field the card shows — the class is the card's contract,
+// Seven fields, and every one of them is a field the card shows — the class is the card's contract,
 // so the list shrinks only by removing something from the screen. Grouping them behind a shape would
 // also defeat `OrderSummaryTest`, which asserts this exact property list precisely because this is
 // where a field about a *person* would enter the pipeline.
@@ -31,7 +31,6 @@ final readonly class OrderSummary
 {
     /** @param list<OrderDocumentRef> $documents */
     public function __construct(
-        public string $id,
         public string $orderNumber,
         public \DateTimeImmutable $orderedAt,
         public string $stateLabel,

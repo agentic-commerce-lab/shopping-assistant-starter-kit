@@ -9,7 +9,9 @@ use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Swag\AssistantStarterKit\Controller\AssistantController;
 use Swag\AssistantStarterKit\Controller\CheckoutPayload;
+use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider;
+use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
@@ -84,8 +86,10 @@ abstract class AssistantEndpointTestCase extends TestCase
     /**
      * @param array<string, string|int|float|bool|null> $config
      */
-    protected function controller(array $config = self::CONFIGURED): AssistantController
-    {
+    protected function controller(
+        array $config = self::CONFIGURED,
+        ?CommerceGatewayInterface $gateway = null,
+    ): AssistantController {
         $this->runner = new RecordingTurnRunner();
         $this->store = new InMemoryConversationStore();
 
@@ -104,6 +108,11 @@ abstract class AssistantEndpointTestCase extends TestCase
             // never actually read here, and a request-less one is enough to satisfy the type.
             new ShoppingContextResolver(new SalesChannelContextProvider(new RequestStack())),
             new CheckoutPayload(new FixedCheckoutRouter()),
+            // Read for one thing only: what the shopper's cart already holds, so a rendered card
+            // can say so instead of offering "Add to cart" for something already in there. An empty
+            // fixture cart is the right default — it is what every test that predates this asserted
+            // against, implicitly.
+            $gateway ?? FixtureCommerceGateway::fromFile(__DIR__ . '/../Fixtures/catalog.json'),
         );
     }
 

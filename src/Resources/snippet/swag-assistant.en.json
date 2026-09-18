@@ -31,6 +31,8 @@
       "parentStock": "Total across all variants — choose one on the product page.",
       "delivery": "Delivery: %time%",
       "addedToCart": "Added",
+      "inCart": "In cart (%count%)",
+      "addAnother": "Add another",
       "priceAt": "%price% each at %count% units",
       "volumePricing": "Lower unit prices at higher quantities",
       "basePrice": "(%price% / %unit%)"

@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Controller;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
+use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
@@ -67,6 +68,11 @@ class AssistantController extends StorefrontController
         // checkout route into a URL, and there is no stock instance to fall back to. A defaulted
         // null would render no checkout link at all — silently, on the one path a shopper notices.
         private readonly CheckoutPayload $checkout,
+        // Read for exactly one question — what the shopper's cart already holds — so a rendered
+        // card can say "In cart (2)" instead of offering "Add to cart" for something already in
+        // there. Required rather than defaulted for the same reason `CardPayload::of()` requires
+        // the summary: a card rendered without that answer is the defect, not a degraded mode.
+        private readonly CommerceGatewayInterface $gateway,
         private readonly CardPayload $cardPayload = new CardPayload(),
         private readonly HandoffPayload $handoff = new HandoffPayload(),
         // Defaulted to an empty dispatcher so a shop with no sinks configured pays nothing and
@@ -184,7 +190,7 @@ class AssistantController extends StorefrontController
         return new JsonResponse([
             'token' => $token,
             'prose' => $turn->prose,
-            'cards' => $this->cardPayload->of($turn->cards),
+            'cards' => $this->cardPayload->of($turn->cards, $this->gateway->cart()),
             'outcome' => $turn->outcome,
             // Rendered from the outcome and the merchant's settings, never from the prose beside it
             // — the model has never seen this URL, so it cannot have got it wrong.

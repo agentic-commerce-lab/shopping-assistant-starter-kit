@@ -330,8 +330,9 @@
             <helpText>When on, a signed-in shopper can ask for their recent orders and receive them
                 as cards, with any invoice you have already released to their account as a download.
                 The assistant never sees another shopper's orders, and under B2B Components an
-                employee sees only what their role permits. Guests are told it cannot be looked
-                up.</helpText>
+                employee sees only what their role permits. Someone who is not signed in at all is
+                told it cannot be looked up; someone who checked out as a guest in this session can
+                see that session's own order, and nothing else.</helpText>
         </input-field>
 
         <input-field type="bool">

@@ -30,7 +30,7 @@ final class OrderSummaryTest extends TestCase
         sort($properties);
 
         self::assertSame(
-            ['currency', 'documents', 'id', 'itemCount', 'orderNumber', 'orderedAt', 'stateLabel', 'total'],
+            ['currency', 'documents', 'itemCount', 'orderNumber', 'orderedAt', 'stateLabel', 'total'],
             $properties,
         );
     }
@@ -38,7 +38,6 @@ final class OrderSummaryTest extends TestCase
     public function testHoldsItsDocuments(): void
     {
         $summary = new OrderSummary(
-            id: 'o1',
             orderNumber: '10023',
             orderedAt: new \DateTimeImmutable('2026-09-12'),
             stateLabel: 'Shipped',

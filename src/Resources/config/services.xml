@@ -87,6 +87,11 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory">
             <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderRoute"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+            <argument type="service" id="request_stack"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderMapper"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderMapper">
             <argument type="service" id="router"/>
         </service>
 
@@ -364,6 +369,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Policy\RequestBudget"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\CheckoutPayload"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\CardPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\HandoffPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher"/>
@@ -389,6 +395,7 @@
         <service id="Swag\AssistantStarterKit\Controller\AssistantCardController" public="true">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CardResolver"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>

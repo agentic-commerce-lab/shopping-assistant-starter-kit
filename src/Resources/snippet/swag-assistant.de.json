@@ -31,6 +31,8 @@
       "parentStock": "Bestand über alle Varianten zusammen — wähle eine auf der Produktseite.",
       "delivery": "Lieferung: %time%",
       "addedToCart": "Hinzugefügt",
+      "inCart": "Im Warenkorb (%count%)",
+      "addAnother": "Noch eins hinzufügen",
       "priceAt": "%price% pro Stück bei %count% Stück",
       "volumePricing": "Günstiger bei größeren Mengen",
       "basePrice": "(%price% / %unit%)"

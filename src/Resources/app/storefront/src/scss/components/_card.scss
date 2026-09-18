@@ -423,6 +423,36 @@ still reads that it worked.
     }
 }
 
+/*
+Already in the cart when the card was drawn — a resting state, not an event.
+
+**Quieter than `.is-added` below, deliberately.** That one is a filled teal celebration for
+something that just happened under the shopper's finger; this is how a card *arrives* when the cart
+already holds the product, and it can easily be five cards at once in a restored conversation. A
+celebration repeated five times down a transcript is noise, and it would outweigh the price sitting
+directly above it. So: the teal association kept, the fill demoted to a wash, and no animation —
+nothing happened just now.
+
+It also reads as the demotion it is. The button was the card's primary call to action; once the
+thing is in the cart, adding another is a secondary intent, and an outline says that without a word.
+
+Night Blue on the wash rather than teal text: Teal #57d998 is a bright mid-green, and setting it as
+text on white is about 1.7:1 — the same arithmetic that rules white out on top of it.
+
+Not a colour-only signal, same rule as everywhere else here: the label reads "In cart (2)" and the
+glyph is a check. Colour confirms; it never informs.
+*/
+.swag-assistant-card__add.is-in-cart:not(:disabled) {
+    border-color: $swag-assistant-in-stock;
+    background: rgba($swag-assistant-in-stock, 0.16);
+    color: $swag-assistant-text;
+
+    &:hover {
+        background: rgba($swag-assistant-in-stock, 0.28);
+        border-color: $swag-assistant-in-stock;
+    }
+}
+
 // Succeeded. Not a colour-only signal: the label itself changes to "Added".
 .swag-assistant-card__add.is-added {
     border-color: $swag-assistant-in-stock;

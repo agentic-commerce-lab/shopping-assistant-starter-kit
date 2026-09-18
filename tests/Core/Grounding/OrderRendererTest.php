@@ -46,7 +46,6 @@ final class OrderRendererTest extends TestCase
     private static function summary(string $number): OrderSummary
     {
         return new OrderSummary(
-            id: 'id-' . $number,
             orderNumber: $number,
             orderedAt: new \DateTimeImmutable('2026-09-12'),
             stateLabel: 'Shipped',
