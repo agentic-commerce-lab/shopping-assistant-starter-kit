@@ -23,10 +23,9 @@ final class OrderPayloadTest extends TestCase
     {
         $payload = (new OrderPayload())->of([self::order()]);
 
-        self::assertCount(1, $payload);
         self::assertSame(
-            ['orderNumber', 'orderedAt', 'state', 'total', 'currency', 'itemCount', 'documents'],
-            array_keys($payload[0]),
+            [['orderNumber', 'orderedAt', 'state', 'total', 'currency', 'itemCount', 'documents']],
+            array_map(static fn(array $row): array => array_keys($row), $payload),
         );
     }
 

@@ -22,8 +22,10 @@ final class OrderRendererTest extends TestCase
         $renderer = new OrderRenderer();
         $renderer->registerRetrieved([self::summary('10023')]);
 
-        self::assertCount(1, $renderer->retrievedOrders());
-        self::assertSame('10023', $renderer->retrievedOrders()[0]->orderNumber);
+        self::assertSame(
+            ['10023'],
+            array_map(static fn($order): string => $order->orderNumber, $renderer->retrievedOrders()),
+        );
     }
 
     /**

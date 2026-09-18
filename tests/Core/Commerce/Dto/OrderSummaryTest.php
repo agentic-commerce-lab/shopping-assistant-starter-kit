@@ -48,7 +48,9 @@ final class OrderSummaryTest extends TestCase
         );
 
         self::assertSame('10023', $summary->orderNumber);
-        self::assertSame('Invoice', $summary->documents[0]->title);
-        self::assertSame('/account/order/document/abc/def', $summary->documents[0]->url);
+        self::assertSame(
+            [['Invoice', '/account/order/document/abc/def']],
+            array_map(static fn($doc): array => [$doc->title, $doc->url], $summary->documents),
+        );
     }
 }

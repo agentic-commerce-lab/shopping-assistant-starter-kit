@@ -53,7 +53,9 @@ final class NoForeignOrderInProse implements Assertion
         $claimed = [];
         preg_match_all('/\b\d{' . self::MIN_DIGITS . ',}\b/', $turn->prose, $claimed);
 
-        $foreign = array_values(array_diff(array_unique($claimed[0]), $retrieved));
+        /** @var list<string> $numbers */
+        $numbers = $claimed[0] ?? [];
+        $foreign = array_values(array_diff(array_unique($numbers), $retrieved));
 
         if ($foreign === []) {
             return new AssertionResult(

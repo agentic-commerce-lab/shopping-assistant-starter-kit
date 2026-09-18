@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Core\Tool;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
-use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
 use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Tool\ListOrdersTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Swag\AssistantStarterKit\Tests\Core\Commerce\RecordingOrderHistory;
 
 /**
  * The tool returns order NUMBERS and nothing else.
@@ -38,8 +38,10 @@ final class ListOrdersToolTest extends TestCase
 
         (new ListOrdersTool(self::reader(1), $renderer, new TraceRecorder()))();
 
-        self::assertCount(1, $renderer->retrievedOrders());
-        self::assertSame('10000', $renderer->retrievedOrders()[0]->orderNumber);
+        self::assertSame(
+            ['10000'],
+            array_map(static fn($order): string => $order->orderNumber, $renderer->retrievedOrders()),
+        );
     }
 
     /**
@@ -49,19 +51,36 @@ final class ListOrdersToolTest extends TestCase
      * `maximum` cannot be declared — the same regression against a hand-written schema that every
      * other tool here closes with a guard clause.
      */
-    public function testDefaultsToFiveAndClampsBothEnds(): void
+    /**
+     * Bounds live in the method body, not in the schema.
+     *
+     * `#[AsTool]` derives the JSON Schema from the signature by reflection, so `minimum` and
+     * `maximum` cannot be declared — the same regression against a hand-written schema that every
+     * other tool here closes with a guard clause.
+     *
+     * One reader per case rather than one reused across three: the bound is recorded on a mutable
+     * property, and reusing the instance lets a static analyser narrow it to the first value it saw
+     * and call the later assertions impossible.
+     */
+    #[DataProvider('limits')]
+    public function testClampsTheLimitItAsksFor(?int $asked, int $expected): void
     {
-        $reader = self::reader(50);
-        $tool = new ListOrdersTool($reader, new OrderRenderer(), new TraceRecorder());
+        $reader = new RecordingOrderHistory(50);
 
-        $tool();
-        self::assertSame(5, $reader->askedFor, 'no limit given');
+        (new ListOrdersTool($reader, new OrderRenderer(), new TraceRecorder()))($asked);
 
-        $tool(99);
-        self::assertSame(10, $reader->askedFor, 'above the ceiling');
+        self::assertSame($expected, $reader->askedFor);
+    }
 
-        $tool(0);
-        self::assertSame(1, $reader->askedFor, 'below the floor');
+    /** @return array<string, array{?int, int}> */
+    public static function limits(): array
+    {
+        return [
+            'no limit given' => [null, 5],
+            'above the ceiling' => [99, 10],
+            'below the floor' => [0, 1],
+            'negative' => [-5, 1],
+        ];
     }
 
     /** The trace is what {@see \Swag\AssistantStarterKit\Eval\Assertion\NoForeignOrderInProse} reads. */
@@ -74,34 +93,8 @@ final class ListOrdersToolTest extends TestCase
         self::assertSame(['10000', '10001'], $trace->payload('orders.listed')['orderNumbers'] ?? null);
     }
 
-    private static function reader(int $count): OrderHistoryReader
+    private static function reader(int $count): RecordingOrderHistory
     {
-        return new class($count) implements OrderHistoryReader {
-            public int $askedFor = 0;
-
-            public function __construct(
-                private readonly int $count,
-            ) {}
-
-            public function orders(int $limit): array
-            {
-                $this->askedFor = $limit;
-                $orders = [];
-
-                for ($index = 0; $index < min($this->count, $limit); ++$index) {
-                    $orders[] = new OrderSummary(
-                        orderNumber: (string) (10000 + $index),
-                        orderedAt: new \DateTimeImmutable('2026-09-12'),
-                        stateLabel: 'Shipped',
-                        total: 10.0,
-                        currency: 'EUR',
-                        itemCount: 1,
-                        documents: [],
-                    );
-                }
-
-                return $orders;
-            }
-        };
+        return new RecordingOrderHistory($count);
     }
 }

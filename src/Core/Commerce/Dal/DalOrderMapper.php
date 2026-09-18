@@ -38,7 +38,7 @@ final readonly class DalOrderMapper
             orderedAt: \DateTimeImmutable::createFromInterface($order->getOrderDateTime()),
             // Shopware's own translated label, carried rather than derived: mapping the state machine
             // ourselves would give the card a vocabulary the shopper's account page does not use.
-            stateLabel: $order->getStateMachineState()?->getTranslation('name') ?? '',
+            stateLabel: (string) ($order->getStateMachineState()?->getTranslation('name') ?? ''),
             total: $order->getAmountTotal(),
             currency: $order->getCurrency()?->getIsoCode() ?? '',
             itemCount: $lineItems->count(),
@@ -59,7 +59,7 @@ final readonly class DalOrderMapper
             }
 
             $refs[] = new OrderDocumentRef(
-                title: $document->getDocumentType()?->getTranslation('name') ?? 'Document',
+                title: (string) ($document->getDocumentType()?->getTranslation('name') ?? 'Document'),
                 // Built from the route, server-side, and never handed to the model — the same rule as
                 // the checkout link and the contact URL (D3). That route is login-required and
                 // re-authenticates, so a copied link is a link the browser still has to earn.
