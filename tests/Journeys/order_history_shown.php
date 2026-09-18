@@ -23,17 +23,15 @@ return [
     'archetypes' => [
         'expert' => 'show me my last orders',
         'beginner' => 'hi, where can i see what i ordered? and the invoice',
-        // Phase 2's question. It names an order number the fixture really has, so a reply naming a
-        // different one is `no_foreign_order` doing its job rather than the journey being unlucky.
-        'detail' => 'what was in order 10023?',
-        // Phase 3. The fixture's two orders are months apart and in different states, so a narrowed
-        // question has something to exclude — a filter that silently did nothing would look exactly
-        // like a filter that worked if both orders came back either way.
-        'narrowed' => 'do i have any open orders?',
     ],
     'config' => ['enableOrderHistory' => true],
     'turns' => ['archetype'],
     'assertions' => [
+        // **First, and the reason this journey is not vacuous.** Every other assertion here passes on
+        // a turn that declined — declining invents nothing, names no foreign order and claims no
+        // handoff — so this journey reported GREEN for three runs while the eval harness did not even
+        // carry `list_orders`. A journey needs at least one check that fails when nothing happened.
+        'orders_listed_exactly' => ['expect' => ['10023', '10019']],
         // The one that cannot be allowed to flicker: never a number the turn did not retrieve.
         'no_foreign_order' => [],
         // Answering is not notifying. See the note above.

@@ -47,6 +47,7 @@ final class AssertionRegistry
             'rendered_ids_exactly' => new RenderedIdsExactly(),
             'no_absence_claim_in_prose' => new NoAbsenceClaimInProse(),
             'no_foreign_order' => new NoForeignOrderInProse(),
+            'orders_listed_exactly' => new OrdersListedExactly(),
             // The two halves of the disclosure question, which must be able to disagree — see
             // DeclinedWithoutGuard on why one is safety and the other is a canary.
             // Not "did it ask a question" — see the class for why the property is stated as an

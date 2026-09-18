@@ -37,7 +37,14 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     name: 'list_orders',
     description: 'The signed-in shopper\'s own recent orders, newest first. Returns order numbers '
     . 'only — the shop renders the dates, totals, states and any invoices as cards beside your '
-    . 'reply. Say that you found their orders and let the cards carry the detail: never state a '
+    . 'reply. Narrow with "state" (one of "open", "in_progress", "completed", "cancelled") or '
+    . '"withinDays" (a number of days back) whenever the shopper asks about PART of their history '
+    . 'rather than all of it — "still open", "not sorted out yet" and "outstanding" all mean state '
+    . '"open"; "already delivered" or "done" mean "completed"; "recent" or a named period means '
+    . 'withinDays. Listing everything when they asked for a subset makes them do the filtering they '
+    . 'asked you for. If nothing matches a narrowed question, say none matched rather than that they '
+    . 'have no orders. '
+    . 'Say that you found their orders and let the cards carry the detail: never state a '
     . 'total, a date or a delivery status yourself, and never mention an order number this tool '
     . 'did not return. If it returns none, say you could not find any orders on their account.',
 )]

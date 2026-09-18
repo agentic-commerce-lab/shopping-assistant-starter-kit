@@ -32,9 +32,11 @@ use Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\BrowseCategoriesToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\CompareProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\EscalateToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\GetOrderToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GetProductToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolContext;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolFactoryInterface;
+use Swag\AssistantStarterKit\Core\Tool\Factory\ListOrdersToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\SearchProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolContext;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
@@ -120,6 +122,13 @@ final readonly class AssistantAgentFactory
                 new AddToCartToolFactory(),
                 new CompareProductsToolFactory(),
                 new BrowseCategoriesToolFactory(),
+                // Shipped tools, so they belong here — and their absence was invisible: every
+                // assertion on an order journey passes on a turn that never called one, so the
+                // suite reported green over a capability the harness did not have. The journey that
+                // caught it is the one carrying `orders_listed_exactly`, which fails when nothing
+                // was fetched.
+                new ListOrdersToolFactory(),
+                new GetOrderToolFactory(),
             ],
             new SystemPromptProvider(),
             new SymfonyAiPlatform($http),

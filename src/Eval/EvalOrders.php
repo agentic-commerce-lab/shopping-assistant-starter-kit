@@ -24,6 +24,14 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
  * The numbers are real five-digit order numbers rather than `1` and `2`, because
  * {@see Assertion\NoForeignOrderInProse} deliberately ignores anything shorter than four digits — a
  * fixture below that bound would make the assertion pass vacuously and prove nothing.
+ *
+ * **The dates are relative, and that is not cosmetic.** They were fixed calendar dates until
+ * `order_history_narrowed` failed 0/3 on its first run: the older order had aged to 21 days, so a
+ * model that narrowed by state AND added any sensible recency window excluded it and the journey
+ * fetched nothing. A fixture whose result depends on the wall clock drifts — it would have failed
+ * eventually whatever the code did, and for a reason nobody could have read off the failure. Two and
+ * five days old sits inside any window a model would pick, so the STATE is what separates them,
+ * which is what the journey is actually measuring.
  */
 final class EvalOrders
 {
@@ -35,7 +43,7 @@ final class EvalOrders
         return [
             new OrderSummary(
                 orderNumber: '10023',
-                orderedAt: new \DateTimeImmutable('2026-09-12'),
+                orderedAt: new \DateTimeImmutable('-2 days'),
                 stateLabel: 'Shipped',
                 total: 118.44,
                 currency: 'EUR',
@@ -44,7 +52,7 @@ final class EvalOrders
             ),
             new OrderSummary(
                 orderNumber: '10019',
-                orderedAt: new \DateTimeImmutable('2026-08-28'),
+                orderedAt: new \DateTimeImmutable('-5 days'),
                 stateLabel: 'Open',
                 total: 73.08,
                 currency: 'EUR',
@@ -68,7 +76,7 @@ final class EvalOrders
         return [
             new OrderDetail(
                 orderNumber: '10023',
-                orderedAt: new \DateTimeImmutable('2026-09-12'),
+                orderedAt: new \DateTimeImmutable('-2 days'),
                 stateLabel: 'Shipped',
                 total: 118.44,
                 currency: 'EUR',
@@ -80,7 +88,7 @@ final class EvalOrders
             ),
             new OrderDetail(
                 orderNumber: '10019',
-                orderedAt: new \DateTimeImmutable('2026-08-28'),
+                orderedAt: new \DateTimeImmutable('-5 days'),
                 stateLabel: 'Open',
                 total: 73.08,
                 currency: 'EUR',
