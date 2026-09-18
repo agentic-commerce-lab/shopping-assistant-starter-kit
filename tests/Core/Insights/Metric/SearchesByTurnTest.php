@@ -77,7 +77,7 @@ final class SearchesByTurnTest extends TestCase
         // An escalation or a shop-information turn searches nothing. An empty group would divide
         // into every ratio drawn from these numbers.
         $turns = SearchesByTurn::in(self::trace([
-            ['seq' => 1, 'stage' => 'escalate', 'payload' => ['destination' => '']],
+            ['seq' => 1, 'stage' => 'escalate', 'payload' => ['reason' => 'why', 'hasDestination' => false]],
             ['seq' => 2, 'stage' => 'turn.end', 'payload' => ['outcome' => 'escalated']],
         ]));
 
