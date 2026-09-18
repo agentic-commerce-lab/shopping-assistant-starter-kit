@@ -559,3 +559,52 @@ shopper is still reading, and confirms on the element that actually changed.
     }
 
 }
+
+/*
+Order cards
+----------------------------------------------
+A product card sells something; an order card reports something that already happened. So it is a
+row of text rather than a tile with an image: there is nothing to look at, and a 176px tile would
+give a date and a total the visual weight of a photograph.
+
+It reuses `.swag-assistant-card__documents` verbatim — an invoice and a datasheet are the same row,
+which is why `documents.js` is shared rather than copied.
+*/
+.swag-assistant-orders {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.swag-assistant-order {
+    padding: 10px 12px;
+    border: 1px solid $swag-assistant-border;
+    border-radius: 10px;
+    background: $swag-assistant-surface;
+}
+
+.swag-assistant-order__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    align-items: baseline;
+}
+
+.swag-assistant-order__number {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.swag-assistant-order__meta {
+    color: $swag-assistant-meta;
+    font-size: 12px;
+}
+
+.swag-assistant-order__items {
+    flex-basis: 100%;
+    color: $swag-assistant-meta;
+    font-size: 11px;
+}

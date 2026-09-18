@@ -510,6 +510,10 @@ export default class SwagAssistantPanel extends PluginBaseClass {
                 role: 'assistant',
                 prose: reply.prose,
                 cards: reply.cards,
+                // Live turns only. `GET /assistant/history` does not carry orders — stored figures
+                // are figures that were true when written, which is why card ids are re-fetched
+                // rather than replayed, and an order total ages faster than a price.
+                orders: reply.orders,
                 handoff: reply.handoff,
                 checkout: reply.checkout,
                 createdAt: new Date().toISOString(),

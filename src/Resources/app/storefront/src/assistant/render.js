@@ -7,6 +7,7 @@
  * why no avatar or accent rule is added on top of it.
  */
 import { renderCards } from './card.js';
+import { renderOrders } from './order-card.js';
 import { toFragment } from './markdown.js';
 
 const ROLE_USER = 'user';
@@ -152,7 +153,7 @@ export function formatSpecChips(card, maxChips = MAX_SPEC_CHIPS) {
 /**
  * @param {HTMLElement} log
  * @param {{
- *   role: string, prose: string, cards?: Array, createdAt?: string,
+ *   role: string, prose: string, cards?: Array, orders?: Array, createdAt?: string,
  *   locale: string, translations?: object, addToCartEnabled?: boolean, animate?: boolean,
  * }} message
  * @returns {HTMLElement} the appended message element
@@ -162,6 +163,7 @@ export function renderMessage(log, message) {
         role,
         prose,
         cards,
+        orders,
         handoff,
         checkout,
         createdAt,
@@ -226,6 +228,11 @@ export function renderMessage(log, message) {
     if (hasCards) {
         renderCards(wrapper, cards, { locale, addToCartEnabled, translations });
     }
+
+    // Orders never arrive alongside product cards in practice — one turn answers one kind of
+    // question — but the slot is independent rather than exclusive, because making them exclusive
+    // would be this file guessing about the server's answer.
+    renderOrders(wrapper, orders, { locale, translations });
 
     const time = buildTime(createdAt, locale);
     if (time) {

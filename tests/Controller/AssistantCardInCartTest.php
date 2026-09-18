@@ -51,7 +51,10 @@ final class AssistantCardInCartTest extends AssistantEndpointTestCase
     }
 
     /**
-     * @return array<string, mixed>
+     * `array-key` rather than `string`: this comes back through `json_decode`, which cannot promise
+     * the analyzer that a decoded object's keys are strings.
+     *
+     * @return array<array-key, mixed>
      */
     private function firstCardAfterChat(FixtureCommerceGateway $gateway): array
     {

@@ -78,6 +78,10 @@ class AssistantController extends StorefrontController
         // Defaulted to an empty dispatcher so a shop with no sinks configured pays nothing and
         // needs no wiring; the container passes the tagged ones.
         private readonly TraceSinkDispatcher $traceSinks = new TraceSinkDispatcher([]),
+        // Appended rather than placed beside the other payload builders: the container passes these
+        // positionally, and `ServiceArgumentOrderTest` is right that inserting one in the middle
+        // silently hands every later collaborator to the wrong parameter.
+        private readonly OrderPayload $orderPayload = new OrderPayload(),
     ) {}
 
     #[Route(
@@ -191,6 +195,17 @@ class AssistantController extends StorefrontController
             'token' => $token,
             'prose' => $turn->prose,
             'cards' => $this->cardPayload->of($turn->cards, $this->gateway->cart()),
+            // Built from what the turn RETRIEVED, never from the prose beside it — the same rule as
+            // the cards above, applied to the shopper's own orders. Empty unless `list_orders` ran,
+            // which needs the merchant's switch, a signed-in shopper and a gateway that can read
+            // them.
+            //
+            // **Deliberately absent from `GET /assistant/history`.** Stored figures are figures that
+            // were true when written, which is exactly why `cardIds` are re-fetched rather than
+            // replayed; order totals and delivery states age faster than prices do. A reloaded
+            // transcript therefore shows what was said and not the cards beside it, until there is a
+            // route to ask again.
+            'orders' => $this->orderPayload->of($turn->orders),
             'outcome' => $turn->outcome,
             // Rendered from the outcome and the merchant's settings, never from the prose beside it
             // — the model has never seen this URL, so it cannot have got it wrong.

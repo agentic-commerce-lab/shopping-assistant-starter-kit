@@ -21,6 +21,8 @@
     "card": {
       "view": "View product",
       "document": "Document",
+      "orderNumber": "Order %number%",
+      "orderItems": "%count% items",
       "documentsMore": "+%count% more",
       "add": "Add to cart",
       "noImage": "No image available",

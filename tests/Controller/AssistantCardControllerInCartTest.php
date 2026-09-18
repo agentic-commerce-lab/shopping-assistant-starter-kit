@@ -41,7 +41,10 @@ final class AssistantCardControllerInCartTest extends TestCase
     private const CHAIN_LUBE = 'c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1';
 
     /**
-     * @return array<string, mixed>
+     * `array-key` rather than `string`: this comes back through `json_decode`, which cannot promise
+     * the analyzer that a decoded object's keys are strings.
+     *
+     * @return array<array-key, mixed>
      */
     private function firstCard(FixtureCommerceGateway $gateway): array
     {

@@ -158,7 +158,9 @@ final class AssistantRunner
             unbackedPropertyClaims: $this->bundle->renderer->unbackedProperties(),
         );
 
-        return new AssistantTurn($prose, $cards, $outcome, $warnings);
+        // Read from the renderer for the same reason `$cards` are: the turn's own retrieval is the
+        // authority, never the model's sentence about it.
+        return new AssistantTurn($prose, $cards, $outcome, $warnings, $this->bundle->orderRenderer->retrievedOrders());
     }
 
     /**
