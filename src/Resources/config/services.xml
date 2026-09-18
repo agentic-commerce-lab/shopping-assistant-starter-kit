@@ -78,6 +78,18 @@
             <argument type="service" id="sales_channel.category.repository"/>
         </service>
 
+        <!-- Reads the shopper's own orders through Shopware's order route.
+             `...\SalesChannel\OrderRoute` is the right id and the only one that is: verified on a
+             shop running Commercial 7.13.0, it is a public ALIAS for
+             `B2B\EmployeeManagement\Domain\Checkout\DecoratedOrderRoute`, which applies the B2B
+             employee filter. `AbstractOrderRoute` is NOT a registered service and fails at compile
+             time; `DecoratedOrderRoute.inner` is the original and WOULD bypass the filter. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory">
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderRoute"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+            <argument type="service" id="router"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway">
             <argument type="service" id="sales_channel.product.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
@@ -89,6 +101,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetQuery"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory"/>
         </service>
 
         <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper

@@ -33,9 +33,11 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
  * gets the filter.
  *
  * That is a decoration of a **service**. Querying `order.repository` instead returns every order of
- * the business partner, silently, with no error to notice and nothing in a trace to show for it.
- * `DalOrderHistoryTest` asserts the dependency by type so that stays true after this file stops
- * being read.
+ * the business partner, silently, with no error to notice and nothing in a trace to show for it —
+ * and so does injecting `DecoratedOrderRoute.inner`, which is the undecorated original. The service
+ * id to wire is the concrete `Shopware\Core\Checkout\Order\SalesChannel\OrderRoute`: Symfony's
+ * decoration makes that id resolve to the decorator. `DalOrderHistoryTest` asserts both the type and
+ * the wiring, so this stays true after this file stops being read.
  *
  * @api Public extension point. Only DTOs from Dto\ may cross this boundary —
  *      never a Shopware entity, never SalesChannelContext.
