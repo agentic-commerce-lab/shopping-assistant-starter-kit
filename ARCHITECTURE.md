@@ -504,6 +504,7 @@ Note the trust boundary: **tools are trusted code the merchant installed; the mo
 | `compare_products` | read | `enableCompareProducts` |
 | `browse_categories` | read | the gateway implements `CategoryTreeReader` |
 | `list_orders` | read | `enableOrderHistory && loggedIn && ` the gateway implements `OrderHistoryReader` |
+| `get_order` | read | the same three gates as `list_orders` — one capability, two entry points |
 | `escalate` | terminal | always |
 
 **Capability control is toolbox construction, never a prompt instruction.** An unavailable tool
