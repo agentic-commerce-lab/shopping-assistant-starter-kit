@@ -138,13 +138,13 @@ build. Shopware registers only the plugin's own PSR-4 namespace for a manually i
 does not load a bundled `vendor/autoload.php`. Install the dependencies in the shop's vendor tree:
 
 ```fish
-composer require symfony/ai-agent:0.12.* symfony/ai-platform:0.12.* \
-    symfony/ai-generic-platform:0.12.* symfony/ai-store:0.12.* \
+composer require symfony/ai-agent:0.13.* symfony/ai-platform:0.13.* \
+    symfony/ai-generic-platform:0.13.* symfony/ai-store:0.13.* \
     masterminds/html5:^2.11 smalot/pdfparser:^2.12
 
 # On MariaDB 11.7+, add this too — see Requirements. Without it the shop silently
 # lands on the portable PHP store, which is exact but linear.
-composer require symfony/ai-maria-db-store:0.12.*
+composer require symfony/ai-maria-db-store:0.13.*
 ```
 
 Everything else the plugin needs already ships with Shopware. The placeholder files from the

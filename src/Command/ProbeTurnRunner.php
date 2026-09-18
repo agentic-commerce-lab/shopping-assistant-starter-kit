@@ -13,6 +13,7 @@ use Swag\AssistantStarterKit\Core\Llm\LlmException;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Symfony\AI\Agent\Exception\ExceptionInterface as AgentExceptionInterface;
+use Symfony\AI\Platform\Exception\ExceptionInterface as PlatformExceptionInterface;
 use Symfony\AI\Platform\Message\MessageBag;
 
 /**
@@ -88,7 +89,12 @@ final readonly class ProbeTurnRunner
 
         try {
             $turn = (new AssistantRunner($config, $bundle))->run($message, new MessageBag());
-        } catch (AgentExceptionInterface $failure) {
+        } catch (AgentExceptionInterface|PlatformExceptionInterface $failure) {
+            // The platform's hierarchy is caught alongside the agent's because since Symfony AI 0.13
+            // the turn resolves inside `AssistantRunner::run()` rather than at `Agent::call()`, so a
+            // provider that refuses or answers unconvertibly now arrives here — and a probe against a
+            // misconfigured endpoint is the most likely way to meet it.
+            //
             // Degrade, never abort — and above all KEEP THE TRACE. Three separate pilot blockers on
             // this branch were foreseeable conditions ending the turn instead of degrading (rulings
             // R48, R49, R52), and each was found by a live run rather than by the suite. In a probe

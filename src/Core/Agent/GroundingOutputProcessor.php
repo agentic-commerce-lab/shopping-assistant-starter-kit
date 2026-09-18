@@ -71,17 +71,22 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
     /**
      * Whether this turn's result has already been grounded.
      *
-     * **The framework offers the same final result several times.**
-     * `Toolbox\AgentProcessor::handleToolCallsCallback()` resolves a tool round by calling
-     * `Agent::call()` recursively, and every nested call runs the whole output-processor chain again.
-     * This processor sits after the toolbox's, so at each nesting level it is handed the text the
-     * innermost call already produced. Read off a live trace of one turn with three tool calls: the
-     * `validate` / `grounding.select` / `render` triple appeared four times, with identical payloads,
-     * in the same millisecond — nine of that turn's thirty rows, in the one view a merchant reads to
-     * find out what happened.
+     * **A framework used to offer the same final result several times.** Up to Symfony AI 0.12,
+     * `Toolbox\AgentProcessor::handleToolCallsCallback()` resolved a tool round by calling
+     * `Agent::call()` recursively, and every nested call ran the whole output-processor chain again.
+     * This processor sat after the toolbox's, so at each nesting level it was handed the text the
+     * innermost call had already produced. Read off a live trace of one turn with three tool calls:
+     * the `validate` / `grounding.select` / `render` triple appeared four times, with identical
+     * payloads, in the same millisecond — nine of that turn's thirty rows, in the one view a merchant
+     * reads to find out what happened.
      *
      * Nothing was corrupted by it, because the audits assign rather than append and the last write
      * won. What it cost was three redundant prose audits and a trace nobody could read.
+     *
+     * **0.13 removed that recursion**, so today the framework offers the final result exactly once
+     * and this guard fires on nothing. It stays because it is keyed on the turn rather than on the
+     * framework's shape: what it actually asserts is that a grounding decision belongs to a turn,
+     * which is true whatever the loop above it does, and it costs one integer comparison to keep.
      *
      * A grounding decision belongs to a turn, so it is made once per turn — keyed on
      * {@see FactRenderer::turnSequence()}, which the runner advances once per turn on every path

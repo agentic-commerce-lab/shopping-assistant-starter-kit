@@ -27,7 +27,9 @@ final class JourneyRunner
     }
 
     /**
-     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface propagated from
+     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface    propagated from
+     *         {@see JourneyAttempt::run()}
+     * @throws \Symfony\AI\Platform\Exception\ExceptionInterface propagated from
      *         {@see JourneyAttempt::run()}
      */
     public function run(Journey $journey): JourneyReport
@@ -44,7 +46,9 @@ final class JourneyRunner
     /**
      * @return array{archetype: string, tallies: list<array{name: string, safety: bool, passed: int, total: int, required: int, details: list<string>}>}
      *
-     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface propagated from
+     * @throws \Symfony\AI\Agent\Exception\ExceptionInterface    propagated from
+     *         {@see JourneyAttempt::run()}
+     * @throws \Symfony\AI\Platform\Exception\ExceptionInterface propagated from
      *         {@see JourneyAttempt::run()}
      */
     private function runArchetype(Journey $journey, string $archetypeName, ?string $phrase): array

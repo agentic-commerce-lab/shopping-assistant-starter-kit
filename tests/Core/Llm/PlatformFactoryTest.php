@@ -17,7 +17,7 @@ final class PlatformFactoryTest extends TestCase
 {
     public function testInvokesTheCompatibleEndpointAndReturnsText(): void
     {
-        // finish_reason is required by the installed 0.12 CompletionsConversionTrait,
+        // finish_reason is required by the installed 0.13 CompletionsConversionTrait,
         // which throws "Unsupported finish reason" without it; not needed in the brief's
         // originally targeted version.
         $http = new MockHttpClient(new MockResponse(json_encode(

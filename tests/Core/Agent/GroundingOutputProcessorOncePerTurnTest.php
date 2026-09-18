@@ -29,13 +29,20 @@ use Symfony\AI\Platform\Result\TextResult;
  * Identical payloads, the same millisecond, four times over — nine of that turn's thirty rows were
  * repetition, in the one view a merchant reads to understand what happened.
  *
- * The cause is in the framework, not here. `Toolbox\AgentProcessor::handleToolCallsCallback()`
- * resolves a tool round by calling `Agent::call()` **recursively**, and every nested call runs the
- * whole output-processor chain again. This processor is registered after the toolbox's, so at each
- * of the four nesting levels it is handed the same already-final text and records the same decision.
+ * The cause was in the framework, not here. Up to Symfony AI 0.12,
+ * `Toolbox\AgentProcessor::handleToolCallsCallback()` resolved a tool round by calling
+ * `Agent::call()` **recursively**, and every nested call ran the whole output-processor chain again.
+ * This processor was registered after the toolbox's, so at each of the four nesting levels it was
+ * handed the same already-final text and recorded the same decision.
  *
  * Nothing was corrupted by it: the audits assign rather than append, so the last write won and the
  * shopper saw the right thing. It cost wasted prose audits and a trace nobody could read.
+ *
+ * **0.13 removed that recursion and no live caller repeats the offer any more**, which is why this
+ * file calls `processOutput()` four times by hand rather than driving an agent. That is the point:
+ * the guarantee under test is "one turn, one grounding decision", which is a property of this
+ * processor and not of whichever loop the framework happens to run above it. If a later release
+ * re-introduces a repeat — or a future caller does — this is what keeps the trace readable.
  */
 final class GroundingOutputProcessorOncePerTurnTest extends TestCase
 {

@@ -96,6 +96,12 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
         // which is precisely the behaviour the ruling above forbids. The closure is what makes the
         // degradation policy unit-testable without constructing an agent, and that is worth one
         // expected finding at its source.
+        //
+        // Two expectations since Symfony AI 0.13, one per hierarchy: the turn now resolves inside
+        // `AssistantRunner::run()` rather than at `Agent::call()`, so the platform's own
+        // `ExceptionInterface` reaches this frame as well. Both are caught by the same
+        // `catch (\Throwable)`; only the analyzer's bookkeeping needs the second line.
+        // @mago-expect analysis:unhandled-thrown-type
         // @mago-expect analysis:unhandled-thrown-type
         $turn = FailedTurn::orDegrade(
             $bundle->trace,

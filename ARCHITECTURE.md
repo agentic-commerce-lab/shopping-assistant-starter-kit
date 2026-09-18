@@ -296,7 +296,7 @@ One turn, stage by stage. Each stage emits a trace event.
 | 12 | Select + validate | `Agent\GroundingOutputProcessor` + `Grounding\FactRenderer` | the card set is the ids the **last tool call returned**; any id in the prose that is not in the retrieved set is **dropped and logged** as invented |
 | 12b | Withhold a disclosure | `Agent\DisclosureGuardOutputProcessor` | records `disclosure.withheld` and replaces the reply when it recites a tool name. The prompt forbids describing the tools; this is the part that does not depend on the model agreeing. Runs **after** grounding, so `validate` and `claims.audit` still record what the model wrote |
 | 13 | Render | `Grounding\FactRenderer` | server substitutes price/stock/url/image |
-| 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 20) enforced by a request-wide counter, not `AgentProcessor`'s own inert one — see below |
+| 14 | Tools | `Agent\BoundedToolbox` | policy-gated, `maxToolCallsPerTurn` (default 20) enforced by a request-wide counter of **calls**, where the framework's own cap counts **rounds** — see below |
 | 15 | Record | `Trace\TraceRecorder` | persist conversation + events |
 
 Stages 12 and 13 are the product. Everything else is plumbing.
@@ -371,7 +371,7 @@ Stages 12 and 13 are the product. Everything else is plumbing.
 
 ## Agent runtime: Symfony AI
 
-The agent mechanics come from **`symfony/ai-agent` 0.12** — tool registry, tool-calling loop,
+The agent mechanics come from **`symfony/ai-agent` 0.13** — tool registry, tool-calling loop,
 message handling, streaming, context compression. We do not write a loop. What we own is the
 grounding, and it plugs into three verified seams:
 
@@ -379,8 +379,8 @@ grounding, and it plugs into three verified seams:
 |---|---|
 | Context window management | `InputProcessorInterface`, `Input::setMessageBag()` |
 | Validate ids, render facts, audit prose | `OutputProcessorInterface`, `Output::getResult()` |
-| The tool-calling loop | `Toolbox\AgentProcessor`, registered as both input and output processor. It **recursively re-invokes `Agent::call()`** per tool round, which is why processor order does not decide whether grounding sees populated tool results — verified empirically at 0.12, not assumed |
-| Bounded tool calls | **Not** `AgentProcessor`'s own `maxToolCalls` constructor argument — it declares its round counter as a local inside the method that recurses, so every recursive re-entry (one per tool round; see the row above) starts that counter over at zero, and the cap is unreachable at any depth. `Agent\BoundedToolbox` decorates the `Toolbox` handed to `AgentProcessor` and counts `execute()` calls in a property that survives every recursion level instead — that is the real bound. Also where a bad tool argument from the model is caught and turned into a retryable `['note' => …]` result instead of aborting the turn — our own `ToolArgumentException`, and (since the second live run) the framework's own argument-coercion failures, which `Toolbox::execute()` wraps into a `ToolExecutionException` whose `$previous` is a serializer or type error, and where a uniform `tool.call` trace event is recorded for every tool call |
+| The tool-calling loop | The `Agent` itself, given `toolbox:` and `maxToolCalls:` (0.13 removed `Toolbox\AgentProcessor`, which used to be registered as both input and output processor and re-invoked `Agent::call()` recursively per tool round). The loop is now iterative, so output processors run **once**, against the final assembled result, and input processors run once per call rather than once per round |
+| Bounded tool calls | `Agent\BoundedToolbox`, counting `execute()` calls in a property that spans the request. The Agent's own `maxToolCalls` is passed as well and is a real cap since 0.13, but it counts **rounds** — one model response asking for four tools is one round and four calls — so the toolbox's counter is what enforces the number `config.xml` promises a merchant. Both raise `MaxIterationsExceededException`, which `AssistantRunner` degrades into an incomplete turn. `BoundedToolbox` is also where a bad tool argument from the model is caught and turned into a retryable `['note' => …]` result instead of aborting the turn — our own `ToolArgumentException`, and (since the second live run) the framework's own argument-coercion failures, which `Toolbox::execute()` wraps into a `ToolExecutionException` whose `$previous` is a serializer or type error, and where a uniform `tool.call` trace event is recorded for every tool call |
 | Capability control | which tools are constructed into the `Toolbox` |
 | Guard before any spend | `AssistantRunner`, before `$agent->call()` |
 
@@ -388,9 +388,11 @@ The platform is the **`Generic` bridge** (`symfony/ai-generic-platform`): OpenAI
 chat completions against a configurable `baseUrl`, with an injectable `HttpClientInterface` —
 which is where our SSRF guard sits.
 
-**Both packages are pinned exactly** (`0.12.*`, `0.12.*`). They are 0.x with twelve
+**Both packages are pinned exactly** (`0.13.*`, `0.13.*`). They are 0.x with thirteen
 breaking-change releases behind them; a caret range would let a `composer update` in someone
-else's shop break this plugin. See `docs/adr/0001-symfony-ai-as-agent-runtime.md`.
+else's shop break this plugin. 0.13 alone removed the tool-calling processor this plugin was
+built around and made `Agent::call()` lazy — neither of which a caret range would have stopped,
+and one of which fails silently. See `docs/adr/0001-symfony-ai-as-agent-runtime.md`.
 
 ## Tools
 

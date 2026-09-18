@@ -39,7 +39,6 @@ use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
 use Swag\AssistantStarterKit\Core\Tool\FamilyOptionValues;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Agent;
-use Symfony\AI\Agent\Toolbox\AgentProcessor;
 use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -264,10 +263,13 @@ final readonly class AssistantAgentFactory
         // "never in the toolbox the model sees".
         $tools = array_values(array_filter($tools));
 
-        // AgentProcessor's own maxToolCalls argument is provably inert — see
-        // BoundedToolbox's docblock — so it is not what enforces the bound. It is
-        // still passed through for whatever single-round protection it happens to
-        // offer; BoundedToolbox is the real, request-wide counter.
+        // Two counters, counting two different things, and both are wanted. The Agent's own
+        // `maxToolCalls` (below) counts ROUNDS — one model request that asks for tools, however
+        // many calls it asks for at once. BoundedToolbox counts individual CALLS across the whole
+        // turn, which is what `maxToolCallsPerTurn` promises a merchant and what config.xml's help
+        // text describes. A model asking for four tools in one round spends four of the merchant's
+        // budget and one of the framework's, so BoundedToolbox is still the binding one; the
+        // framework's is the backstop for a model that asks for one tool at a time forever.
         // WholeNumberToolArguments, not the framework's default resolver: a model states a
         // budget as a JSON integer, and the default rejects it against a `float` parameter
         // before the tool is entered. See that class for the measurement.
@@ -283,20 +285,17 @@ final readonly class AssistantAgentFactory
             $trace,
         );
 
-        $toolProcessor = new AgentProcessor($toolbox, maxToolCalls: $config->maxToolCallsPerTurn);
-
-        // AgentProcessor drives the tool loop, so GroundingOutputProcessor is kept after it
-        // here — this is the order that would be load-bearing if AgentProcessor stopped
-        // recursively re-invoking Agent::call() per tool round. Per Ruling R33, the installed
-        // 0.12 AgentProcessor already resolves every tool call before any processor ever sees
-        // a real TextResult, in either order — see OutputProcessorOrderTest, which is kept as
-        // the regression check for that finding, not as proof this order is currently required.
+        // Symfony AI 0.13 removed `Toolbox\AgentProcessor`: the tool loop is no longer an
+        // input/output processor pair that recursively re-invoked `Agent::call()`, it is the
+        // Agent itself, configured here. That settles the question OutputProcessorOrderTest was
+        // written to answer (Ruling R33): output processors now run exactly once, against the
+        // final assembled result, so where grounding sits relative to the tool loop is no longer
+        // expressible, let alone load-bearing. The order BELOW still is — see the note there.
         $agent = new Agent(
             $this->platform->of($llm),
             $llm->model,
-            inputProcessors: [new SlidingWindowInputProcessor(), $toolProcessor],
+            inputProcessors: [new SlidingWindowInputProcessor()],
             outputProcessors: [
-                $toolProcessor,
                 new GroundingOutputProcessor($renderer, $trace, $facets),
                 // Kept AFTER grounding on purpose: those audits record what the MODEL wrote, and
                 // would report on the replacement sentence if they ran second. The language is the
@@ -304,6 +303,8 @@ final readonly class AssistantAgentFactory
                 // each owns its own fallback rather than resolving one twice in two places.
                 new DisclosureGuardOutputProcessor($toolbox, $trace, $config->defaultReplyLanguage),
             ],
+            toolbox: $toolbox,
+            maxToolCalls: $config->maxToolCallsPerTurn,
         );
 
         $familyOptions = self::familyOptionsOf($gateway, $viewing, $config->scope);

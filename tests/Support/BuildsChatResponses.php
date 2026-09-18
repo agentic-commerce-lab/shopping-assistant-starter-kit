@@ -7,13 +7,13 @@ namespace Swag\AssistantStarterKit\Tests\Support;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
- * Builds `MockResponse` bodies shaped the way the installed Symfony AI 0.12 `Generic`
+ * Builds `MockResponse` bodies shaped the way the installed Symfony AI 0.13 `Generic`
  * bridge expects, so a canned eval transcript reads as a short list of turns rather than
  * a wall of repeated nested arrays. Mirrors the shape already proven correct by
  * {@see \Swag\AssistantStarterKit\Tests\Core\Llm\PlatformFactoryTest} and
  * {@see \Swag\AssistantStarterKit\Tests\Eval\JourneyAttemptMultiTurnTest}:
  *
- * - `finish_reason` is required — the installed 0.12 `CompletionsConversionTrait` throws
+ * - `finish_reason` is required — the installed 0.13 `CompletionsConversionTrait` throws
  *   "Unsupported finish reason" without it.
  * - A tool call's `function.arguments` must be a JSON *string*, never an inline array.
  */

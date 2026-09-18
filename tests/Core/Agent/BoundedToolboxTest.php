@@ -44,13 +44,16 @@ final class BoundedToolboxTest extends TestCase
     }
 
     /**
-     * Finding C2 (RED before the fix): AgentProcessor's own `maxToolCalls` constructor
-     * argument never actually bounds anything — its `$iterations` counter is a local
-     * that resets on every recursive re-entry of `handleToolCallsCallback()`, one per
-     * tool round, so a model could call a tool 20 times against a cap of 3 with no
-     * exception at all. This class's own `$calls` counter lives on the instance, which
-     * backs every recursion level for the whole request, so it is what actually
-     * enforces the cap.
+     * Finding C2 (RED before the fix): at Symfony AI 0.12, `AgentProcessor`'s own
+     * `maxToolCalls` constructor argument bounded nothing — its `$iterations` counter was
+     * a local that reset on every recursive re-entry of `handleToolCallsCallback()`, one
+     * per tool round, so a model could call a tool 20 times against a cap of 3 with no
+     * exception at all.
+     *
+     * 0.13 replaced that with an iterative loop whose cap does fire, but it caps *rounds*
+     * while the merchant's setting names *calls* — one response asking for four tools
+     * spends one round and four calls. This class's `$calls` counter is still therefore
+     * what enforces the number `config.xml` promises, which is what this test pins.
      */
     public function testThrowsOnceMoreCallsHappenThanTheConfiguredCap(): void
     {
@@ -96,7 +99,7 @@ final class BoundedToolboxTest extends TestCase
      * Finding I2 (RED before the fix): `Toolbox::execute()` wraps ANY `\Throwable` a
      * tool raises — including our own {@see \Swag\AssistantStarterKit\Core\Tool\ToolArgumentException}
      * from {@see \Swag\AssistantStarterKit\Core\Tool\Guard} — into a
-     * `ToolExecutionException`, which propagated uncaught through `AgentProcessor` and
+     * `ToolExecutionException`, which propagated uncaught through the framework's tool loop and
      * `AssistantRunner::run()` and aborted the whole turn. An oversized argument is the
      * single most likely model mistake, not an adversarial one, and this is what turns
      * it back into something the model can read and correct on the next round.

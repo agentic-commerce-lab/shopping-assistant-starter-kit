@@ -16,30 +16,38 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerExcep
 
 /**
  * Decorates the framework's {@see \Symfony\AI\Agent\Toolbox\Toolbox} with two
- * guarantees `AgentProcessor` cannot provide on its own, both closed here in one
- * place because they share the same seam: every tool call passes through
- * `execute()` exactly once, regardless of how many tool-calling rounds a turn
- * takes.
+ * guarantees the framework's tool loop does not provide on its own, both closed
+ * here in one place because they share the same seam: every tool call passes
+ * through `execute()` exactly once, regardless of how many tool-calling rounds a
+ * turn takes.
  *
- * **1. `maxToolCallsPerTurn` is actually bounded.** `AgentProcessor::handleToolCallsCallback()`
- * declares its own `$iterations` counter as a *local variable* and resolves each
- * round by recursively re-invoking `Agent::call()`, which re-enters this same
- * processor's `processOutput()` and therefore `handleToolCallsCallback()` again —
- * with a *fresh* `$iterations = 0`. Every recursion level's own do-while loop
- * exits after exactly one pass once the nested call already returned a fully
- * resolved result, so `$iterations` never exceeds 1 at any level no matter how
- * many tool rounds the whole turn took. `AgentProcessor`'s own `maxToolCalls`
- * constructor argument is therefore inert; it is still passed for whatever
- * single-round protection it happens to offer, but this class is the actual
- * bound. Counting here works because this object is constructed once per
- * request and handed to `AgentProcessor` as `$toolbox`, so `$calls` survives
- * every recursion level untouched.
+ * **1. `maxToolCallsPerTurn` counts what it says it counts.** The Agent's own
+ * `maxToolCalls` argument caps *rounds* — its runner raises `$iterations` once per
+ * model response that asks for tools, however many tools that response asked for
+ * at once. What this plugin promises a merchant, in `config.xml` and in
+ * {@see \Swag\AssistantStarterKit\Core\Policy\AssistantConfig}, is a cap on tool
+ * *calls* across the turn. A model that asks for four tools in one response spends
+ * four of the merchant's budget and one of the framework's, so the two numbers
+ * diverge in exactly the case a cap is for, and this class is the binding one.
+ * Counting here works because this object is constructed once per request and
+ * handed to the Agent as `$toolbox`, so `$calls` spans the whole turn.
+ *
+ * Both raise the same {@see MaxIterationsExceededException}, and
+ * {@see AssistantRunner::run()} degrades either into an incomplete turn, so which
+ * one fires first changes the number in the message and nothing else.
+ *
+ * Before Symfony AI 0.13 this was a sharper argument: the removed
+ * `Toolbox\AgentProcessor` kept its round counter in a *local* and re-entered
+ * itself recursively, resetting that local to zero every round, so its cap was
+ * unreachable at any depth — a live run made 21 HTTP calls at a configured cap of
+ * 3. The 0.13 loop is iterative and its cap genuinely fires. This class is kept
+ * because it counts the right unit, not because the framework's counter is broken.
  *
  * **2. A tool argument mistake never aborts the whole turn.** `Toolbox::execute()`
  * wraps any `\Throwable` its tool throws — including our own
  * {@see ToolArgumentException} from {@see \Swag\AssistantStarterKit\Core\Tool\Guard} —
- * into a `ToolExecutionException`, which propagates uncaught through
- * `AgentProcessor` and `AssistantRunner::run()` and kills the request. An
+ * into a `ToolExecutionException`, which propagates uncaught through the Agent's
+ * tool loop and `AssistantRunner::run()` and kills the request. An
  * oversized `term`, a malformed `options` entry or an out-of-range `quantity`
  * are the *most likely* model mistakes, not adversarial ones, and "reject,
  * never coerce" is only safe for the shopper if the model gets to see the
@@ -140,8 +148,8 @@ final class BoundedToolbox implements ToolboxInterface
     /**
      * Starts a new turn's budget.
      *
-     * The counter is a property rather than a local precisely so it survives `AgentProcessor`'s
-     * recursion (see the class docblock) — which means it also survives a *second turn* on the same
+     * The counter is a property rather than a local precisely so it spans every round of a turn
+     * (see the class docblock) — which means it also survives a *second turn* on the same
      * instance. In production that never happens: `ShopwareChatTurnRunner` builds a fresh bundle per
      * HTTP request, so every shopper message gets its own budget, which is what
      * `$maxToolCallsPerTurn` promises and what `config.xml`'s help text says.
