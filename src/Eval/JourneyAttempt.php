@@ -12,6 +12,7 @@ use Swag\AssistantStarterKit\Core\Commerce\FixtureCommerceGateway;
 use Swag\AssistantStarterKit\Core\Llm\LlmSettings;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
+use Swag\AssistantStarterKit\Eval\EvalOrders;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -85,7 +86,16 @@ final class JourneyAttempt
     public function run(Journey $journey, ?string $archetypePhrase): array
     {
         $gateway = FixtureCommerceGateway::fromFile($this->catalogFixturePath);
+
         $config = JourneyConfig::of($journey);
+        if ($config->enableOrderHistory) {
+            // Seeded rather than loaded: an order belongs to a shopper, and the catalogue fixture has
+            // none. Two orders, one carrying an invoice and one without, so a journey can tell "no
+            // document" from "document not rendered" — and `no_foreign_order` has real numbers to be
+            // wrong about rather than an empty set it passes vacuously against.
+            $gateway->seedOrders(EvalOrders::two());
+            $gateway->seedOrderDetails(EvalOrders::detailsOfTwo());
+        }
 
         // cartAvailable is always true: a real storefront always has a shopper cart, and
         // AssistantConfig::$enableAddToCart (defaulted on) is what actually gates whether
@@ -107,6 +117,10 @@ final class JourneyAttempt
                 $this->llm,
                 viewing: $viewing,
                 browsingCategoryId: $journey->page->categoryId,
+                // A journey that switched order history on is a journey about a signed-in shopper;
+                // every other one keeps the default and never sees the tool. Without this the
+                // capability would be untestable here, because `loggedIn` fails closed.
+                loggedIn: $config->enableOrderHistory,
             );
 
         // Recorded before any turn runs, as production records it, so a journey can assert on it.

@@ -1,0 +1,27 @@
+{
+  "_comment": "A two-product catalogue whose ids are real Shopware ids — 32 lowercase hex characters. tests/Fixtures/catalog.json uses readable 'fx-001' ids, which CardIdList::ID_PATTERN rejects at the HTTP boundary, so any test that goes through a card route needs ids of this shape rather than that one's.",
+  "products": [
+    {
+      "id": "c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+      "name": "Chain Lube 100 ml",
+      "description": null,
+      "price": 8.5,
+      "stock": 20,
+      "url": "/detail/c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+      "categoryPath": ["Maintenance"],
+      "properties": {},
+      "variants": []
+    },
+    {
+      "id": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "name": "Bar Tape",
+      "description": null,
+      "price": 19.9,
+      "stock": 11,
+      "url": "/detail/d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "categoryPath": ["Components"],
+      "properties": {},
+      "variants": []
+    }
+  ]
+}

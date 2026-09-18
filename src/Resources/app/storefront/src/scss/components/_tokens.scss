@@ -28,6 +28,14 @@ $swag-assistant-bubble: #f0f6ff;        // SW 50
 $swag-assistant-tint: #f7faff;          // SW 50 lifted — the log's ground, so white cards read
 $swag-assistant-hairline: #e6e9f0;
 $swag-assistant-in-stock: #57d998;      // Teal
+// Teal measures **1.78:1 on white** — fine for the stock dot, which is decorative and
+// `aria-hidden`, and fine as a fill behind Night Blue. Not fine as the only *edge* of a control:
+// a 1px teal border is the whole visible boundary of the "in cart" button, and a boundary a
+// low-vision shopper cannot find is a control they cannot find. WCAG wants 3:1 for a non-text UI
+// boundary. Shaded 65% toward Night Blue: **3.68:1 on white, 3.34:1 on the 16% wash** — clear of
+// the floor against both grounds it actually sits on, and still unmistakably the stock colour.
+// A shade of an approved brand colour, not an invented one — the same move as `$swag-assistant-meta`.
+$swag-assistant-in-stock-dark: mix(#57d998, #00153e, 65%);
 $swag-assistant-low-stock: #f88138;     // Orange — also the warning and error colour
 $swag-assistant-out-of-stock: #838489;  // Dark Gray
 

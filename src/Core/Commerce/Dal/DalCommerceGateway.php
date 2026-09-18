@@ -24,6 +24,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
+use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
 
 /**
  * {@see CommerceGatewayInterface} over the Shopware DAL — the implementation that makes this
@@ -52,7 +53,8 @@ final readonly class DalCommerceGateway implements
     CappedMatchCountReader,
     CategoryTreeReader,
     CommerceGatewayInterface,
-    FamilyVariantLookup
+    FamilyVariantLookup,
+    OrderHistoryReader
 {
     /**
      * Facet probing needs one product's worth of rows at most — the values come from the
@@ -98,7 +100,27 @@ final readonly class DalCommerceGateway implements
         private DalCartAdapter $cartAdapter,
         private DalCategoryTreeReader $categoryTreeReader,
         private DalFacetQuery $facetQuery,
+        private DalOrderHistory $orderHistory,
     ) {}
+
+    /**
+     * Delegated whole, like every other capability this class composes rather than implements.
+     *
+     * The reading lives in {@see DalOrderHistory} because the constraint it has to keep — read
+     * through `AbstractOrderRoute`, never a repository — is a thing to state in one place and assert
+     * in one test, and because this class is already at its method budget.
+     *
+     * @return list<\Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary>
+     */
+    public function orders(\Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery $query): array
+    {
+        return $this->orderHistory->orders($query);
+    }
+
+    public function order(string $orderNumber): ?\Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail
+    {
+        return $this->orderHistory->order($orderNumber);
+    }
 
     /**
      * @throws \Doctrine\DBAL\Exception see {@see DalFacetQuery::facets()}

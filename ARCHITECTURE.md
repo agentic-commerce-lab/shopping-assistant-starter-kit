@@ -503,6 +503,8 @@ Note the trust boundary: **tools are trusted code the merchant installed; the mo
 | `go_to_checkout` | read | `cartAvailable` |
 | `compare_products` | read | `enableCompareProducts` |
 | `browse_categories` | read | the gateway implements `CategoryTreeReader` |
+| `list_orders` | read | `enableOrderHistory && loggedIn && ` the gateway implements `OrderHistoryReader` |
+| `get_order` | read | the same three gates as `list_orders` — one capability, two entry points |
 | `escalate` | terminal | always |
 
 **Capability control is toolbox construction, never a prompt instruction.** An unavailable tool
@@ -540,7 +542,21 @@ server-side by `CheckoutPayload` from the route, never handed to the model — t
 and the contact link (D3).
 
 **Not implemented — no code path exists:** `apply_discount`, `set_price`, `create_order`,
-`pay`, `read_customer_pii`, `modify_product`. This is why prompt injection has no payoff.
+`pay`, `modify_product`. This is why prompt injection has no payoff.
+
+> **`read_customer_pii` left that list on 2026-09-18, and the guarantee that replaced it is narrower
+> and stronger.** `list_orders` reads the signed-in shopper's own orders, so "no code path touches a
+> customer" stopped being true. What is true, and is structural rather than conventional:
+>
+> **The model can never choose whose orders it sees.** `OrderHistoryReader::orders(int $limit)` takes
+> no subject — no customer id, no employee id, no context — so there is no argument through which an
+> injected instruction could ask for somebody else's. The shopper is resolved from the request, and
+> under B2B Components the employee is resolved by Commercial's own `DecoratedOrderRoute`, which
+> filters on the permission `order.read.all` and is fail-closed.
+>
+> What crosses into the model is order **numbers**. No name, no address, no email, no payment detail:
+> `OrderSummary` has no field that could hold one, and a test asserts its property list for exactly
+> that reason.
 
 ## Extension points
 

@@ -75,10 +75,18 @@ The goal is to turn *"your AI is bad"* into *"your products are missing attribut
 | SaaS support | Plugins are self-hosted/PaaS only. Deferred deliberately; the gateway seam keeps the door open |
 | Checkout completion / payment | Store API requires login plus a browser PSP redirect. Handing off is also the correct boundary |
 | Discounts, price changes, negotiation | No code path. This is what makes the injection defence work |
-| Order status, returns, account data | Needs authenticated context; guest orders are unreachable. Escalate instead |
+| Returns, address and payment-term changes | Every one is a write against an account, and this assistant is read-only there |
+| Order status for a shopper who is not signed in | Guest orders need a deep-link code we will not ask anyone to paste. Escalate instead |
 | MCP / WebMCP / UCP surfaces | Different quadrant; `webmcp-plugin` already exists |
 | Voice, avatar, video modalities | Separate Linear issues (ACL-119/120/121) |
 | Headless / Frontends storefronts | Twig injection does nothing there; needs its own component |
+
+**Order history left this list on 2026-09-18**, and the reason it was on it has expired rather than
+been overruled. "Needs authenticated context" was true when written; `ShoppingContext` now resolves
+the customer, and Shopware Commercial resolves the employee — including the part we could not have
+built, which is that under B2B Components every employee of one company presents the same customer
+id. Commercial's own `DecoratedOrderRoute` separates them. A signed-in shopper can now ask for their
+recent orders and invoices; see `docs/superpowers/specs/2026-09-18-b2b-order-history-design.md`.
 
 Escalation means the shopper gets the merchant's configured contact route, rendered server-side. With
 none configured — or with escalation switched off entirely — the assistant declines the question

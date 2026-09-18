@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Controller;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Swag\AssistantStarterKit\Core\Commerce\CardResolver;
+use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -45,6 +46,12 @@ class AssistantCardController extends StorefrontController
     public function __construct(
         private readonly CardResolver $cards,
         private readonly SystemConfigAssistantConfig $assistantConfig,
+        // The same gateway `CardResolver` above already holds, asked a different question: not
+        // "what is true about these products" but "how many of each does this shopper's cart hold".
+        // Read on the same terms as everything else on this route — now, rather than as it was when
+        // the turn was written — because a re-hydrated card that offers "Add to cart" for something
+        // already in the cart really does add a second one.
+        private readonly CommerceGatewayInterface $gateway,
         private readonly CardPayload $cardPayload = new CardPayload(),
     ) {}
 
@@ -70,6 +77,6 @@ class AssistantCardController extends StorefrontController
         // is 12 — see CardResolver.
         $cards = $this->cards->resolve($ids, $scope);
 
-        return new JsonResponse(['cards' => $this->cardPayload->of($cards)]);
+        return new JsonResponse(['cards' => $this->cardPayload->of($cards, $this->gateway->cart())]);
     }
 }

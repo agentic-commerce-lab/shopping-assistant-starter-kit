@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Controller;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface;
+use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
 use Swag\AssistantStarterKit\Core\Context\ShoppingContext;
@@ -67,11 +68,20 @@ class AssistantController extends StorefrontController
         // checkout route into a URL, and there is no stock instance to fall back to. A defaulted
         // null would render no checkout link at all — silently, on the one path a shopper notices.
         private readonly CheckoutPayload $checkout,
+        // Read for exactly one question — what the shopper's cart already holds — so a rendered
+        // card can say "In cart (2)" instead of offering "Add to cart" for something already in
+        // there. Required rather than defaulted for the same reason `CardPayload::of()` requires
+        // the summary: a card rendered without that answer is the defect, not a degraded mode.
+        private readonly CommerceGatewayInterface $gateway,
         private readonly CardPayload $cardPayload = new CardPayload(),
         private readonly HandoffPayload $handoff = new HandoffPayload(),
         // Defaulted to an empty dispatcher so a shop with no sinks configured pays nothing and
         // needs no wiring; the container passes the tagged ones.
         private readonly TraceSinkDispatcher $traceSinks = new TraceSinkDispatcher([]),
+        // Appended rather than placed beside the other payload builders: the container passes these
+        // positionally, and `ServiceArgumentOrderTest` is right that inserting one in the middle
+        // silently hands every later collaborator to the wrong parameter.
+        private readonly OrderPayload $orderPayload = new OrderPayload(),
     ) {}
 
     #[Route(
@@ -184,7 +194,21 @@ class AssistantController extends StorefrontController
         return new JsonResponse([
             'token' => $token,
             'prose' => $turn->prose,
-            'cards' => $this->cardPayload->of($turn->cards),
+            'cards' => $this->cardPayload->of($turn->cards, $this->gateway->cart()),
+            // Built from what the turn RETRIEVED, never from the prose beside it — the same rule as
+            // the cards above, applied to the shopper's own orders. Empty unless `list_orders` ran,
+            // which needs the merchant's switch, a signed-in shopper and a gateway that can read
+            // them.
+            //
+            // **Deliberately absent from `GET /assistant/history`.** Stored figures are figures that
+            // were true when written, which is exactly why `cardIds` are re-fetched rather than
+            // replayed; order totals and delivery states age faster than prices do. A reloaded
+            // transcript therefore shows what was said and not the cards beside it, until there is a
+            // route to ask again.
+            'orders' => $this->orderPayload->of($turn->orders),
+            // The one order `get_order` fetched, null otherwise. Live turns only, for the same
+            // reason `orders` is: stored figures are figures that were true when written.
+            'orderDetail' => $this->orderPayload->detail($turn->orderDetail),
             'outcome' => $turn->outcome,
             // Rendered from the outcome and the merchant's settings, never from the prose beside it
             // — the model has never seen this URL, so it cannot have got it wrong.

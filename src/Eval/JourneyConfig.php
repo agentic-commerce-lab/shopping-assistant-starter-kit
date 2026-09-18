@@ -34,6 +34,7 @@ final class JourneyConfig
             'embeddingModel',
             'enableMatchReasons',
             'enableCompareProducts',
+            'enableOrderHistory',
         ]);
 
         if ($unknown !== []) {
@@ -62,6 +63,7 @@ final class JourneyConfig
             embeddingModel: (string) ($journey->config['embeddingModel'] ?? ''),
             enableMatchReasons: (bool) ($journey->config['enableMatchReasons'] ?? false),
             enableCompareProducts: (bool) ($journey->config['enableCompareProducts'] ?? false),
+            enableOrderHistory: (bool) ($journey->config['enableOrderHistory'] ?? false),
         );
     }
 }

@@ -6,6 +6,7 @@
  * easily. If a value you want is not on the card, the answer is to render it on the server, not to
  * parse it out of a sentence.
  */
+import { buildDocumentList } from './documents.js';
 import { formatBasePrice, formatPriceBasis, formatSpecChips } from './render.js';
 
 /** Below this, "in stock" is true but reassuring a shopper with a bare "In stock" overstates it. */
@@ -105,7 +106,7 @@ function buildCard(card, { locale, addToCartEnabled, translations }) {
 
     info.appendChild(buildFacts(card, { locale, translations }));
 
-    const documents = buildDocuments(card, translations);
+    const documents = buildDocumentList(card.documents, translations);
     if (documents !== null) {
         info.appendChild(documents);
     }
@@ -216,58 +217,6 @@ function buildStock(card, translations) {
  * `rel="noopener"` because these open in a new tab, and the title is set as text rather than as
  * markup: a media title is merchant-entered content, and nothing in this file builds HTML out of it.
  */
-/**
- * How many document links a card shows before it starts counting instead.
- *
- * Three, measured against the surface rather than chosen: a card in the row is 176px wide and its
- * other rows — name, department, price, stock — come to about the same height again. Four links
- * already made the card taller than the product photograph beside it.
- */
-const MAX_DOCUMENTS = 3;
-
-function buildDocuments(card, translations) {
-    const documents = Array.isArray(card.documents) ? card.documents.filter((doc) => doc && doc.url) : [];
-
-    if (documents.length === 0) {
-        return null;
-    }
-
-    const list = document.createElement('ul');
-    list.className = 'swag-assistant-card__documents';
-
-    // Capped, because a real product carries more files than a 176px card can hold: the shop this
-    // was built for attaches up to eleven, most of them the same datasheet in eight languages. The
-    // model is told the collapsed set (see DocumentLanguageSuffix); the card shows the first few and
-    // says how many it left, and "View product" below already leads to all of them.
-    const shown = documents.slice(0, MAX_DOCUMENTS);
-
-    shown.forEach((doc) => {
-        const item = document.createElement('li');
-        const link = document.createElement('a');
-
-        link.className = 'swag-assistant-card__document';
-        link.href = doc.url;
-        link.target = '_blank';
-        link.rel = 'noopener';
-        // The extension is the format badge, so a title that already carries it is not repeated.
-        link.textContent = doc.title || translations.document || '';
-
-        item.appendChild(link);
-        list.appendChild(item);
-    });
-
-    const hidden = documents.length - shown.length;
-
-    if (hidden > 0) {
-        const more = document.createElement('li');
-        more.className = 'swag-assistant-card__documents-more';
-        more.textContent = (translations.documentsMore ?? '+%count% more').replace('%count%', hidden);
-        list.appendChild(more);
-    }
-
-    return list;
-}
-
 function buildActions(card, { addToCartEnabled, translations }) {
     const actions = document.createElement('div');
     actions.className = 'swag-assistant-card__actions';
@@ -309,8 +258,49 @@ function buildActions(card, { addToCartEnabled, translations }) {
 }
 
 /**
+ * What the add button says, decided from the card's data alone.
+ *
+ * **This is the fix for a button that lied.** The succeeded state used to exist only as a DOM
+ * mutation inside the click handler ({@link markAdded}), so anything that rebuilt a card from the
+ * server rebuilt it without that knowledge: the assistant's own confirmation card — the one it
+ * renders right after `add_to_cart` to show *which variant* went in — read "Add to cart", and the
+ * button under that label was live. A shopper who trusted it bought a second one.
+ *
+ * `inCart` comes off the `cards[]` payload like every other figure here, and it is the **cart's**
+ * quantity rather than anyone's requested one: Shopware corrects a request against `minPurchase`,
+ * `purchaseSteps` and available stock, so the two disagree routinely.
+ *
+ * A separate function rather than inline in {@link buildAdd} because the question is about the
+ * card's data, not about the document — which is also what makes it testable without a DOM.
+ *
+ * @returns {{inCart: number, label: string, action: string}} `label` is what the button shows,
+ *   `action` what it does. They differ exactly when the label goes stateful.
+ */
+export function addButtonState(card, translations) {
+    // Integer and positive, or it is not a quantity. A payload from before this field existed, or
+    // one that lost it, must read as "not in the cart" rather than "in the cart, quantity unknown":
+    // a missing badge is a smaller lie than a badge for something nobody bought.
+    const held = Number.isInteger(card?.inCart) && card.inCart > 0 ? card.inCart : 0;
+
+    if (held === 0) {
+        return { inCart: 0, label: translations.add ?? '', action: translations.add ?? '' };
+    }
+
+    return {
+        inCart: held,
+        label: (translations.inCart ?? '').replace('%count%', String(held)),
+        action: translations.addAnother ?? '',
+    };
+}
+
+/**
  * The glyph is a shopping bag and it becomes a check on success — but the *label* is what carries the
  * outcome, changing from "Add to cart" to "Added". Colour and iconography confirm; they never inform.
+ *
+ * A card the cart already holds starts in that confirmed state rather than arriving at it by being
+ * clicked — see {@link addButtonState}. The button stays pressable, because adding a second one is a
+ * real thing a shopper wants; what changes is that doing so is now a stated intent ("Add another")
+ * rather than an accident.
  */
 function buildAdd(card, translations) {
     const add = document.createElement('button');
@@ -318,12 +308,21 @@ function buildAdd(card, translations) {
     add.type = 'button';
     add.dataset.swagAssistantAdd = card.id;
 
-    add.appendChild(icon('cart'));
+    const state = addButtonState(card, translations);
+
+    add.appendChild(icon(state.inCart > 0 ? 'check' : 'cart'));
 
     const label = document.createElement('span');
     label.className = 'swag-assistant-card__add-label';
-    label.textContent = translations.add ?? '';
+    label.textContent = state.label;
     add.appendChild(label);
+
+    if (state.inCart > 0) {
+        add.classList.add('is-in-cart');
+        // The visible label is the STATE; the accessible name is the ACTION. A screen reader user
+        // given only "In cart (2)" has been told what is true and not what the button does.
+        add.setAttribute('aria-label', state.action);
+    }
 
     if (!card.inStock) {
         add.disabled = true;

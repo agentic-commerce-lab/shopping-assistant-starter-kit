@@ -11,6 +11,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
 use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\PreGrounding;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface;
@@ -19,6 +20,7 @@ use Swag\AssistantStarterKit\Core\Llm\SymfonyAiPlatform;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
 use Swag\AssistantStarterKit\Core\Prompt\CatalogVocabulary;
+use Swag\AssistantStarterKit\Core\Prompt\PromptContext;
 use Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface;
 use Swag\AssistantStarterKit\Core\Prompt\RecentCardsContext;
 use Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider;
@@ -30,9 +32,11 @@ use Swag\AssistantStarterKit\Core\Tool\Factory\AddToCartToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\BrowseCategoriesToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\CompareProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\EscalateToolFactory;
+use Swag\AssistantStarterKit\Core\Tool\Factory\GetOrderToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GetProductToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolContext;
 use Swag\AssistantStarterKit\Core\Tool\Factory\GroundedToolFactoryInterface;
+use Swag\AssistantStarterKit\Core\Tool\Factory\ListOrdersToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\SearchProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolContext;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
@@ -118,6 +122,13 @@ final readonly class AssistantAgentFactory
                 new AddToCartToolFactory(),
                 new CompareProductsToolFactory(),
                 new BrowseCategoriesToolFactory(),
+                // Shipped tools, so they belong here — and their absence was invisible: every
+                // assertion on an order journey passes on a turn that never called one, so the
+                // suite reported green over a capability the harness did not have. The journey that
+                // caught it is the one carrying `orders_listed_exactly`, which fails when nothing
+                // was fetched.
+                new ListOrdersToolFactory(),
+                new GetOrderToolFactory(),
             ],
             new SystemPromptProvider(),
             new SymfonyAiPlatform($http),
@@ -179,9 +190,13 @@ final readonly class AssistantAgentFactory
         ?string $browsingCategoryId = null,
         array $recentCards = [],
         string $shopperMessage = '',
+        bool $loggedIn = false,
     ): Bundle {
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
+        // One per turn, like the FactRenderer beside it (R32). Built unconditionally because the
+        // Bundle always carries one: a turn with no order tool simply leaves it empty.
+        $orderRenderer = new OrderRenderer();
 
         // **Which model answered, recorded first and every turn.** Every other stage of the turn was
         // already traceable; the one thing a merchant reading a bad reply could not tell was whether
@@ -245,6 +260,8 @@ final readonly class AssistantAgentFactory
             cartAvailable: $cartAvailable,
             browsingCategoryId: $browsingCategoryId,
             shopperMessage: $shopperMessage,
+            orderRenderer: $orderRenderer,
+            loggedIn: $loggedIn,
         );
         $context = new ToolContext($trace, $config);
 
@@ -329,7 +346,8 @@ final readonly class AssistantAgentFactory
             $toolbox,
             $this->prompt,
             $vocabularyStats['text'],
-            self::promptContext($viewing, $familyOptions, $recentCards),
+            PromptContext::of($viewing, $familyOptions, $recentCards),
+            $orderRenderer,
         );
     }
 
@@ -369,32 +387,5 @@ final readonly class AssistantAgentFactory
         }
 
         return FamilyOptionValues::of($gateway->variantsOf($parentId, $scope))['options'];
-    }
-
-    /**
-     * The two "you already know about these" clauses, as one block for {@see SystemPrompt::build()}.
-     *
-     * Concatenated rather than given their own prompt parameter: `build()` appends this string after
-     * the rules and the vocabulary, and both clauses belong in exactly that position. A second
-     * parameter would have to be threaded through `Bundle` and every caller to say the same thing.
-     *
-     * Either half may be empty — most turns have no page product, and the first turn of a
-     * conversation has no previous reply — so the blank line between them is only written when both
-     * are actually present.
-     *
-     * @param array<string, list<string>> $familyOptions
-     * @param list<ProductCard>           $recentCards
-     */
-    private static function promptContext(?ProductCard $viewing, array $familyOptions, array $recentCards): string
-    {
-        $clauses = array_filter(
-            [
-                ViewingContext::line($viewing, $familyOptions),
-                RecentCardsContext::line($recentCards),
-            ],
-            static fn(string $clause): bool => $clause !== '',
-        );
-
-        return implode("\n\n", $clauses);
     }
 }

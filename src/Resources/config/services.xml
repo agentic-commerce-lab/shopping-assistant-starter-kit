@@ -78,6 +78,27 @@
             <argument type="service" id="sales_channel.category.repository"/>
         </service>
 
+        <!-- Reads the shopper's own orders through Shopware's order route.
+             `...\SalesChannel\OrderRoute` is the right id and the only one that is: verified on a
+             shop running Commercial 7.13.0, it is a public ALIAS for
+             `B2B\EmployeeManagement\Domain\Checkout\DecoratedOrderRoute`, which applies the B2B
+             employee filter. `AbstractOrderRoute` is NOT a registered service and fails at compile
+             time; `DecoratedOrderRoute.inner` is the original and WOULD bypass the filter. -->
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory">
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderRoute"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\SalesChannelContextProvider"/>
+            <argument type="service" id="request_stack"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderMapper"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderMapper">
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderDocuments"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderDocuments">
+            <argument type="service" id="router"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCommerceGateway">
             <argument type="service" id="sales_channel.product.repository"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
@@ -89,6 +110,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetQuery"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory"/>
         </service>
 
         <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper
@@ -280,6 +302,14 @@
             <tag name="swag_assistant.grounded_tool_factory"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\ListOrdersToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\GetOrderToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider"/>
 
         <service id="Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface"
@@ -333,6 +363,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface"
@@ -346,6 +377,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Policy\RequestBudget"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\CheckoutPayload"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\CardPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Controller\HandoffPayload"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Trace\Sink\TraceSinkDispatcher"/>
@@ -371,6 +403,7 @@
         <service id="Swag\AssistantStarterKit\Controller\AssistantCardController" public="true">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CardResolver"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>

@@ -106,6 +106,7 @@ final readonly class SystemConfigAssistantConfig
             escalationMessage: trim($this->stored->string('escalationMessage', $salesChannelId)),
             enableMatchReasons: $this->stored->bool('enableMatchReasons', false, $salesChannelId),
             enableCompareProducts: $this->stored->bool('enableCompareProducts', false, $salesChannelId),
+            enableOrderHistory: $this->stored->bool('enableOrderHistory', false, $salesChannelId),
             onlyGivenInformation: $this->stored->bool('onlyGivenInformation', false, $salesChannelId),
             logTraces: $this->stored->bool('logTraces', true, $salesChannelId),
             salesChannelId: $salesChannelId,

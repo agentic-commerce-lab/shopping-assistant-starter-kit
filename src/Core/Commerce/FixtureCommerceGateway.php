@@ -10,6 +10,9 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CategoryNode;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\FacetSet;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureCategoryFilter;
@@ -37,14 +40,43 @@ final class FixtureCommerceGateway implements
     CategoryTreeReader,
     CommerceGatewayInterface,
     FamilyVariantLookup,
-    MatchCountReader
+    MatchCountReader,
+    OrderHistoryReader
 {
     /** @var array<string, CartLine> keyed by variant id */
     private array $cartLines = [];
 
+    /** Held in its own class: see {@see FixtureOrderHistory} for why. */
+    private FixtureOrderHistory $orderHistory;
+
     private function __construct(
         private readonly FixtureIndex $index,
-    ) {}
+    ) {
+        $this->orderHistory = new FixtureOrderHistory();
+    }
+
+    /** @param list<OrderSummary> $orders */
+    public function seedOrders(array $orders): void
+    {
+        $this->orderHistory->seed($orders);
+    }
+
+    /** @return list<OrderSummary> */
+    public function orders(OrderQuery $query): array
+    {
+        return $this->orderHistory->orders($query);
+    }
+
+    public function order(string $orderNumber): ?OrderDetail
+    {
+        return $this->orderHistory->order($orderNumber);
+    }
+
+    /** @param list<OrderDetail> $details */
+    public function seedOrderDetails(array $details): void
+    {
+        $this->orderHistory->seedDetails($details);
+    }
 
     public static function fromFile(string $path): self
     {

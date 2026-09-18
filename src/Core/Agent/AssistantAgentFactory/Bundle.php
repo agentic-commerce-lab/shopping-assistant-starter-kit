@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory;
 
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\AgentInterface;
@@ -49,5 +50,9 @@ final readonly class Bundle
         public PromptProviderInterface $prompt,
         public string $vocabulary = '',
         public string $viewing = '',
+        // Where `list_orders` registered what it fetched, read by AssistantRunner for the same reason
+        // as `$renderer`: the figures on screen come from the turn's own retrieval, never from the
+        // model. Defaulted so a turn that constructed no order tool still builds a Bundle.
+        public OrderRenderer $orderRenderer = new OrderRenderer(),
     ) {}
 }

@@ -10,6 +10,8 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig;
 use Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings;
+use Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver;
+use Swag\AssistantStarterKit\Core\Context\ShoppingMode;
 use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -37,6 +39,11 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
         // Injected rather than built here, which is the whole point of the change: this is where a
         // shop's contributed tool factories arrive, having been collected by the container.
         private AssistantAgentFactory $agentFactory,
+        // Who is shopping, for the one capability that reads something about them rather than about
+        // the catalogue. Resolved here rather than passed in, because `run()`'s parameters are
+        // client-claimed hints and this is the opposite kind of fact: what the SERVER knows from the
+        // session it is already handling.
+        private ShoppingContextResolver $shoppers,
     ) {}
 
     // @mago-expect lint:excessive-parameter-list
@@ -70,6 +77,9 @@ final readonly class ShopwareChatTurnRunner implements ChatTurnRunnerInterface
             browsingCategoryId: $browsingCategoryId,
             recentCards: $this->lastShown($history, $config->scope),
             shopperMessage: $message,
+            // `list_orders` is constructed only for a signed-in shopper. A guest's model never sees
+            // it, so there is no instruction to disobey — capability control is construction (D6).
+            loggedIn: $this->shoppers->current()->mode === ShoppingMode::Customer,
         );
 
         $bundle->trace->record('page.context', [

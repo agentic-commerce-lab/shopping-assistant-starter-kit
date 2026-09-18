@@ -50,6 +50,19 @@ final readonly class AssistantConfig
         public bool $enableMatchReasons = false,
         public bool $enableCompareProducts = false,
         /**
+         * Whether the assistant may read the signed-in shopper's own order history.
+         *
+         * Off by default like every other capability, and more deliberately than the rest: the
+         * others gate what the assistant does with the CATALOGUE, and this is the first that gates
+         * what it reads about the SHOPPER. A plugin update must not start handing order data to a
+         * model in a shop that never asked.
+         *
+         * It is one of three gates — see
+         * {@see \Swag\AssistantStarterKit\Core\Tool\Factory\ListOrdersToolFactory}, which also
+         * requires a gateway that can read orders and a shopper who is signed in.
+         */
+        public bool $enableOrderHistory = false,
+        /**
          * Whether the assistant may say anything the shop's own data and documents do not say.
          *
          * On, it appends {@see \Swag\AssistantStarterKit\Core\Prompt\CapabilityRules::ONLY_GIVEN_INFORMATION}

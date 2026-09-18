@@ -21,6 +21,9 @@
     "card": {
       "view": "View product",
       "document": "Document",
+      "orderNumber": "Order %number%",
+      "orderLine": "%count% × %name%",
+      "orderItems": "%count% items",
       "documentsMore": "+%count% more",
       "add": "Add to cart",
       "noImage": "No image available",
@@ -31,6 +34,8 @@
       "parentStock": "Total across all variants — choose one on the product page.",
       "delivery": "Delivery: %time%",
       "addedToCart": "Added",
+      "inCart": "In cart (%count%)",
+      "addAnother": "Add another",
       "priceAt": "%price% each at %count% units",
       "volumePricing": "Lower unit prices at higher quantities",
       "basePrice": "(%price% / %unit%)"

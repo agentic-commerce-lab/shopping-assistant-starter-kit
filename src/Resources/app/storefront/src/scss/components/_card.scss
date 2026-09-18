@@ -423,6 +423,40 @@ still reads that it worked.
     }
 }
 
+/*
+Already in the cart when the card was drawn — a resting state, not an event.
+
+**Quieter than `.is-added` below, deliberately.** That one is a filled teal celebration for
+something that just happened under the shopper's finger; this is how a card *arrives* when the cart
+already holds the product, and it can easily be five cards at once in a restored conversation. A
+celebration repeated five times down a transcript is noise, and it would outweigh the price sitting
+directly above it. So: the teal association kept, the fill demoted to a wash, and no animation —
+nothing happened just now.
+
+It also reads as the demotion it is. The button was the card's primary call to action; once the
+thing is in the cart, adding another is a secondary intent, and an outline says that without a word.
+
+Night Blue on the wash rather than teal text: Teal #57d998 is a bright mid-green, and setting it as
+text on white is about 1.7:1 — the same arithmetic that rules white out on top of it.
+
+Not a colour-only signal, same rule as everywhere else here: the label reads "In cart (2)" and the
+glyph is a check. Colour confirms; it never informs.
+*/
+.swag-assistant-card__add.is-in-cart:not(:disabled) {
+    // The shaded teal, not the bright one: this border is the control's only visible edge, and
+    // plain Teal is 1.78:1 on white. See `$swag-assistant-in-stock-dark` for the arithmetic.
+    border-color: $swag-assistant-in-stock-dark;
+    background: rgba($swag-assistant-in-stock, 0.16);
+    // 16.22:1 on the wash. The label is doing the informing here, so it has to be the most
+    // readable thing in the control rather than the prettiest.
+    color: $swag-assistant-text;
+
+    &:hover {
+        background: rgba($swag-assistant-in-stock, 0.28);
+        border-color: $swag-assistant-in-stock-dark;
+    }
+}
+
 // Succeeded. Not a colour-only signal: the label itself changes to "Added".
 .swag-assistant-card__add.is-added {
     border-color: $swag-assistant-in-stock;
@@ -524,4 +558,77 @@ shopper is still reading, and confirms on the element that actually changed.
         transform: none;
     }
 
+}
+
+/*
+Order cards
+----------------------------------------------
+A product card sells something; an order card reports something that already happened. So it is a
+row of text rather than a tile with an image: there is nothing to look at, and a 176px tile would
+give a date and a total the visual weight of a photograph.
+
+It reuses `.swag-assistant-card__documents` verbatim — an invoice and a datasheet are the same row,
+which is why `documents.js` is shared rather than copied.
+*/
+.swag-assistant-orders {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.swag-assistant-order {
+    padding: 10px 12px;
+    border: 1px solid $swag-assistant-hairline;
+    border-radius: 10px;
+    background: $swag-assistant-surface;
+}
+
+.swag-assistant-order__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    align-items: baseline;
+}
+
+.swag-assistant-order__number {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.swag-assistant-order__meta {
+    color: $swag-assistant-meta;
+    font-size: 12px;
+}
+
+.swag-assistant-order__items {
+    flex-basis: 100%;
+    color: $swag-assistant-meta;
+    font-size: 11px;
+}
+
+.swag-assistant-order__lines {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.swag-assistant-order__line {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 12px;
+
+    & + & {
+        border-top: 1px solid $swag-assistant-hairline;
+    }
+}
+
+.swag-assistant-order__line-price {
+    color: $swag-assistant-meta;
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
 }

@@ -7,6 +7,7 @@ namespace Swag\AssistantStarterKit\Tests\Controller;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Controller\CardPayload;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CartSummary;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductDocument;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
@@ -50,7 +51,10 @@ final class CardPayloadDocumentsTest extends TestCase
      */
     private function payloadOf(ProductCard $card): array
     {
-        $payloads = (new CardPayload())->of([$card]);
+        // An empty cart: these tests are about documents, and `inCart` has its own file. The
+        // summary is required rather than defaulted so that a call site cannot forget to answer
+        // "is this already in the cart?" — see CardPayload::of().
+        $payloads = (new CardPayload())->of([$card], new CartSummary());
         self::assertCount(1, $payloads);
 
         return $payloads[0] ?? [];
