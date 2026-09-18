@@ -54,37 +54,4 @@ final readonly class DalOrderDocuments
 
         return $refs;
     }
-
-    public function detail(OrderEntity $order): OrderDetail
-    {
-        return new OrderDetail(
-            orderNumber: $order->getOrderNumber() ?? '',
-            orderedAt: \DateTimeImmutable::createFromInterface($order->getOrderDateTime()),
-            stateLabel: (string) ($order->getStateMachineState()?->getTranslation('name') ?? ''),
-            total: $order->getAmountTotal(),
-            currency: (string) ($order->getCurrency()?->getIsoCode() ?? ''),
-            lines: $this->lines($order),
-            documents: $this->documents($order),
-        );
-    }
-
-    /** @return list<OrderLine> */
-    private function lines(OrderEntity $order): array
-    {
-        $lines = [];
-
-        foreach ($order->getLineItems() ?? new OrderLineItemCollection() as $item) {
-            $lines[] = new OrderLine(
-                // The label Shopware stored on the line, not the product's name today: a product
-                // renamed since is still the thing the shopper bought, and an order is a record
-                // rather than a catalogue lookup.
-                name: $item->getLabel(),
-                quantity: $item->getQuantity(),
-                unitPrice: $item->getUnitPrice(),
-                lineTotal: $item->getTotalPrice(),
-            );
-        }
-
-        return $lines;
-    }
 }
