@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Swag\AssistantStarterKit\Tests\Core\Commerce;
 
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDocumentRef;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
 use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
@@ -24,6 +25,8 @@ final class RecordingOrderHistory implements OrderHistoryReader
 
     public function __construct(
         private readonly int $count = 0,
+        /** Attaches one document to the newest order, so a caller can tell "has an invoice" apart. */
+        private readonly bool $withDocumentOnFirst = false,
     ) {}
 
     /** @return list<OrderSummary> */
@@ -41,7 +44,9 @@ final class RecordingOrderHistory implements OrderHistoryReader
                 total: 10.0,
                 currency: 'EUR',
                 itemCount: 1,
-                documents: [],
+                documents: $index === 0 && $this->withDocumentOnFirst
+                    ? [new OrderDocumentRef('Invoice', '/account/order/document/abc/def', 'pdf')]
+                    : [],
             );
         }
 

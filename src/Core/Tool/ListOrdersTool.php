@@ -44,6 +44,11 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'withinDays. Listing everything when they asked for a subset makes them do the filtering they '
     . 'asked you for. If nothing matches a narrowed question, say none matched rather than that they '
     . 'have no orders. '
+    . '"withDocuments" lists the orders that have an invoice or other document attached; the card '
+    . 'for each of those carries it as a download. Asked about invoices or receipts, say WHICH '
+    . 'orders have one and point at the download beside them — and if "withDocuments" is empty, say '
+    . 'none of these orders has a document yet rather than listing the orders as if that answered '
+    . 'it. Never invent a document name, a file or a link: the card carries the only one there is. '
     . 'Say that you found their orders and let the cards carry the detail: never state a '
     . 'total, a date or a delivery status yourself, and never mention an order number this tool '
     . 'did not return. If it returns none, say you could not find any orders on their account.',
@@ -79,7 +84,7 @@ final readonly class ListOrdersTool
      * @param string|null $state      Only orders in this state: "open", "in_progress", "completed" or
      *                                "cancelled". Omit for any state.
      *
-     * @return array{orderNumbers: list<string>, total: int, filtered: bool}
+     * @return array{orderNumbers: list<string>, withDocuments: list<string>, total: int, filtered: bool}
      */
     public function __invoke(?int $limit = null, ?int $withinDays = null, ?string $state = null): array
     {
@@ -95,6 +100,18 @@ final readonly class ListOrdersTool
 
         $numbers = array_map(static fn($order): string => $order->orderNumber, $orders);
 
+        // WHICH orders carry a document, and nothing more about them. The model needs this to answer
+        // "show me my invoices" truthfully — including "none of them have one", which it could not
+        // say before and which is the honest answer often enough to matter.
+        //
+        // A boolean about attachment is not a figure in D3's sense: it is the same class as `total`
+        // below. The title, the file type and above all the URL stay out — a document URL in the
+        // model's context is precisely what the server-rendered link on the card exists to avoid.
+        $withDocuments = array_values(array_map(
+            static fn($order): string => $order->orderNumber,
+            array_filter($orders, static fn($order): bool => $order->documents !== []),
+        ));
+
         // Recorded because the assertion reads the trace rather than the renderer: a merchant reading
         // the trace and the eval suite then ask the same question of the same record.
         $this->trace->record('orders.listed', [
@@ -102,12 +119,14 @@ final readonly class ListOrdersTool
             'limit' => $query->limit,
             'withinDays' => $query->withinDays,
             'state' => $query->state,
+            'withDocuments' => $withDocuments,
         ]);
 
         // `filtered` so the model can tell "you have no orders" from "none in that window", which
         // are different sentences and the second one is the honest answer to a narrowed question.
         return [
             'orderNumbers' => $numbers,
+            'withDocuments' => $withDocuments,
             'total' => \count($numbers),
             'filtered' => $query->withinDays !== null || $query->state !== null,
         ];

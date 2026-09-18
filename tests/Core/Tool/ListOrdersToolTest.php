@@ -27,7 +27,7 @@ final class ListOrdersToolTest extends TestCase
 
         $result = $tool();
 
-        self::assertSame(['orderNumbers', 'total', 'filtered'], array_keys($result));
+        self::assertSame(['orderNumbers', 'withDocuments', 'total', 'filtered'], array_keys($result));
         self::assertSame(['10000', '10001'], $result['orderNumbers']);
         self::assertSame(2, $result['total']);
         self::assertFalse($result['filtered'], 'nothing was narrowed');
@@ -84,6 +84,32 @@ final class ListOrdersToolTest extends TestCase
         ];
     }
 
+    /**
+     * Which orders carry a document, and nothing more about them.
+     *
+     * The model has to be able to answer "show me my invoices" truthfully — which orders have one,
+     * and that none do when none do. Without this it can only list orders and hope the cards happen
+     * to carry a link, which is answering a different question.
+     *
+     * A boolean about attachment is not a figure in D3's sense: it is the same class as `total`,
+     * which says how many orders are being returned. The title, the file and the URL stay out — a
+     * URL in the model's context is the one thing the server-rendered link exists to avoid.
+     */
+    public function testNamesWhichOrdersCarryADocument(): void
+    {
+        $result = (new ListOrdersTool(self::readerWithInvoiceOnFirst(), new OrderRenderer(), new TraceRecorder()))();
+
+        self::assertSame(['10000', '10001'], $result['orderNumbers']);
+        self::assertSame(['10000'], $result['withDocuments']);
+    }
+
+    public function testSaysSoWhenNoOrderCarriesADocument(): void
+    {
+        $result = (new ListOrdersTool(self::reader(2), new OrderRenderer(), new TraceRecorder()))();
+
+        self::assertSame([], $result['withDocuments']);
+    }
+
     /** The trace is what {@see \Swag\AssistantStarterKit\Eval\Assertion\NoForeignOrderInProse} reads. */
     public function testRecordsWhatItFetched(): void
     {
@@ -97,5 +123,10 @@ final class ListOrdersToolTest extends TestCase
     private static function reader(int $count): RecordingOrderHistory
     {
         return new RecordingOrderHistory($count);
+    }
+
+    private static function readerWithInvoiceOnFirst(): RecordingOrderHistory
+    {
+        return new RecordingOrderHistory(2, withDocumentOnFirst: true);
     }
 }
