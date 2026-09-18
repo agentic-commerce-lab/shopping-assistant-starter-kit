@@ -581,7 +581,7 @@ which is why `documents.js` is shared rather than copied.
 
 .swag-assistant-order {
     padding: 10px 12px;
-    border: 1px solid $swag-assistant-border;
+    border: 1px solid $swag-assistant-hairline;
     border-radius: 10px;
     background: $swag-assistant-surface;
 }
@@ -623,7 +623,7 @@ which is why `documents.js` is shared rather than copied.
     font-size: 12px;
 
     & + & {
-        border-top: 1px solid $swag-assistant-border;
+        border-top: 1px solid $swag-assistant-hairline;
     }
 }
 
