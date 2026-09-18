@@ -11,6 +11,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
 use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\PreGrounding;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Llm\LlmPlatformInterface;
@@ -179,9 +180,13 @@ final readonly class AssistantAgentFactory
         ?string $browsingCategoryId = null,
         array $recentCards = [],
         string $shopperMessage = '',
+        bool $loggedIn = false,
     ): Bundle {
         $trace = new TraceRecorder();
         $renderer = new FactRenderer($trace);
+        // One per turn, like the FactRenderer beside it (R32). Built unconditionally because the
+        // Bundle always carries one: a turn with no order tool simply leaves it empty.
+        $orderRenderer = new OrderRenderer();
 
         // **Which model answered, recorded first and every turn.** Every other stage of the turn was
         // already traceable; the one thing a merchant reading a bad reply could not tell was whether
@@ -245,6 +250,8 @@ final readonly class AssistantAgentFactory
             cartAvailable: $cartAvailable,
             browsingCategoryId: $browsingCategoryId,
             shopperMessage: $shopperMessage,
+            orderRenderer: $orderRenderer,
+            loggedIn: $loggedIn,
         );
         $context = new ToolContext($trace, $config);
 
@@ -330,6 +337,7 @@ final readonly class AssistantAgentFactory
             $this->prompt,
             $vocabularyStats['text'],
             self::promptContext($viewing, $familyOptions, $recentCards),
+            $orderRenderer,
         );
     }
 

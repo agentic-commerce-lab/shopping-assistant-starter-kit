@@ -280,6 +280,10 @@
             <tag name="swag_assistant.grounded_tool_factory"/>
         </service>
 
+        <service id="Swag\AssistantStarterKit\Core\Tool\Factory\ListOrdersToolFactory">
+            <tag name="swag_assistant.grounded_tool_factory"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Prompt\SystemPromptProvider"/>
 
         <service id="Swag\AssistantStarterKit\Core\Prompt\PromptProviderInterface"
@@ -333,6 +337,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigAssistantConfig"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Config\SystemConfigLlmSettings"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Agent\AssistantAgentFactory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Context\ShoppingContextResolver"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Agent\ChatTurnRunnerInterface"

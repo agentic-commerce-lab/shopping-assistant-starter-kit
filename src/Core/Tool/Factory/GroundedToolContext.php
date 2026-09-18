@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Tool\Factory;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
 use Swag\AssistantStarterKit\Core\Policy\BlocklistFilter;
@@ -70,5 +71,23 @@ final readonly class GroundedToolContext
          * types backs a price, a stock level or a product's existence.
          */
         public string $shopperMessage = '',
+        /**
+         * Where {@see \Swag\AssistantStarterKit\Core\Tool\ListOrdersTool} registers the orders it
+         * fetched, so the controller can render their figures instead of the model stating them.
+         *
+         * Appended rather than placed beside `renderer`, and defaulted, so every existing positional
+         * construction of this class keeps meaning what it meant — the same care the ninth parameter
+         * of `SearchProductsTool` is documented with.
+         */
+        public OrderRenderer $orderRenderer = new OrderRenderer(),
+        /**
+         * Whether this turn has a signed-in shopper — `ShoppingMode::Customer`, never a guest.
+         *
+         * A capability flag like `$cartAvailable`, and false wherever there is no storefront request
+         * at all (the probe command, the eval harness) unless that caller says otherwise. Defaulting
+         * to false is what makes the order tool fail closed: a caller that forgets to pass it gets no
+         * order history rather than somebody else's.
+         */
+        public bool $loggedIn = false,
     ) {}
 }
