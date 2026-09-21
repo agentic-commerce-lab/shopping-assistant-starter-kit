@@ -172,6 +172,28 @@
                 branch rather than every category in it. Same guarantee as blocked
                 products.</helpText>
         </component>
+
+        <input-field type="bool">
+            <name>hideOutOfStockProducts</name>
+            <label>Stop suggesting products that are out of stock</label>
+            <defaultValue>false</defaultValue>
+            <helpText>Off by default, because a product out of stock is usually still orderable —
+                it just arrives later. Turn it on if your lead times are long enough that offering
+                one costs you more than saying nothing.
+
+                This is narrower than the two lists above, and deliberately so. They hide a product
+                from everything; this one only stops the assistant OFFERING it. A shopper who names
+                a product outright still gets a straight answer about it, including "that size is
+                sold out" — an assistant that cannot see the sold-out variant answers "no such
+                product" instead, which is a different untruth and a worse one.
+
+                Products you can no longer order at all — an end-of-line item whose stock has run
+                out — are never suggested either way. That is not a setting: the assistant would be
+                proposing something your checkout refuses.
+
+                One thing it does NOT do is hide a product because the variant a shopper asked for
+                is gone. A dress whose M is sold out and whose L is not stays a dress you sell.</helpText>
+        </input-field>
     </card>
 
     <card>

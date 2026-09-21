@@ -19,15 +19,23 @@ use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
  * Three things here are load-bearing:
  *
  * 1. **The limit comes from `retrievalLimit()`, never `$limit`.** The gateway applies sort and
- *    limit together, so anything truncated here is gone before variant resolution runs, and
- *    ranking's in-stock bias sorts a sold-out unit last. Narrowing to what the model asked for
- *    happens in the caller, after resolution.
+ *    limit together, so anything truncated here is gone before variant resolution runs. Narrowing
+ *    to what the model asked for happens in the caller, after resolution.
+ *
+ *    This sentence used to end *"and ranking's in-stock bias sorts a sold-out unit last"*, which
+ *    was true of `FixtureQueryFilter` and of nothing else: against a real shop a sold-out unit
+ *    ranked exactly as high as an available one, on every search, for as long as this class has
+ *    existed. The bias now lives in {@see \Swag\AssistantStarterKit\Core\Retrieval\SoldOutLast},
+ *    applied to both gateways' results, and deliberately not as a sorting here — see that class for
+ *    why a `FieldSorting` on stock is the wrong repair.
  * 2. **Scope exclusions are retrieval filters, not a post-pass.** A blocked product must never
  *    enter the model's context (D5), and not fetching it is strictly less exposure than fetching
  *    it and removing it afterwards. Callers still apply their own blocklist as a second line.
- * 3. **No closeout or stock filter is added.** `ProductAvailableFilter` checks visibility and
- *    `active`, not stock, and that is exactly right: a sold-out variant must stay retrievable,
- *    or "is the blue M in stock?" gets answered with "no such product".
+ * 3. **No closeout or stock filter is added HERE.** `ProductAvailableFilter` checks visibility and
+ *    `active`, not stock, and that is exactly right for a builder every read shares: a sold-out
+ *    variant must stay retrievable, or "is the blue M in stock?" gets answered with "no such
+ *    product". Availability filtering is a property of a read that OFFERS products, so it lives in
+ *    {@see self::buildForDiscovery()} and reaches only the three reads that do.
  */
 final readonly class DalCriteriaBuilder
 {
@@ -93,6 +101,27 @@ final readonly class DalCriteriaBuilder
         // candidates of one turn, which is the same order as `properties.group` beside it. See
         // DalProductDocuments for why the gallery is the source at all.
         $criteria->addAssociation(DalProductDocuments::ASSOCIATION . '.media');
+
+        return $criteria;
+    }
+
+    /**
+     * {@see self::build()} plus the availability filters a read that OFFERS products must carry.
+     *
+     * **A named method rather than a flag on `build()`**, for the reason
+     * {@see \Swag\AssistantStarterKit\Core\Tool\ToolProductSummary::withDescriptions()} gives for
+     * its own: the call site has to say which contract it asked for, and a boolean argument makes
+     * that distinction invisible at exactly the place a reviewer looks. Only `search()` and the
+     * match count beside it use this — see {@see DalDiscoveryFilters} for why a lookup by id and a
+     * variant resolution must not, and {@see DalCommerceGatewayDiscoveryReadsTest} for the guard
+     * that keeps the two sets apart.
+     */
+    public function buildForDiscovery(ProductQuery $query, CatalogScope $scope, string $salesChannelId): Criteria
+    {
+        $criteria = $this->build($query, $scope, $salesChannelId);
+        // Spread rather than a loop: `addFilter()` is variadic, and the loop was one branch more
+        // than this class's complexity budget allows.
+        $criteria->addFilter(...DalDiscoveryFilters::of($scope));
 
         return $criteria;
     }

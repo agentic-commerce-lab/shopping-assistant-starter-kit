@@ -166,6 +166,7 @@ final readonly class SystemConfigAssistantConfig
         return new CatalogScope(
             blockedProductIds: $this->stored->idList('blockedProducts', $salesChannelId),
             blockedCategoryIds: $this->stored->idList('blockedCategories', $salesChannelId),
+            hideOutOfStock: $this->stored->bool('hideOutOfStockProducts', false, $salesChannelId),
         );
     }
 

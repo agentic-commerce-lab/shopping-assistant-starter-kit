@@ -84,6 +84,7 @@ final class PluginManifestTest extends TestCase
             'agentVoice',
             'blockedProducts',
             'blockedCategories',
+            'hideOutOfStockProducts',
             'enableAddToCart',
             'maxItemQuantity',
             'maxCartValue',

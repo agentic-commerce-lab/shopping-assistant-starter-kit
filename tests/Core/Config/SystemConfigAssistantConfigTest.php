@@ -113,6 +113,25 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertSame(['cat-1'], $config->scope->blockedCategoryIds);
     }
 
+    public function testAShopThatNeverTouchedTheSettingKeepsShowingProductsThatAreOutOfStock(): void
+    {
+        // Off by default, and deliberately: an ordinary product out of stock can still be
+        // ordered, it merely arrives later. Hiding one by default would quietly shrink every
+        // existing shop's catalogue on a plugin update.
+        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([])))->forSalesChannel(self::CHANNEL);
+
+        self::assertFalse($config->scope->hideOutOfStock);
+    }
+
+    public function testTheOutOfStockSettingReachesTheCatalogueScope(): void
+    {
+        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
+            self::PREFIX . 'hideOutOfStockProducts' => true,
+        ])))->forSalesChannel(self::CHANNEL);
+
+        self::assertTrue($config->scope->hideOutOfStock);
+    }
+
     public function testIdsPickedInTheMultiSelectArriveAsAList(): void
     {
         // `sw-entity-multi-id-select` stores a real JSON array, and `getString()` on an array

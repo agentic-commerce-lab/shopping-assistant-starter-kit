@@ -17,6 +17,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureCategoryFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureCategoryTree;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureDiscoveryFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureFacetBuilder;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureIndex;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQuantityCorrection;
@@ -115,6 +116,10 @@ final class FixtureCommerceGateway implements
     public function search(ProductQuery $query, CatalogScope $scope): array
     {
         $units = FixtureScopeFilter::apply($this->index->units(), $scope);
+        // Discovery only, and only here and in countMatches(): product() and resolveVariant() below
+        // must still reach a sold-out unit, or "is the blue M still available?" is answered with
+        // "no such product". See DalDiscoveryFilters for the whole argument.
+        $units = FixtureDiscoveryFilter::apply($units, $scope);
         // After the scope, never before or instead of it: the shopper's location narrows what the
         // merchant already allowed, and cannot reach past it (P8).
         $units = FixtureCategoryFilter::apply($units, $query->categoryId);
@@ -133,6 +138,7 @@ final class FixtureCommerceGateway implements
     public function countMatches(ProductQuery $query, CatalogScope $scope): int
     {
         $units = FixtureScopeFilter::apply($this->index->units(), $scope);
+        $units = FixtureDiscoveryFilter::apply($units, $scope);
         $units = FixtureCategoryFilter::apply($units, $query->categoryId);
 
         // A very large limit rather than a separate predicate: FixtureQueryFilter owns what "matches"

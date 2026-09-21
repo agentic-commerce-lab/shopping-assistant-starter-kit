@@ -54,7 +54,13 @@ final readonly class RetainedCards
     {
         // Ordered first so both removals see the same list, and because the ordering is what the
         // shopper asked for while the removals only take away.
-        $ordered = self::wordMatched(OrderedByPrice::apply($cards, $query), $term, $trace);
+        //
+        // The sold-out bias goes AFTER the stated order and reads `$query->sort` itself, so a
+        // shopper who asked for the cheapest keeps price order untouched. It is here rather than in
+        // either gateway because only one of them ever had it: see SoldOutLast for the measurement,
+        // and for why a `FieldSorting` on the criteria is the wrong repair.
+        $ranked = SoldOutLast::apply(OrderedByPrice::apply($cards, $query), $query->sort);
+        $ordered = self::wordMatched($ranked, $term, $trace);
 
         // The query's stated price range, enforced on the price the shopper will actually be shown.
         // See StatedBudget for why the database filter cannot be trusted for this.

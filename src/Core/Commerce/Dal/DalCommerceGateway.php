@@ -133,7 +133,7 @@ final readonly class DalCommerceGateway implements
     public function search(ProductQuery $query, CatalogScope $scope): array
     {
         $context = $this->contextProvider->current();
-        $criteria = $this->criteriaBuilder->build($query, $scope, $context->getSalesChannelId());
+        $criteria = $this->criteriaBuilder->buildForDiscovery($query, $scope, $context->getSalesChannelId());
 
         return $this->mapAll(
             $this->productRepository->search($criteria, $context)->getElements(),
@@ -167,7 +167,11 @@ final readonly class DalCommerceGateway implements
     public function countMatches(ProductQuery $query, CatalogScope $scope): int
     {
         $context = $this->contextProvider->current();
-        $criteria = $this->criteriaBuilder->build($query->withoutLimits(), $scope, $context->getSalesChannelId());
+        $criteria = $this->criteriaBuilder->buildForDiscovery(
+            $query->withoutLimits(),
+            $scope,
+            $context->getSalesChannelId(),
+        );
         $criteria->setLimit(1);
         $criteria->addAggregation(new CountAggregation(self::MATCH_COUNT_AGGREGATION, 'id'));
 
@@ -189,7 +193,11 @@ final readonly class DalCommerceGateway implements
     public function countMatchesUpTo(ProductQuery $query, CatalogScope $scope, int $cap): int
     {
         $context = $this->contextProvider->current();
-        $criteria = $this->criteriaBuilder->build($query->withoutLimits(), $scope, $context->getSalesChannelId());
+        $criteria = $this->criteriaBuilder->buildForDiscovery(
+            $query->withoutLimits(),
+            $scope,
+            $context->getSalesChannelId(),
+        );
         $criteria->setLimit($cap);
 
         return \count($this->productRepository->searchIds($criteria, $context)->getIds());
