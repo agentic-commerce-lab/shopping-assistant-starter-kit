@@ -42,6 +42,7 @@ final readonly class DalCriteriaBuilder
     public function __construct(
         private DalFilterTranslator $translator = new DalFilterTranslator(),
         private BundleSupport $bundles = new BundlesUnavailable(),
+        private StreamFilters $streams = new NoStreamFilters(),
     ) {}
 
     public function build(ProductQuery $query, CatalogScope $scope, string $salesChannelId): Criteria
@@ -153,6 +154,11 @@ final readonly class DalCriteriaBuilder
         if ($scope->blockedCategoryIds !== []) {
             $exclusions[] = new EqualsAnyFilter('categoriesRo.id', $scope->blockedCategoryIds);
         }
+
+        // Spread rather than a loop, to stay inside this class's complexity budget. Each entry is
+        // already one group's conditions ANDed together; they join the OR below as peers of the two
+        // id lists, so a product in ANY blocked set is excluded rather than one in all of them.
+        $exclusions = [...$exclusions, ...$this->streams->filtersFor($scope->blockedStreamIds)];
 
         if ($exclusions === []) {
             return;

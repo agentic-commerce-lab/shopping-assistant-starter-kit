@@ -29,6 +29,19 @@ final class FixtureCommerceGatewayScopeTest extends TestCase
         return FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
     }
 
+    public function testABlockedProductGroupIsIgnoredHereAndThatIsNotABug(): void
+    {
+        // A Dynamic Product Group is a `product_stream` row resolved by Shopware; there is no such
+        // thing in `catalog.json` and nothing here could evaluate one. Pinned rather than left
+        // implicit, because the eval suite runs against THIS gateway: no journey can ever cover the
+        // setting, and a reader who assumes otherwise would trust a green suite for a feature it
+        // never exercised. DalCriteriaBuilderStreamTest and DalStreamFiltersTest are where it lives.
+        $before = $this->gateway()->search(new ProductQuery(term: 'CO2'), new CatalogScope());
+        $after = $this->gateway()->search(new ProductQuery(term: 'CO2'), new CatalogScope(blockedStreamIds: ['s1']));
+
+        self::assertSame(array_map(static fn($c) => $c->id, $before), array_map(static fn($c) => $c->id, $after));
+    }
+
     public function testSearchExcludesBlockedProducts(): void
     {
         $scope = new CatalogScope(blockedProductIds: ['fx-014']);

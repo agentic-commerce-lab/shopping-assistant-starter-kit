@@ -80,10 +80,16 @@ final readonly class DalPropertyValuesInUse
      */
     public static function canAnswer(CatalogScope $scope): bool
     {
+        // One expression over all four lists rather than four ANDed comparisons: the question is
+        // "does any narrowing apply at all", and spelling it as a chain cost this class more
+        // branches than its complexity budget allows once product groups were added.
         return (
-            $scope->includeCategoryIds === []
-            && $scope->blockedProductIds === []
-            && $scope->blockedCategoryIds === []
+            array_merge(
+                $scope->includeCategoryIds,
+                $scope->blockedProductIds,
+                $scope->blockedCategoryIds,
+                $scope->blockedStreamIds,
+            ) === []
         );
     }
 

@@ -85,6 +85,7 @@ final class PluginManifestTest extends TestCase
             'blockedProducts',
             'blockedCategories',
             'hideOutOfStockProducts',
+            'blockedProductStreams',
             'enableAddToCart',
             'maxItemQuantity',
             'maxCartValue',

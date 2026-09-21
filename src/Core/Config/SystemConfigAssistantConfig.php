@@ -167,6 +167,7 @@ final readonly class SystemConfigAssistantConfig
             blockedProductIds: $this->stored->idList('blockedProducts', $salesChannelId),
             blockedCategoryIds: $this->stored->idList('blockedCategories', $salesChannelId),
             hideOutOfStock: $this->stored->bool('hideOutOfStockProducts', false, $salesChannelId),
+            blockedStreamIds: $this->stored->idList('blockedProductStreams', $salesChannelId),
         );
     }
 

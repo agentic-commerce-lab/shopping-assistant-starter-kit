@@ -173,6 +173,37 @@
                 products.</helpText>
         </component>
 
+        <component name="sw-entity-multi-id-select">
+            <name>blockedProductStreams</name>
+            <entity>product_stream</entity>
+            <label>Blocked product groups</label>
+            <label lang="de-DE">Gesperrte Produktgruppen</label>
+            <placeholder>Search for a dynamic product group…</placeholder>
+            <helpText>The same guarantee as the two lists above, expressed as a rule instead of a
+                list. Build a Dynamic Product Group under Catalogues › Dynamic Product Groups —
+                by manufacturer, property, custom field, price, release date, anything — and pick
+                it here. Nothing in it is ever looked up.
+
+                This is the one of the three that works at catalogue scale. A group is applied as
+                its CONDITIONS, never as the products matching them, so a group covering ten
+                products and one covering half your catalogue cost the same. Picking products by
+                hand does not: every id you pick travels into the query on every single chat
+                message.
+
+                Blocking a group blocks its variants too, without you listing them — a variant
+                inherits its manufacturer, properties and category from its parent, so a rule about
+                those reaches the whole family.
+
+                Do NOT build a group on stock to hide sold-out products; use the switch below
+                instead. Stock is the one field a variant does not inherit, and a parent product
+                carries its own figure rather than the sum of its variants — measured on a real
+                catalogue, a "stock is 0" group hid 9% of all product families whose every size was
+                in stock. The switch below knows the difference.
+
+                A group you later delete blocks nothing rather than breaking the assistant, and the
+                setting can be left pointing at it.</helpText>
+        </component>
+
         <input-field type="bool">
             <name>hideOutOfStockProducts</name>
             <label>Stop suggesting products that are out of stock</label>

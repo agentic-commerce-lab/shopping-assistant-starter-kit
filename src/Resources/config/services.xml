@@ -40,9 +40,17 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"
                  alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalBundleSupport"/>
 
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStreamFilters">
+            <argument type="service" id="Shopware\Core\Content\ProductStream\Service\ProductStreamBuilder"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\StreamFilters"
+                 alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStreamFilters"/>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFilterTranslator"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\StreamFilters"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\RouterProductUrlResolver">

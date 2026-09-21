@@ -29,7 +29,13 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
  *
  * `blockedProductIds` is *this product*, and it also matches on `parentId`, so blocking one parent
  * removes every variant beneath it — something a category list cannot express. `blockedCategoryIds`
- * is *this whole branch*. That is the entire distinction, and it survives being said out loud.
+ * is *this whole branch*. `blockedStreamIds` is *whatever the merchant said*, as a Dynamic Product
+ * Group: the only one of the three that scales past a catalogue somebody can click through.
+ *
+ * All three are absolute and all three are OR-ed into one exclusion. The group carries one caveat the
+ * id lists do not: {@see \Swag\AssistantStarterKit\Core\Policy\BlocklistFilter} re-checks ids as a
+ * second line of defence and cannot re-check a group without a query per card, so a group is enforced
+ * at retrieval only. That is the same guarantee the shop's own listing pages have.
  *
  * ## `hideOutOfStock` is the soft scope this docblock used to say did not exist
  *
@@ -53,12 +59,19 @@ final readonly class CatalogScope
      * @param list<string> $blockedProductIds
      * @param list<string> $blockedCategoryIds
      * @param bool         $hideOutOfStock     merchant setting; discovery reads only — see the class docblock
+     * @param list<string> $blockedStreamIds   Dynamic Product Group ids; absolute, like the two lists above
      */
+    // @mago-expect lint:excessive-parameter-list
+    // Standing-constraints carve-out, the same one ProductCard and AssistantConfig take: this is a
+    // flat value object whose whole purpose is to be flat. Every field is an independent merchant
+    // decision the gateway reads on its own, and grouping them behind a sub-object would hide which
+    // ones a given filter consults — the exact thing this class's docblock exists to spell out.
     public function __construct(
         public array $includeCategoryIds = [],
         public array $blockedProductIds = [],
         public array $blockedCategoryIds = [],
         public int $minDescriptionWords = 0,
         public bool $hideOutOfStock = false,
+        public array $blockedStreamIds = [],
     ) {}
 }

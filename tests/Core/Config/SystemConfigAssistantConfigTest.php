@@ -132,6 +132,17 @@ final class SystemConfigAssistantConfigTest extends TestCase
         self::assertTrue($config->scope->hideOutOfStock);
     }
 
+    public function testBlockedProductGroupsReachTheCatalogueScope(): void
+    {
+        // Same storage shape as the two id lists beside it: `sw-entity-multi-id-select` writes a
+        // real JSON array, which the string getter would read back as ''.
+        $config = (new SystemConfigAssistantConfig(new FakeSystemConfigService([
+            self::PREFIX . 'blockedProductStreams' => ['s1s1', 's2s2'],
+        ])))->forSalesChannel(self::CHANNEL);
+
+        self::assertSame(['s1s1', 's2s2'], $config->scope->blockedStreamIds);
+    }
+
     public function testIdsPickedInTheMultiSelectArriveAsAList(): void
     {
         // `sw-entity-multi-id-select` stores a real JSON array, and `getString()` on an array
