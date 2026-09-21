@@ -254,6 +254,7 @@ These settings control what the assistant can see and do:
 | `enableCompareProducts` | off | Whether the model can compare products side by side |
 | `enableOrderHistory` | off | Whether a **signed-in** shopper can ask for their own recent orders and invoices. Guests are declined. Under B2B Components an employee sees only what their role permits — Shopware decides that, not the assistant. Covers "show my recent orders", "what was in order 10023" and narrowed questions like "any open orders from last month" |
 | `enableMatchReasons` | off | Whether retrieval exposes deterministic reasons for a match |
+| `suggestAlternatives` | off | Whether a sold-out variant may be answered with the other sizes or colours of that **same** product which are in stock. Never a different product, and never a combination assembled from two available variants |
 
 Disabled capabilities are removed from the toolbox instead of being described as forbidden in the
 prompt. Blocked products, categories and product groups are filtered before model context is built.

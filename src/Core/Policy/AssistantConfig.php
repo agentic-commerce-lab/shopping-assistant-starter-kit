@@ -50,6 +50,16 @@ final readonly class AssistantConfig
         public bool $enableMatchReasons = false,
         public bool $enableCompareProducts = false,
         /**
+         * Whether a sold-out variant may be answered with the siblings a shopper could buy instead.
+         *
+         * Off by default like every other capability, and this one has a reason of its own: the
+         * pilot feedback that asked for it said *"only when that makes business sense"*, and nothing
+         * in a catalogue says when that is. What ships is the narrowest reading — other sizes and
+         * colours of the SAME product, never a different product — and even that is the merchant's
+         * to switch on. See {@see \Swag\AssistantStarterKit\Core\Tool\AvailableAlternatives}.
+         */
+        public bool $suggestAlternatives = false,
+        /**
          * Whether the assistant may read the signed-in shopper's own order history.
          *
          * Off by default like every other capability, and more deliberately than the rest: the

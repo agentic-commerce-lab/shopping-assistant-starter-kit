@@ -377,6 +377,24 @@
         </input-field>
 
         <input-field type="bool">
+            <name>suggestAlternatives</name>
+            <label>Let the assistant offer another size or colour when one is sold out</label>
+            <defaultValue>false</defaultValue>
+            <helpText>When a shopper asks for a variant that is sold out, the assistant can name the
+                other versions of that same product which are in stock — "the M is gone, we have L
+                and XL". Off by default, because whether that is welcome is your call about your
+                range, not ours.
+
+                Deliberately narrow: only other sizes and colours of the product they already asked
+                about, and only real ones. It never reaches for a different product, and it never
+                combines two available variants into a third that does not exist. If nothing in that
+                product is in stock, the assistant says so and stops.
+
+                Blocked products stay blocked here too — a variant you have hidden is never offered
+                as an alternative.</helpText>
+        </input-field>
+
+        <input-field type="bool">
             <name>enableOrderHistory</name>
             <label>Let the assistant show a signed-in shopper their own orders</label>
             <defaultValue>false</defaultValue>

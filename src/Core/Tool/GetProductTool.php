@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Core\Tool;
 
 use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\VariantSelection;
+use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\VariantResolver;
 use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
@@ -55,7 +56,7 @@ final class GetProductTool
      *     own facet values before resolution, so "blue" and "Blue" behave the same.
      *
      * @return array{
-     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>,
+     *     products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string, alternatives?: list<array<string, string>>, alternatives_truncated?: true}>,
      *     total: int,
      *     note?: string,
      *     bundle_note?: string,
@@ -127,6 +128,16 @@ final class GetProductTool
         // 2026-09-03). Search stays narrow — see ToolProductSummary::withDescriptions() for why the
         // shape differs by path, and why a summary carries no figure either way.
         $products = ToolProductSummary::withDescriptions($survivors);
+
+        // **On the product, not the reply.** A key at the root would have no product to belong to
+        // the moment this path returns more than one card, and nothing in the shape would say which
+        // one it described. `instanceof` because family lookup is an optional gateway capability,
+        // the same way AssistantAgentFactory::familyOptionsOf() treats it.
+        if ($this->config->suggestAlternatives && $this->gateway instanceof FamilyVariantLookup) {
+            foreach ($survivors as $index => $survivor) {
+                $products[$index] += AvailableAlternatives::keyFor($survivor, $this->gateway, $this->config->scope);
+            }
+        }
 
         GivenDescriptions::record($this->trace, $products);
 
