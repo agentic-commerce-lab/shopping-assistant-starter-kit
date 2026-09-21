@@ -25,6 +25,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
 use Swag\AssistantStarterKit\Core\Commerce\FamilyVariantLookup;
 use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
+use Swag\AssistantStarterKit\Core\Commerce\StockedFamilyLookup;
 
 /**
  * {@see CommerceGatewayInterface} over the Shopware DAL — the implementation that makes this
@@ -41,12 +42,10 @@ use Swag\AssistantStarterKit\Core\Commerce\OrderHistoryReader;
  */
 // @mago-expect lint:too-many-methods
 // Every public method here is mandated by an interface this class implements: six by
-// CommerceGatewayInterface, one each by BatchProductLookup, CategoryTreeReader, FamilyVariantLookup
-// and MatchCountReader.
-// The count is the sum of those obligations plus a constructor and one small private mapper, not
-// bloat, and four interfaces cannot be implemented in fewer methods. The alternative is extracting
-// `mapAll()` into a pass-through class, which the constructor's own carve-out below already argues
-// against: indirection whose only purpose is satisfying a linter.
+// CommerceGatewayInterface, one each by BatchProductLookup, CategoryTreeReader, FamilyVariantLookup,
+// MatchCountReader and StockedFamilyLookup — plus a constructor and one small private mapper. Five
+// interfaces cannot be implemented in fewer methods, and extracting `mapAll()` into a pass-through
+// class is the indirection the constructor's own carve-out below already argues against.
 final readonly class DalCommerceGateway implements
     BatchProductLookup,
     // Extends MatchCountReader, so naming both would be redundant — this one is the stronger claim.
@@ -54,6 +53,7 @@ final readonly class DalCommerceGateway implements
     CategoryTreeReader,
     CommerceGatewayInterface,
     FamilyVariantLookup,
+    StockedFamilyLookup,
     OrderHistoryReader
 {
     /**
@@ -101,6 +101,7 @@ final readonly class DalCommerceGateway implements
         private DalCategoryTreeReader $categoryTreeReader,
         private DalFacetQuery $facetQuery,
         private DalOrderHistory $orderHistory,
+        private DalStockedFamilies $stockedFamilies,
     ) {}
 
     /**
@@ -316,6 +317,18 @@ final readonly class DalCommerceGateway implements
             $this->productRepository->search($criteria, $context)->getElements(),
             $context->getCurrency()->getIsoCode(),
         );
+    }
+
+    /**
+     * Delegated whole. The query, and why it is an aggregation, live in {@see DalStockedFamilies}.
+     *
+     * @param list<string> $parentIds
+     *
+     * @return list<string>
+     */
+    public function familiesWithStock(array $parentIds, CatalogScope $scope): array
+    {
+        return $this->stockedFamilies->of($parentIds, $scope, $this->contextProvider->current());
     }
 
     public function resolveVariant(string $parentId, array $selections, CatalogScope $scope): ?ProductCard

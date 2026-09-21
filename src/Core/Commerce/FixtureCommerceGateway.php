@@ -23,7 +23,9 @@ use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureIndex;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQuantityCorrection;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureQueryFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureScopeFilter;
+use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureStockedFamilies;
 use Swag\AssistantStarterKit\Core\Commerce\Fixture\FixtureVariantMatcher;
+use Swag\AssistantStarterKit\Core\Commerce\StockedFamilyLookup;
 
 /**
  * In-memory {@see CommerceGatewayInterface} backed by a static JSON fixture.
@@ -41,6 +43,7 @@ final class FixtureCommerceGateway implements
     CategoryTreeReader,
     CommerceGatewayInterface,
     FamilyVariantLookup,
+    StockedFamilyLookup,
     MatchCountReader,
     OrderHistoryReader
 {
@@ -180,6 +183,19 @@ final class FixtureCommerceGateway implements
      *
      * @return list<ProductCard>
      */
+    /**
+     * Delegated whole, like every other read here that is about a rule rather than a lookup. The
+     * reasoning both gateways share lives in {@see \Swag\AssistantStarterKit\Core\Commerce\StockedFamilyLookup}.
+     *
+     * @param list<string> $parentIds
+     *
+     * @return list<string>
+     */
+    public function familiesWithStock(array $parentIds, CatalogScope $scope): array
+    {
+        return FixtureStockedFamilies::of(FixtureScopeFilter::apply($this->index->units(), $scope), $parentIds);
+    }
+
     public function variantsOf(string $parentId, CatalogScope $scope): array
     {
         return FixtureScopeFilter::apply($this->index->unitsByParent($parentId), $scope);

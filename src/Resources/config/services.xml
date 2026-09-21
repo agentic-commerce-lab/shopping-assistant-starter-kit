@@ -47,6 +47,11 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\StreamFilters"
                  alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStreamFilters"/>
 
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStockedFamilies">
+            <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFilterTranslator"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"/>
@@ -119,6 +124,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetQuery"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStockedFamilies"/>
         </service>
 
         <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper
