@@ -136,7 +136,11 @@ Shopware.Component.register('swag-assistant-trace-list', {
             return [
                 'product_shown',
                 'shop_info_retrieved',
+                'orders_shown',
                 'cart_added',
+                // Missing since it was introduced, and found while adding `orders_shown` above: a
+                // merchant could filter for every outcome the resolver produces except this one.
+                'checkout_offered',
                 'escalated',
                 'no_result',
                 'tool_limit_exceeded',

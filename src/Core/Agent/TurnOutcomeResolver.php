@@ -83,6 +83,15 @@ final class TurnOutcomeResolver
     public const CHECKOUT_OFFERED = 'checkout_offered';
 
     /**
+     * The turn put at least one of the shopper's own orders in front of them.
+     *
+     * Distinct from `product_shown` because nothing from the catalogue was shown, and distinct from
+     * `no_result` because something was. A run that looked and found none keeps `no_result` — see
+     * {@see OrdersAnswer} for why that distinction is the useful one.
+     */
+    public const ORDERS_SHOWN = 'orders_shown';
+
+    /**
      * @param list<ProductCard> $cards
      */
     public function outcome(TraceRecorder $trace, array $cards): string
@@ -101,6 +110,14 @@ final class TurnOutcomeResolver
 
         if ($cards !== []) {
             return 'product_shown';
+        }
+
+        // After the cards, because a turn that showed products is a product turn; before shop info,
+        // because the two are disjoint and this is the more specific answer. Found live: a turn that
+        // returned five of the shopper's orders was recorded `no_result`, which is wrong in the
+        // trace, wrong in the nightly insights, and right on screen only by accident.
+        if (OrdersAnswer::isIn($trace)) {
+            return self::ORDERS_SHOWN;
         }
 
         if (ShopInfoAnswer::isIn($trace)) {
