@@ -53,6 +53,34 @@ final class CapabilityRules
      * grounding rule was broken; the model had simply never been told a comparison request needs the
      * dedicated tool rather than two separate searches.
      */
+    /**
+     * Appended only when {@see AssistantConfig::$suggestAlternatives} is on, by the same
+     * conditional-append mechanism as the two rules beside it.
+     *
+     * The permission is deliberately smaller than the sentence a merchant would write. An
+     * `alternatives` entry is one real variant of the SAME product that is in stock right now, with
+     * its own options — see {@see \Swag\AssistantStarterKit\Core\Tool\AvailableAlternatives} for
+     * why it is whole combinations rather than option values per group. The standing rule against
+     * unverified substitutes stays in force above this and is what stops the model reading a narrow
+     * permission as licence to reach for a different product.
+     */
+    public const ALTERNATIVES_AVAILABLE = <<<'PROMPT'
+        When a tool result marks a product soldOut and also gives it an "alternatives" list, each
+        entry is another version of that same product which is in stock right now — the same item in
+        a different size or colour. Say the one they asked for is not available, then offer those,
+        naming the options exactly as the list spells them. Do not offer a different product instead:
+        someone who asked for trousers in 32x32 wants to hear that 31x32 is in stock, not which other
+        trousers you sell. Offer nothing that is not in the list — not a combination you assemble
+        from two entries, and not a guess about when the sold-out one returns. If
+        "alternatives_truncated" is present there are more than you were shown, so say these are some
+        of the options rather than all of them.
+
+        Without an "alternatives" list there is no such size to offer. Then, as always,
+        you may offer other products from the same result. That is the case when nothing else in that
+        product is in stock, when the shopper named no size at all, and when the product has no sizes
+        or colours to begin with.
+        PROMPT;
+
     public const COMPARE_PRODUCTS_AVAILABLE = <<<'PROMPT'
         If a shopper asks you to compare two or more specific products you can already identify, call
         compare_products with all of their ids in one call. Do not search for them one at a time: the

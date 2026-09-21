@@ -106,6 +106,7 @@ final readonly class SystemConfigAssistantConfig
             escalationMessage: trim($this->stored->string('escalationMessage', $salesChannelId)),
             enableMatchReasons: $this->stored->bool('enableMatchReasons', false, $salesChannelId),
             enableCompareProducts: $this->stored->bool('enableCompareProducts', false, $salesChannelId),
+            suggestAlternatives: $this->stored->bool('suggestAlternatives', true, $salesChannelId),
             enableOrderHistory: $this->stored->bool('enableOrderHistory', false, $salesChannelId),
             onlyGivenInformation: $this->stored->bool('onlyGivenInformation', false, $salesChannelId),
             logTraces: $this->stored->bool('logTraces', true, $salesChannelId),
@@ -166,6 +167,8 @@ final readonly class SystemConfigAssistantConfig
         return new CatalogScope(
             blockedProductIds: $this->stored->idList('blockedProducts', $salesChannelId),
             blockedCategoryIds: $this->stored->idList('blockedCategories', $salesChannelId),
+            hideOutOfStock: $this->stored->bool('hideOutOfStockProducts', false, $salesChannelId),
+            blockedStreamIds: $this->stored->idList('blockedProductStreams', $salesChannelId),
         );
     }
 

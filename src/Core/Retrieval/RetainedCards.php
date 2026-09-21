@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Retrieval;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
+use Swag\AssistantStarterKit\Core\Commerce\StockedFamilyLookup;
+use Swag\AssistantStarterKit\Core\Policy\UnbuyableFamilies;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
@@ -50,11 +53,29 @@ final readonly class RetainedCards
      *                                 not always `$query->term` — a relaxed read searches words the
      *                                 query does not carry
      */
-    public static function of(array $cards, ProductQuery $query, ?string $term, TraceRecorder $trace): self
-    {
+    // @mago-expect lint:excessive-parameter-list
+    // The retrieval facts for ONE attempt, and every one of them is read by a different post-step:
+    // the cards, the query that asked for them, the words actually searched (not always the query's
+    // — a relaxed read searches words it does not carry), the recorder, and the two the family drop
+    // needs. Bundling them into an object would be a DTO that exists to satisfy a counter, built and
+    // destroyed four times per pass.
+    public static function of(
+        array $cards,
+        ProductQuery $query,
+        ?string $term,
+        TraceRecorder $trace,
+        ?StockedFamilyLookup $families = null,
+        CatalogScope $scope = new CatalogScope(),
+    ): self {
         // Ordered first so both removals see the same list, and because the ordering is what the
         // shopper asked for while the removals only take away.
-        $ordered = self::wordMatched(OrderedByPrice::apply($cards, $query), $term, $trace);
+        //
+        // The sold-out bias goes AFTER the stated order and reads `$query->sort` itself, so a
+        // shopper who asked for the cheapest keeps price order untouched. It is here rather than in
+        // either gateway because only one of them ever had it: see SoldOutLast for the measurement,
+        // and for why a `FieldSorting` on the criteria is the wrong repair.
+        $ranked = SoldOutLast::apply(OrderedByPrice::apply($cards, $query), $query->sort);
+        $ordered = self::wordMatched($ranked, $term, $trace);
 
         // The query's stated price range, enforced on the price the shopper will actually be shown.
         // See StatedBudget for why the database filter cannot be trusted for this.
@@ -74,7 +95,20 @@ final readonly class RetainedCards
             ]);
         }
 
-        return new self($kept, $narrowed);
+        // **Last, and only here.** A family whose every variant is sold out survives retrieval by
+        // design — a parent row's stock column says nothing about its children — so the question is
+        // asked once the children can be asked about. Empty lists cost nothing: the three
+        // relaxations that follow an empty read never reach the shop for an answer.
+        $buyable = (new UnbuyableFamilies())->apply($kept, $families, $scope);
+
+        if ($buyable['removed'] !== []) {
+            $trace->record('retrieve.unbuyable_families', [
+                'droppedIds' => $buyable['removed'],
+                'reason' => 'every variant of this product is out of stock, and the shop hides those',
+            ]);
+        }
+
+        return new self($buyable['cards'], $narrowed);
     }
 
     /**

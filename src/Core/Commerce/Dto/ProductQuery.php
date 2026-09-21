@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
 
+use Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetReader;
+use Swag\AssistantStarterKit\Core\Commerce\Dal\DalFilterTranslator;
 use Swag\AssistantStarterKit\Core\Retrieval\PriceSort;
 
 final readonly class ProductQuery
@@ -43,6 +45,48 @@ final readonly class ProductQuery
      * caller reintroduce the truncation this split exists to remove — so it is ignored
      * rather than honoured.
      */
+    /**
+     * Whether the shopper named a concrete unit rather than describing a kind of product.
+     *
+     * ## What it decides
+     *
+     * Whether a search may withhold anything. {@see \Swag\AssistantStarterKit\Core\Commerce\Dal\DalDiscoveryFilters}
+     * keeps unbuyable products out of discovery, and that is right while somebody is browsing. It is
+     * wrong the moment they have named the thing: found on staging 2026-09-21, *"habt ihr das Trail
+     * Jersey in Blau, Größe M?"* came back as *"a jersey by that exact name was not found"* — for a
+     * product the shop carries, whose Blue/M is an out-of-stock closeout variant.
+     *
+     * That is the exact failure the discovery/lookup split exists to prevent, and the split did not
+     * prevent it: `get_product` and `variantsOf()` are protected, and the model never calls them for
+     * this question. It makes one `search_products` call. A search carrying option selections **is**
+     * a lookup, whatever tool it arrived through.
+     *
+     * ## Why a brand and a price do not count
+     *
+     * *"Do you have Shimano brakes"* names a maker, *"under 80 euro"* names a budget. Neither is a
+     * thing on a shelf, and a shopper who has not picked a size is still browsing — which is where
+     * hiding the unbuyable belongs. Only an option narrows to a unit.
+     *
+     * A property group that is not a variant axis (`Season`, say) counts too, and deliberately: the
+     * query cannot tell which groups a shop uses as axes, and the error costs opposite amounts.
+     * Counting one too many shows a product somebody cannot buy; counting one too few tells them a
+     * product they named does not exist.
+     */
+    public function namesAVariant(): bool
+    {
+        foreach ($this->filters as $filter) {
+            if ($filter->field === DalFilterTranslator::MANUFACTURER_FIELD) {
+                continue;
+            }
+
+            if (str_starts_with($filter->field, DalFacetReader::GROUP_PREFIX)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function retrievalLimit(): int
     {
         return max($this->limit, $this->candidateLimit ?? $this->limit);

@@ -40,9 +40,22 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"
                  alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalBundleSupport"/>
 
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStreamFilters">
+            <argument type="service" id="Shopware\Core\Content\ProductStream\Service\ProductStreamBuilder"/>
+        </service>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\StreamFilters"
+                 alias="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStreamFilters"/>
+
+        <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStockedFamilies">
+            <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
+        </service>
+
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder">
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFilterTranslator"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\BundleSupport"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\StreamFilters"/>
         </service>
 
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\RouterProductUrlResolver">
@@ -111,6 +124,7 @@
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalFacetQuery"/>
             <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalOrderHistory"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalStockedFamilies"/>
         </service>
 
         <!-- Reads the shop's own department names, so a search that found NOTHING can point the shopper
@@ -120,6 +134,7 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader">
             <argument type="service" id="sales_channel.category.repository"/>
             <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
         </service>
 
         <!-- Conversation and trace persistence. This lands before the widget because of

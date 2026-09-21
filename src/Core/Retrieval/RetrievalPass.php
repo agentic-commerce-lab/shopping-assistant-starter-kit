@@ -8,6 +8,7 @@ use Swag\AssistantStarterKit\Core\Commerce\CommerceGatewayInterface;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
+use Swag\AssistantStarterKit\Core\Commerce\StockedFamilyLookup;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
@@ -63,7 +64,11 @@ final class RetrievalPass
     ): array {
         // Enforced before the `retrieve` event, not after, so `retainedIds` names the cards that
         // actually survived rather than a set the next line already narrowed.
-        $first = RetainedCards::of($gateway->search($query, $scope), $query, $query->term, $trace);
+        // The gateway doubles as the family lookup when it can answer one; `instanceof` because that
+        // is an optional capability, the way every other optional gateway capability is reached.
+        $families = $gateway instanceof StockedFamilyLookup ? $gateway : null;
+
+        $first = RetainedCards::of($gateway->search($query, $scope), $query, $query->term, $trace, $families, $scope);
         $narrowed = $first->budgetNarrowed;
         $trace->record('retrieve', [
             'hits' => \count($first->cards),
@@ -77,7 +82,7 @@ final class RetrievalPass
         }
 
         foreach (self::relaxations($gateway, $query, $buildResult, $scope, $trace) as $note => $attempt) {
-            $retained = RetainedCards::of($attempt['cards'], $query, $attempt['term'], $trace);
+            $retained = RetainedCards::of($attempt['cards'], $query, $attempt['term'], $trace, $families, $scope);
             $narrowed = $narrowed || $retained->budgetNarrowed;
 
             if ($retained->cards !== []) {

@@ -248,13 +248,27 @@ These settings control what the assistant can see and do:
 | `agentVoice` | empty | Tone and personality only; it cannot grant capabilities or override safety rules |
 | `blockedProducts` | empty | Products and all their variants that must never reach the model |
 | `blockedCategories` | empty | Category branches whose products must never reach the model |
+| `blockedProductStreams` | empty | Dynamic Product Groups whose products must never reach the model. The only one of the three that scales: a group is applied as its *conditions*, so its size costs nothing. Blocking a group blocks its variants too, because a variant inherits manufacturer, properties and category from its parent |
+| `hideOutOfStockProducts` | off | Whether products with no stock are left out of search results. Narrower than the three lists above — it stops the assistant *offering* them, while a shopper who names one still gets a straight answer about it |
 | `enableAddToCart` | on | Whether the add-to-cart tool and product-card buttons exist |
 | `enableCompareProducts` | off | Whether the model can compare products side by side |
 | `enableOrderHistory` | off | Whether a **signed-in** shopper can ask for their own recent orders and invoices. Guests are declined. Under B2B Components an employee sees only what their role permits — Shopware decides that, not the assistant. Covers "show my recent orders", "what was in order 10023" and narrowed questions like "any open orders from last month" |
 | `enableMatchReasons` | off | Whether retrieval exposes deterministic reasons for a match |
+| `suggestAlternatives` | **on** | Whether a sold-out variant is answered with the other sizes or colours of that **same** product which are in stock. It is a ranking, not a ban: with no size of their own left, the assistant may still offer other products, exactly as it always could. Never a combination assembled from two available variants |
 
 Disabled capabilities are removed from the toolbox instead of being described as forbidden in the
-prompt. Blocked products and categories are filtered before model context is built.
+prompt. Blocked products, categories and product groups are filtered before model context is built.
+
+**Hiding what cannot be bought.** A closeout product whose stock has run out is never suggested, with
+no setting for it: your checkout would refuse the order, so proposing it is simply wrong. Ordinary
+products that are merely out of stock can still be ordered, so whether to show them is
+`hideOutOfStockProducts`, which is off by default. Either way, products a shopper can buy now rank
+above ones they cannot.
+
+**Do not build a product group on stock.** Use `hideOutOfStockProducts` instead. Stock is the one
+field a variant does not inherit, and a parent product carries its own figure rather than the sum of
+its variants — measured on a real catalogue, a "stock is 0" group removed 9% of all product families
+whose every size was in stock. The setting knows that difference; a group cannot.
 
 ### Agent voice and system prompt
 

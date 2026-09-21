@@ -316,6 +316,10 @@ final class SystemPrompt
             $prompt .= "\n\n" . CapabilityRules::COMPARE_PRODUCTS_AVAILABLE;
         }
 
+        if ($config->suggestAlternatives) {
+            $prompt .= "\n\n" . CapabilityRules::ALTERNATIVES_AVAILABLE;
+        }
+
         // Last of the capability blocks on purpose: it narrows what the blocks above it permit, and
         // a restriction stated after the permission it restricts is the one a model reads as final.
         if ($config->onlyGivenInformation) {

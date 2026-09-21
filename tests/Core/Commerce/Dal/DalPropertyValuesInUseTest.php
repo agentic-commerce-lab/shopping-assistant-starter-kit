@@ -39,6 +39,10 @@ final class DalPropertyValuesInUseTest extends TestCase
         self::assertFalse(DalPropertyValuesInUse::canAnswer(new CatalogScope(includeCategoryIds: ['c1'])));
         self::assertFalse(DalPropertyValuesInUse::canAnswer(new CatalogScope(blockedProductIds: ['p1'])));
         self::assertFalse(DalPropertyValuesInUse::canAnswer(new CatalogScope(blockedCategoryIds: ['c2'])));
+        // A group's conditions narrow the catalogue exactly as the two id lists do, and a value
+        // surviving only on a blocked product must not reach the model's vocabulary — it would
+        // offer a colour the shop will never show.
+        self::assertFalse(DalPropertyValuesInUse::canAnswer(new CatalogScope(blockedStreamIds: ['s1'])));
     }
 
     /**

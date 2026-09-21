@@ -172,6 +172,59 @@
                 branch rather than every category in it. Same guarantee as blocked
                 products.</helpText>
         </component>
+
+        <component name="sw-entity-multi-id-select">
+            <name>blockedProductStreams</name>
+            <entity>product_stream</entity>
+            <label>Blocked product groups</label>
+            <label lang="de-DE">Gesperrte Produktgruppen</label>
+            <placeholder>Search for a dynamic product group…</placeholder>
+            <helpText>The same guarantee as the two lists above, expressed as a rule instead of a
+                list. Build a Dynamic Product Group under Catalogues › Dynamic Product Groups —
+                by manufacturer, property, custom field, price, release date, anything — and pick
+                it here. Nothing in it is ever looked up.
+
+                This is the one of the three that works at catalogue scale. A group is applied as
+                its CONDITIONS, never as the products matching them, so a group covering ten
+                products and one covering half your catalogue cost the same. Picking products by
+                hand does not: every id you pick travels into the query on every single chat
+                message.
+
+                Blocking a group blocks its variants too, without you listing them — a variant
+                inherits its manufacturer, properties and category from its parent, so a rule about
+                those reaches the whole family.
+
+                Do NOT build a group on stock to hide sold-out products; use the switch below
+                instead. Stock is the one field a variant does not inherit, and a parent product
+                carries its own figure rather than the sum of its variants — measured on a real
+                catalogue, a "stock is 0" group hid 9% of all product families whose every size was
+                in stock. The switch below knows the difference.
+
+                A group you later delete blocks nothing rather than breaking the assistant, and the
+                setting can be left pointing at it.</helpText>
+        </component>
+
+        <input-field type="bool">
+            <name>hideOutOfStockProducts</name>
+            <label>Stop suggesting products that are out of stock</label>
+            <defaultValue>false</defaultValue>
+            <helpText>Off by default, because a product out of stock is usually still orderable —
+                it just arrives later. Turn it on if your lead times are long enough that offering
+                one costs you more than saying nothing.
+
+                This is narrower than the two lists above, and deliberately so. They hide a product
+                from everything; this one only stops the assistant OFFERING it. A shopper who names
+                a product outright still gets a straight answer about it, including "that size is
+                sold out" — an assistant that cannot see the sold-out variant answers "no such
+                product" instead, which is a different untruth and a worse one.
+
+                Products you can no longer order at all — an end-of-line item whose stock has run
+                out — are never suggested either way. That is not a setting: the assistant would be
+                proposing something your checkout refuses.
+
+                One thing it does NOT do is hide a product because the variant a shopper asked for
+                is gone. A dress whose M is sold out and whose L is not stays a dress you sell.</helpText>
+        </input-field>
     </card>
 
     <card>
@@ -321,6 +374,25 @@
             <name>enableCompareProducts</name>
             <label>Let the assistant compare products side by side</label>
             <defaultValue>false</defaultValue>
+        </input-field>
+
+        <input-field type="bool">
+            <name>suggestAlternatives</name>
+            <label>Let the assistant offer another size or colour when one is sold out</label>
+            <defaultValue>true</defaultValue>
+            <helpText>When a shopper asks for a variant that is sold out, the assistant names the
+                other versions of that same product which are in stock — "the M is gone, we have L
+                and XL". On by default: someone asking for trousers in 32x32 wants to hear that
+                31x32 exists, not which other trousers you sell. Switch it off if you would rather
+                the reply stayed short.
+
+                Deliberately narrow: only other sizes and colours of the product they already asked
+                about, and only real ones. It never reaches for a different product, and it never
+                combines two available variants into a third that does not exist. If nothing in that
+                product is in stock, the assistant says so and stops.
+
+                Blocked products stay blocked here too — a variant you have hidden is never offered
+                as an alternative.</helpText>
         </input-field>
 
         <input-field type="bool">
