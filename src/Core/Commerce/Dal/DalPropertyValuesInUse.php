@@ -129,20 +129,26 @@ final readonly class DalPropertyValuesInUse
                         SELECT 1 FROM product_property pp
                           JOIN product p
                             ON p.id = pp.product_id AND p.version_id = pp.product_version_id
+                          LEFT JOIN product parent
+                            ON parent.id = p.parent_id AND parent.version_id = p.version_id
                           JOIN product_visibility v
-                            ON v.product_id = p.id AND v.product_version_id = p.version_id
+                            ON v.product_id = COALESCE(p.parent_id, p.id)
+                           AND v.product_version_id = p.version_id
                          WHERE pp.property_group_option_id = o.id
-                           AND p.active = 1
+                           AND COALESCE(p.active, parent.active) = 1
                            AND v.sales_channel_id = :salesChannel
                     )
                  OR EXISTS (
                         SELECT 1 FROM product_option po
                           JOIN product p
                             ON p.id = po.product_id AND p.version_id = po.product_version_id
+                          LEFT JOIN product parent
+                            ON parent.id = p.parent_id AND parent.version_id = p.version_id
                           JOIN product_visibility v
-                            ON v.product_id = p.id AND v.product_version_id = p.version_id
+                            ON v.product_id = COALESCE(p.parent_id, p.id)
+                           AND v.product_version_id = p.version_id
                          WHERE po.property_group_option_id = o.id
-                           AND p.active = 1
+                           AND COALESCE(p.active, parent.active) = 1
                            AND v.sales_channel_id = :salesChannel
                     )',
             [

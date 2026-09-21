@@ -9,6 +9,7 @@ use Shopware\Core\Content\Product\SalesChannel\ProductCloseoutFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\Filter;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalDiscoveryFilters;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 
 /**
  * What a DISCOVERY read adds on top of the shared criteria — and nothing a lookup by id gets, which
@@ -54,7 +55,7 @@ final class DalDiscoveryFiltersTest extends TestCase
         // will refuse. The shop's `hideCloseoutProductsWhenOutOfStock` is deliberately NOT read:
         // it decides whether a product PAGE stays reachable, which says nothing about whether
         // the assistant should offer the product.
-        $filters = DalDiscoveryFilters::of(new CatalogScope());
+        $filters = DalDiscoveryFilters::of(new ProductQuery(term: 'jerseys'), new CatalogScope());
 
         self::assertSame(1, $this->countOfType($filters, ProductCloseoutFilter::class));
     }
@@ -63,14 +64,14 @@ final class DalDiscoveryFiltersTest extends TestCase
     {
         // It can still be ordered; it just arrives later. Whether that is worth showing is the
         // merchant's call, so the default leaves it alone.
-        $filters = DalDiscoveryFilters::of(new CatalogScope());
+        $filters = DalDiscoveryFilters::of(new ProductQuery(term: 'jerseys'), new CatalogScope());
 
         self::assertSame([], $this->fieldsOutsideCloseout($filters));
     }
 
     public function testTheMerchantCanHideOrdinaryProductsThatAreOutOfStock(): void
     {
-        $filters = DalDiscoveryFilters::of(new CatalogScope(hideOutOfStock: true));
+        $filters = DalDiscoveryFilters::of(new ProductQuery(term: 'jerseys'), new CatalogScope(hideOutOfStock: true));
 
         self::assertContains('stock', $this->fieldsOutsideCloseout($filters));
     }
@@ -81,7 +82,10 @@ final class DalDiscoveryFiltersTest extends TestCase
         // which 259 are family parents whose variants are ALL in stock — the parent row carries
         // its own stock column, not the sum of its children. Excluding those hides a product a
         // shopper can buy five sizes of, so the condition may only apply to a sellable unit.
-        $fields = $this->fieldsOutsideCloseout(DalDiscoveryFilters::of(new CatalogScope(hideOutOfStock: true)));
+        $fields = $this->fieldsOutsideCloseout(DalDiscoveryFilters::of(
+            new ProductQuery(term: 'jerseys'),
+            new CatalogScope(hideOutOfStock: true),
+        ));
 
         self::assertContains('parentId', $fields);
         self::assertContains('childCount', $fields);

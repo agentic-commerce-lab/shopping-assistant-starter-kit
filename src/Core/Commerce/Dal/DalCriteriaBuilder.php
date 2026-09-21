@@ -120,9 +120,11 @@ final readonly class DalCriteriaBuilder
     public function buildForDiscovery(ProductQuery $query, CatalogScope $scope, string $salesChannelId): Criteria
     {
         $criteria = $this->build($query, $scope, $salesChannelId);
+
         // Spread rather than a loop: `addFilter()` is variadic, and the loop was one branch more
-        // than this class's complexity budget allows.
-        $criteria->addFilter(...DalDiscoveryFilters::of($scope));
+        // than this class's complexity budget allows. Whether anything is added at all — including
+        // nothing, for a query that names a unit — is DalDiscoveryFilters' decision, not this one's.
+        $criteria->addFilter(...DalDiscoveryFilters::of($query, $scope));
 
         return $criteria;
     }

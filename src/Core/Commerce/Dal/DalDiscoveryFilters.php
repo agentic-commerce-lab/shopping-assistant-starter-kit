@@ -10,6 +10,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\Filter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\MultiFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\NotFilter;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 
 /**
  * The availability filters a **discovery** read adds, and that a lookup by id must never get.
@@ -65,8 +66,16 @@ final class DalDiscoveryFilters
     /**
      * @return list<Filter>
      */
-    public static function of(CatalogScope $scope): array
+    public static function of(ProductQuery $query, CatalogScope $scope): array
     {
+        // **Nothing is withheld from a shopper who named the unit.** A search carrying option
+        // selections is a lookup, whatever tool it arrived through — see
+        // {@see ProductQuery::namesAVariant()} for the staging turn that proved the discovery/lookup
+        // split does not hold on its own, because the model never calls the lookup tools.
+        if ($query->namesAVariant()) {
+            return [];
+        }
+
         $filters = [new ProductCloseoutFilter()];
 
         if ($scope->hideOutOfStock) {

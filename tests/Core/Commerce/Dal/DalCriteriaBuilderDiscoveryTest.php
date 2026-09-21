@@ -10,6 +10,8 @@ use Shopware\Core\Content\Product\SalesChannel\ProductCloseoutFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\Filter;
 use Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\CatalogScope;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FilterClause;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\FilterOperator;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductQuery;
 
 /**
@@ -45,6 +47,23 @@ final class DalCriteriaBuilderDiscoveryTest extends TestCase
         );
 
         self::assertSame(1, $this->filtersOfType($criteria->getFilters(), ProductCloseoutFilter::class));
+    }
+
+    public function testAQueryThatNAMESAVariantHidesNothingFromTheShopper(): void
+    {
+        // Staging 2026-09-21: "habt ihr das Trail Jersey in Blau, Größe M?" answered "a jersey by
+        // that exact name was not found" — the Blue/M is an out-of-stock closeout variant, and the
+        // filter below removed it. The discovery/lookup split was supposed to prevent exactly that
+        // and did not: the model makes ONE search_products call and never reaches get_product.
+        $criteria = (new DalCriteriaBuilder())->buildForDiscovery(
+            new ProductQuery(term: 'Trail Jersey', filters: [
+                new FilterClause('properties.Size', FilterOperator::Equals, 'M'),
+            ]),
+            new CatalogScope(hideOutOfStock: true),
+            self::CHANNEL,
+        );
+
+        self::assertSame(0, $this->filtersOfType($criteria->getFilters(), ProductCloseoutFilter::class));
     }
 
     public function testADiscoveryReadStillCarriesEverythingAnOrdinaryOneDoes(): void
