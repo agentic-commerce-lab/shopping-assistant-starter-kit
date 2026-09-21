@@ -68,10 +68,28 @@ final class AvailableAlternatives
             return [];
         }
 
+        // Through `$scope`, so a blocked sibling is never named.
+        return self::fromSiblings($card, $lookup->variantsOf($parentId, $scope));
+    }
+
+    /**
+     * The family a card is ASKING about, or null when it has no question: in stock, or no family.
+     */
+    public static function familyOf(ProductCard $card): ?string
+    {
+        return $card->isInStock() ? null : $card->parentId;
+    }
+
+    /**
+     * @param list<ProductCard> $siblings
+     *
+     * @return array{alternatives?: list<array<string, string>>, alternatives_truncated?: true}
+     */
+    public static function fromSiblings(ProductCard $card, array $siblings): array
+    {
         $alternatives = [];
 
-        // Through `$scope`, so a blocked sibling is never named.
-        foreach ($lookup->variantsOf($parentId, $scope) as $sibling) {
+        foreach ($siblings as $sibling) {
             if ($sibling->id === $card->id || !$sibling->isInStock() || $sibling->options === []) {
                 continue;
             }

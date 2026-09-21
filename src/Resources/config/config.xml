@@ -379,11 +379,12 @@
         <input-field type="bool">
             <name>suggestAlternatives</name>
             <label>Let the assistant offer another size or colour when one is sold out</label>
-            <defaultValue>false</defaultValue>
-            <helpText>When a shopper asks for a variant that is sold out, the assistant can name the
+            <defaultValue>true</defaultValue>
+            <helpText>When a shopper asks for a variant that is sold out, the assistant names the
                 other versions of that same product which are in stock — "the M is gone, we have L
-                and XL". Off by default, because whether that is welcome is your call about your
-                range, not ours.
+                and XL". On by default: someone asking for trousers in 32x32 wants to hear that
+                31x32 exists, not which other trousers you sell. Switch it off if you would rather
+                the reply stayed short.
 
                 Deliberately narrow: only other sizes and colours of the product they already asked
                 about, and only real ones. It never reaches for a different product, and it never

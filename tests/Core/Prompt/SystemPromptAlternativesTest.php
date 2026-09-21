@@ -32,6 +32,24 @@ final class SystemPromptAlternativesTest extends TestCase
         self::assertStringNotContainsString(CapabilityRules::ALTERNATIVES_AVAILABLE, $this->prompt(suggest: false));
     }
 
+    public function testAnOwnSizeOutranksADifferentProduct(): void
+    {
+        // The pilot's own example: asked for trousers in 32x32 and sold out, a shopper wants to hear
+        // about 31x32 — not about which other trousers exist.
+        self::assertStringContainsString(
+            'Do not offer a different product instead',
+            CapabilityRules::ALTERNATIVES_AVAILABLE,
+        );
+    }
+
+    public function testWithNoOwnSizeLeftADifferentProductIsStillAllowed(): void
+    {
+        // The other half of the same decision, and the reason this is a ranking rather than a ban.
+        // No size left, no size asked for, or no variants at all — then a different product is a
+        // useful answer and always was.
+        self::assertStringContainsString('you may offer other products', CapabilityRules::ALTERNATIVES_AVAILABLE);
+    }
+
     public function testTheStandingRuleAgainstInventedSubstitutesSurvivesTheSettingBeingOn(): void
     {
         // The new permission is narrow — a listed sibling of the same product — and it must not read

@@ -68,11 +68,17 @@ final class CapabilityRules
         When a tool result marks a product soldOut and also gives it an "alternatives" list, each
         entry is another version of that same product which is in stock right now — the same item in
         a different size or colour. Say the one they asked for is not available, then offer those,
-        naming the options exactly as the list spells them. Offer nothing that is not in the list:
-        not a combination you assemble from two entries, not a different product, not a guess about
-        when the sold-out one returns. If "alternatives_truncated" is present there are more than you
-        were shown, so say these are some of the options rather than all of them. With no
-        "alternatives" list, say it is unavailable and stop there.
+        naming the options exactly as the list spells them. Do not offer a different product instead:
+        someone who asked for trousers in 32x32 wants to hear that 31x32 is in stock, not which other
+        trousers you sell. Offer nothing that is not in the list — not a combination you assemble
+        from two entries, and not a guess about when the sold-out one returns. If
+        "alternatives_truncated" is present there are more than you were shown, so say these are some
+        of the options rather than all of them.
+
+        Without an "alternatives" list there is no such size to offer. Then, as always,
+        you may offer other products from the same result. That is the case when nothing else in that
+        product is in stock, when the shopper named no size at all, and when the product has no sizes
+        or colours to begin with.
         PROMPT;
 
     public const COMPARE_PRODUCTS_AVAILABLE = <<<'PROMPT'

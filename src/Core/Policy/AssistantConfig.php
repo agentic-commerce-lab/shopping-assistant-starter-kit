@@ -52,13 +52,18 @@ final readonly class AssistantConfig
         /**
          * Whether a sold-out variant may be answered with the siblings a shopper could buy instead.
          *
-         * Off by default like every other capability, and this one has a reason of its own: the
-         * pilot feedback that asked for it said *"only when that makes business sense"*, and nothing
-         * in a catalogue says when that is. What ships is the narrowest reading — other sizes and
-         * colours of the SAME product, never a different product — and even that is the merchant's
-         * to switch on. See {@see \Swag\AssistantStarterKit\Core\Tool\AvailableAlternatives}.
+         * **On by default, unlike every other capability here**, and the pilot's answer is why. The
+         * feedback's *"only when that makes business sense"* turned out to be about a RANKING, not a
+         * permission: asked for trousers in 32x32 and sold out, a shopper wants to hear that 31x32
+         * exists rather than which other trousers the shop sells. Naming another size of the product
+         * they already chose needs no merchant judgement — it is the same item.
+         *
+         * The switch stays because the reply gets longer and a merchant may not want that. What it
+         * does NOT gate is offering a different product: that was always allowed and still is, just
+         * no longer in preference to the shopper's own size. See
+         * {@see \Swag\AssistantStarterKit\Core\Tool\AvailableAlternatives}.
          */
-        public bool $suggestAlternatives = false,
+        public bool $suggestAlternatives = true,
         /**
          * Whether the assistant may read the signed-in shopper's own order history.
          *

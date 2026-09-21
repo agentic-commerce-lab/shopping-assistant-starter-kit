@@ -43,14 +43,14 @@ final class SearchResultCounts
     private function __construct() {}
 
     /**
-     * @param list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}> $products already summarised by {@see ToolProductSummary} — carrying `description` when {@see ShortlistDescriptions} judged the match set a shortlist
+     * @param list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string, alternatives?: list<array<string, string>>, alternatives_truncated?: true}> $products already summarised by {@see ToolProductSummary} — carrying `description` when {@see ShortlistDescriptions} judged the match set a shortlist
      * @param list<ProductCard> $returned  the cards the shopper will see
      * @param list<ProductCard> $survivors what retrieval found, after the redundant-parent filter
      * @param bool              $saturated whether the candidate window filled up
      * @param MatchCount|null   $exact     an authoritative match count, when the gateway could give
      *                                     one — see MatchCount for why "very many" is a third answer
      *
-     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string}>, total: int, matched: int, more: bool, withheld?: int, many?: true, all_shown?: true, all_shown_note?: string, bundle_note?: string}
+     * @return array{products: list<array{id: string, name: string, options: array<string, string>, properties: array<string, list<string>>, propertiesWithheld?: array<string, int>, bundle?: list<array{name: string, quantity?: int, optional?: true}>, documents?: list<string>, department?: string, soldOut?: true, available?: true, reasons?: list<string>, description?: string, alternatives?: list<array<string, string>>, alternatives_truncated?: true}>, total: int, matched: int, more: bool, withheld?: int, many?: true, all_shown?: true, all_shown_note?: string, bundle_note?: string}
      */
     public static function of(
         array $products,
