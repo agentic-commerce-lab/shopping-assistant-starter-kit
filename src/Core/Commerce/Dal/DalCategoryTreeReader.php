@@ -50,6 +50,7 @@ final readonly class DalCategoryTreeReader
     public function __construct(
         private SalesChannelRepository $categoryRepository,
         private SalesChannelRepository $productRepository,
+        private DalCriteriaBuilder $criteriaBuilder,
     ) {}
 
     /**
@@ -65,7 +66,7 @@ final readonly class DalCategoryTreeReader
             return [];
         }
 
-        return $this->toNodes($allowed, $this->idsWithProducts($allowed, $context));
+        return $this->toNodes($allowed, $this->idsWithProducts($allowed, $scope, $context));
     }
 
     /**
@@ -94,17 +95,21 @@ final readonly class DalCategoryTreeReader
     }
 
     /**
-     * Which of these categories hold at least one available product, in one aggregation.
+     * Which of these categories hold at least one available product **the merchant allows**, in one
+     * aggregation. The scope travels because a department emptied by a blocklist is an empty
+     * department — see {@see DalCategoryProducts} for the staging turn that proved it.
      *
      * @param list<CategoryEntity> $categories
      *
      * @return array<string, true>
      */
-    private function idsWithProducts(array $categories, SalesChannelContext $context): array
+    private function idsWithProducts(array $categories, CatalogScope $scope, SalesChannelContext $context): array
     {
         return DalCategoryProducts::withProducts(
             array_map(static fn(CategoryEntity $category): string => $category->getId(), $categories),
+            $scope,
             $this->productRepository,
+            $this->criteriaBuilder,
             $context,
         );
     }

@@ -134,6 +134,7 @@
         <service id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCategoryTreeReader">
             <argument type="service" id="sales_channel.category.repository"/>
             <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="Swag\AssistantStarterKit\Core\Commerce\Dal\DalCriteriaBuilder"/>
         </service>
 
         <!-- Conversation and trace persistence. This lands before the widget because of
