@@ -42,6 +42,12 @@ final class AssistantTableRemoval
      * `swag_assistant_trace_event` had already gone. A merchant got a half-dropped schema and an
      * exception.
      *
+     * **It does not take a single finding to trigger.** InnoDB refuses to drop a table another
+     * existing table references, rows or no rows — probed directly on MariaDB with a two-table
+     * replica of this shape and an empty child: `ERROR 1451 (23000)`, the same errno the real
+     * uninstall raised. So every shop that ever applied the insights migration was affected,
+     * including one that never switched insights on.
+     *
      * `ShopInfoVectorTable::TABLE` is referenced by its constant rather than typed out, because it is
      * the one table no migration creates — it is built lazily at the first write, at the width the
      * configured embedding model produces. Anyone assembling this list from `src/Migration` alone

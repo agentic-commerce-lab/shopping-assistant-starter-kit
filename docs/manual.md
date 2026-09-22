@@ -817,6 +817,21 @@ second one was not: the order card did not render until `bin/console theme:compi
 storefront bundle a shop serves is compiled into the theme, so `assets:install` and `cache:clear`
 leave it on the previous version — the payload was complete over HTTP the whole time.
 
+**The uninstall defect, and what it was finally measured against.** The first fixed uninstall was
+run on a schema the *failed* attempt had already half-dropped, with `swag_assistant_insight_finding`
+empty — weaker conditions than the fix deserved. Re-run properly on 2026-09-22 against the
+zip-installed plugin: all six tables present, 22 `swag_assistant_trace_event` rows, and a finding row
+inserted so that **both** of its foreign keys carried a live row. The uninstall then succeeded and
+left nothing — no tables, no `system_config` entry, no migration record.
+
+**Correction to `f7ff54b`'s commit message**, which said the failure was measured "with real rows in
+both tables". It was not: `swag_assistant_insight_finding` was empty when the bug first appeared, and
+that turns out to be the more important fact. InnoDB refuses to drop a table another existing table
+references whether or not it holds rows — probed on MariaDB with a two-table replica of this shape
+and an empty child, giving `ERROR 1451 (23000)`, the same errno the real uninstall raised. **Every
+shop that applied the insights migration is affected, including one that never switched insights
+on.**
+
 **The zip install was verified the way a merchant does it**, on 2026-09-22, and it is the pass that
 found the uninstall defect. The plugin was uninstalled (which drops the tables), its directory
 deleted, and the package built with `shopware-cli extension zip . --git-commit <sha>` uploaded
