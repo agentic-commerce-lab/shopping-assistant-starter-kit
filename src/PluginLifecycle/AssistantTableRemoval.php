@@ -34,7 +34,13 @@ final class AssistantTableRemoval
      *
      * **Order is load-bearing.** `swag_assistant_trace_event` carries a foreign key to
      * `swag_assistant_conversation`; dropping the parent first fails on any shop that has rows,
-     * which is every shop where this matters.
+     * which is every shop where this matters. `swag_assistant_insight_finding` carries two —
+     * `conversation_id` and `run_id` — so it has to precede `swag_assistant_conversation` **and**
+     * `swag_assistant_insight_run`. Those two tables arrived with the nightly insights and were
+     * missing from this list, which did not merely leave findings behind: the foreign key made the
+     * whole uninstall fail at `swag_assistant_conversation` with SQLSTATE 23000, after
+     * `swag_assistant_trace_event` had already gone. A merchant got a half-dropped schema and an
+     * exception.
      *
      * `ShopInfoVectorTable::TABLE` is referenced by its constant rather than typed out, because it is
      * the one table no migration creates — it is built lazily at the first write, at the width the
@@ -45,6 +51,8 @@ final class AssistantTableRemoval
      */
     public const TABLES = [
         'swag_assistant_trace_event',
+        'swag_assistant_insight_finding',
+        'swag_assistant_insight_run',
         'swag_assistant_conversation',
         ShopInfoVectorTable::TABLE,
         'swag_assistant_shop_info_passage',

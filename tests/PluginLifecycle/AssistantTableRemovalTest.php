@@ -85,6 +85,62 @@ final class AssistantTableRemovalTest extends TestCase
     }
 
     /**
+     * **Derived from the migrations, not from the list.** Every other test here reads
+     * `AssistantTableRemoval::TABLES` and checks something about what is in it, so a table nobody
+     * added is invisible to all of them — which is how `swag_assistant_insight_finding` and
+     * `swag_assistant_insight_run` shipped missing. They did not merely survive an uninstall:
+     * `swag_assistant_insight_finding.conversation_id` is a foreign key, so dropping
+     * `swag_assistant_conversation` failed with SQLSTATE 23000 and the uninstall died half way,
+     * after `swag_assistant_trace_event` was already gone.
+     *
+     * This test reads `src/Migration` instead, so the next `CREATE TABLE` that forgets this list
+     * fails here rather than on a merchant's shop. The vector table is excluded deliberately — no
+     * migration creates it, which is what the test above covers.
+     */
+    public function testEveryTableAMigrationCreatesIsOnTheList(): void
+    {
+        $created = [];
+
+        foreach (glob(__DIR__ . '/../../src/Migration/*.php') ?: [] as $file) {
+            preg_match_all(
+                '/CREATE TABLE (?:IF NOT EXISTS )?`?(swag_assistant_[a-z_]+)`?/i',
+                (string) file_get_contents($file),
+                $matches,
+            );
+
+            foreach ($matches[1] as $table) {
+                $created[$table] = true;
+            }
+        }
+
+        self::assertNotEmpty($created, 'no CREATE TABLE found in src/Migration — the regex is wrong');
+
+        foreach (array_keys($created) as $table) {
+            self::assertContains(
+                $table,
+                AssistantTableRemoval::TABLES,
+                $table . ' is created by a migration but would survive an uninstall',
+            );
+        }
+    }
+
+    /**
+     * `swag_assistant_insight_finding` carries a foreign key to `swag_assistant_conversation` and
+     * another to `swag_assistant_insight_run`, so it has to be dropped before both. Asserted
+     * separately from the trace-event case because the two failures look identical from the outside
+     * and the fix for one does not imply the other.
+     */
+    public function testTheInsightFindingIsDroppedBeforeBothOfItsParents(): void
+    {
+        $order = array_values(AssistantTableRemoval::TABLES);
+        $finding = array_search('swag_assistant_insight_finding', $order, true);
+
+        self::assertIsInt($finding);
+        self::assertLessThan(array_search('swag_assistant_conversation', $order, true), $finding);
+        self::assertLessThan(array_search('swag_assistant_insight_run', $order, true), $finding);
+    }
+
+    /**
      * `IF EXISTS`, because uninstalling a plugin whose tables a merchant already removed by hand must
      * not fail halfway and leave the rest standing.
      */
