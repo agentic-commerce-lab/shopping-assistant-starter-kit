@@ -759,6 +759,17 @@ settings return HTTP 400 and the merchant sees no form at all. The subtitles are
 eight only restated a field's own help text; the other four carried something of their own and were
 moved into the help text of the field they were about.
 
+**A Dynamic Product Group is resolved through a different class.** 6.7 offers
+`AbstractProductStreamBuilder::enrichCriteria()`, which writes a group's conditions into a `Criteria`
+the caller hands in. That abstract class does not exist on 6.6, so the service `DalStreamFilters`
+could not be constructed at all — a container error on a path every product read goes through, which
+means the assistant answers nothing rather than answering without the filter. 6.6 offers the same
+capability as `ProductStreamBuilderInterface::buildFilters()`, returning the conditions as a
+`list<Filter>`; same conditions, same two exceptions, and the service id is identical and public on
+both versions, so `services.xml` is untouched. This is the third defect of the kind the other two
+below are: invisible to the config schema and the built bundle, and found only by running against
+6.6 vendor code.
+
 **What was actually run, and where.** 6.6.10.23 carried the first pass: install, all migrations, the
 DAL seeder, search with variants, a live turn, the widget, the chat endpoint, the settings form and
 the admin modules. 6.6.10.19 was then verified the same way on its own shop — plugin installed and
@@ -776,6 +787,21 @@ three custom components rendering, the kill switch opening its dialog and snappi
 the instructions card loading its 11,803 characters, and two live storefront turns answering with the
 shop's own categories and two product cards. Zero console errors. The two defects that pass found are
 the `httpClient` injection above and the placeholder syntax below.
+
+Re-verified on 2026-09-22 after the rebase onto `0.3.1` — sixteen commits of main, including the
+whole insights module, the shopper's own orders and invoices, the catalogue exclusion criteria and
+`symfony/ai` 0.13. Against `shopware/core v6.6.10.25` and DBAL 3.10.6 in the test tree: **2,265 PHP
+tests, 23,824 assertions green**, 125 JS tests green, `composer run quality` exit 0, and all 207
+Shopware and Symfony symbols the plugin references resolve on 6.6. On a real 6.6.10.23 shop: the
+insights migration applied under DBAL 3, both new tables created, `swag_assistant.generate_insights`
+registered as a scheduled task and **run once end to end**, writing a run row with real metrics and
+no `judge_error`. The config schema returned its **thirteen** cards over HTTP 200 — twelve plus
+Nightly insights. In a browser, with zero console errors anywhere: the settings form rendering all
+thirteen cards, the kill switch opening its dialog and snapping back on Cancel, the instructions card
+loading 15,482 characters through `syncService.httpClient`, the new insights dashboard drawing its
+three `sw-chart` trends as 8 series, the trace list and a trace detail with its full phase timeline,
+and a live storefront turn answering from the shop's own departments with two product cards. The one
+defect this pass found is the product-stream builder above.
 
 **One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
 one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
