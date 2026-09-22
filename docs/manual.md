@@ -13,7 +13,7 @@ Writing code against the assistant? Go to the [extension guide](extending.md).
 | Check compatibility and optional RAG requirements | [Requirements](#requirements) |
 | Install from source or a release archive | [Installing it into a shop](#installing-it-into-a-shop) |
 | Connect chat and embedding models | [Configuring a model](#configuring-a-model) |
-| Configure behaviour, catalogue scope, and cart access | [Assistant behaviour and limits](#assistant-behaviour-and-limits) |
+| Configure behaviour, catalogue scope, cart access, and order history | [Assistant behaviour and limits](#assistant-behaviour-and-limits) |
 | Control spend, logging, retention, and escalation | [Request limits](#request-limits), [Logging](#logging), [Data retention](#data-retention), [Escalation](#escalation) |
 | Learn what your shoppers searched for and did not find | [Nightly insights](#nightly-insights) |
 | Configure or customise the storefront widget | [The storefront widget](#the-storefront-widget) |
@@ -683,7 +683,7 @@ cp .env.example .env
 composer run test:eval
 ```
 
-**Budget the time and the spend.** The suite currently contains 36 journeys, each with up to three
+**Budget the time and the spend.** The suite currently contains 44 journeys, each with up to three
 runs per archetype, and every run is a real turn. The full suite takes several minutes and costs real
 tokens.
 

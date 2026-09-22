@@ -34,27 +34,40 @@ dependencies in the shop's vendor directory. Developing the plugin instead? Use 
 
 - **A working reference assistant:** shoppers can search and inspect products, select variants, add
   eligible items to their existing cart, and continue through Shopware's normal checkout.
-- **Seven built-in tools:** `search_products`, `get_product`, `add_to_cart`, `go_to_checkout`,
-  `compare_products`, `search_shop_info`, and `escalate`. Disabled tools are removed from the
-  model's toolbox.
+- **Ten built-in tools:** `search_products`, `get_product`, `browse_categories`,
+  `compare_products`, `add_to_cart`, `go_to_checkout`, `search_shop_info`, `list_orders`,
+  `get_order`, and `escalate`. A capability you switch off is removed from the model's toolbox
+  rather than forbidden in the prompt.
 - **Grounded product cards:** prices, stock, URLs, images, options, and availability are rendered
   from Shopware's live `SalesChannelContext`, not copied from model prose.
 - **Optional shop knowledge:** answer from legal pages, shipping information, and uploaded
   documents through vector search.
-- **Merchant controls:** configure catalogue scope, cart and request limits, escalation, voice,
-  greeting, suggestions, and widget appearance in the Administration.
+- **Optional order history:** a signed-in shopper can ask for their own recent orders and download
+  the invoice attached to one. Off by default, guests are declined, and under B2B Components an
+  employee sees only what their role permits. The model sees order numbers, which of them carry a
+  document, and the item names in one order — never a total, a download link, a name, an address,
+  or a payment detail. The server renders those onto the card.
+- **Merchant controls:** configure catalogue scope, cart and request limits, escalation, order
+  history, voice, greeting, suggestions, and widget appearance in the Administration.
 - **Built-in guard rails:** per-caller throttling, an optional daily spend ceiling, a maximum cart
   value, bounded tool loops, and SSRF protection for the model endpoint.
 - **Observability:** inspect conversations, retrieval steps, refusals, and rendered results in the
   Administration, or export traces as JSON.
+- **Nightly insights:** an optional overnight job that turns those traces into a page you can act
+  on — the searches that found nothing, the ones your filters could only answer with "many", the
+  product turns that never received a description, and the cart funnel. The counts read every
+  conversation and cost nothing; the written findings read a sample through a model, which is why
+  the job is off by default.
 - **A compiled storefront widget:** no Node toolchain is needed in the shop. The 1.5 KB gzipped
   entry point loads first; larger chunks arrive only when the shopper opens the panel.
-- **A live eval suite:** 36 journeys exercise grounding, safety, cart behaviour, retrieval, and
+- **A live eval suite:** 44 journeys exercise grounding, safety, cart behaviour, retrieval, and
   escalation against a real model endpoint.
 
 The starter kit deliberately does **not** complete checkout or take payment, change or negotiate
-prices, access account or order data, or pretend that a human was notified. Unsupported requests
-are declined or, when configured, answered with a merchant-provided contact link.
+prices, or pretend that a human was notified. Order history is the single account-data exception,
+and it is a narrow one: the reader takes no subject argument, so there is no parameter through
+which an injected instruction could ask for somebody else's orders. Everything else unsupported is
+declined or, when configured, answered with a merchant-provided contact link.
 
 ## See it in action
 
@@ -183,17 +196,19 @@ The table below starts from the plugin's **Configure** page unless it points to 
 | What you want to configure | Where to find it |
 |---|---|
 | Assistant and widget availability | **Assistant status** |
-| Tone and products or categories the assistant must not see | **Voice and catalogue scope** |
+| Tone, and the products, categories, or Dynamic Product Groups the assistant must not see | **Instructions and catalogue scope** |
 | Cart actions, cart limits, and maximum tool calls | **Limits** |
 | Per-shopper throttling and the optional daily spend ceiling | **Request limits** |
-| Handover destination, message, comparisons, and match reasons | **Handing over to a human** |
+| Handover destination and message, comparisons, match reasons, and order history | **Handing over to a human** |
 | Assistant name and greeting | **Storefront widget** |
 | Suggested questions | **Things a shopper could ask** |
 | Entry-point style and colours | **Appearance** |
 | Operational logging and conversation retention | **Logging** and **Data retention** |
+| The overnight job, its sample size, and what its judge may read | **Nightly insights** |
 | Shop-knowledge model and automatic indexing | **Shop knowledge** |
 | Shop pages and uploaded documents | **Settings › Assistant shop information** |
 | Full conversations, traces, and JSON exports | **Settings › Assistant conversations** |
+| Last night's findings and how the numbers have moved | **Settings › Assistant insights** |
 
 Most plugin settings apply to the sales channel selected on the configuration page. Greeting and
 suggestion fields are language snippets instead. To use different copy in different storefronts,
@@ -203,8 +218,9 @@ Before showing the assistant to shoppers, test a product search, a variant quest
 action, and an unsupported request. Then open **Settings › Assistant conversations** and inspect the
 recorded turn. The manual explains the defaults and consequences for [behaviour and limits](docs/manual.md#assistant-behaviour-and-limits),
 [request limits](docs/manual.md#request-limits), [escalation](docs/manual.md#escalation),
-[widget appearance](docs/manual.md#appearance), [logging](docs/manual.md#logging), and
-[data retention](docs/manual.md#data-retention).
+[widget appearance](docs/manual.md#appearance), [logging](docs/manual.md#logging),
+[data retention](docs/manual.md#data-retention), and
+[nightly insights](docs/manual.md#nightly-insights).
 
 ### Agent voice and the system prompt
 
@@ -235,6 +251,9 @@ Storefront widget
 
 Shopware Administration
   └── configuration, shop-information indexing, and conversation traces
+
+Shopware scheduled tasks
+  └── trace pruning and the nightly insights run — both need a running worker
 ```
 
 The runtime uses [`symfony/ai-agent`](https://github.com/symfony/ai). The project owns the commerce
