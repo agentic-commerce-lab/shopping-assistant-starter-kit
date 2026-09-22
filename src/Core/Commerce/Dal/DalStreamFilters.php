@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Core\Commerce\Dal;
 
-use Shopware\Core\Content\ProductStream\Service\AbstractProductStreamBuilder;
+use Shopware\Core\Content\ProductStream\Service\ProductStreamBuilderInterface;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\AndFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\Filter;
 
@@ -45,6 +44,16 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\Filter;
  * a merchant actually groups by — manufacturer, properties, category, custom fields — blocking a
  * group removes the whole family without this class doing anything clever.
  *
+ * ## `ProductStreamBuilderInterface`, not `AbstractProductStreamBuilder`
+ *
+ * 6.6 has no `AbstractProductStreamBuilder` — the abstract class, and with it `enrichCriteria()`,
+ * arrived on the 6.7 line. What 6.6 offers is `ProductStreamBuilderInterface::buildFilters()`,
+ * which hands the conditions back as a `list<Filter>` rather than writing them into a `Criteria`
+ * the caller passes in. Same conditions, same exceptions (`EntityNotFoundException` for a deleted
+ * group, `NoFilterException` for one with none), one less round trip through a throwaway
+ * `Criteria`. The service id is identical and public on both versions, so `services.xml` is
+ * untouched.
+ *
  * `stock` is the exception and the one to warn about: it is a real per-row column, and a family
  * parent's value is its own rather than its children's sum. A group built on stock therefore hides
  * 259 of 2,900 families whose every variant is in stock, in the shop measured. That is why
@@ -57,7 +66,7 @@ final class DalStreamFilters implements StreamFilters
     private array $resolved = [];
 
     public function __construct(
-        private readonly AbstractProductStreamBuilder $builder,
+        private readonly ProductStreamBuilderInterface $builder,
     ) {}
 
     /**
@@ -88,18 +97,14 @@ final class DalStreamFilters implements StreamFilters
      */
     private function resolve(string $streamId): ?Filter
     {
-        $criteria = new Criteria();
-
         try {
-            $this->builder->enrichCriteria($criteria, $streamId, Context::createDefaultContext());
+            $filters = $this->builder->buildFilters($streamId, Context::createDefaultContext());
         } catch (\Throwable) {
             // Deliberately every throwable, not the two documented ones: this runs on the path of
             // every product read, and the cost of a swallowed surprise is one group not blocking,
             // against a shop that answers nothing at all.
             return null;
         }
-
-        $filters = $criteria->getFilters();
 
         return $filters === [] ? null : new AndFilter($filters);
     }
