@@ -817,6 +817,26 @@ second one was not: the order card did not render until `bin/console theme:compi
 storefront bundle a shop serves is compiled into the theme, so `assets:install` and `cache:clear`
 leave it on the previous version — the payload was complete over HTTP the whole time.
 
+**The zip install was verified the way a merchant does it**, on 2026-09-22, and it is the pass that
+found the uninstall defect. The plugin was uninstalled (which drops the tables), its directory
+deleted, and the package built with `shopware-cli extension zip . --git-commit <sha>` uploaded
+through Administration → Extensions → Upload extension. The file input needs Playwright
+`setInputFiles`; clicking the button raises no chooser a driver can catch.
+
+From that clean slate: **all eleven migrations ran from scratch**, all six tables were created, the
+admin bundle was served (127,590 bytes, HTTP 200), the config schema returned its thirteen cards, all
+three admin modules appeared in the navigation with the insights dashboard showing its switched-off
+empty state, and a live storefront turn answered with two product cards — on `ASSISTANT_LLM_*`
+environment variables alone, since uninstalling had removed every `system_config` entry. Zero console
+errors. `theme:compile` is still required after the install, for the reason above.
+
+Two things about the package itself, neither 6.6-specific. It contains no `.git`, `vendor`,
+`node_modules`, `var`, `report` or test output — the `.shopware-extension.yml` excludes hold. But it
+ships **both** sets of storefront chunks: the ones committed in `dist/` and the ones the zip build
+produces in its own temp directory, which webpack names after that path. The packaged entry
+references only the freshly built pair, so the two committed chunks are roughly 41 KB of dead weight
+in every artefact. The same is true of a zip built from main.
+
 **One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
 one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
 Composer 2.10 blocks an advisory-affected package by default, so a shop on 6.6.10.19 needs
