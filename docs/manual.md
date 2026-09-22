@@ -800,8 +800,22 @@ Nightly insights. In a browser, with zero console errors anywhere: the settings 
 thirteen cards, the kill switch opening its dialog and snapping back on Cancel, the instructions card
 loading 15,482 characters through `syncService.httpClient`, the new insights dashboard drawing its
 three `sw-chart` trends as 8 series, the trace list and a trace detail with its full phase timeline,
-and a live storefront turn answering from the shop's own departments with two product cards. The one
-defect this pass found is the product-stream builder above.
+and a live storefront turn answering from the shop's own departments with two product cards.
+
+The shopper's own orders and invoices (#40, #41, #43) were verified against a real order rather than
+a fixture: a customer registered and checked out through the Store API, an invoice generated through
+6.6's `_action/order/document/{type}/create`, and then asked for in the widget while signed in. The
+assistant listed order 10000, reported the invoice, rendered the order card with its date, state,
+total and line, and the `Invoice` link returned a 13,827-byte `application/pdf`. The outcome recorded
+was `orders_shown`, which is #43's fix. Worth knowing: **before the invoice was marked `sent` and
+`displayInCustomerAccount`, the assistant correctly said there was none** — 6.6's `OrderRoute`
+filters an order's documents on both flags, so the plugin inherits the shop's own visibility rule
+rather than deciding one, exactly as `DalOrderDocuments` says it does.
+
+The one defect this pass found is the product-stream builder above. One thing that looked like a
+second one was not: the order card did not render until `bin/console theme:compile` had run. The
+storefront bundle a shop serves is compiled into the theme, so `assets:install` and `cache:clear`
+leave it on the previous version — the payload was complete over HTTP the whole time.
 
 **One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
 one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
