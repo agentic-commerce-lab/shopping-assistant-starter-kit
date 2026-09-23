@@ -852,6 +852,32 @@ produces in its own temp directory, which webpack names after that path. The pac
 references only the freshly built pair, so the two committed chunks are roughly 41 KB of dead weight
 in every artefact. The same is true of a zip built from main.
 
+**The administration was then walked through end to end on the packaged artefact**, 2026-09-23,
+because the earlier browser pass had been made against an rsync'd working copy and the zip pass had
+only checked the config schema over HTTP, the navigation and an empty insights dashboard. On the
+installed package, with zero console errors anywhere:
+
+- **Settings form** — thirteen `sw-card`s, both custom components mounted. The kill switch reads
+  *Running* with `checked` true, opens its confirmation dialog on click and snaps back to `checked`
+  on Cancel. The instructions card loads 15,212 characters through `syncService.httpClient`, and both
+  snippet placeholders resolve — `{channel}` to *Storefront*, `{count}` to *15212 characters*, with
+  no `%channel%` or `%count%` left in the DOM.
+- **Assistant conversations** — the list renders its eight columns and identifies the signed-in
+  customer by name. The outcome filter offers all nine outcomes including `orders_shown`, and
+  narrows in both directions (`orders_shown` → *All 0 conversations*, `product_shown` → one row).
+  The detail view draws the full phase timeline — including `found 50 kept 45`, which is #42's
+  unbuyable filtering — and the raw payload view lists all nineteen events as AT / GAP / STAGE with
+  their JSON. **Export traces** downloads 26.9 KB of JSON honouring the active filter, each event
+  carrying `seq`, `stage`, `elapsedMs` and `payload`.
+- **Assistant shop information** — the sales-channel selector, both index actions and the upload
+  control all render.
+- **Assistant insights** — switched on and the task run once on this install, the dashboard draws
+  its three `sw-chart` trends as 8 series, the searched-term list (*dress*), *Turns over the match
+  cap 1 of 1*, and the Technical block's turn, description-excerpt and judge counters.
+
+Its route is `#/swag/assistant/shop/info/index`, not `shop-info` — worth writing down, because
+guessing the other spelling renders an empty page rather than a 404.
+
 **One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
 one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
 Composer 2.10 blocks an advisory-affected package by default, so a shop on 6.6.10.19 needs
