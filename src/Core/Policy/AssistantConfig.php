@@ -137,6 +137,24 @@ final readonly class AssistantConfig
     ) {}
 
     /**
+     * This config with `enableOrderHistory` replaced — what the system prompt is built from.
+     *
+     * {@see \Swag\AssistantStarterKit\Core\Agent\AssistantRunner} passes the turn's answer, not the
+     * merchant's: whether an order tool actually made it into the toolbox. The switch alone is one of
+     * three gates, and a prompt that told a guest's model to answer order questions with tools it was
+     * never given would have it improvise about somebody's order. Carried on the config rather than
+     * as a new parameter because `PromptProviderInterface` is `@api` — every decorator already
+     * forwards `$config`, and a changed signature would be a fatal error in each of them.
+     *
+     * Built from every property by name so a field added to this class later is carried over without
+     * anyone remembering to add it here; the constructor's promoted parameters are those properties.
+     */
+    public function withOrderHistory(bool $enabled): self
+    {
+        return new self(...[...get_object_vars($this), 'enableOrderHistory' => $enabled]);
+    }
+
+    /**
      * Whether a cart quantity limit applies at all.
      *
      * Read through a named method rather than compared inline at each call site, so that "0 is

@@ -18,9 +18,10 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
  * machine ourselves would give the card a vocabulary the shopper's account page does not use, and
  * two words for one state is worse than either word.
  *
- * `$total` is the figure the model must never state (D3). It is here so the SERVER can render it
- * beside the reply; {@see \Swag\AssistantStarterKit\Core\Tool\ListOrdersTool} returns order numbers
- * and nothing else.
+ * `$total` was the figure the model must never state (D3) until 2026-09-24, when D3 was relaxed for
+ * the shopper's own orders: {@see \Swag\AssistantStarterKit\Core\Tool\ListOrdersTool} now hands it
+ * over through {@see \Swag\AssistantStarterKit\Core\Tool\ToolOrderFacts}, which picks the fields the
+ * model may see — never `$documents`. The card beside the reply is still rendered from this object.
  */
 // @mago-expect lint:excessive-parameter-list
 // Seven fields, and every one of them is a field the card shows — the class is the card's contract,

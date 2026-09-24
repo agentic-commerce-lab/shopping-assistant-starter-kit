@@ -12,6 +12,8 @@ use Swag\AssistantStarterKit\Core\Grounding\ContradictedVariants;
 use Swag\AssistantStarterKit\Core\Grounding\DescriptionAudit;
 use Swag\AssistantStarterKit\Core\Grounding\DisclosedOptions;
 use Swag\AssistantStarterKit\Core\Grounding\FactRenderer;
+use Swag\AssistantStarterKit\Core\Grounding\OrderFigures;
+use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Grounding\ProductNameMask;
 use Swag\AssistantStarterKit\Core\Grounding\ProductNames;
 use Swag\AssistantStarterKit\Core\Grounding\ProseProductNames;
@@ -101,6 +103,7 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         private readonly TraceRecorder $trace,
         private readonly FacetSet $facets = new FacetSet(),
         private readonly DescriptionAudit $descriptions = new DescriptionAudit(),
+        private readonly OrderRenderer $orders = new OrderRenderer(),
     ) {}
 
     public function processOutput(Output $output): void
@@ -141,8 +144,13 @@ final class GroundingOutputProcessor implements OutputProcessorInterface
         $this->renderer->render($toRender);
         // The passages this run handed the model, so a figure the shop's own document contains is not
         // reported as an unbacked claim. Measured 2026-08-27: a correct shipping answer came back with
-        // four unbacked prices and the widget annotated it as suspect.
-        $this->renderer->unbackedPricesInProse($text, RetrievedPassages::from($this->trace));
+        // four unbacked prices and the widget annotated it as suspect. The order figures follow the
+        // same reasoning for the shopper's own orders, since 2026-09-24 — see OrderFigures.
+        $this->renderer->unbackedPricesInProse(
+            $text,
+            RetrievedPassages::from($this->trace),
+            OrderFigures::of($this->orders),
+        );
 
         // The second half of the prose audit. Prices were covered from the start; availability was
         // not, and a live turn told a shopper a sold-out variant was available (ruling R75).

@@ -51,8 +51,8 @@ final readonly class OrderPayload
      * The one order `get_order` fetched, or null.
      *
      * Same discipline as {@see self::of()}: every value comes from the {@see OrderDetail} the
-     * renderer holds. The line figures are here precisely because the model never saw them — it was
-     * given names, and this is where the numbers rejoin them.
+     * renderer holds. The model is handed the same line figures since 2026-09-24 (D3 relaxed for the
+     * shopper's own orders), but the card never reads them back out of its reply.
      *
      * @return array<string, mixed>|null
      */

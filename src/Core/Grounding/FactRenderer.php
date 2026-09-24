@@ -43,16 +43,15 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * pushed this class's own cyclomatic-complexity total over this project's threshold
  * (mago sums it per class, across every method).
  */
-// @mago-expect lint:too-many-methods
-// Sixteen methods, in four groups that each need their own entry point plus a getter for what the
-// last call found: registration, selection, rendering, and the three prose audits. The audits'
-// *reasoning* already lives elsewhere — ProseAudit and PassageAudit were split out for exactly this
-// budget — so what remains here are the seams a turn drives them through.
+// Sixteen methods counting the constructor, in four groups that each need their own entry point plus
+// a getter for what the last call found: registration, selection, rendering, and the three prose
+// audits. The audits' *reasoning* already lives elsewhere — ProseAudit and PassageAudit were split
+// out for exactly this budget — so what remains here are the seams a turn drives them through.
 //
-// The linter is not wrong that this is a lot of surface, and splitting the class is probably the
-// right answer eventually. It is not the right answer inside a bug fix: the split worth doing is
-// "per-turn state" against "audit entry points", every eval assertion reads the getters, and doing
-// it here would put a refactor of the grounding core in a commit about which cards get rendered.
+// It carried a `too-many-methods` expectation until 2026-09-24, when an unused private `toCents()`
+// was removed and the class came back inside mago's budget with nothing to spare. The next method
+// added here should be the split worth doing — "per-turn state" against "audit entry points" —
+// rather than a returned pragma.
 final class FactRenderer
 {
     private RetrievedProductIndex $index;
@@ -218,9 +217,6 @@ final class FactRenderer
     }
 
     /**
-     * @return list<string>
-     */
-    /**
      * Records the shopper's message for this turn, before the model is called.
      *
      * Request-scoped like everything else on this class: one renderer per turn, so there is no way
@@ -257,17 +253,22 @@ final class FactRenderer
      * unprivileged tier and cannot reach a renderer. See `ProseAudit::unbackedPrices()` for why a
      * figure from the shop's own document is not an unbacked claim.
      *
+     * `$orderFigures` are the amounts an order tool returned this turn, from {@see OrderFigures::of()}
+     * — supplied for the same reason, since {@see OrderRenderer} is a separate authority on purpose.
+     *
      * @param list<string> $givenPassages
+     * @param list<float>  $orderFigures
      *
      * @return list<string>
      */
-    public function unbackedPricesInProse(string $prose, array $givenPassages = []): array
+    public function unbackedPricesInProse(string $prose, array $givenPassages = [], array $orderFigures = []): array
     {
         $unbacked = $this->proseAudit->unbackedPrices(
             $prose,
             array_values($this->renderedCards),
             $this->shopperMessage,
             $givenPassages,
+            $orderFigures,
         );
 
         $this->unbackedPrices = $unbacked;
@@ -391,10 +392,5 @@ final class FactRenderer
         }
 
         return $unbacked;
-    }
-
-    private static function toCents(float $amount): int
-    {
-        return (int) round($amount * 100);
     }
 }

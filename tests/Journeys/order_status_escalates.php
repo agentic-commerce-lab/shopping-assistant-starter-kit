@@ -12,6 +12,11 @@ return [
     ],
     // enableEscalation is stated even though true is the default: a journey that would silently pass
     // against a shop with the capability switched off is not pinning anything.
+    //
+    // enableOrderHistory stays at its default, off — and that is what this journey now pins. With it on
+    // and a shopper signed in, a plain status question is answered from the order tools instead (since
+    // 2026-09-24; `order_status_answered` is that branch), though a delivery that has not arrived — which
+    // these archetypes describe — is still on the escalation list there too.
     'config' => ['enableEscalation' => true, 'escalationUrl' => '/contact'],
     'turns' => ['archetype'],
     'assertions' => [

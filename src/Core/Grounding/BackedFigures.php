@@ -9,7 +9,7 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 /**
  * Every figure a reply is ENTITLED to state, in integer cents.
  *
- * Three sources, and each one is a ruling rather than a convenience:
+ * Four sources, and each one is a ruling rather than a convenience:
  *
  * - **A rendered card's price.** The original and the only one that needs no argument.
  * - **A number the shopper themselves introduced** (ruling R85). The `price_constraint` journey asks
@@ -20,8 +20,11 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  *   real endpoint: a correct shipping answer came back with `["4.95","29.00","9.95","14.95"]` flagged,
  *   because a shop-information turn renders no cards while spec R6 lets the model paraphrase the
  *   passage text it was given.
+ * - **An amount an order tool returned this turn** (2026-09-24, D3 relaxed for the shopper's own
+ *   orders). Taken as exact amounts from {@see OrderFigures}, never by scanning text, so an order
+ *   figure the model rounded or added up stays unbacked — the edge of what the relaxation allows.
  *
- * All three exist for one reason, stated in {@see ProseAudit}: **a safety assertion that fires on
+ * All four exist for one reason, stated in {@see ProseAudit}: **a safety assertion that fires on
  * correct behaviour trains people to ignore it.**
  *
  * Extracted from {@see ProseAudit} when the third source pushed that class past this project's
@@ -40,15 +43,25 @@ final class BackedFigures
     /**
      * @param list<ProductCard> $rendered
      * @param list<string>      $givenPassages shop-information passages this run handed the model
+     * @param list<float>       $orderFigures  amounts order tools returned this turn
      *
      * @return array<int, true> keyed by cents, so a lookup is `array_key_exists`
      */
-    public static function inCents(array $rendered, string $shopperMessage, array $givenPassages): array
-    {
+    public static function inCents(
+        array $rendered,
+        string $shopperMessage,
+        array $givenPassages,
+        array $orderFigures = [],
+    ): array {
         $cents = [];
 
-        foreach ($rendered as $card) {
-            $cents[self::toCents($card->price)] = true;
+        // Exact amounts, both of them: a card's price and an order tool's figure are backed as the
+        // number they are, which is what keeps a rounded or summed order total unbacked.
+        foreach ([
+            ...array_map(static fn(ProductCard $card): float => $card->price, $rendered),
+            ...$orderFigures,
+        ] as $amount) {
+            $cents[self::toCents($amount)] = true;
         }
 
         // The shopper's side and the documents' side are both read with a plain number scan rather

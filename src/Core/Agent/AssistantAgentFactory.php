@@ -41,6 +41,7 @@ use Swag\AssistantStarterKit\Core\Tool\Factory\SearchProductsToolFactory;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolContext;
 use Swag\AssistantStarterKit\Core\Tool\Factory\ToolFactoryInterface;
 use Swag\AssistantStarterKit\Core\Tool\FamilyOptionValues;
+use Swag\AssistantStarterKit\Core\Tool\OrderToolsOffered;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\Toolbox\Toolbox;
@@ -279,6 +280,9 @@ final readonly class AssistantAgentFactory
         // enableEscalation are enforced, and array_filter is where "never constructed" becomes
         // "never in the toolbox the model sees".
         $tools = array_values(array_filter($tools));
+        // Read off what was built, so the escalate description, the prompt and the price audit agree
+        // with the toolbox about a guest. See OrderToolsOffered and OrderAwareEscalation.
+        $orderToolsOffered = OrderToolsOffered::among($tools);
 
         // Two counters, counting two different things, and both are wanted. The Agent's own
         // `maxToolCalls` (below) counts ROUNDS — one model request that asks for tools, however
@@ -295,7 +299,7 @@ final readonly class AssistantAgentFactory
                 $tools,
                 // An argument-less tool otherwise reaches the provider with no `parameters` key at
                 // all, which not every provider accepts — see {@see ExplicitEmptyToolSchema}.
-                new ExplicitEmptyToolSchema(),
+                new ExplicitEmptyToolSchema(new OrderAwareEscalation($orderToolsOffered)),
                 new WholeNumberToolArguments(),
             ),
             $config->maxToolCallsPerTurn,
@@ -313,7 +317,7 @@ final readonly class AssistantAgentFactory
             $llm->model,
             inputProcessors: [new SlidingWindowInputProcessor()],
             outputProcessors: [
-                new GroundingOutputProcessor($renderer, $trace, $facets),
+                new GroundingOutputProcessor($renderer, $trace, $facets, orders: $orderRenderer),
                 // Kept AFTER grounding on purpose: those audits record what the MODEL wrote, and
                 // would report on the replacement sentence if they ran second. The language is the
                 // raw setting, exactly as IncompleteTurnMessage and FailedTurnMessage are given it —
@@ -348,6 +352,7 @@ final readonly class AssistantAgentFactory
             $vocabularyStats['text'],
             PromptContext::of($viewing, $familyOptions, $recentCards),
             $orderRenderer,
+            $orderToolsOffered,
         );
     }
 

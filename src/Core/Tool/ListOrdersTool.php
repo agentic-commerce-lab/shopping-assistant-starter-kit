@@ -13,12 +13,13 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 /**
  * The signed-in shopper's own recent orders.
  *
- * ## It returns order numbers, and that is the whole of its discipline
+ * ## It returns each order's figures, and D3 yields here and nowhere else
  *
- * A total, a date and a state label are figures, and D3 is that the model never supplies one. The
- * card beside the reply carries them, rendered by the server from what {@see OrderRenderer} holds —
- * the same boundary that makes the assistant structurally incapable of inventing a price, drawn
- * around a second kind of record.
+ * Until 2026-09-24 this returned order numbers only: a total, a date and a state label are figures,
+ * and D3 is that the model never supplies one. That rule was relaxed for the shopper's own orders —
+ * see {@see ToolOrderFacts} for why, and for exactly what crosses. The card is still rendered by the
+ * server from what {@see OrderRenderer} holds, never from the reply, so a figure the model gets wrong
+ * is wrong in one sentence and right on the card beside it. The catalogue keeps D3 unchanged.
  *
  * **Numbers rather than ids**, unlike the product tools. A shopper says *"10023"*, so the model has
  * to be able to match what they said to what it fetched; an opaque id would make that a second
@@ -35,10 +36,11 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  */
 #[AsTool(
     name: 'list_orders',
-    description: 'The signed-in shopper\'s own recent orders, newest first. Returns order numbers '
-    . 'only — the shop renders the dates, totals, states and any invoices as cards beside your '
-    . 'reply. Narrow with "state" (one of "open", "in_progress", "completed", "cancelled") or '
-    . '"withinDays" (a number of days back) whenever the shopper asks about PART of their history '
+    description: 'The signed-in shopper\'s own recent orders, newest first. Each order comes with '
+    . 'its date ("orderedAt"), its state as the shop labels it, its total and currency, and how '
+    . 'many items it had; "orderCount" is how many orders this call returned, not how many they '
+    . 'have ever placed. Narrow with "state" (one of "open", "in_progress", "completed", '
+    . '"cancelled") or "withinDays" (a number of days back) whenever the shopper asks about PART of their history '
     . 'rather than all of it — "still open", "not sorted out yet" and "outstanding" all mean state '
     . '"open"; "already delivered" or "done" mean "completed"; "recent" or a named period means '
     . 'withinDays. Listing everything when they asked for a subset makes them do the filtering they '
@@ -49,9 +51,10 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
     . 'orders have one and point at the download beside them — and if "withDocuments" is empty, say '
     . 'none of these orders has a document yet rather than listing the orders as if that answered '
     . 'it. Never invent a document name, a file or a link: the card carries the only one there is. '
-    . 'Say that you found their orders and let the cards carry the detail: never state a '
-    . 'total, a date or a delivery status yourself, and never mention an order number this tool '
-    . 'did not return. If it returns none, say you could not find any orders on their account.',
+    . 'Asked about the status, date or total of their orders, answer from these fields: you may '
+    . 'state them exactly as returned, but never round, convert or add them up, never guess one '
+    . 'that is missing, and never mention an order number this tool did not return. If it returns '
+    . 'none, say you could not find any orders on their account.',
 )]
 final readonly class ListOrdersTool
 {
@@ -84,7 +87,12 @@ final readonly class ListOrdersTool
      * @param string|null $state      Only orders in this state: "open", "in_progress", "completed" or
      *                                "cancelled". Omit for any state.
      *
-     * @return array{orderNumbers: list<string>, withDocuments: list<string>, total: int, filtered: bool}
+     * @return array{
+     *     orders: list<array{orderNumber: string, orderedAt: string, state: string, total: float, currency: string, itemCount: int}>,
+     *     withDocuments: list<string>,
+     *     orderCount: int,
+     *     filtered: bool,
+     * }
      */
     public function __invoke(?int $limit = null, ?int $withinDays = null, ?string $state = null): array
     {
@@ -104,9 +112,9 @@ final readonly class ListOrdersTool
         // "show me my invoices" truthfully — including "none of them have one", which it could not
         // say before and which is the honest answer often enough to matter.
         //
-        // A boolean about attachment is not a figure in D3's sense: it is the same class as `total`
-        // below. The title, the file type and above all the URL stay out — a document URL in the
-        // model's context is precisely what the server-rendered link on the card exists to avoid.
+        // The title, the file type and above all the URL stay out — a document URL in the model's
+        // context is precisely what the server-rendered link on the card exists to avoid, and the
+        // relaxation of D3 that lets the figures below through covers figures, not links.
         $withDocuments = array_values(array_map(
             static fn($order): string => $order->orderNumber,
             array_filter($orders, static fn($order): bool => $order->documents !== []),
@@ -124,10 +132,15 @@ final readonly class ListOrdersTool
 
         // `filtered` so the model can tell "you have no orders" from "none in that window", which
         // are different sentences and the second one is the honest answer to a narrowed question.
+        //
+        // `orderCount` was `total` until each order gained a `total` of its own: beside money, a bare
+        // `total` reads as money. The rename also stops `tool.result` recording it by value as
+        // `total`, which the insights' search metrics read as "a product search returned N" — so a
+        // turn that listed orders was being counted as a catalogue search.
         return [
-            'orderNumbers' => $numbers,
+            'orders' => array_map(ToolOrderFacts::summary(...), $orders),
             'withDocuments' => $withDocuments,
-            'total' => \count($numbers),
+            'orderCount' => \count($numbers),
             'filtered' => $query->withinDays !== null || $query->state !== null,
         ];
     }

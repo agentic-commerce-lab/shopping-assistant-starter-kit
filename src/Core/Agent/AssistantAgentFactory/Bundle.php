@@ -54,5 +54,9 @@ final readonly class Bundle
         // as `$renderer`: the figures on screen come from the turn's own retrieval, never from the
         // model. Defaulted so a turn that constructed no order tool still builds a Bundle.
         public OrderRenderer $orderRenderer = new OrderRenderer(),
+        // Whether an order tool was constructed for this turn, so AssistantRunner can build the prompt
+        // for the toolbox the model actually has — see Core\Tool\OrderToolsOffered. Defaulted false:
+        // a bundle built without saying is a turn with no order tool, and gets the prompt it always got.
+        public bool $orderToolsOffered = false,
     ) {}
 }

@@ -29,7 +29,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * third outcome.
  *
  * It answers for the **saved** configuration. Unsaved form fields are not reflected, and the card
- * says so rather than implying a live render.
+ * says so rather than implying a live render. With order history switched on it shows what a
+ * signed-in shopper's turn is sent: a guest's turn has no order tool, and `AssistantRunner` leaves
+ * the order rules out of that prompt — see {@see \Swag\AssistantStarterKit\Core\Prompt\OrderRules}.
  *
  * The per-turn blocks are absent: the catalogue vocabulary and the viewing context are per-request
  * probe results ({@see PromptProviderInterface::system()} takes both as parameters), so rendering

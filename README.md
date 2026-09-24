@@ -44,9 +44,11 @@ dependencies in the shop's vendor directory. Developing the plugin instead? Use 
   documents through vector search.
 - **Optional order history:** a signed-in shopper can ask for their own recent orders and download
   the invoice attached to one. Off by default, guests are declined, and under B2B Components an
-  employee sees only what their role permits. The model sees order numbers, which of them carry a
-  document, and the item names in one order — never a total, a download link, a name, an address,
-  or a payment detail. The server renders those onto the card.
+  employee sees only what their role permits. The model sees each order's number, date, status and
+  total, which orders carry a document, and the lines of one order with their quantities and prices,
+  so it can answer "what's the status of my orders?" instead of handing it off. It never sees a
+  download link, a name, an address, or a payment detail, and the card is still rendered by the
+  server, not from the reply.
 - **Merchant controls:** configure catalogue scope, cart and request limits, escalation, order
   history, voice, greeting, suggestions, and widget appearance in the Administration.
 - **Built-in guard rails:** per-caller throttling, an optional daily spend ceiling, a maximum cart
@@ -60,7 +62,7 @@ dependencies in the shop's vendor directory. Developing the plugin instead? Use 
   the job is off by default.
 - **A compiled storefront widget:** no Node toolchain is needed in the shop. The 1.5 KB gzipped
   entry point loads first; larger chunks arrive only when the shopper opens the panel.
-- **A live eval suite:** 44 journeys exercise grounding, safety, cart behaviour, retrieval, and
+- **A live eval suite:** 45 journeys exercise grounding, safety, cart behaviour, retrieval, and
   escalation against a real model endpoint.
 
 The starter kit deliberately does **not** complete checkout or take payment, change or negotiate

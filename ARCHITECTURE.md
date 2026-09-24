@@ -329,6 +329,18 @@ Stages 12 and 13 are the product. Everything else is plumbing.
 > claim that ids travel through the model's *text*. They travel through the *tool boundary*,
 > which is the only place they were ever trustworthy.
 
+> **Relaxation, 2026-09-24 — the shopper's own orders.** "The server renders every figure" no
+> longer holds for one kind of record. `list_orders` and `get_order` now hand the model each order's
+> date, state label, total and currency, and each line's quantity, unit price and line total
+> (`Tool\ToolOrderFacts`), and the model may state them exactly as returned. Staging testers had
+> asked for the status and total of orders the card was already showing and got an escalation or a
+> refusal, and a reorder re-added one of each because no quantity had ever crossed. Three things
+> bound it: the prompt permits only figures an order tool returned this turn, never rounded or summed
+> (`Prompt\OrderRules`, present only when an order tool was constructed); the cards are still rendered
+> from `OrderRenderer`, never from prose; and the price audit counts exactly those amounts as backed
+> (`Grounding\OrderFigures`), so an invented or summed figure is still recorded in `claims.audit`.
+> Document URLs, and every catalogue price and stock level, stay under D3 unchanged.
+
 > **Correction, 2026-08-19 — ranking happens at stage 6, not stage 9.** This table listed *Rank*
 > after *Resolve variant*, implying that ranking cannot remove a variant before resolution gets to
 > disambiguate it. The implementation is the other way round: `QueryBuilder` only *names* a sort,
@@ -554,9 +566,12 @@ and the contact link (D3).
 > under B2B Components the employee is resolved by Commercial's own `DecoratedOrderRoute`, which
 > filters on the permission `order.read.all` and is fail-closed.
 >
-> What crosses into the model is order **numbers**. No name, no address, no email, no payment detail:
-> `OrderSummary` has no field that could hold one, and a test asserts its property list for exactly
-> that reason.
+> What crosses into the model is each order's number, date, state label, total and currency, and —
+> for the one order `get_order` fetched — its lines with quantity, unit price and line total (order
+> **numbers** only until 2026-09-24; see the D3 relaxation above). No document URL, no name, no
+> address, no email, no payment detail: `OrderSummary` has no field that could hold a personal one,
+> a test asserts its property list for exactly that reason, and the tool tests assert the model-facing
+> key lists the same way.
 
 ## Extension points
 
