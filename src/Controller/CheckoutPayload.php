@@ -23,21 +23,40 @@ use Symfony\Component\Routing\RouterInterface;
  * {@see \Swag\AssistantStarterKit\Core\Commerce\Dal\DalCartAdapter} already generates it this way.
  *
  * `confirm`, not `cart`: the shopper asked to check out, and core sends a guest on from there to
- * registration on its own. Null for every other outcome — an empty cart included, since
- * {@see TurnOutcomeResolver} only records this outcome when there was something to check out.
+ * registration on its own.
  */
 final readonly class CheckoutPayload
 {
+    /**
+     * The one outcome that outranks `checkout_offered` without cancelling it — see {@see self::of()}.
+     */
     public function __construct(
         private RouterInterface $router,
     ) {}
 
     /**
+     * Two inputs, because an outcome is one value and a turn can do two things.
+     *
+     * **Found in production traces:** "add it and take me to checkout" ran both tools, the model was
+     * told a link followed, and none did — the turn is `cart_added`, and this used to read the
+     * outcome alone. Re-ranking was not the fix: the widget refreshes the header cart only on
+     * `cart_added`, and the cart funnel counts from it. So the offer travels beside the outcome
+     * (`$offered`, read from the trace by {@see \Swag\AssistantStarterKit\Core\Agent\CheckoutOffer})
+     * and matters where the outcome cannot speak for it.
+     *
+     * `checkout_offered` needs no flag: {@see TurnOutcomeResolver} records it only for a filled cart,
+     * which is also what keeps a transcript stored before the flag existed rendering its link on
+     * reload. Every other outcome keeps the link away even when checkout was offered — an escalation
+     * is a turn that reached for a human, and a turn cut short never gave the reply that said the
+     * shopper can check out. An empty cart is never an offer, so it never renders one either.
+     *
      * @return array{url: string}|null
      */
-    public function of(string $outcome): ?array
+    public function of(string $outcome, bool $offered): ?array
     {
-        if ($outcome !== TurnOutcomeResolver::CHECKOUT_OFFERED) {
+        $besideAnAdd = $offered && $outcome === TurnOutcomeResolver::CART_ADDED;
+
+        if ($outcome !== TurnOutcomeResolver::CHECKOUT_OFFERED && !$besideAnAdd) {
             return null;
         }
 

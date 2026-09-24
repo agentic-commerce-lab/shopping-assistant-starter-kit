@@ -65,22 +65,31 @@ final class TurnOutcomeResolver
     /**
      * The shopper asked to check out and the shop has a link to give them.
      *
-     * **This value is what renders the link.** {@see \Swag\AssistantStarterKit\Controller\CheckoutPayload}
-     * keys off it exactly as {@see \Swag\AssistantStarterKit\Controller\HandoffPayload} keys off
-     * `escalated`, which is also why it is an outcome rather than a new field on the turn: the
-     * history endpoint rebuilds the handoff from the stored outcome, so a reloaded conversation gets
-     * its checkout link back without anything new being written into the transcript.
+     * **This value renders the link, but it is no longer the only thing that does.** It was, on the
+     * model of `escalated` and {@see \Swag\AssistantStarterKit\Controller\HandoffPayload}, until
+     * production traces showed the gap: "add it and take me to checkout" resolves to `cart_added`,
+     * and the link never rendered beside a reply the tool had told to announce it. The offer now also
+     * travels as {@see AssistantTurn::$checkoutOffered}, and
+     * {@see \Swag\AssistantStarterKit\Controller\CheckoutPayload} reads both.
      *
      * Only when the cart had something in it — `go_to_checkout` records `empty` and this reads it. A
      * checkout link beside "your cart is empty" is the same empty promise `HandoffPayload` exists to
      * stop making.
      *
      * It ranks below `escalated`, which is a turn that reached for a human whatever else it did, and
-     * below `cart_added`, which is the one thing in this plugin that changes the shop's own state.
-     * It ranks above `product_shown` because a shopper asking to check out has said what the turn
-     * was for; cards, if any, were already on screen.
+     * below `cart_added`, which is the one thing in this plugin that changes the shop's own state —
+     * and the value the widget refreshes the header cart on, which is why the fix above left this
+     * order alone. It ranks above `product_shown` because a shopper asking to check out has said
+     * what the turn was for; cards, if any, were already on screen.
      */
     public const CHECKOUT_OFFERED = 'checkout_offered';
+
+    /**
+     * An add the shop accepted. Named because the checkout link is now read beside it, in
+     * {@see \Swag\AssistantStarterKit\Controller\CheckoutPayload}, and a second copy of the literal there
+     * is exactly how two spellings drift apart.
+     */
+    public const CART_ADDED = 'cart_added';
 
     /**
      * The turn put at least one of the shopper's own orders in front of them.
@@ -101,7 +110,7 @@ final class TurnOutcomeResolver
         }
 
         if (AllowedCartAddition::isIn($trace)) {
-            return 'cart_added';
+            return self::CART_ADDED;
         }
 
         if (CheckoutOffer::isIn($trace)) {

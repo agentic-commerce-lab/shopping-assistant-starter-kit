@@ -182,6 +182,8 @@ class AssistantController extends StorefrontController
                 cardIds: array_map(static fn($card): string => $card->id, $turn->cards),
                 outcome: $turn->outcome,
                 createdAt: $now,
+                // Stored beside the outcome because the outcome cannot say it — see `history()`.
+                checkoutOffered: $turn->checkoutOffered,
             ),
             $result->trace,
         );
@@ -215,8 +217,9 @@ class AssistantController extends StorefrontController
             'handoff' => $this->handoff->of($turn->outcome, $config),
             // The shop's own checkout, on the turn the shopper asked for it. Same rule as the
             // contact link beside it: the model has never seen this URL, so a reply cannot get it
-            // wrong — and it used to get it wrong by promising a link nothing rendered.
-            'checkout' => $this->checkout->of($turn->outcome),
+            // wrong. The offer is read beside the outcome, not from it: "add it and take me to
+            // checkout" is `cart_added`, and keying off the outcome alone rendered no link there.
+            'checkout' => $this->checkout->of($turn->outcome, $turn->checkoutOffered),
             // No `warnings`. The prose audit still runs and still writes `claims.audit` for the
             // merchant's trace, but it is no longer shopper-facing and no longer part of this
             // contract: the notice it fed was wrong every time it was reported from a live shop,
@@ -323,10 +326,10 @@ class AssistantController extends StorefrontController
                 // or switched it off — the reloaded transcript must offer what works now, not what
                 // worked then.
                 'handoff' => $this->handoff->of($turn->outcome, $config),
-                // Rebuilt from the stored outcome for the same reason, and the reason the outcome
-                // carries this at all: a reloaded conversation gets its checkout link back without
-                // anything extra having been written into the transcript.
-                'checkout' => $this->checkout->of($turn->outcome),
+                // Rebuilt the same way and from the same two inputs as the live reply, so a reload
+                // shows the checkout link exactly where the live turn did — including beside a
+                // `cart_added`, which is why the offer is stored at all.
+                'checkout' => $this->checkout->of($turn->outcome, $turn->checkoutOffered),
             ];
         }
 

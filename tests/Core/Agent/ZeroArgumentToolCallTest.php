@@ -50,7 +50,7 @@ final class ZeroArgumentToolCallTest extends TestCase
         $result = $toolbox->execute(new ToolCall('call-1', 'go_to_checkout', []))->getResult();
 
         self::assertFalse($result['empty']);
-        self::assertStringContainsString('link follows', $result['note']);
+        self::assertStringContainsString('can go to checkout', $result['note']);
     }
 
     public function testArgumentsNobodyAskedForAreIgnoredRatherThanFatal(): void

@@ -58,11 +58,21 @@ final class GoToCheckoutTool
      * not made. So this states what to say, prohibits the URL explicitly, and prohibits describing
      * the cart — the boolean above says *something* is in there and nothing more, and a model told
      * only "not empty" will otherwise reach for "you have a few items".
+     *
+     * **It no longer has the model announce the link.** "A checkout link follows your message" was
+     * borrowed from that note to replace replies promising a link nothing rendered — and it became
+     * one: production traces showed it on add-and-checkout turns, which resolve to `cart_added` and
+     * got no link. A tester also called it noise where the link did appear. Dropping it is safe only
+     * because the link now renders on every turn this tool finds a filled cart, bar an escalation
+     * ({@see \Swag\AssistantStarterKit\Core\Agent\AssistantTurn::$checkoutOffered}); without
+     * that, removing the sentence would have hidden the defect rather than fixed it. The ban on
+     * mentioning a link or button is explicit so the model does not reinvent the announcement.
      */
     private const NOTE_READY =
-        'The cart has something in it. Say the shopper can go to checkout and that a checkout link '
-            . 'follows your message. Do not write a URL yourself. Do not say how many items are in '
-            . 'the cart, what they are, or what they cost — you have not been told any of that.';
+        'The cart has something in it. Say the shopper can go to checkout now. Do not mention a link '
+            . 'or a button: the shop shows one beside your reply. Do not write a URL yourself. Do not '
+            . 'say how many items are in the cart, what they are, or what they cost — you have not '
+            . 'been told any of that.';
 
     /**
      * And when it is empty.

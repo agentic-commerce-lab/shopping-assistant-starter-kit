@@ -28,7 +28,7 @@ final readonly class TranscriptCodec
     /**
      * @return array{
      *     role: string, prose: string, cardIds: list<string>, outcome: string,
-     *     createdAt: string|null,
+     *     createdAt: string|null, checkoutOffered: bool,
      * }
      */
     public function encode(ConversationTurn $turn): array
@@ -43,6 +43,9 @@ final readonly class TranscriptCodec
             // When the turn happened, not when it is read. A timestamp is the one thing here that is
             // *not* re-derived on read, because unlike a price it does not change.
             'createdAt' => $turn->createdAt?->format(\DATE_ATOM),
+            // Beside the outcome, because "add it and take me to checkout" is stored as `cart_added`
+            // and the reloaded transcript must still show the checkout link the live reply had.
+            'checkoutOffered' => $turn->checkoutOffered,
             // No `warnings`. The grounding notice they were stored for is gone, so nothing reads
             // them back — and a row written while the key existed decodes fine without it, because
             // `decode()` reads named fields rather than a fixed shape.
@@ -86,6 +89,9 @@ final readonly class TranscriptCodec
             cardIds: $this->shape->strings($fields['cardIds'] ?? null),
             outcome: $this->shape->text($fields['outcome'] ?? null),
             createdAt: $this->timestamps->orNull($fields['createdAt'] ?? null),
+            // Only a stored `true` counts. A cast would read `"yes"` or `1` as an offer and render a
+            // checkout link nobody made; an absent key is a row from before the field, and false.
+            checkoutOffered: ($fields['checkoutOffered'] ?? null) === true,
         );
     }
 }
