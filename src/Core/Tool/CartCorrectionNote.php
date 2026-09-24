@@ -21,13 +21,17 @@ final class CartCorrectionNote
 {
     public static function lineQuantity(CartSummary $cart, string $variantId): int
     {
+        // Every line of the variant, not the first: carts written before `DalCartAdapter` set a
+        // line id still hold one variant on several lines, and the first alone reported "0 stored"
+        // for a unit that had been added.
+        $quantity = 0;
         foreach ($cart->lineItems as $line) {
             if ($line->variantId === $variantId) {
-                return $line->quantity;
+                $quantity += $line->quantity;
             }
         }
 
-        return 0;
+        return $quantity;
     }
 
     /**
