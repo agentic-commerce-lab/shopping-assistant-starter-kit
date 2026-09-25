@@ -12,13 +12,15 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 /**
  * What was in one of the shopper's own orders.
  *
- * ## It names the items and counts nothing
+ * ## It returns the lines with their figures
  *
- * D3 applied where it is easiest to forget. A quantity is a figure — "you ordered three of them" is
- * exactly the kind of sentence a model produces confidently and wrongly — so the return shape
- * carries line NAMES and nothing else, and the card beside the reply carries the quantity, the unit
- * price and the line total. This follows {@see \Swag\AssistantStarterKit\Core\Tool\ToolProductSummary},
- * which returns `{id, name, options, properties}` and deliberately no figure either.
+ * Until 2026-09-24 this returned line NAMES and nothing else, on D3's reasoning that "you ordered
+ * three of them" is a sentence a model produces confidently and wrongly. The cost turned out to be the
+ * opposite failure: asked to order the same again, a tester's assistant re-added one of each, because
+ * no quantity had ever been handed over and it had to assume one. D3 was relaxed for the shopper's own
+ * orders — see {@see ToolOrderFacts} for why and for exactly what crosses — and the lines now carry
+ * quantity, unit price and line total. The card is still rendered by the server from what
+ * {@see OrderRenderer} holds; the catalogue tools keep D3 unchanged.
  *
  * ## An order it cannot see and an order that never existed are the same answer
  *
@@ -30,11 +32,13 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 #[AsTool(
     name: 'get_order',
     description: 'What was in one of the signed-in shopper\'s own orders, by order number. Returns '
-    . 'the item names only — the shop renders the quantities, prices and any invoice as a card '
-    . 'beside your reply. Name the items and let the card carry the numbers: never state a '
-    . 'quantity, a price or a total yourself. If "found" is false, say you could not find that '
-    . 'order on their account and offer to list their recent orders instead — do not speculate '
-    . 'about why, and never suggest it belongs to somebody else.',
+    . 'its date, its state as the shop labels it, its total and currency, and every line with its '
+    . 'name, quantity, unit price and line total. You may state those exactly as returned, but '
+    . 'never round, convert or recompute them, and never guess one that is missing. If they want '
+    . 'to order the same again, these quantities are the ones to use. The shop shows any invoice '
+    . 'beside your reply: never write a link or invent a document. If "found" is false, say you '
+    . 'could not find that order on their account and offer to list their recent orders instead — '
+    . 'do not speculate about why, and never suggest it belongs to somebody else.',
 )]
 final readonly class GetOrderTool
 {
@@ -57,7 +61,15 @@ final readonly class GetOrderTool
     /**
      * @param string $orderNumber The order number, as the shopper said it — e.g. "10023".
      *
-     * @return array{orderNumber: string, items: list<string>, found: bool}
+     * @return array{orderNumber: string, lines: array{}, found: false}|array{
+     *     orderNumber: string,
+     *     orderedAt: string,
+     *     state: string,
+     *     total: float,
+     *     currency: string,
+     *     lines: list<array{name: string, quantity: int, unitPrice: float, lineTotal: float}>,
+     *     found: true,
+     * }
      */
     public function __invoke(string $orderNumber): array
     {
@@ -68,19 +80,17 @@ final readonly class GetOrderTool
         if ($detail === null) {
             $this->trace->record('orders.detail', ['orderNumber' => $number, 'found' => false]);
 
-            return ['orderNumber' => $number, 'items' => [], 'found' => false];
+            return ['orderNumber' => $number, 'lines' => [], 'found' => false];
         }
 
         $this->renderer->registerDetail($detail);
 
-        $items = array_map(static fn($line): string => $line->name, $detail->lines);
-
         $this->trace->record('orders.detail', [
             'orderNumber' => $detail->orderNumber,
             'found' => true,
-            'lineCount' => \count($items),
+            'lineCount' => \count($detail->lines),
         ]);
 
-        return ['orderNumber' => $detail->orderNumber, 'items' => $items, 'found' => true];
+        return [...ToolOrderFacts::detail($detail), 'found' => true];
     }
 }

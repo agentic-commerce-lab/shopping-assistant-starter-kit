@@ -57,6 +57,7 @@ final class AssertionRegistry
             'declined_without_guard' => new DeclinedWithoutGuard(),
             'no_handoff_claim_in_prose' => new NoHandoffClaimInProse(),
             'escalated_with_handoff' => new EscalatedWithHandoff(),
+            'not_escalated' => new NotEscalated(),
             'tool_calls_at_most' => new ToolCallsAtMost(),
             // The floor, and the reason a red journey can now name its cause — see the two classes.
             'tool_calls_at_least' => new ToolCallsAtLeast(),

@@ -252,7 +252,7 @@ These settings control what the assistant can see and do:
 | `hideOutOfStockProducts` | off | Whether products with no stock are left out of search results. Narrower than the three lists above — it stops the assistant *offering* them, while a shopper who names one still gets a straight answer about it |
 | `enableAddToCart` | on | Whether the add-to-cart tool and product-card buttons exist |
 | `enableCompareProducts` | off | Whether the model can compare products side by side |
-| `enableOrderHistory` | off | Whether a **signed-in** shopper can ask for their own recent orders and invoices. Guests are declined. Under B2B Components an employee sees only what their role permits — Shopware decides that, not the assistant. Covers "show my recent orders", "what was in order 10023" and narrowed questions like "any open orders from last month" |
+| `enableOrderHistory` | off | Whether a **signed-in** shopper can ask for their own recent orders and invoices. Guests are declined. Under B2B Components an employee sees only what their role permits — Shopware decides that, not the assistant. Covers "show my recent orders", "what's the status of my orders", "what was in order 10023" and narrowed questions like "any open orders from last month" — the assistant states an order's status, date, total and line quantities as the shop records them, and escalates only returns, cancellations, complaints and account changes |
 | `enableMatchReasons` | off | Whether retrieval exposes deterministic reasons for a match |
 | `suggestAlternatives` | **on** | Whether a sold-out variant is answered with the other sizes or colours of that **same** product which are in stock. It is a ranking, not a ban: with no size of their own left, the assistant may still offer other products, exactly as it always could. Never a combination assembled from two available variants |
 
@@ -448,7 +448,8 @@ night. After updating the plugin, `bin/console scheduled-task:register` picks th
 
 ## Escalation
 
-Order status, returns, and account questions cannot be answered from the catalogue. Escalation gives
+Order status, returns, and account questions cannot be answered from the catalogue (order status can
+be, for a signed-in shopper, when `enableOrderHistory` is on). Escalation gives
 the shopper a merchant-configured route instead of allowing the assistant to guess. Configure it
 under **Escalation**:
 
@@ -683,7 +684,7 @@ cp .env.example .env
 composer run test:eval
 ```
 
-**Budget the time and the spend.** The suite currently contains 44 journeys, each with up to three
+**Budget the time and the spend.** The suite currently contains 45 journeys, each with up to three
 runs per archetype, and every run is a real turn. The full suite takes several minutes and costs real
 tokens.
 

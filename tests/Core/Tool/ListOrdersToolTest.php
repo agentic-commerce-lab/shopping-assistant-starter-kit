@@ -12,25 +12,55 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Swag\AssistantStarterKit\Tests\Core\Commerce\RecordingOrderHistory;
 
 /**
- * The tool returns order NUMBERS and nothing else.
+ * The tool returns each order with the figures its card shows — and nothing that is not on the card.
  *
- * That is D3 applied to a second kind of record: a total, a date and a state label are figures, and
- * the rule that the model never supplies a figure is the same one that keeps it from inventing a
- * price. The return shape is asserted by key, not merely by content, because widening it is how the
- * guarantee would end without anyone deciding to end it.
+ * It returned order NUMBERS only until 2026-09-24, when D3 was relaxed for the shopper's own orders:
+ * testers asked for the status and the total of orders the card was already showing, and a model
+ * handed no figure could only refuse or escalate. The return shape is still asserted by key, not
+ * merely by content, because the keys are now the whole of what that relaxation allows — a document
+ * URL or a field about a person arriving here would widen it without anyone deciding to.
  */
 final class ListOrdersToolTest extends TestCase
 {
-    public function testReturnsOrderNumbersAndNoFigures(): void
+    /**
+     * `orderCount`, not `total`: beside each order's own `total` a bare `total` reads as money, and a
+     * model asked "how much did I spend?" would have had a count to misread as the answer.
+     */
+    public function testReturnsEachOrderWithTheFiguresItsCardShows(): void
     {
         $tool = new ListOrdersTool(self::reader(2), new OrderRenderer(), new TraceRecorder());
 
         $result = $tool();
 
-        self::assertSame(['orderNumbers', 'withDocuments', 'total', 'filtered'], array_keys($result));
-        self::assertSame(['10000', '10001'], $result['orderNumbers']);
-        self::assertSame(2, $result['total']);
+        self::assertSame(['orders', 'withDocuments', 'orderCount', 'filtered'], array_keys($result));
+        self::assertSame(
+            [
+                'orderNumber' => '10000',
+                'orderedAt' => '2026-09-12',
+                'state' => 'Shipped',
+                'total' => 10.0,
+                'currency' => 'EUR',
+                'itemCount' => 1,
+            ],
+            $result['orders'][0] ?? null,
+        );
+        self::assertSame(['10000', '10001'], array_column($result['orders'], 'orderNumber'));
+        self::assertSame(2, $result['orderCount']);
         self::assertFalse($result['filtered'], 'nothing was narrowed');
+    }
+
+    /**
+     * The document stays a yes/no. Its URL is what the server-rendered link on the card exists to keep
+     * out of the model's context, and the relaxation of D3 covers figures, not links.
+     */
+    public function testNoDocumentLinkReachesTheModel(): void
+    {
+        $encoded = (string) json_encode(
+            (new ListOrdersTool(self::readerWithInvoiceOnFirst(), new OrderRenderer(), new TraceRecorder()))(),
+        );
+
+        self::assertStringNotContainsString('/account/order/document', $encoded);
+        self::assertStringNotContainsString('Invoice', $encoded);
     }
 
     public function testRegistersWhatItRetrieved(): void
@@ -90,16 +120,12 @@ final class ListOrdersToolTest extends TestCase
      * The model has to be able to answer "show me my invoices" truthfully — which orders have one,
      * and that none do when none do. Without this it can only list orders and hope the cards happen
      * to carry a link, which is answering a different question.
-     *
-     * A boolean about attachment is not a figure in D3's sense: it is the same class as `total`,
-     * which says how many orders are being returned. The title, the file and the URL stay out — a
-     * URL in the model's context is the one thing the server-rendered link exists to avoid.
      */
     public function testNamesWhichOrdersCarryADocument(): void
     {
         $result = (new ListOrdersTool(self::readerWithInvoiceOnFirst(), new OrderRenderer(), new TraceRecorder()))();
 
-        self::assertSame(['10000', '10001'], $result['orderNumbers']);
+        self::assertSame(['10000', '10001'], array_column($result['orders'], 'orderNumber'));
         self::assertSame(['10000'], $result['withDocuments']);
     }
 

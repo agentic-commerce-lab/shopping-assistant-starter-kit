@@ -103,8 +103,15 @@ final readonly class ProseAudit
      * the injection supplied it. The absence of the parameter is the control; see
      * `ProseAuditDescriptionTest::testThePriceAuditCannotBeHandedDescriptionsAtAll()`.
      *
+     * **An amount an order tool returned this turn is not a claim by the model either** — since
+     * 2026-09-24, when D3 was relaxed for the shopper's own orders and the model began stating their
+     * totals and line prices. An order turn renders no product card, so every one of those correct
+     * figures was unbacked by construction. They arrive as exact amounts, not text to scan, so a
+     * rounded or summed figure is still reported; see {@see OrderFigures} for what counts.
+     *
      * @param list<ProductCard> $rendered
      * @param list<string>      $givenPassages the shop-information passages this run handed the model
+     * @param list<float>       $orderFigures  the amounts order tools returned this turn
      *
      * @return list<string>
      */
@@ -113,8 +120,9 @@ final readonly class ProseAudit
         array $rendered,
         string $shopperMessage = '',
         array $givenPassages = [],
+        array $orderFigures = [],
     ): array {
-        $cents = BackedFigures::inCents($rendered, $shopperMessage, $givenPassages);
+        $cents = BackedFigures::inCents($rendered, $shopperMessage, $givenPassages, $orderFigures);
 
         $figures = $this->currencyFigures->extract($prose);
 

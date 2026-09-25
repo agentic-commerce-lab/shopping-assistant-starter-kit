@@ -29,7 +29,7 @@ use Swag\AssistantStarterKit\Core\Policy\AssistantConfig;
  */
 final class SystemPrompt
 {
-    private const RULES = <<<'PROMPT'
+    private const OPENING_RULES = <<<'PROMPT'
         You are a shopping assistant for this shop only.
 
         Use only the registered tools for anything about products, prices, availability or the cart.
@@ -41,7 +41,14 @@ final class SystemPrompt
         Never state a price, stock level, delivery time or URL yourself. The shop renders every
         such figure from its own records, so name products in plain words and leave all numbers to
         the shop.
+        PROMPT;
 
+    /**
+     * The rules after the figure rule. Split from {@see self::OPENING_RULES} on 2026-09-24 only so
+     * {@see OrderRules::OWN_ORDER_FIGURES} can sit directly under the sentence it is an exception to;
+     * joined by a blank line, as before, so a turn with no order tool is sent the same text.
+     */
+    private const RULES = <<<'PROMPT'
         And do not say that a link follows your message unless a tool has told you one does. A
         sentence promising a link the shop does not render leaves the shopper with a promise and
         nothing to click.
@@ -292,11 +299,17 @@ final class SystemPrompt
     public static function build(AssistantConfig $config, string $vocabulary = '', string $viewing = ''): string
     {
         // Between the rules and their closing line, not after the whole prompt: the clause qualifies
-        // the paragraph RULES ends on, and reads as a dangling pronoun anywhere else.
+        // the paragraph RULES ends on, and reads as a dangling pronoun anywhere else. The two order
+        // blocks are each an exception to the sentence they follow, so they sit right behind it; both
+        // are empty unless this turn has an order tool — see OrderRules.
         $prompt =
-            self::RULES
+            self::OPENING_RULES
+            . OrderRules::afterFigureRule($config)
+            . "\n\n"
+            . self::RULES
             . "\n"
-            . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE);
+            . ($config->enableEscalation ? self::ESCALATION_AVAILABLE : self::ESCALATION_UNAVAILABLE)
+            . OrderRules::afterEscalationClause($config);
 
         // After that pair, never between them: the escalation clause's "any of those" points back at
         // the paragraph RULES ends on. Nothing in this block refers backwards, so it is safe here.

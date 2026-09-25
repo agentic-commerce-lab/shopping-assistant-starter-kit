@@ -11,14 +11,37 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 /**
  * Terminal tool: hands the conversation to a human. Exposed to the model as a
  * Symfony AI tool.
+ *
+ * ## Two descriptions, and the toolbox picks
+ *
+ * {@see self::DESCRIPTION} sends order status to a human, which is right for every turn without an
+ * order tool and was wrong for every turn with one: on staging, 2026-09-24, a signed-in shopper asked
+ * for the status of their latest orders and the model called `list_orders` and then this, because the
+ * description said so to every model regardless of what else it held.
+ * {@see \Swag\AssistantStarterKit\Core\Agent\OrderAwareEscalation} swaps in
+ * {@see self::DESCRIPTION_WITH_ORDER_TOOLS} exactly when an order tool was constructed for the turn.
+ * The class stays one tool with one factory on the unprivileged tier — `ToolContext` cannot say
+ * whether the shopper is signed in, and must not learn to.
  */
-#[AsTool(
-    name: 'escalate',
-    description: 'Hand the conversation to a human. Use for order status, returns, account '
-    . 'questions, complaints, or anything you cannot answer from shop data.',
-)]
+#[AsTool(name: 'escalate', description: self::DESCRIPTION)]
 final class EscalateTool
 {
+    /** Unchanged since before order history existed, and still what a turn without it is sent. */
+    public const DESCRIPTION =
+        'Hand the conversation to a human. Use for order status, returns, account '
+            . 'questions, complaints, or anything you cannot answer from shop data.';
+
+    /**
+     * The same tool on a turn that can read the shopper's own orders. What remains is what the order
+     * tools cannot do; a missing delivery stays, because the state label cannot answer "it has not
+     * arrived" — see {@see \Swag\AssistantStarterKit\Core\Prompt\OrderRules} for the prompt's half.
+     */
+    public const DESCRIPTION_WITH_ORDER_TOOLS =
+        'Hand the conversation to a human. Use for returns, cancellations, complaints, a missing '
+            . 'delivery, changes to their account, or anything you cannot answer from shop data. Never '
+            . 'for the status, date, total or contents of the shopper\'s own orders: answer those with '
+            . 'the order tools.';
+
     /**
      * What the model is told when the merchant configured somewhere to send the shopper.
      *

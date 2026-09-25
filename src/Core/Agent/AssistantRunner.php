@@ -263,7 +263,14 @@ final class AssistantRunner
 
     private function buildMessageBag(string $message, MessageBag $history): MessageBag
     {
-        $prompt = $this->bundle->prompt->system($this->config, $this->bundle->vocabulary, $this->bundle->viewing);
+        // Told what this turn's toolbox holds, not what the merchant switched on: a guest on a shop
+        // with order history enabled has no order tool, and a prompt telling them to answer order
+        // questions with one would have the model improvise. See OrderRules.
+        $prompt = $this->bundle->prompt->system(
+            $this->config->withOrderHistory($this->bundle->orderToolsOffered),
+            $this->bundle->vocabulary,
+            $this->bundle->viewing,
+        );
 
         // **Recorded in full, every turn, and not behind a setting.** Every other stage of the turn
         // was already traced; this was the one thing a merchant could not see when the assistant said

@@ -6,6 +6,7 @@ namespace Swag\AssistantStarterKit\Tests\Core\Tool;
 
 use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDetail;
+use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderDocumentRef;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderLine;
 use Swag\AssistantStarterKit\Core\Grounding\OrderRenderer;
 use Swag\AssistantStarterKit\Core\Tool\GetOrderTool;
@@ -13,22 +14,47 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 use Swag\AssistantStarterKit\Tests\Core\Commerce\OrderCapableGateway;
 
 /**
- * The tool names what was in an order and counts nothing.
+ * The tool returns what was in an order with the figures the card shows beside it.
  *
- * D3 applied where it is easiest to forget: "you ordered three of them" is a figure, and a figure the
- * model states is a figure it can state wrongly. The quantity, the unit price and the line total are
- * on the card the server rendered beside the reply — so the return shape is asserted by key, not by
- * content, because widening it is how the guarantee would end without anyone deciding to end it.
+ * It returned line NAMES only until 2026-09-24. A tester asked to order the same again and got one of
+ * each, because a model that was never given a quantity had to assume one — D3 kept it from stating a
+ * wrong figure by making it act on an invented one instead. D3 now yields for the shopper's own
+ * orders. The shape is still asserted by key, not by content: those keys are the whole of what the
+ * relaxation allows, and the document URL beside them must never become one.
  */
 final class GetOrderToolTest extends TestCase
 {
-    public function testReturnsLineNamesAndNoFigures(): void
+    public function testReturnsTheOrderWithItsLineFigures(): void
     {
         $result = self::tool()('10023');
 
-        self::assertSame(['orderNumber', 'items', 'found'], array_keys($result));
-        self::assertSame(['Chain Oil 100ml', 'Brake Pads'], $result['items']);
+        self::assertSame(
+            ['orderNumber', 'orderedAt', 'state', 'total', 'currency', 'lines', 'found'],
+            array_keys($result),
+        );
+        self::assertSame(['2026-09-12', 'Shipped', 118.44, 'EUR'], [
+            $result['orderedAt'] ?? null,
+            $result['state'] ?? null,
+            $result['total'] ?? null,
+            $result['currency'] ?? null,
+        ]);
+        self::assertSame(
+            [
+                ['name' => 'Chain Oil 100ml', 'quantity' => 3, 'unitPrice' => 12.90, 'lineTotal' => 38.70],
+                ['name' => 'Brake Pads', 'quantity' => 1, 'unitPrice' => 79.74, 'lineTotal' => 79.74],
+            ],
+            $result['lines'],
+        );
         self::assertTrue($result['found']);
+    }
+
+    /** Figures, not links: the invoice's URL stays on the card the server renders. */
+    public function testNoDocumentLinkReachesTheModel(): void
+    {
+        $encoded = (string) json_encode(self::tool()('10023'));
+
+        self::assertStringNotContainsString('/account/order/document', $encoded);
+        self::assertStringNotContainsString('Invoice', $encoded);
     }
 
     public function testRegistersTheDetailItRetrieved(): void
@@ -52,8 +78,7 @@ final class GetOrderToolTest extends TestCase
 
         $result = self::tool($renderer)('99999');
 
-        self::assertFalse($result['found']);
-        self::assertSame([], $result['items']);
+        self::assertSame(['orderNumber' => '99999', 'lines' => [], 'found' => false], $result);
         self::assertNull($renderer->retrievedDetail(), 'nothing may be rendered for an order we did not get');
     }
 
@@ -87,7 +112,7 @@ final class GetOrderToolTest extends TestCase
                 new OrderLine('Chain Oil 100ml', 3, 12.90, 38.70),
                 new OrderLine('Brake Pads', 1, 79.74, 79.74),
             ],
-            documents: [],
+            documents: [new OrderDocumentRef('Invoice', '/account/order/document/abc/def', 'pdf')],
         );
 
         return new GetOrderTool(

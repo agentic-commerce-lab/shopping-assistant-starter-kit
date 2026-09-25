@@ -11,19 +11,22 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\OrderSummary;
  * What {@see FactRenderer} is for products, this is for orders: the request-scoped authority on
  * which orders this turn actually retrieved.
  *
- * {@see \Swag\AssistantStarterKit\Core\Tool\ListOrdersTool} registers what it fetched and returns
- * order numbers; the controller reads this afterwards and builds the payload. **The model's return
- * value never becomes a card** — the same guarantee, drawn around the same boundary, as the one that
- * makes the assistant structurally incapable of inventing a price.
+ * {@see \Swag\AssistantStarterKit\Core\Tool\ListOrdersTool} registers what it fetched and hands the
+ * model the same orders; the controller reads this afterwards and builds the payload. **The model's
+ * return value never becomes a card** — the same guarantee, drawn around the same boundary, as the
+ * one that makes the assistant structurally incapable of inventing a price. Since 2026-09-24 the
+ * model may state these figures too (D3 relaxed for the shopper's own orders), but what the card
+ * shows still comes from here and never from the sentence beside it.
  *
  * ## Separate from FactRenderer rather than folded into it
  *
  * That class renders `ProductCard`s and backs the price, availability and property audits, all three
- * of which answer "did the model state a figure nothing gave it". An order is not a product, and
- * teaching `unbackedPrices()` about two kinds of figure would make one method's answer mean two
- * things. `FactRenderer`'s own docblock already records that it is over its method budget and that
- * the split worth doing is "per-turn state" against "audit entry points"; adding an unrelated
- * entity to it would be the opposite of that split.
+ * of which answer "did the model state a figure nothing gave it". An order is not a product.
+ * `FactRenderer`'s own docblock already records that it is over its method budget and that the split
+ * worth doing is "per-turn state" against "audit entry points"; adding an unrelated entity to it
+ * would be the opposite of that split. The price audit does now accept this class's figures as
+ * backing, but as an argument ({@see OrderFigures}), the way it accepts shop-information passages —
+ * so `unbackedPrices()` still answers one question and this class stays out of `FactRenderer`.
  *
  * ## Registration replaces, it never merges
  *
