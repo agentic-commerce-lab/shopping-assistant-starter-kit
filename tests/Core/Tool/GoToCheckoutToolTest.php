@@ -24,8 +24,8 @@ use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
  * looking at a filled cart.
  *
  * Reading the cart is the whole job. The URL is not here and never reaches the model: it is rendered
- * server-side by {@see \Swag\AssistantStarterKit\Controller\CheckoutPayload} from the outcome, the
- * same rule prices and the contact link already follow (D3).
+ * server-side by {@see \Swag\AssistantStarterKit\Controller\CheckoutPayload} from the turn's
+ * checkout offer, the same rule prices and the contact link already follow (D3).
  */
 final class GoToCheckoutToolTest extends TestCase
 {
@@ -34,7 +34,7 @@ final class GoToCheckoutToolTest extends TestCase
         return FixtureCommerceGateway::fromFile(__DIR__ . '/../../Fixtures/catalog.json');
     }
 
-    public function testReportsAFilledCartAsReadyAndAnnouncesTheLinkThatFollows(): void
+    public function testReportsAFilledCartAsReady(): void
     {
         $gateway = self::gateway();
         $gateway->addToCart('fx-001', 1);
@@ -83,7 +83,22 @@ final class GoToCheckoutToolTest extends TestCase
 
         $note = (new GoToCheckoutTool($gateway, new TraceRecorder()))()['note'];
 
-        self::assertStringContainsStringIgnoringCase('link follows', $note);
+        self::assertStringContainsStringIgnoringCase('go to checkout now', $note);
         self::assertStringContainsStringIgnoringCase('do not write a url', $note);
+        self::assertStringContainsStringIgnoringCase('do not say how many items', $note);
+    }
+
+    public function testTheNoteNoLongerHasTheModelAnnounceTheLink(): void
+    {
+        // Tester feedback: 'No need for this "A checkout link follows this message."' The shop draws
+        // the link beside the reply; a sentence pointing at it is noise when it is there and a false
+        // promise whenever it is not.
+        $gateway = self::gateway();
+        $gateway->addToCart('fx-001', 1);
+
+        $note = (new GoToCheckoutTool($gateway, new TraceRecorder()))()['note'];
+
+        self::assertStringNotContainsStringIgnoringCase('link follows', $note);
+        self::assertStringContainsStringIgnoringCase('do not mention a link or a button', $note);
     }
 }

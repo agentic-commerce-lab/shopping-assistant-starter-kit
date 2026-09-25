@@ -34,6 +34,12 @@ final readonly class ConversationTurn
      * shopper holding an older conversation token must get a message with no timestamp rather than
      * an exception — or worse, a fabricated one.
      *
+     * `$checkoutOffered` is stored because the outcome cannot say it: a turn that added and then
+     * offered checkout is `cart_added`, and without this the history endpoint would drop a checkout
+     * link the live reply showed. False on every row written before it existed: a stored
+     * `checkout_offered` still renders its link from the outcome alone, and an add-and-checkout turn
+     * stored before this never had one — nothing in the row can recover it.
+     *
      * @mago-expect lint:excessive-parameter-list
      * A `final readonly` value object whose call sites all use named arguments; carve-out 1 in the
      * standing constraints. Splitting a conversation turn in two to satisfy a count would be the
@@ -45,5 +51,6 @@ final readonly class ConversationTurn
         public array $cardIds = [],
         public string $outcome = '',
         public ?\DateTimeImmutable $createdAt = null,
+        public bool $checkoutOffered = false,
     ) {}
 }

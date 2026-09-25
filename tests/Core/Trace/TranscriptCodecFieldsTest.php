@@ -11,7 +11,7 @@ use Swag\AssistantStarterKit\Core\Trace\ConversationTurn;
 use Swag\AssistantStarterKit\Core\Trace\TranscriptCodec;
 
 /**
- * Decoding the two fields a stored turn gained.
+ * Decoding the fields a stored turn gained after the first release.
  *
  * The codec's rule is that stored JSON is **untrusted** — written by an earlier version of this
  * plugin, possibly with a different shape — and that values are narrowed rather than cast, because a
@@ -71,6 +71,46 @@ final class TranscriptCodecFieldsTest extends TestCase
         $encoded = (new TranscriptCodec())->encode(new ConversationTurn(role: 'assistant', prose: 'ok'));
 
         self::assertArrayNotHasKey('warnings', $encoded);
+    }
+
+    public function testItRoundTripsACheckoutOffer(): void
+    {
+        // The outcome of "add it and take me to checkout" is `cart_added`, so the offer is stored
+        // beside it — the history endpoint has nothing else to rebuild the checkout link from.
+        $turn = $this->roundTrip(new ConversationTurn(
+            role: 'assistant',
+            prose: 'Added. You can go to checkout now.',
+            outcome: 'cart_added',
+            checkoutOffered: true,
+        ));
+
+        self::assertTrue($turn->checkoutOffered);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function storedOffersThatAreNotTrue(): iterable
+    {
+        yield 'absent, as on every turn stored before the field existed' => [null];
+        yield 'false' => [false];
+        yield 'a truthy string' => ['yes'];
+        yield 'a truthy number' => [1];
+    }
+
+    #[DataProvider('storedOffersThatAreNotTrue')]
+    public function testOnlyAStoredTrueIsReadAsAnOffer(mixed $stored): void
+    {
+        // Narrowed, never cast: `(bool) 'yes'` is the plausible-looking value that renders a
+        // checkout link nobody offered.
+        $turn = $this->decodeOne([
+            'role' => 'assistant',
+            'prose' => 'ok',
+            'outcome' => 'cart_added',
+            'checkoutOffered' => $stored,
+        ]);
+
+        self::assertFalse($turn->checkoutOffered);
     }
 
     private function roundTrip(ConversationTurn $turn): ConversationTurn

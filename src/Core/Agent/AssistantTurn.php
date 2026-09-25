@@ -15,10 +15,11 @@ use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
  * prose can contradict the cards — see {@see Warnings}.
  */
 // @mago-expect lint:excessive-parameter-list
-// Six facts about one finished turn, and the point of the class is that they travel together: the
+// Seven facts about one finished turn, and the point of the class is that they travel together: the
 // prose, the cards it is allowed to contradict, the machine-readable outcome, the ways it might
-// contradict them, and the two order slots. Grouping any of them behind a sub-object would hide
-// which of them the controller is allowed to render, which is the only question this class answers.
+// contradict them, the two order slots and the checkout offer. Grouping any of them behind a
+// sub-object would hide which of them the controller is allowed to render, which is the only
+// question this class answers.
 final readonly class AssistantTurn
 {
     /**
@@ -39,5 +40,15 @@ final readonly class AssistantTurn
          * one "what was in that order" question.
          */
         public ?OrderDetail $orderDetail = null,
+        /**
+         * Whether `go_to_checkout` found a filled cart this turn — {@see CheckoutOffer::isIn()}.
+         *
+         * Its own field because the outcome cannot carry it: "add it and take me to checkout" is
+         * `cart_added`, which outranks `checkout_offered` and has to, since the widget refreshes the
+         * header cart on it. While the link keyed off the outcome alone, that turn told the shopper a
+         * link followed and rendered none. Which outcomes may show it is
+         * {@see \Swag\AssistantStarterKit\Controller\CheckoutPayload}'s call, not this field's.
+         */
+        public bool $checkoutOffered = false,
     ) {}
 }

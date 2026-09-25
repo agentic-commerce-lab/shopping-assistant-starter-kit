@@ -8,15 +8,19 @@ use PHPUnit\Framework\TestCase;
 use Swag\AssistantStarterKit\Core\Agent\TurnOutcomeResolver;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\ProductCard;
 use Swag\AssistantStarterKit\Core\Commerce\Dto\StockSource;
+use Swag\AssistantStarterKit\Core\Tool\AddToCartTool;
 use Swag\AssistantStarterKit\Core\Tool\GoToCheckoutTool;
 use Swag\AssistantStarterKit\Core\Trace\TraceRecorder;
 
 /**
- * The outcome is what carries the checkout link, exactly as `escalated` carries the contact link.
+ * Where `checkout_offered` ranks among the outcomes.
  *
- * Chosen over a new field on the turn because the history endpoint rebuilds the handoff from the
- * stored outcome — `AssistantController::history()` — so a reloaded conversation gets its link back
- * for free, and nothing new has to be written into the transcript.
+ * This outcome used to be the only thing that carried the checkout link, chosen over a field on the
+ * turn because the history endpoint rebuilds links from the stored outcome. That broke on the one
+ * outcome ranked above it that does not cancel the offer: "add it and take me to checkout" is
+ * `cart_added`, and the link never rendered. The offer now travels as its own fact
+ * (`AssistantTurn::$checkoutOffered`); these tests pin the ranking, which the fix deliberately left
+ * alone.
  */
 final class TurnOutcomeCheckoutTest extends TestCase
 {
@@ -47,6 +51,17 @@ final class TurnOutcomeCheckoutTest extends TestCase
         $trace->record('escalate', ['reason' => 'order status']);
 
         self::assertSame('escalated', (new TurnOutcomeResolver())->outcome($trace, []));
+    }
+
+    public function testACartAddStillOutranksIt(): void
+    {
+        // Not re-ranked to fix the missing link, on purpose: the widget refreshes the header cart
+        // only on `cart_added`, and the funnel counts carts from it. The link comes from the offer.
+        $trace = new TraceRecorder();
+        $trace->record(AddToCartTool::TRACE_STAGE, ['name' => 'add_to_cart', 'policyReasonCode' => 'allowed']);
+        $trace->record(GoToCheckoutTool::TRACE_STAGE, ['empty' => false]);
+
+        self::assertSame('cart_added', (new TurnOutcomeResolver())->outcome($trace, []));
     }
 
     public function testItOutranksCardsHavingBeenShown(): void

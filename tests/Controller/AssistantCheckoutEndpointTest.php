@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Swag\AssistantStarterKit\Tests\Controller;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Swag\AssistantStarterKit\Core\Agent\TurnOutcomeResolver;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,7 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
  * carried a link at all and the prompt sent checkout down that branch.
  *
  * `RecordingTurnRunner` returns `product_shown` by default, so the outcome is set here rather than
- * prompting a model for it.
+ * prompting a model for it — and so is the checkout offer, which the real runner reads from the
+ * trace (see `CheckoutBesideACartAddTest`).
  */
 final class AssistantCheckoutEndpointTest extends AssistantEndpointTestCase
 {
@@ -24,6 +26,7 @@ final class AssistantCheckoutEndpointTest extends AssistantEndpointTestCase
     {
         $controller = $this->controller();
         $this->runner->outcome = TurnOutcomeResolver::CHECKOUT_OFFERED;
+        $this->runner->checkoutOffered = true;
 
         $response = $controller->chat($this->post(['message' => 'take me to checkout']), $this->context());
         $payload = $this->decode($response);
@@ -37,6 +40,7 @@ final class AssistantCheckoutEndpointTest extends AssistantEndpointTestCase
         // The reported defect, at the wire: the shopper got the contact page for asking to pay.
         $controller = $this->controller($this->configuredWith([self::PREFIX . 'escalationUrl' => '/contact']));
         $this->runner->outcome = TurnOutcomeResolver::CHECKOUT_OFFERED;
+        $this->runner->checkoutOffered = true;
 
         $payload = $this->decode($controller->chat($this->post(['message' => 'checkout']), $this->context()));
 
@@ -57,8 +61,11 @@ final class AssistantCheckoutEndpointTest extends AssistantEndpointTestCase
 
     public function testAnEscalatedTurnStillCarriesTheContactLinkAndNoCheckoutLink(): void
     {
+        // Even when the same turn found a filled cart: a turn that reached for a human is about
+        // that, and the contact block is the one thing beside it.
         $controller = $this->controller($this->configuredWith([self::PREFIX . 'escalationUrl' => '/contact']));
         $this->runner->outcome = 'escalated';
+        $this->runner->checkoutOffered = true;
 
         $payload = $this->decode($controller->chat($this->post(['message' => 'where is my order?']), $this->context()));
 
@@ -66,12 +73,26 @@ final class AssistantCheckoutEndpointTest extends AssistantEndpointTestCase
         self::assertSame(['message' => '', 'url' => '/contact'], $payload['handoff']);
     }
 
-    public function testTheCheckoutLinkSurvivesAPageReload(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function outcomesThatCarryTheLink(): iterable
     {
-        // Rebuilt from the stored outcome, which is why the outcome carries it: a shopper who
-        // reloads mid-checkout must not lose the one link they were given.
+        yield 'a checkout turn' => [TurnOutcomeResolver::CHECKOUT_OFFERED];
+
+        // The stored outcome says `cart_added` and nothing else, so the offer has to be stored
+        // beside it — otherwise the reload drops a link the live reply showed.
+        yield 'an add followed by checkout in the same turn' => ['cart_added'];
+    }
+
+    #[DataProvider('outcomesThatCarryTheLink')]
+    public function testTheCheckoutLinkSurvivesAPageReload(string $outcome): void
+    {
+        // Rebuilt from what was stored with the turn: a shopper who reloads mid-checkout must not
+        // lose the one link they were given.
         $controller = $this->controller();
-        $this->runner->outcome = TurnOutcomeResolver::CHECKOUT_OFFERED;
+        $this->runner->outcome = $outcome;
+        $this->runner->checkoutOffered = true;
 
         $token = $this->decode($controller->chat($this->post([
             'message' => 'take me to checkout',
@@ -85,5 +106,34 @@ final class AssistantCheckoutEndpointTest extends AssistantEndpointTestCase
             ['url' => '/checkout/confirm'],
             AssistantTranscript::firstAssistantTurn($messages)['checkout'],
         );
+    }
+
+    public function testATurnThatAddedAndThenOfferedCheckoutCarriesTheLinkAndKeepsItsCartOutcome(): void
+    {
+        // Found in production traces: "add it and take me to checkout" ran both tools, the note told
+        // the model a link followed, and none did — `cart_added` outranks `checkout_offered`, and
+        // the link keyed off the outcome alone. The outcome must stay `cart_added`: it is what makes
+        // the widget refresh the header cart.
+        $controller = $this->controller();
+        $this->runner->outcome = 'cart_added';
+        $this->runner->checkoutOffered = true;
+
+        $payload = $this->decode($controller->chat($this->post([
+            'message' => 'add it and take me to checkout',
+        ]), $this->context()));
+
+        self::assertSame('cart_added', $payload['outcome']);
+        self::assertSame(['url' => '/checkout/confirm'], $payload['checkout']);
+    }
+
+    public function testACartAddAloneCarriesNoCheckoutLink(): void
+    {
+        // The link follows the offer, not the add: "put it in my cart" did not ask to check out.
+        $controller = $this->controller();
+        $this->runner->outcome = 'cart_added';
+
+        $payload = $this->decode($controller->chat($this->post(['message' => 'add it']), $this->context()));
+
+        self::assertNull($payload['checkout']);
     }
 }

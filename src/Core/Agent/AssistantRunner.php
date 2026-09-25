@@ -167,6 +167,10 @@ final class AssistantRunner
             $warnings,
             $this->bundle->orderRenderer->retrievedOrders(),
             $this->bundle->orderRenderer->retrievedDetail(),
+            // Beside the outcome rather than inside it: a turn that added and then offered checkout
+            // is `cart_added`, and the offer must survive that. Only here, on a turn that ended
+            // normally — a turn cut short or failed never gave the reply the link belongs beside.
+            checkoutOffered: CheckoutOffer::isIn($this->bundle->trace),
         );
     }
 

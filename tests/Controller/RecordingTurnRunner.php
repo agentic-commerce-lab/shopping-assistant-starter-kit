@@ -26,6 +26,9 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
     /** Overridden by tests that need a turn the controller treats as an escalation. */
     public string $outcome = 'product_shown';
 
+    /** Whether the turn found a filled cart at `go_to_checkout`, which the outcome alone cannot say. */
+    public bool $checkoutOffered = false;
+
     /**
      * The card this runner renders, when a test needs a specific product rather than the default.
      *
@@ -94,6 +97,14 @@ final class RecordingTurnRunner implements ChatTurnRunnerInterface
             options: ['Colour' => 'Blue', 'Size' => 'M'],
         );
 
-        return new TurnResult(new AssistantTurn('The Trail Jersey in Blue / M.', [$card], $this->outcome), $trace);
+        return new TurnResult(
+            new AssistantTurn(
+                'The Trail Jersey in Blue / M.',
+                [$card],
+                $this->outcome,
+                checkoutOffered: $this->checkoutOffered,
+            ),
+            $trace,
+        );
     }
 }

@@ -19,9 +19,10 @@ final readonly class CheckoutOffer
     /**
      * The payload is read, not merely the stage's presence.
      *
-     * `go_to_checkout` runs on an empty cart too, and that turn offered nothing: the outcome this
-     * feeds is what renders the link, so a cart with nothing in it must not produce one. A checkout
-     * link beside "your cart is empty" is the same empty promise
+     * `go_to_checkout` runs on an empty cart too, and that turn offered nothing: what this feeds —
+     * the `checkout_offered` outcome and {@see AssistantTurn::$checkoutOffered} beside it — is what
+     * renders the link, so a cart with nothing in it must not produce one. A checkout link beside
+     * "your cart is empty" is the same empty promise
      * {@see \Swag\AssistantStarterKit\Controller\HandoffPayload} exists to stop making.
      *
      * Any event, not the last: one recorder spans every turn of a conversation (ruling R84), which is
