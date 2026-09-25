@@ -39,11 +39,19 @@ final readonly class DalCartAdapter
 
     public function add(string $variantId, int $quantity, SalesChannelContext $context): CartSummary
     {
-        $lineItem = $this->lineItemFactory->create([
-            'type' => LineItem::PRODUCT_LINE_ITEM_TYPE,
-            'referencedId' => $variantId,
-            'quantity' => $quantity,
-        ], $context);
+        $lineItem = $this->lineItemFactory->create(
+            [
+                // The line id IS the variant id, as in Shopware's own buy-widget form. Without it the
+                // registry invents a random id, `LineItemCollection::add()` merges only on an equal id,
+                // and every repeat add opened a new line: staging order 10006 held one helmet as three
+                // one-unit lines. The widget's own button posts the variant id too, so both now merge.
+                'id' => $variantId,
+                'type' => LineItem::PRODUCT_LINE_ITEM_TYPE,
+                'referencedId' => $variantId,
+                'quantity' => $quantity,
+            ],
+            $context,
+        );
 
         $cart = $this->cartService->getCart($context->getToken(), $context);
         $cart = $this->cartService->add($cart, $lineItem, $context);
