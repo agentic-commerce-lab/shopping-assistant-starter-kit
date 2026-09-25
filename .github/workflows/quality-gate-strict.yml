@@ -40,7 +40,10 @@ jobs:
           version: "1.47.1"
 
       - name: Setup jscpd
-        run: npm install -g jscpd@5
+        # Pinned for the same reason as Mago above: 5.3.2 counts the same clones as
+        # more duplicated lines and moved main over the 3.5% threshold with no code
+        # change. Upgrade deliberately, together with the threshold in .jscpd.json.
+        run: npm install -g jscpd@5.3.1
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
