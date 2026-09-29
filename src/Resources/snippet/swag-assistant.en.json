@@ -42,17 +42,13 @@
     },
     "thinking": {
       "start": "Thinking…",
-      "waiting": "Still looking. Give me a sec.",
+      "waiting": "Still working on it. Give me a sec.",
       "patient": "This one's taking a moment.",
-      "stepReading": "Reading your question",
-      "stepSearching": "Searching the range",
-      "stepVariants": "Matching up variants",
-      "stepAvailability": "Checking availability",
-      "stepComposing": "Putting the answer together",
-      "stepNarrowing": "Narrowing the matches",
-      "stepChecking": "Double-checking that",
-      "stepTidying": "Tidying up the results",
-      "stepRummaging": "Still rummaging the shelves",
+      "stepOneMoment": "One moment",
+      "stepWorking": "Working on it",
+      "stepThanks": "Thanks for your patience",
+      "stepStillHere": "Still here, still working",
+      "stepBearWithMe": "Bear with me",
       "stepPondering": "Having a think about it"
     },
     "handoff": {
