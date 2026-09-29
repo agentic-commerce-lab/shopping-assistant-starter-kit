@@ -28,6 +28,11 @@ test('above the ceiling is capped', () => {
     assert.equal(clampSize({ width: 99999, height: 500 }, { width: 1440, height: 900 }).width, MAX_WIDTH);
 });
 
+test('height has no fixed ceiling: a tall window can be filled, minus the top margin', () => {
+    // Used to be capped at 900px, which left a 1440px-tall screen a third unused.
+    assert.equal(clampSize({ width: 500, height: 5000 }, { width: 1440, height: 1400 }).height, 1400 - 16);
+});
+
 test('a narrow viewport wins over the configured ceiling', () => {
     // On a 500px-wide window the 720px ceiling is not reachable, and a panel wider than the window is
     // a horizontal scrollbar on the whole page.
