@@ -51,8 +51,10 @@ final class EscalateTool
      * six** runs of `order_status_escalates` on 2026-08-22. Nothing is sent anywhere, so each of
      * those is a false statement about the merchant's operations, made to a customer.
      *
-     * The decline leads and the link follows, in that order, because the model paraphrases the first
-     * instruction it is given: a handover in that slot produced a handover in the reply.
+     * The link announcement leads, because the model paraphrases the first instruction it is given:
+     * a handover in that slot produced a handover in the reply. It does not tell the model to decline
+     * or apologise: the shop shows its own handover message above the link, and on staging
+     * (2026-09-22) that message was itself an apology, so the shopper got two.
      *
      * It says a link *follows* rather than carrying one: the URL is rendered server-side by
      * {@see \Swag\AssistantStarterKit\Controller\HandoffPayload} from the same configuration, so the
@@ -61,7 +63,8 @@ final class EscalateTool
      * this wording holds — the wording is a request, the assertion is the guarantee.
      */
     private const NOTE_WITH_DESTINATION =
-        'Say that you cannot help with this yourself, and that a contact link follows your message. '
+        'Say in one short, neutral sentence that a contact link follows your message. Do not apologise '
+            . 'and do not say you cannot help: the shop shows its own handover message with the link. '
             . 'Nothing has been sent to anyone: do not say you have passed this on, flagged it, '
             . 'escalated it, forwarded it or notified anybody, and do not say that someone will '
             . 'follow up, reach out or get back to them. Do not write a URL yourself.';
