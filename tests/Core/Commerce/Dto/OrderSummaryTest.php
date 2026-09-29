@@ -30,7 +30,7 @@ final class OrderSummaryTest extends TestCase
         sort($properties);
 
         self::assertSame(
-            ['currency', 'documents', 'itemCount', 'orderNumber', 'orderedAt', 'stateLabel', 'total'],
+            ['currency', 'documents', 'itemCount', 'orderNumber', 'orderedAt', 'stateLabel', 'total', 'url'],
             $properties,
         );
     }

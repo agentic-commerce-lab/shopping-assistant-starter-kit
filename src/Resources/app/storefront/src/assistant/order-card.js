@@ -121,8 +121,19 @@ function buildHeader(order, { locale, translations }) {
     const header = document.createElement('div');
     header.className = 'swag-assistant-order__header';
 
-    const number = document.createElement('span');
+    // A real link to the order in the shopper's account when the server sent one. The URL is the
+    // server's (`OrderPayload`), never model text — the model may not write links.
+    const linked = typeof order.url === 'string' && order.url !== '';
+    const number = document.createElement(linked ? 'a' : 'span');
     number.className = 'swag-assistant-order__number';
+
+    if (linked) {
+        number.href = order.url;
+        // Like the document rows: a new tab keeps the conversation where it is.
+        number.target = '_blank';
+        number.rel = 'noopener';
+    }
+
     // Text node, never innerHTML — the widget's standing safety rule. An order number is server
     // data, but the rule does not have exceptions for trustworthy fields.
     number.textContent = (translations.orderNumber ?? '#%number%').replace('%number%', order.orderNumber ?? '');

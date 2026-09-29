@@ -18,7 +18,7 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
  * the test that asserts it.
  */
 // @mago-expect lint:excessive-parameter-list
-// Seven fields, and every one of them is on the card — the class is the card's contract, so the list
+// Eight fields, and every one of them is on the card — the class is the card's contract, so the list
 // shrinks only by removing something from the screen. Grouping them behind a shape would also defeat
 // `OrderDetailTest`, which asserts this exact property list precisely because this is the richest
 // record the feature reads and the one an address would enter through.
@@ -36,5 +36,7 @@ final readonly class OrderDetail
         public string $currency,
         public array $lines,
         public array $documents,
+        // The order's page in the shopper's account, built server-side and never handed to the model.
+        public ?string $url = null,
     ) {}
 }

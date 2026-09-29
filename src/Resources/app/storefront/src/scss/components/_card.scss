@@ -596,6 +596,23 @@ which is why `documents.js` is shared rather than copied.
 .swag-assistant-order__number {
     font-size: 13px;
     font-weight: 600;
+
+    // The link form: the order number opens the order in the account.
+    &[href] {
+        color: var(--swag-assistant-primary-dark, #{$swag-assistant-accent-dark});
+        text-decoration: underline;
+        text-underline-offset: 2px;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--swag-assistant-primary, #{$swag-assistant-accent});
+        }
+
+        &:focus-visible {
+            outline: 2px solid currentcolor;
+            outline-offset: 2px;
+        }
+    }
 }
 
 .swag-assistant-order__meta {

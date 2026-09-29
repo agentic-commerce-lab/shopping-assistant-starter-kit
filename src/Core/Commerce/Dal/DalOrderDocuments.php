@@ -54,4 +54,25 @@ final readonly class DalOrderDocuments
 
         return $refs;
     }
+
+    /**
+     * The order's own page in the shopper's account, or null without a deep link code.
+     *
+     * Built here for the same reason the document links are: the model may not write URLs, so the
+     * link comes from the card. The route is login-required, so a copied link still has to be earned.
+     */
+    public function orderPage(OrderEntity $order): ?string
+    {
+        $deepLinkCode = $order->getDeepLinkCode();
+
+        if ($deepLinkCode === null) {
+            return null;
+        }
+
+        return $this->router->generate(
+            'frontend.account.order.single.page',
+            ['deepLinkCode' => $deepLinkCode],
+            UrlGeneratorInterface::ABSOLUTE_PATH,
+        );
+    }
 }
