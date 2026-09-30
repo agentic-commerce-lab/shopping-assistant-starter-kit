@@ -6,6 +6,7 @@ import { createCreature } from './creature';
 import { markAdded } from './card';
 import { attachResize, restoreSize } from './resize';
 import { createTokenStore } from './token-store';
+import { createOpenState } from './open-state';
 
 const { PluginBaseClass } = window;
 
@@ -52,6 +53,8 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         // every other storage hazard in, rather than this file needing its own guard around it.
         this.tokens = createTokenStore(() => window.sessionStorage, this.panel?.dataset.swagAssistantContextKey ?? '');
 
+        this.openState = createOpenState(() => window.sessionStorage);
+
         this.locale = this.el.dataset.locale || 'en-GB';
         this.addToCartEnabled = this.el.dataset.addToCartEnabled === 'true';
         // `!== 'false'`, where the line above is `=== 'true'`, and the asymmetry is deliberate: that
@@ -91,6 +94,12 @@ export default class SwagAssistantPanel extends PluginBaseClass {
 
         this._registerPanelEvents();
         this._registerLogEvents();
+
+        // A panel the shopper left open stays open across the page load. `restore` keeps the composer
+        // from taking focus: nobody asked for it on this page.
+        if (this.openState.wasOpen()) {
+            this.open({ restore: true });
+        }
     }
 
     _readTranslations() {
@@ -239,8 +248,9 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         this.open();
     }
 
-    open() {
+    open({ restore = false } = {}) {
         this.panel.hidden = false;
+        this.openState.set(true);
 
         // Restored before the panel becomes visible, so it opens at its remembered size rather than
         // snapping to it. Re-clamped on every open because the window may have been resized since.
@@ -272,7 +282,10 @@ export default class SwagAssistantPanel extends PluginBaseClass {
         }));
 
         this.orb?.setAttribute('aria-expanded', 'true');
-        this.composer.focus();
+        if (!restore) {
+            this.composer.focus();
+        }
+
         this.el.dispatchEvent(new CustomEvent('swag-assistant:open'));
     }
 
@@ -302,6 +315,7 @@ export default class SwagAssistantPanel extends PluginBaseClass {
     }
 
     close() {
+        this.openState.set(false);
         this.el.classList.remove('is-open');
         this.orb?.setAttribute('aria-expanded', 'false');
 
