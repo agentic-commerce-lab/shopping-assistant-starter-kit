@@ -879,6 +879,34 @@ installed package, with zero console errors anywhere:
 Its route is `#/swag/assistant/shop/info/index`, not `shop-info` — worth writing down, because
 guessing the other spelling renders an empty page rather than a 404.
 
+**Re-synced with main on 2026-09-30 (`ee1c82d`, PRs #47–#56), and what that pass did and did not
+cover.** The branch was rebased onto main with no conflicts; `f7ff54b` dropped out as already
+applied (it is main's #47), and the extra paragraph `4a4a11b` adds to `AssistantTableRemoval`'s
+docblock survived. Main had not touched `config.xml`, `composer.json` or anything under
+`Resources/app/administration` since 0.3.1, so the subtitle removal, the `~6.6.0` / `^3.9` / `~7.4.0`
+constraints and the `mt-switch` and `syncService.httpClient` fixes carried over unchanged, and there
+was no new admin component to port. **Run:** `composer run format:check`, `lint`, `typecheck`,
+`quality:filesize`, `quality:dupes`, `quality:depcheck` and `quality:security` all exit 0; **2,315
+PHP tests, 23,962 assertions** and **131 JS tests** green, the PHP suite against `shopware/core
+v6.6.10.27` (what `composer install` resolves today; the same suite was 2,267 tests green on the
+branch tip before the rebase, so nothing was inherited broken). The 141 Shopware, Symfony,
+Doctrine, Twig, Psr and Monolog class names that `src/` references were resolved with the
+autoloader of a bare `shopware/core` + `shopware/storefront` install of **6.6.10.19 and 6.6.10.23**
+(the only names that do not resolve are two Shopware Commercial classes that are optional by
+design; `symfony/uid` was absent from those scratch trees and resolves in the real one). The
+members main's new code depends on were read out of the 6.6.10.19 source: `OrderEntity::getDeepLinkCode()`,
+the storefront route `frontend.account.order.single.page` with its `{deepLinkCode}` parameter,
+`LineItemFactoryRegistry` honouring a caller-supplied line `id`, and `OrderRoute` filtering
+documents on `sent` and `displayInCustomerAccount`. **Not run:** no 6.6 shop exists on this machine
+(the local Shopware images are 6.7.13.0 and `dev-main`), so there was no browser pass — nothing about
+install, migrations, the administration, the widget, the order-card link from #56 or uninstall was
+re-checked on a live 6.6 shop this time, and #56's link is verified against 6.6 source only. **Not
+rebuilt:** the webpack administration bundle and the storefront bundle. `shopware-cli extension
+build` clones Shopware over SSH and failed here with `Permission denied (publickey)`, so no bundle
+was produced. The administration bundle is still current, because no administration source changed
+after it was last built in `6eda638`; the storefront `dist/` is main's own generated output,
+untouched.
+
 **One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
 one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
 Composer 2.10 blocks an advisory-affected package by default, so a shop on 6.6.10.19 needs
