@@ -26,7 +26,7 @@ final class OrderPayloadTest extends TestCase
         $payload = (new OrderPayload())->of([self::order()]);
 
         self::assertSame(
-            [['orderNumber', 'orderedAt', 'state', 'total', 'currency', 'itemCount', 'documents']],
+            [['orderNumber', 'orderedAt', 'state', 'total', 'currency', 'itemCount', 'url', 'documents']],
             array_map(static fn(array $row): array => array_keys($row), $payload),
         );
     }
@@ -52,6 +52,16 @@ final class OrderPayloadTest extends TestCase
         );
     }
 
+    /** The link comes from the DTO the server built, so the card never needs model text for it. */
+    public function testCarriesTheOrderPageUrl(): void
+    {
+        $orders = (new OrderPayload())->of([self::order()]);
+        $detail = (new OrderPayload())->detail(self::detail());
+
+        self::assertSame(['/account/order/xyz'], array_column($orders, 'url'));
+        self::assertSame('/account/order/xyz', $detail['url'] ?? null);
+    }
+
     public function testAnEmptyTurnSerialisesToAnEmptyList(): void
     {
         self::assertSame([], (new OrderPayload())->of([]));
@@ -63,7 +73,7 @@ final class OrderPayloadTest extends TestCase
 
         self::assertNotNull($detail);
         self::assertSame(
-            ['orderNumber', 'orderedAt', 'state', 'total', 'currency', 'lines', 'documents'],
+            ['orderNumber', 'orderedAt', 'state', 'total', 'currency', 'url', 'lines', 'documents'],
             array_keys($detail),
         );
         self::assertSame(
@@ -88,6 +98,7 @@ final class OrderPayloadTest extends TestCase
             currency: 'EUR',
             lines: [new OrderLine('Chain Oil 100ml', 3, 12.90, 38.70)],
             documents: [],
+            url: '/account/order/xyz',
         );
     }
 
@@ -101,6 +112,7 @@ final class OrderPayloadTest extends TestCase
             currency: 'EUR',
             itemCount: 3,
             documents: [new OrderDocumentRef('Invoice', '/account/order/document/abc/def', 'pdf')],
+            url: '/account/order/xyz',
         );
     }
 }

@@ -24,7 +24,7 @@ namespace Swag\AssistantStarterKit\Core\Commerce\Dto;
  * model may see — never `$documents`. The card beside the reply is still rendered from this object.
  */
 // @mago-expect lint:excessive-parameter-list
-// Seven fields, and every one of them is a field the card shows — the class is the card's contract,
+// Eight fields, and every one of them is a field the card shows — the class is the card's contract,
 // so the list shrinks only by removing something from the screen. Grouping them behind a shape would
 // also defeat `OrderSummaryTest`, which asserts this exact property list precisely because this is
 // where a field about a *person* would enter the pipeline.
@@ -39,5 +39,7 @@ final readonly class OrderSummary
         public string $currency,
         public int $itemCount,
         public array $documents,
+        // The order's page in the shopper's account, built server-side and never handed to the model.
+        public ?string $url = null,
     ) {}
 }

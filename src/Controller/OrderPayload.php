@@ -39,6 +39,7 @@ final readonly class OrderPayload
             'total' => $order->total,
             'currency' => $order->currency,
             'itemCount' => $order->itemCount,
+            'url' => $order->url,
             'documents' => array_map(static fn($document): array => [
                 'title' => $document->title,
                 'url' => $document->url,
@@ -68,6 +69,7 @@ final readonly class OrderPayload
             'state' => $detail->stateLabel,
             'total' => $detail->total,
             'currency' => $detail->currency,
+            'url' => $detail->url,
             'lines' => array_map(static fn(OrderLine $line): array => [
                 'name' => $line->name,
                 'quantity' => $line->quantity,

@@ -42,6 +42,7 @@ final readonly class DalOrderMapper
             currency: $order->getCurrency()?->getIsoCode() ?? '',
             itemCount: $lineItems->count(),
             documents: $this->documents->of($order),
+            url: $this->documents->orderPage($order),
         );
     }
 
@@ -55,6 +56,7 @@ final readonly class DalOrderMapper
             currency: (string) ($order->getCurrency()?->getIsoCode() ?? ''),
             lines: $this->lines($order),
             documents: $this->documents->of($order),
+            url: $this->documents->orderPage($order),
         );
     }
 

@@ -22,7 +22,7 @@ final class OrderDetailTest extends TestCase
     public function testTheDetailCarriesOnlyOrderFacingFields(): void
     {
         self::assertSame(
-            ['currency', 'documents', 'lines', 'orderNumber', 'orderedAt', 'stateLabel', 'total'],
+            ['currency', 'documents', 'lines', 'orderNumber', 'orderedAt', 'stateLabel', 'total', 'url'],
             self::propertiesOf(OrderDetail::class),
         );
     }
