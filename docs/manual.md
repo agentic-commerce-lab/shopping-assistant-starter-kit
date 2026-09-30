@@ -897,15 +897,28 @@ design; `symfony/uid` was absent from those scratch trees and resolves in the re
 members main's new code depends on were read out of the 6.6.10.19 source: `OrderEntity::getDeepLinkCode()`,
 the storefront route `frontend.account.order.single.page` with its `{deepLinkCode}` parameter,
 `LineItemFactoryRegistry` honouring a caller-supplied line `id`, and `OrderRoute` filtering
-documents on `sent` and `displayInCustomerAccount`. **Not run:** no 6.6 shop exists on this machine
-(the local Shopware images are 6.7.13.0 and `dev-main`), so there was no browser pass — nothing about
-install, migrations, the administration, the widget, the order-card link from #56 or uninstall was
-re-checked on a live 6.6 shop this time, and #56's link is verified against 6.6 source only. **Not
-rebuilt:** the webpack administration bundle and the storefront bundle. `shopware-cli extension
-build` clones Shopware over SSH and failed here with `Permission denied (publickey)`, so no bundle
-was produced. The administration bundle is still current, because no administration source changed
-after it was last built in `6eda638`; the storefront `dist/` is main's own generated output,
-untouched.
+documents on `sent` and `displayInCustomerAccount`. **Then run on a real 6.6.10.19 shop the same day** (`dockware/shopware:6.6.10.19`, PHP 8.2.31, the
+customer's version), from the package `shopware-cli extension zip . --git-commit 3822c76` produced,
+installed the way a merchant does it: the two placeholder `ai_*.yaml` files first, the `symfony/ai-*`
+dependencies through `composer require` in the shop, the zip unpacked into `custom/plugins/`,
+`plugin:refresh`, `plugin:install --activate`, `theme:compile`. **Ran:** the plugin installs and
+activates; all **eleven migrations** applied and all **six tables** were created; the settings form
+returned its **thirteen** cards; `system-prompt` returned **15,212 characters** over HTTP 200 (the same
+figure as the 2026-09-23 pass) with no `%channel%` or `%count%` left in the DOM; the kill switch reads
+*checked*, opens *Stop the assistant?* and snaps back to *checked* on Cancel; the three admin modules
+are in the navigation, the trace list and shop-information pages render, and the insights dashboard
+shows its switched-off empty state; zero console errors in the administration. On the storefront,
+with dummy `ASSISTANT_LLM_*` values so the widget is not gated off, the widget renders and **stays open
+across a page navigation** (#55). **Uninstall was clean:** `plugin:uninstall` dropped all six tables and
+left no assistant migration rows, and a reinstall recreated the six. The storefront route behind #56's
+link is `/account/order/{deepLinkCode}` on this patch level, confirmed with `debug:router`.
+**Still not run:** a live chat turn (no model credentials were used), an order card rendered in the
+widget, and therefore the #56 link clicked through from a real order; the PHP suite was not repeated on
+6.6.10.19 itself. **Bundles:** `shopware-cli extension build` did run this time. It left the
+administration bundle changed only by webpack module ids (`900:function(){}` becoming
+`155:function(){}`, four characters shorter), which is build noise, so that change was reverted and the
+committed administration bundle stands; the storefront `dist/` was reverted to main's, as the previous
+zip pass established.
 
 **One thing to expect from an older 6.6 patch.** Between .19 and .23 `shopware/core` changes exactly
 one dependency — `dompdf/dompdf 3.1.4` to `~3.1.6` — and 3.1.4 is subject to six security advisories.
