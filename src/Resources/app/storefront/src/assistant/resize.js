@@ -17,7 +17,9 @@ export const MAX_WIDTH = 720;
 /** Below this the header, one message and the composer no longer fit. */
 export const MIN_HEIGHT = 320;
 
-export const MAX_HEIGHT = 900;
+// No MAX_HEIGHT: a fixed ceiling left tall screens unused, so the window itself (minus the gap under
+// the panel and VIEWPORT_MARGIN, see `fit`) is the only limit on height. Width keeps its cap because a
+// panel wider than 720px stops being a panel; a taller one does not.
 
 /**
  * Breathing room above the panel, and **only** that.
@@ -66,7 +68,7 @@ export function clampSize(size, viewport) {
 
     return {
         width: fit(width, DEFAULT_WIDTH, MIN_WIDTH, MAX_WIDTH, viewport?.width),
-        height: fit(height, DEFAULT_HEIGHT, MIN_HEIGHT, MAX_HEIGHT, viewport?.height),
+        height: fit(height, DEFAULT_HEIGHT, MIN_HEIGHT, Infinity, viewport?.height),
     };
 }
 
