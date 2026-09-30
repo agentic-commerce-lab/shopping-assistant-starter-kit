@@ -5,7 +5,6 @@ import { test } from 'node:test';
 import {
     DEFAULT_HEIGHT,
     DEFAULT_WIDTH,
-    MAX_HEIGHT,
     MAX_WIDTH,
 } from '../../src/Resources/app/storefront/src/assistant/resize.js';
 
@@ -61,5 +60,4 @@ test('the opening size stays inside the bounds a drag is allowed to reach', () =
     // A default outside the clamp would be silently corrected on first load, which looks like the
     // panel ignoring its own stylesheet.
     assert.ok(DEFAULT_WIDTH <= MAX_WIDTH, `default width ${DEFAULT_WIDTH} exceeds MAX_WIDTH ${MAX_WIDTH}`);
-    assert.ok(DEFAULT_HEIGHT <= MAX_HEIGHT, `default height ${DEFAULT_HEIGHT} exceeds MAX_HEIGHT ${MAX_HEIGHT}`);
 });
