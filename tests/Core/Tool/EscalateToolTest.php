@@ -78,20 +78,16 @@ final class EscalateToolTest extends TestCase
         self::assertStringContainsStringIgnoringCase('nothing has been sent', $note);
     }
 
-    public function testTheNoteOpensWithADeclineRatherThanAHandover(): void
+    public function testTheNoteDoesNotAskForASecondApology(): void
     {
-        // The model paraphrases the *first* thing it is told to do. "This needs the shop team" put a
-        // handover in that slot, and the model wrote one. A decline goes there instead; the link is
-        // the second clause.
+        // The shop's handover message is shown above the link and may itself be an apology (staging,
+        // 2026-09-22). A note that also told the model to decline gave the shopper two of them.
         $tool = new EscalateTool(new TraceRecorder(), new AssistantConfig(escalationUrl: '/contact'));
 
         $note = $tool(reason: 'order status question')['note'];
 
-        self::assertStringContainsStringIgnoringCase('cannot help', $note);
-        self::assertLessThan(
-            mb_stripos($note, 'link'),
-            mb_stripos($note, 'cannot help'),
-            'the decline has to come before the link, not after it',
-        );
+        self::assertStringNotContainsStringIgnoringCase('say that you cannot help', $note);
+        self::assertStringContainsStringIgnoringCase('do not apologise', $note);
+        self::assertStringContainsStringIgnoringCase('link follows', $note);
     }
 }
