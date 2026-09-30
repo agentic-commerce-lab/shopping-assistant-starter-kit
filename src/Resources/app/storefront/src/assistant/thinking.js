@@ -6,26 +6,21 @@
  * the indicator is *phased*: the copy changes as the wait goes on, and what a shopper perceives is
  * state changing — which reads as progress.
  *
- * ## The copy is paced, not read — and that is a deliberate, bounded lie
+ * ## The copy is neutral, because it is not read from the server
  *
- * There is still no progress signal: trace events are persisted once, after the run completes. So the
- * steps below are **not** read from the server. They are the pipeline every turn actually walks,
- * played back on a timer.
+ * There is still no progress signal: trace events are persisted once, after the run completes. The
+ * lines below are therefore played back on a timer, and a timer cannot know what the server is doing.
+ * So they claim nothing: no "checking availability" on a turn that never touches stock. They say only
+ * what is always true — the turn is being worked on and it is taking a moment. What changes over the
+ * wait is the wording, which is what marks the time.
  *
- * That is a claim about server work, which this file previously refused to make, so the bound matters:
- * measured over 223 real turns (`assistant-traces-2026-09-16.json`), **91 % ran a tool call, 99 %
- * reached grounding and render**. The ordered steps are therefore true of almost every turn — what is
- * invented is the *timing*, never the work. Live stage data would not fix that: the same measurement
- * shows the tool calls bunch into 0.1 s of each other and then the model thinks alone, so a truthful
- * indicator would flicker four times in 1.4 s and then freeze for 65 % of the wait (98 % at p90).
+ * Real progress needs the server to stream its stages. That is separate, larger work; until it
+ * exists, do not add lines here that name an activity, a product, a count, a price, or anything the
+ * shopper could mistake for a result.
  *
  * **The creature may be playful; the icon may not.** A shopper who was given the neutral entry point
  * was not given a personality, which is the same argument that keeps the face off the dots. So the
- * long-wait pool splits: the icon keeps naming the pipeline, the creature is allowed to be charming
- * about it.
- *
- * What is still forbidden here, unchanged: naming a product, a count, a price, or anything the
- * shopper could mistake for a result. The steps describe *activity*, never *findings*.
+ * long-wait pool splits: the icon keeps plain wording, the creature is allowed one charming line.
  *
  * ## Two indicators, because there are two entry points
  *
@@ -63,27 +58,20 @@ const PHASES = [
 
 const DOT_COUNT = 3;
 
-/**
- * The steps every turn really walks, in the order it walks them.
- *
- * Five, because the median turn is 3.7 s and each step costs roughly 1.5 s — a sixth would only ever
- * be seen by the tail. They stop at "putting it together" rather than naming a result, because the
- * indicator is removed the moment a result exists.
- */
-const STEPS = ['stepReading', 'stepSearching', 'stepVariants', 'stepAvailability', 'stepComposing'];
+/** Played once, in order, at the start of the wait. Neutral: see the header. */
+const STEPS = ['stepOneMoment', 'stepWorking', 'stepThanks'];
 
 /**
- * What plays once the five are spent — p90 is 13.7 s and the maximum measured turn was 74.5 s, so
- * something has to follow them or the wait ends on a frozen line, which is the failure this whole
- * change exists to remove.
+ * What plays once those are spent — p90 is 13.7 s and the maximum measured turn was 74.5 s, so
+ * something has to follow them or the wait ends on a frozen line.
  *
- * Shuffled rather than looped: a shopper who sees the same three in the same order twice has learned
+ * Shuffled rather than looped: a shopper who sees the same lines in the same order twice has learned
  * the indicator is a loop, and a loop tells them nothing is happening.
  */
-const STEPS_LONG = ['stepNarrowing', 'stepChecking', 'stepTidying'];
+const STEPS_LONG = ['stepStillHere', 'stepBearWithMe', 'stepWorking'];
 
 /** Creature only. See the entry-point argument in this file's header. */
-const STEPS_LONG_CREATURE = ['stepRummaging', 'stepPondering'];
+const STEPS_LONG_CREATURE = ['stepPondering'];
 
 /**
  * Typing speeds, in milliseconds per character, and the pause between.
